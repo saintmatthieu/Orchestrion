@@ -33,9 +33,8 @@ qt_add_qml_module(HelloQtQuick
     QML_FILES "src/qml/Main.qml"
 )
 
-set(INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/install")
-install(TARGETS HelloQtQuick
-    RUNTIME DESTINATION ${INSTALL_DIR}
-    BUNDLE DESTINATION ${INSTALL_DIR}
-    LIBRARY DESTINATION ${INSTALL_DIR}
+qt_add_resources(RESOURCES resources.qrc)
+
+target_sources(HelloQtQuick PRIVATE
+    ${RESOURCES}
 )
