@@ -17,22 +17,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>. 
+#
+# Modified by Matthieu Hodgkinson for the purpose of the project
 
-cmake_minimum_required(VERSION 3.16)
-
-cmake_policy(SET CMP0091 OLD) # not set MSVC default args
-
-project(mscore LANGUAGES C CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(PREV_PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR})
+set(PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 set(CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_LIST_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}/build
-    ${CMAKE_CURRENT_LIST_DIR}/build/cmake
+    ${CMAKE_CURRENT_LIST_DIR}/MuseScore
+    ${CMAKE_CURRENT_LIST_DIR}/MuseScore/build
+    ${CMAKE_CURRENT_LIST_DIR}/MuseScore/build/cmake
     ${CMAKE_MODULE_PATH}
     )
 
@@ -60,25 +56,13 @@ include(muse_framework/DeclareOptions)
 
 # Modules (alphabetical order please)
 option(MUE_BUILD_APPSHELL_MODULE "Build appshell module" ON)
-option(MUE_BUILD_BRAILLE_MODULE "Build braille module" ON)
-option(MUE_BUILD_BRAILLE_TESTS "Build braille tests" ON)
-option(MUE_BUILD_CONVERTER_MODULE "Build converter module" ON)
-option(MUE_BUILD_DIAGNOSTICS_MODULE "Build diagnostic code" ON)
-option(MUE_BUILD_DIAGNOSTICS_TESTS "Build diagnostic tests" ON)
-option(MUE_BUILD_ENGRAVING_TESTS "Build engraving tests" ON)
 option(MUE_BUILD_IMPORTEXPORT_MODULE "Build importexport module" ON)
-option(MUE_BUILD_IMPORTEXPORT_TESTS "Build importexport tests" ON)
-option(MUE_BUILD_VIDEOEXPORT_MODULE "Build videoexport module" OFF)
-option(MUE_BUILD_IMAGESEXPORT_MODULE "Build imagesexport module" ON)
 option(MUE_BUILD_INSPECTOR_MODULE "Build inspector module" ON)
 option(MUE_BUILD_INSTRUMENTSSCENE_MODULE "Build instruments scene module" ON)
 option(MUE_BUILD_NOTATION_MODULE "Build notation module" ON)
-option(MUE_BUILD_NOTATION_TESTS "Build notation tests" ON)
 option(MUE_BUILD_PALETTE_MODULE "Build palette module" ON)
 option(MUE_BUILD_PLAYBACK_MODULE "Build playback module" ON)
-option(MUE_BUILD_PLAYBACK_TESTS "Build playback tests" ON)
 option(MUE_BUILD_PROJECT_MODULE "Build project module" ON)
-option(MUE_BUILD_PROJECT_TESTS "Build project tests" ON)
 
 # Function to configure the target-specific setting for playback module
 function(configure_target_playback_module target_name)
@@ -184,9 +168,26 @@ endif(MUE_DOWNLOAD_SOUNDFONT)
 ###########################################
 # Add source tree
 ###########################################
-add_subdirectory(share)
-add_subdirectory(src/framework/global) # should be first to work pch
-add_subdirectory(src)
+# add_subdirectory(share)
+
+add_subdirectory(MuseScore/src/framework/global) # should be first to work pch
+
+add_subdirectory(MuseScore/src/context)
+add_subdirectory(MuseScore/src/commonscene)
+add_subdirectory(MuseScore/src/engraving)
+add_subdirectory(MuseScore/src/notation)
+add_subdirectory(MuseScore/src/orchestrion)
+add_subdirectory(MuseScore/src/playback)
+add_subdirectory(MuseScore/src/framework/actions)
+add_subdirectory(MuseScore/src/framework/audio)
+add_subdirectory(MuseScore/src/framework/draw)
+add_subdirectory(MuseScore/src/framework/midi)
+add_subdirectory(MuseScore/src/framework/multiinstances)
+add_subdirectory(MuseScore/src/framework/shortcuts)
+add_subdirectory(MuseScore/src/framework/ui)
+add_subdirectory(MuseScore/src/framework/uicomponents)
+add_subdirectory(MuseScore/src/framework/workspace)
+# add_subdirectory(src)
 
 ###########################################
 # Setup Packaging
@@ -200,7 +201,5 @@ if (OS_IS_WIN)
     include(SetupWindowsPackaging)
 endif(OS_IS_WIN)
 
-###########################################
-# Add VTest
-###########################################
-add_subdirectory(vtest)
+set(PROJECT_SOURCE_DIR ${PREV_PROJECT_SOURCE_DIR})
+set(PREV_PROJECT_SOURCE_DIR "")

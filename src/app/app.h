@@ -16,18 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "app/app.h"
-#include "context/contextmodule.h"
-#include "draw/drawmodule.h"
-#include "shortcuts/shortcutsmodule.h"
-#include "ui/uimodule.h"
+#pragma once
 
-int main(int argc, char *argv[])
+#include <global/iapplication.h>
+#include <modularity/imodulesetup.h>
+#include <modularity/ioc.h>
+
+namespace dgk::orchestrion
 {
-  dgk::orchestrion::App app;
-  app.addModule(new mu::context::ContextModule());
-  app.addModule(new muse::draw::DrawModule());
-  app.addModule(new muse::shortcuts::ShortcutsModule());
-  app.addModule(new muse::ui::UiModule());
-  return app.run(argc, argv);
-}
+class App
+{
+public:
+  INJECT(mu::IApplication, muapplication);
+
+  void addModule(mu::modularity::IModuleSetup *module);
+  int run(int argc, char **argv);
+
+private:
+  QList<mu::modularity::IModuleSetup *> m_modules;
+};
+} // namespace dgk::orchestrion
