@@ -17,17 +17,38 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "app/app.h"
+
+#include "actions/actionsmodule.h"
+#include "audio/audiomodule.h"
+#include "commonscene/commonscenemodule.h"
 #include "context/contextmodule.h"
 #include "draw/drawmodule.h"
+#include "engraving/engravingmodule.h"
+#include "midi/midimodule.h"
+#include "multiinstances/multiinstancesmodule.h"
+#include "notation/notationmodule.h"
+#include "playback/playbackmodule.h"
 #include "shortcuts/shortcutsmodule.h"
 #include "ui/uimodule.h"
+#include "uicomponents/uicomponentsmodule.h"
+#include "workspace/workspacemodule.h"
 
 int main(int argc, char *argv[])
 {
   dgk::orchestrion::App app;
+  app.addModule(new muse::actions::ActionsModule());
+  app.addModule(new muse::audio::AudioModule());
+  app.addModule(new mu::commonscene::CommonSceneModule());
   app.addModule(new mu::context::ContextModule());
   app.addModule(new muse::draw::DrawModule());
+  app.addModule(new mu::engraving::EngravingModule());
+  app.addModule(new muse::midi::MidiModule());
+  app.addModule(new muse::mi::MultiInstancesModule());
+  app.addModule(new mu::notation::NotationModule());
+  app.addModule(new mu::playback::PlaybackModule());
   app.addModule(new muse::shortcuts::ShortcutsModule());
   app.addModule(new muse::ui::UiModule());
+  app.addModule(new muse::uicomponents::UiComponentsModule());
+  app.addModule(new muse::workspace::WorkspaceModule());
   return app.run(argc, argv);
 }

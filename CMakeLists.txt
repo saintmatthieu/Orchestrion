@@ -33,11 +33,22 @@ target_link_libraries(HelloQtQuick PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::Widgets
+    actions
+    audio
+    commonscene
     context
     draw
+    engraving
     global
+    midi
+    multiinstances
+    notation
+    orchestrion
+    playback
     shortcuts
     ui
+    uicomponents
+    workspace
 )
 
 # Add QML files to the project (for IDEs and resource system)
@@ -51,4 +62,9 @@ qt_add_resources(RESOURCES resources.qrc)
 
 target_sources(HelloQtQuick PRIVATE
     ${RESOURCES}
+)
+
+# Add a post-build step to copy SNDFILE_DLL to the output directory
+add_custom_command(TARGET HelloQtQuick POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:HelloQtQuick>
 )
