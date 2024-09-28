@@ -56,6 +56,7 @@ include(muse_framework/DeclareOptions)
 
 # Modules (alphabetical order please)
 option(MUE_BUILD_APPSHELL_MODULE "Build appshell module" ON)
+option(MUE_BUILD_BRAILLE_MODULE "Build braille module" ON)
 option(MUE_BUILD_IMPORTEXPORT_MODULE "Build importexport module" ON)
 option(MUE_BUILD_INSPECTOR_MODULE "Build inspector module" ON)
 option(MUE_BUILD_INSTRUMENTSSCENE_MODULE "Build instruments scene module" ON)
@@ -172,12 +173,14 @@ endif(MUE_DOWNLOAD_SOUNDFONT)
 
 add_subdirectory(MuseScore/src/framework/global) # should be first to work pch
 
+add_subdirectory(MuseScore/src/braille)
 add_subdirectory(MuseScore/src/context)
 add_subdirectory(MuseScore/src/commonscene)
 add_subdirectory(MuseScore/src/engraving)
 add_subdirectory(MuseScore/src/notation)
 add_subdirectory(MuseScore/src/orchestrion)
 add_subdirectory(MuseScore/src/playback)
+add_subdirectory(MuseScore/src/framework/accessibility)
 add_subdirectory(MuseScore/src/framework/actions)
 add_subdirectory(MuseScore/src/framework/audio)
 add_subdirectory(MuseScore/src/framework/draw)

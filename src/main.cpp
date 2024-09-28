@@ -18,8 +18,10 @@
  */
 #include "app/app.h"
 
+#include "accessibility/accessibilitymodule.h"
 #include "actions/actionsmodule.h"
 #include "audio/audiomodule.h"
+#include "braille/braillemodule.h"
 #include "commonscene/commonscenemodule.h"
 #include "context/contextmodule.h"
 #include "draw/drawmodule.h"
@@ -36,8 +38,10 @@
 int main(int argc, char *argv[])
 {
   dgk::orchestrion::App app;
+  app.addModule(new muse::accessibility::AccessibilityModule());
   app.addModule(new muse::actions::ActionsModule());
   app.addModule(new muse::audio::AudioModule());
+  app.addModule(new mu::braille::BrailleModule());
   app.addModule(new mu::commonscene::CommonSceneModule());
   app.addModule(new mu::context::ContextModule());
   app.addModule(new muse::draw::DrawModule());

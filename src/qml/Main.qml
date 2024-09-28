@@ -18,16 +18,25 @@
  */
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import MuseScore.NotationScene 1.0
 
 ApplicationWindow {
+    id: root
     visible: true
     width: 400
     height: 300
     title: qsTr("Hello, World!")
 
-    Text {
-        anchors.centerIn: parent
-        text: qsTr("Hello, World!")
-        font.pointSize: 24
+    Component.onCompleted: {
+        console.log("Hello, World!")
+    }
+
+    NotationView {
+        id: notationView
+        name: "MainNotationView"
+
+        isNavigatorVisible: false
+        isBraillePanelVisible: false
+        isMainView: true
     }
 }

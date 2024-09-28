@@ -112,9 +112,7 @@ int App::run(int argc, char **argv)
   QObject::connect(
       engine, &QQmlEngine::warnings, [](const QList<QQmlError> &warnings) {
         for (const QQmlError &e : warnings)
-        {
           LOGE() << "error: " << e.toString().toStdString() << "\n";
-        }
       });
 
   engine->load(url);

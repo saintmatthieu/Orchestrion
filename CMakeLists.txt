@@ -34,7 +34,9 @@ target_link_libraries(HelloQtQuick PRIVATE
     Qt6::Quick
     Qt6::Widgets
     actions
+    accessibility
     audio
+    braille
     commonscene
     context
     draw
