@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Set the project name and version
-project(HelloQtQuick VERSION 1.0 LANGUAGES CXX)
+project(HelloQtQuick VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
 find_package(Qt6 6.2.4 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
