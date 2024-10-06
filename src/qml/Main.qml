@@ -31,6 +31,7 @@ ApplicationWindow {
     width: 400
     height: 300
     title: qsTr("Hello, World!")
+    flags: Qt.FramelessWindowHint
 
     Component.onCompleted: {
         console.log("Hello, World!")
@@ -63,16 +64,17 @@ ApplicationWindow {
         }
     }
 
+    /*
     NotationPaintView {
         id: notationView
         anchors.fill: parent
 
         property NavigationPanel navigationPanel: NavigationPanel {
             name: "ScoreView"
-            section: navSec
+            // section: navSec
             enabled: notationView.enabled && notationView.visible
             direction: NavigationPanel.Both
-            order: tabPanel.navigationPanel.order + 1
+            order: 0 // Will become relevant when several scores can be opened at once
         }
 
         NavigationControl {
@@ -105,4 +107,5 @@ ApplicationWindow {
             fakeNavCtrl.requestActive()
         }
     }
+    */
 }
