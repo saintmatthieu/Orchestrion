@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "name": "Debug Qt Application with Visual Studio Debugger",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/${workspaceFolderBasename}.exe",
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "visualizerFile": "${workspaceFolder}/qt6.natvis",
+      "sourceFileMap": {
+        "C:/Users/qt/work/qt": "${QTDIR}/../../Src"
+      },
+      "windows": {
+        "environment": [
+          {
+            "name": "PATH",
+            "value": "${env:PATH};${command:qt-cpp.kitDirectory}${/}bin"
+          }
+        ]
+      }
+    }
+  ]
+}
