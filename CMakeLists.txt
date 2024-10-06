@@ -45,7 +45,7 @@ target_link_libraries(Orchestrion PRIVATE
     midi
     multiinstances
     notation
-    orchestrion
+    orchestrionsequencer
     playback
     shortcuts
     ui
