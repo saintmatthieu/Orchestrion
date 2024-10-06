@@ -24,6 +24,7 @@ import MuseScore.Ui 1.0
 import MuseScore.UiComponents 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
+import MuseScore.Shortcuts 1.0
 
 ApplicationWindow {
     id: root
@@ -33,9 +34,7 @@ ApplicationWindow {
     title: qsTr("Hello, World!")
     flags: Qt.FramelessWindowHint
 
-    Component.onCompleted: {
-        console.log("Hello, World!")
-    }
+    Shortcuts { }
 
     AppTitleBar {
         id: appTitleBar

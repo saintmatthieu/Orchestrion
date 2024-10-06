@@ -45,8 +45,10 @@ target_link_libraries(Orchestrion PRIVATE
     context
     draw
     engraving
+    extensions
     global
     midi
+    mpe
     multiinstances
     notation
     orchestrionsequencer

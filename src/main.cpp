@@ -28,7 +28,9 @@
 #include "context/contextmodule.h"
 #include "draw/drawmodule.h"
 #include "engraving/engravingmodule.h"
+#include "extensions/extensionsmodule.h"
 #include "midi/midimodule.h"
+#include "mpe/mpemodule.h"
 #include "multiinstances/multiinstancesmodule.h"
 #include "notation/notationmodule.h"
 #include "playback/playbackmodule.h"
@@ -52,7 +54,9 @@ int main(int argc, char *argv[])
   app.addModule(new mu::context::ContextModule());
   app.addModule(new muse::draw::DrawModule());
   app.addModule(new mu::engraving::EngravingModule());
+  app.addModule(new muse::extensions::ExtensionsModule());
   app.addModule(new muse::midi::MidiModule());
+  app.addModule(new muse::mpe::MpeModule());
   app.addModule(new muse::mi::MultiInstancesModule());
   app.addModule(new mu::notation::NotationModule());
   app.addModule(new mu::playback::PlaybackModule());
