@@ -17,8 +17,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 import QtQuick 2.15
+import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+
+import MuseScore.Ui 1.0
+import MuseScore.UiComponents 1.0
 import MuseScore.NotationScene 1.0
+import MuseScore.AppShell 1.0
 
 ApplicationWindow {
     id: root
@@ -31,12 +36,73 @@ ApplicationWindow {
         console.log("Hello, World!")
     }
 
-    NotationView {
-        id: notationView
-        name: "MainNotationView"
+    AppTitleBar {
+        id: appTitleBar
 
-        isNavigatorVisible: false
-        isBraillePanelVisible: false
-        isMainView: true
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+
+        height: 32
+        title: root.title
+
+        windowVisibility: root.visibility
+
+        appWindow: root
+
+        onShowWindowMinimizedRequested: {
+            root.showMinimizedWithSavePreviousState()
+        }
+
+        onToggleWindowMaximizedRequested: {
+            root.toggleMaximized()
+        }
+
+        onCloseWindowRequested: {
+            root.close()
+        }
+    }
+
+    NotationPaintView {
+        id: notationView
+        anchors.fill: parent
+
+        property NavigationPanel navigationPanel: NavigationPanel {
+            name: "ScoreView"
+            section: navSec
+            enabled: notationView.enabled && notationView.visible
+            direction: NavigationPanel.Both
+            order: tabPanel.navigationPanel.order + 1
+        }
+
+        NavigationControl {
+            id: fakeNavCtrl
+            name: "Score"
+            enabled: notationView.enabled && notationView.visible
+
+            panel: notationView.navigationPanel
+            order: 1
+
+            onActiveChanged: {
+                if (fakeNavCtrl.active) {
+                    notationView.forceFocusIn()
+
+                    if (navigationPanel.highlight) {
+                        notationView.selectOnNavigationActive()
+                    }
+                } else {
+                    notationView.focus = false
+                }
+            }
+        }
+
+        NavigationFocusBorder {
+            navigationCtrl: fakeNavCtrl
+            drawOutsideParent: false
+        }
+
+        onActiveFocusRequested: {
+            fakeNavCtrl.requestActive()
+        }
     }
 }

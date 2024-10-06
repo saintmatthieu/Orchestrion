@@ -15,6 +15,8 @@ set(MUSE_BUILD_UNIT_TESTS OFF)
 
 include(MuseScore.cmake)
 
+add_subdirectory(src/OrchestrionShell)
+
 # Add the executable
 qt_add_executable(Orchestrion WIN32
     src/main.cpp
@@ -34,6 +36,7 @@ target_link_libraries(Orchestrion PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::Widgets
+
     actions
     accessibility
     audio
@@ -48,10 +51,13 @@ target_link_libraries(Orchestrion PRIVATE
     notation
     orchestrionsequencer
     playback
+    project
     shortcuts
     ui
     uicomponents
     workspace
+
+    OrchestrionShell
 )
 
 # Add QML files to the project (for IDEs and resource system)

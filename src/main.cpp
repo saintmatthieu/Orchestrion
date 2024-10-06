@@ -18,6 +18,8 @@
  */
 #include "app/app.h"
 
+#include "OrchestrionShell/OrchestrionShellModule.h"
+
 #include "accessibility/accessibilitymodule.h"
 #include "actions/actionsmodule.h"
 #include "audio/audiomodule.h"
@@ -30,6 +32,7 @@
 #include "multiinstances/multiinstancesmodule.h"
 #include "notation/notationmodule.h"
 #include "playback/playbackmodule.h"
+#include "project/projectmodule.h"
 #include "shortcuts/shortcutsmodule.h"
 #include "ui/uimodule.h"
 #include "uicomponents/uicomponentsmodule.h"
@@ -38,6 +41,9 @@
 int main(int argc, char *argv[])
 {
   dgk::orchestrion::App app;
+
+  app.addModule(new dgk::orchestrion::OrchestrionShellModule());
+
   app.addModule(new muse::accessibility::AccessibilityModule());
   app.addModule(new muse::actions::ActionsModule());
   app.addModule(new muse::audio::AudioModule());
@@ -50,6 +56,7 @@ int main(int argc, char *argv[])
   app.addModule(new muse::mi::MultiInstancesModule());
   app.addModule(new mu::notation::NotationModule());
   app.addModule(new mu::playback::PlaybackModule());
+  app.addModule(new mu::project::ProjectModule());
   app.addModule(new muse::shortcuts::ShortcutsModule());
   app.addModule(new muse::ui::UiModule());
   app.addModule(new muse::uicomponents::UiComponentsModule());
