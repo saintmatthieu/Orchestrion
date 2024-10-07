@@ -79,12 +79,18 @@ int App::run(int argc, char **argv)
 
   QMetaObject::invokeMethod(
       qApp,
-      [this] {
+      [this]
+      {
         globalModule.onStartApp();
         for (mu::modularity::IModuleSetup *m : m_modules)
           m->onStartApp();
       },
       Qt::QueuedConnection);
+
+  const auto config = projectConfiguration();
+  auto options = config->migrationOptions(mu::project::MigrationType::Ver_3_6);
+  options.isAskAgain = false;
+  config->setMigrationOptions(mu::project::MigrationType::Ver_3_6, options);
 
   QQmlApplicationEngine *engine = mu::modularity::ioc()
                                       ->resolve<muse::ui::IUiEngine>("app")
@@ -94,7 +100,8 @@ int App::run(int argc, char **argv)
 
   QObject::connect(
       engine, &QQmlApplicationEngine::objectCreated, qapp,
-      [this, url](QObject *obj, const QUrl &objUrl) {
+      [this, url](QObject *obj, const QUrl &objUrl)
+      {
         if (!obj && url == objUrl)
         {
           LOGE() << "failed Qml load\n";
@@ -109,11 +116,13 @@ int App::run(int argc, char **argv)
       },
       Qt::QueuedConnection);
 
-  QObject::connect(
-      engine, &QQmlEngine::warnings, [](const QList<QQmlError> &warnings) {
-        for (const QQmlError &e : warnings)
-          LOGE() << "error: " << e.toString().toStdString() << "\n";
-      });
+  QObject::connect(engine, &QQmlEngine::warnings,
+                   [](const QList<QQmlError> &warnings)
+                   {
+                     for (const QQmlError &e : warnings)
+                       LOGE()
+                           << "error: " << e.toString().toStdString() << "\n";
+                   });
 
   engine->load(url);
 

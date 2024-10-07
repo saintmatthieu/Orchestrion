@@ -21,6 +21,7 @@
 #include <global/iapplication.h>
 #include <modularity/imodulesetup.h>
 #include <modularity/ioc.h>
+#include <project/iprojectconfiguration.h>
 
 namespace dgk::orchestrion
 {
@@ -28,6 +29,7 @@ class App
 {
 public:
   INJECT(mu::IApplication, muapplication);
+  INJECT(mu::project::IProjectConfiguration, projectConfiguration);
 
   void addModule(mu::modularity::IModuleSetup *module);
   int run(int argc, char **argv);
