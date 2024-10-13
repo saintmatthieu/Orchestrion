@@ -27,6 +27,8 @@
 #include <QQmlApplicationEngine>
 #include <QThreadPool>
 
+#include <future>
+
 static mu::GlobalModule globalModule;
 
 namespace dgk::orchestrion
@@ -71,7 +73,25 @@ int App::run(int argc, char **argv)
 
   globalModule.onInit(runMode);
   for (mu::modularity::IModuleSetup *m : m_modules)
-    m->onInit(runMode);
+  {
+    if (m->moduleName() == "audio_engine")
+    {
+      // We have to spawn a thread to init this one and use a future to wait for
+      // it.
+      std::promise<void> promise;
+      auto future = promise.get_future();
+      std::thread(
+          [&]
+          {
+            m->onInit(runMode);
+            promise.set_value();
+          })
+          .detach();
+      future.wait();
+    }
+    else
+      m->onInit(runMode);
+  }
 
   globalModule.onAllInited(runMode);
   for (mu::modularity::IModuleSetup *m : m_modules)
