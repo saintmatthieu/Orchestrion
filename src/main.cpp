@@ -18,6 +18,7 @@
  */
 #include "app/app.h"
 
+#include "MuseScoreShell/MusescoreShellModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
 
 #include "accessibility/accessibilitymodule.h"
@@ -26,6 +27,7 @@
 #include "braille/braillemodule.h"
 #include "commonscene/commonscenemodule.h"
 #include "context/contextmodule.h"
+#include "diagnostics/diagnosticsmodule.h"
 #include "draw/drawmodule.h"
 #include "engraving/engravingmodule.h"
 #include "extensions/extensionsmodule.h"
@@ -44,6 +46,7 @@ int main(int argc, char *argv[])
 {
   dgk::orchestrion::App app;
 
+  app.addModule(new dgk::orchestrion::MusescoreShellModule());
   app.addModule(new dgk::orchestrion::OrchestrionShellModule());
 
   app.addModule(new muse::accessibility::AccessibilityModule());
@@ -52,6 +55,7 @@ int main(int argc, char *argv[])
   app.addModule(new mu::braille::BrailleModule());
   app.addModule(new mu::commonscene::CommonSceneModule());
   app.addModule(new mu::context::ContextModule());
+  app.addModule(new mu::diagnostics::DiagnosticsModule());
   app.addModule(new muse::draw::DrawModule());
   app.addModule(new mu::engraving::EngravingModule());
   app.addModule(new muse::extensions::ExtensionsModule());

@@ -5,6 +5,7 @@
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/${workspaceFolderBasename}.exe",
+      "preLaunchTask": "build",
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "visualizerFile": "${workspaceFolder}/qt6.natvis",

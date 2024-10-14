@@ -21,90 +21,93 @@ import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 
 import MuseScore.Ui 1.0
-import MuseScore.UiComponents 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
 import MuseScore.Shortcuts 1.0
+import Orchestrion.OrchestrionShell 1.0
 
 ApplicationWindow {
     id: root
     visible: true
-    width: 400
-    height: 300
+    width: 800
+    height: 600
     title: qsTr("Hello, World!")
-    flags: Qt.FramelessWindowHint
+    // flags: Qt.FramelessWindowHint
+
+    property var interactiveProvider: InteractiveProvider {
+        topParent: root
+
+        onRequestedDockPage: function(uri, params) {
+            notationPaintView.item.load()
+        }
+    }
 
     Shortcuts { }
 
-    AppTitleBar {
-        id: appTitleBar
+    ColumnLayout {
 
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
-        height: 32
-        title: root.title
+        AppTitleBar {
+            id: appTitleBar
 
-        windowVisibility: root.visibility
+            width: root.width
+            height: 32
 
-        appWindow: root
+            title: root.title
 
-        onShowWindowMinimizedRequested: {
-            root.showMinimizedWithSavePreviousState()
-        }
+            windowVisibility: root.visibility
 
-        onToggleWindowMaximizedRequested: {
-            root.toggleMaximized()
-        }
+            appWindow: root
 
-        onCloseWindowRequested: {
-            root.close()
-        }
-    }
+            onShowWindowMinimizedRequested: {
+                root.showMinimizedWithSavePreviousState()
+            }
 
-    /*
-    NotationPaintView {
-        id: notationView
-        anchors.fill: parent
+            onToggleWindowMaximizedRequested: {
+                root.toggleMaximized()
+            }
 
-        property NavigationPanel navigationPanel: NavigationPanel {
-            name: "ScoreView"
-            // section: navSec
-            enabled: notationView.enabled && notationView.visible
-            direction: NavigationPanel.Both
-            order: 0 // Will become relevant when several scores can be opened at once
-        }
-
-        NavigationControl {
-            id: fakeNavCtrl
-            name: "Score"
-            enabled: notationView.enabled && notationView.visible
-
-            panel: notationView.navigationPanel
-            order: 1
-
-            onActiveChanged: {
-                if (fakeNavCtrl.active) {
-                    notationView.forceFocusIn()
-
-                    if (navigationPanel.highlight) {
-                        notationView.selectOnNavigationActive()
-                    }
-                } else {
-                    notationView.focus = false
-                }
+            onCloseWindowRequested: {
+                root.close()
             }
         }
 
-        NavigationFocusBorder {
-            navigationCtrl: fakeNavCtrl
-            drawOutsideParent: false
-        }
+        Component {
+            id: notationPaintViewComponent
 
-        onActiveFocusRequested: {
-            fakeNavCtrl.requestActive()
+            NotationPaintView {
+                id: notationView
+                width: root.width
+                height: root.height - appTitleBar.height
+            }
         }
     }
-    */
+
+    Loader {
+        id: notationPaintView
+        onLoaded: {
+            console.log("Yo: notationPaintView loaded")
+            item.anchors.top = appTitleBar.bottom
+            item.anchors.left = parent.left
+            item.anchors.right = parent.right
+            item.anchors.bottom = parent.bottom
+        }
+    }
+
+    NotationPaintViewLoaderModel {
+        id: notationPaintViewLoaderModel
+        Component.onCompleted: {
+            console.log("Yo: NotationPaintViewLoaderModel completed")
+            notationPaintViewLoaderModel.init()
+        }
+        onNotationPaintViewReady: {
+            console.log("Yo: NotationPaintViewLoaderModel NotationPaintViewReady")
+            if (notationPaintView.sourceComponent !== notationPaintViewComponent) {
+                console.log("Yo: NotationPaintViewLoaderModel NotationPaintViewReady: set sourceComponent")
+                notationPaintView.sourceComponent = notationPaintViewComponent
+            }
+        }
+    }
 }

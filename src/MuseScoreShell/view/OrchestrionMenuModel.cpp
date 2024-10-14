@@ -35,6 +35,9 @@ void OrchestrionMenuModel::setAppWindow(QWindow *appWindow)
 
 void OrchestrionMenuModel::load()
 {
+  AbstractMenuModel::load();
+  muse::uicomponents::MenuItemList items{makeFileMenu()};
+  setItems(items);
 }
 
 muse::uicomponents::MenuItem *

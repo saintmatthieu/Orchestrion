@@ -1,16 +1,17 @@
 set(MODULE OrchestrionShell)
 
-set(MODULE_QRC ${MuseScore_ROOT_DIR}/src/appshell/appshell.qrc)
-set(MODULE_QML_IMPORT ${MuseScore_ROOT_DIR}/src/appshell/qml)
+set(MODULE_QRC ${CMAKE_CURRENT_LIST_DIR}/OrchestrionShell.qrc)
 
 set(MODULE_SRC
   internal/OrchestrionActionController.cpp
   internal/OrchestrionActionController.h
-  view/OrchestrionMenuModel.cpp
-  view/OrchestrionMenuModel.h
+  view/NotationPaintViewLoaderModel.cpp
+  view/NotationPaintViewLoaderModel.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
   IOrchestrionActionController.h
 )
+
+set(MODULE_LINK MusescoreShell)
 
 include(${MuseScore_ROOT_DIR}/build/module.cmake)

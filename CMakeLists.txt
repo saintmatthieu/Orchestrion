@@ -15,6 +15,7 @@ set(MUSE_BUILD_UNIT_TESTS OFF)
 
 include(MuseScore.cmake)
 
+add_subdirectory(src/MusescoreShell)
 add_subdirectory(src/OrchestrionShell)
 
 # Add the executable
@@ -43,10 +44,12 @@ target_link_libraries(Orchestrion PRIVATE
     braille
     commonscene
     context
+    diagnostics
     draw
     engraving
     extensions
     global
+    iex_guitarpro
     midi
     mpe
     multiinstances
@@ -59,6 +62,7 @@ target_link_libraries(Orchestrion PRIVATE
     uicomponents
     workspace
 
+    MusescoreShell
     OrchestrionShell
 )
 

@@ -19,7 +19,7 @@
 #include "OrchestrionShellModule.h"
 #include "internal/OrchestrionActionController.h"
 #include "modularity/ioc.h"
-#include "view/OrchestrionMenuModel.h"
+#include "view/NotationPaintViewLoaderModel.h"
 #include <QQmlEngine>
 
 namespace dgk::orchestrion
@@ -44,14 +44,13 @@ void OrchestrionShellModule::registerExports()
 void OrchestrionShellModule::registerResources()
 {
   Q_INIT_RESOURCE(appshell);
+  Q_INIT_RESOURCE(OrchestrionShell);
 }
 
 void OrchestrionShellModule::registerUiTypes()
 {
-  // Inject our OrchestrionMenuModel into the MuseScore OrchestrionShell
-  // namespace
-  qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,
-                                        "AppMenuModel");
+  qmlRegisterType<NotationPaintViewLoaderModel>(
+      "Orchestrion.OrchestrionShell", 1, 0, "NotationPaintViewLoaderModel");
 }
 
 void OrchestrionShellModule::onPreInit(const mu::IApplication::RunMode &mode)

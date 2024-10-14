@@ -4,9 +4,12 @@
     ".csv": "csv (semicolon)",
     "*.CSV": "csv (semicolon)",
     "qapplication": "cpp",
-    "qqmlapplicationengine": "cpp"
+    "qqmlapplicationengine": "cpp",
+    "memory": "cpp",
+    "vector": "cpp"
   },
   "qt-official.qmlls.customExePath": "C:/Qt/Tools/QtDesignStudio/qt6_design_studio_reduced_version/bin/qmlls.exe",
   "qt-official.qmlls.enabled": true,
-  "qt-official.qmlls.traceLsp": "messages"
+  "qt-official.qmlls.traceLsp": "messages",
+  "uncrustify.configPath.windows": "MuseScore/tools/codestyle/uncrustify_musescore.cfg",
 }
