@@ -19,8 +19,11 @@
 #include "MusescoreShellModule.h"
 #include "view/OrchestrionMenuModel.h"
 
+#include <appshell/view/framelesswindow/framelesswindowmodel.h>
+#include <appshell/view/mainwindowtitleprovider.h>
 #include <global/types/uri.h>
 #include <ui/iinteractiveuriregister.h>
+#include <ui/view/mainwindowbridge.h>
 
 #include <QQmlEngine>
 
@@ -53,6 +56,12 @@ void MusescoreShellModule::registerResources() { Q_INIT_RESOURCE(appshell); }
 
 void MusescoreShellModule::registerUiTypes()
 {
+  qmlRegisterType<mu::appshell::MainWindowTitleProvider>(
+      "MuseScore.AppShell", 1, 0, "MainWindowTitleProvider");
+  qmlRegisterType<muse::ui::MainWindowBridge>("MuseScore.Ui", 1, 0,
+                                              "MainWindowBridge");
+  qmlRegisterType<mu::appshell::FramelessWindowModel>(
+      "MuseScore.AppShell", 1, 0, "FramelessWindowModel");
   // Inject our OrchestrionMenuModel into the MuseScore OrchestrionShell
   // namespace
   qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,

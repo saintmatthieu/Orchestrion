@@ -33,11 +33,27 @@ void OrchestrionMenuModel::setAppWindow(QWindow *appWindow)
   m_appWindow = appWindow;
 }
 
+void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
+{
+  if (m_openedMenuId == openedMenuId)
+    return;
+
+  m_openedMenuId = openedMenuId;
+  emit openedMenuIdChanged(m_openedMenuId);
+}
+
 void OrchestrionMenuModel::load()
 {
   AbstractMenuModel::load();
   muse::uicomponents::MenuItemList items{makeFileMenu()};
   setItems(items);
+}
+
+QString OrchestrionMenuModel::openedMenuId() const { return m_openedMenuId; }
+
+void OrchestrionMenuModel::openMenu(const QString &menuId, bool byHover)
+{
+  emit openMenuRequested(menuId, byHover);
 }
 
 muse::uicomponents::MenuItem *

@@ -171,6 +171,7 @@ endif(MUE_DOWNLOAD_SOUNDFONT)
 
 add_subdirectory(MuseScore/src/framework/global) # should be first to work pch
 
+add_subdirectory(MuseScore/src/appshell)
 add_subdirectory(MuseScore/src/braille)
 add_subdirectory(MuseScore/src/context)
 add_subdirectory(MuseScore/src/commonscene)
@@ -184,6 +185,7 @@ add_subdirectory(MuseScore/src/project)
 add_subdirectory(MuseScore/src/framework/accessibility)
 add_subdirectory(MuseScore/src/framework/actions)
 add_subdirectory(MuseScore/src/framework/audio)
+add_subdirectory(MuseScore/src/framework/dockwindow)
 add_subdirectory(MuseScore/src/framework/draw)
 add_subdirectory(MuseScore/src/framework/extensions)
 add_subdirectory(MuseScore/src/framework/midi)

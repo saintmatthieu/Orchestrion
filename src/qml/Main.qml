@@ -31,28 +31,67 @@ ApplicationWindow {
     visible: true
     width: 800
     height: 600
-    title: qsTr("Hello, World!")
-    // flags: Qt.FramelessWindowHint
+    title: "Orchestrion" // titleProvider.title
+    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
+
+    // provide a rectangle for the title bar to move the window
+    Rectangle {
+        id: titleMoveArea
+        width: parent.width
+        height: 32
+
+        MouseArea {
+            id: dragArea
+            anchors.fill: parent
+            onPressed: root.startSystemMove()
+        }
+    }
+
+    Component.onCompleted: {
+        // framelessWindowModel.init(this)
+    }
+
+    function toggleMaximized() {
+        if (root.visibility === Window.Maximized) {
+            root.showNormal()
+        } else {
+            root.showMaximized()
+        }
+    }
 
     property var interactiveProvider: InteractiveProvider {
         topParent: root
 
         onRequestedDockPage: function(uri, params) {
-            notationPaintView.item.load()
+            notationPaintView.load()
         }
+    }
+
+    MainWindowTitleProvider {
+        id: titleProvider
+    }
+
+    MainWindowBridge {
+        id: bridge
+        window: root
+        //! NOTE These properties of QWindow (of which ApplicationWindow is derived)
+        //!      are not available in QML, so we access them via MainWindowBridge
+        filePath: titleProvider.filePath
+        fileModified: titleProvider.fileModified
     }
 
     Shortcuts { }
 
-    ColumnLayout {
+    Item {
 
-        Layout.fillWidth: true
-        Layout.fillHeight: true
+        width: parent.width
+        height: parent.height
 
         AppTitleBar {
             id: appTitleBar
 
-            width: root.width
+            anchors.top: parent.top
+            width: parent.width
             height: 32
 
             title: root.title
@@ -62,7 +101,7 @@ ApplicationWindow {
             appWindow: root
 
             onShowWindowMinimizedRequested: {
-                root.showMinimizedWithSavePreviousState()
+                bridge.showMinimizedWithSavePreviousState()
             }
 
             onToggleWindowMaximizedRequested: {
@@ -74,25 +113,12 @@ ApplicationWindow {
             }
         }
 
-        Component {
-            id: notationPaintViewComponent
-
-            NotationPaintView {
-                id: notationView
-                width: root.width
-                height: root.height - appTitleBar.height
-            }
-        }
-    }
-
-    Loader {
-        id: notationPaintView
-        onLoaded: {
-            console.log("Yo: notationPaintView loaded")
-            item.anchors.top = appTitleBar.bottom
-            item.anchors.left = parent.left
-            item.anchors.right = parent.right
-            item.anchors.bottom = parent.bottom
+        NotationPaintView {
+            id: notationPaintView
+            anchors.top: appTitleBar.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
         }
     }
 
@@ -104,10 +130,6 @@ ApplicationWindow {
         }
         onNotationPaintViewReady: {
             console.log("Yo: NotationPaintViewLoaderModel NotationPaintViewReady")
-            if (notationPaintView.sourceComponent !== notationPaintViewComponent) {
-                console.log("Yo: NotationPaintViewLoaderModel NotationPaintViewReady: set sourceComponent")
-                notationPaintView.sourceComponent = notationPaintViewComponent
-            }
         }
     }
 }

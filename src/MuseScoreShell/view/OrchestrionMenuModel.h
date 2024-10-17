@@ -28,7 +28,8 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel
   Q_OBJECT
 
   Q_PROPERTY(QWindow *appWindow READ appWindow WRITE setAppWindow)
-
+  Q_PROPERTY(QString openedMenuId READ openedMenuId WRITE setOpenedMenuId NOTIFY
+                 openedMenuIdChanged)
   Q_PROPERTY(QRect appMenuAreaRect READ appMenuAreaRect WRITE setAppMenuAreaRect
                  NOTIFY appMenuAreaRectChanged)
   Q_PROPERTY(QRect openedMenuAreaRect READ openedMenuAreaRect WRITE
@@ -41,17 +42,21 @@ public:
   QRect openedMenuAreaRect() const;
 
   QWindow *appWindow() const;
+  QString openedMenuId() const;
 
   Q_INVOKABLE void load() override;
+  Q_INVOKABLE void openMenu(const QString &menuId, bool byHover);
 
 public slots:
   void setAppWindow(QWindow *appWindow);
+  void setOpenedMenuId(QString openedMenuId);
   void setAppMenuAreaRect(QRect appMenuAreaRect);
   void setOpenedMenuAreaRect(QRect openedMenuAreaRect);
 
 signals:
   void openMenuRequested(const QString &menuId, bool byHover);
   void closeOpenedMenuRequested();
+  void openedMenuIdChanged(QString openedMenuId);
   void appMenuAreaRectChanged(QRect appMenuAreaRect);
   void openedMenuAreaRectChanged(QRect openedMenuAreaRect);
 
@@ -67,5 +72,6 @@ private:
   QWindow *m_appWindow = nullptr;
   QRect m_appMenuAreaRect;
   QRect m_openedMenuAreaRect;
+  QString m_openedMenuId;
 };
 } // namespace dgk::orchestrion

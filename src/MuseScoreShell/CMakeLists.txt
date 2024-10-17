@@ -3,7 +3,6 @@
 
 set(MODULE MusescoreShell)
 
-set(MODULE_QRC ${MuseScore_ROOT_DIR}/src/appshell/appshell.qrc)
 set(MODULE_QML_IMPORT ${MuseScore_ROOT_DIR}/src/appshell/qml)
 
 set(MODULE_SRC
@@ -12,5 +11,7 @@ set(MODULE_SRC
   view/OrchestrionMenuModel.cpp
   view/OrchestrionMenuModel.h
 )
+
+set(MODULE_LINK appshell)
 
 include(${MuseScore_ROOT_DIR}/build/module.cmake)
