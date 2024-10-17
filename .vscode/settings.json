@@ -1,13 +1,6 @@
 {
   "cmake.generator": "Ninja",
-  "files.associations": {
-    ".csv": "csv (semicolon)",
-    "*.CSV": "csv (semicolon)",
-    "qapplication": "cpp",
-    "qqmlapplicationengine": "cpp",
-    "memory": "cpp",
-    "vector": "cpp"
-  },
+  "C_Cpp.autoAddFileAssociations": false,
   "qt-official.qmlls.customExePath": "C:/Qt/Tools/QtDesignStudio/qt6_design_studio_reduced_version/bin/qmlls.exe",
   "qt-official.qmlls.enabled": true,
   "qt-official.qmlls.traceLsp": "messages",
