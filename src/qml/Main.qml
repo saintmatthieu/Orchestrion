@@ -25,6 +25,7 @@ import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
 import MuseScore.Shortcuts 1.0
 import Orchestrion.OrchestrionShell 1.0
+import Orchestrion.OrchestrionNotation 1.0
 
 ApplicationWindow {
     id: root
@@ -63,7 +64,8 @@ ApplicationWindow {
         topParent: root
 
         onRequestedDockPage: function(uri, params) {
-            notationPaintView.load()
+            console.log("RequestedDockPage: " + uri + ", " + JSON.stringify(params))
+            notationPaintView.loadOrchestrionNotation()
         }
     }
 
@@ -113,7 +115,7 @@ ApplicationWindow {
             }
         }
 
-        NotationPaintView {
+        OrchestrionNotationPaintView {
             id: notationPaintView
             anchors.top: appTitleBar.bottom
             anchors.left: parent.left

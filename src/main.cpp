@@ -19,6 +19,7 @@
 #include "app/app.h"
 
 #include "MuseScoreShell/MusescoreShellModule.h"
+#include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
 
 #include "accessibility/accessibilitymodule.h"
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
   dgk::orchestrion::App app;
 
   app.addModule(new dgk::orchestrion::MusescoreShellModule());
+  app.addModule(new dgk::orchestrion::OrchestrionNotationModule());
   app.addModule(new dgk::orchestrion::OrchestrionShellModule());
 
   app.addModule(new muse::accessibility::AccessibilityModule());
@@ -69,5 +71,6 @@ int main(int argc, char *argv[])
   app.addModule(new muse::ui::UiModule());
   app.addModule(new muse::uicomponents::UiComponentsModule());
   app.addModule(new muse::workspace::WorkspaceModule());
+
   return app.run(argc, argv);
 }

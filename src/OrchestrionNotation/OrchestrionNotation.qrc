@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/">
+    <file>qml/Orchestrion/OrchestrionNotation/qmldir</file>
+  </qresource>
+</RCC>

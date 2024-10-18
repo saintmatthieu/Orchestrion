@@ -16,6 +16,7 @@ set(MUSE_BUILD_UNIT_TESTS OFF)
 include(MuseScore.cmake)
 
 add_subdirectory(src/MusescoreShell)
+add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionShell)
 
 # Add the executable
@@ -53,7 +54,6 @@ target_link_libraries(Orchestrion PRIVATE
     midi
     mpe
     multiinstances
-    notation
     orchestrionsequencer
     playback
     project
@@ -63,6 +63,7 @@ target_link_libraries(Orchestrion PRIVATE
     workspace
 
     MusescoreShell
+    OrchestrionNotation
     OrchestrionShell
 )
 
