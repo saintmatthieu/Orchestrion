@@ -19,7 +19,11 @@
 #pragma once
 
 #include "actions/iactionsdispatcher.h"
+#include "async/notification.h"
+#include "context/iglobalcontext.h"
+#include "engraving/rendering/iscorerenderer.h"
 #include "modularity/ioc.h"
+#include "ui/iuiconfiguration.h"
 
 namespace dgk::orchestrion
 {
@@ -27,7 +31,15 @@ class OrchestrionNotationController
 {
 public:
   INJECT(muse::actions::IActionsDispatcher, dispatcher);
+  INJECT(mu::context::IGlobalContext, globalContext);
+  INJECT(mu::engraving::rendering::IScoreRenderer, scoreRenderer);
+  INJECT(muse::ui::IUiConfiguration, uiConfiguration);
 
   void configureNotation();
+  muse::async::Notification pageSizeChanged() const;
+  mu::Size pageSize() const;
+
+private:
+  muse::async::Notification m_pageSizeChanged;
 };
 } // namespace dgk::orchestrion

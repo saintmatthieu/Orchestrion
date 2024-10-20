@@ -17,11 +17,31 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationController.h"
+#include "engraving/dom/masterscore.h"
+#include "log.h"
 
 namespace dgk::orchestrion
 {
 void OrchestrionNotationController::configureNotation()
 {
   dispatcher()->dispatch("view-mode-continuous");
+  m_pageSizeChanged.notify();
+}
+
+muse::async::Notification OrchestrionNotationController::pageSizeChanged() const
+{
+  return m_pageSizeChanged;
+}
+
+mu::Size OrchestrionNotationController::pageSize() const
+{
+  const auto notation = globalContext()->currentMasterNotation();
+  IF_ASSERT_FAILED(notation) { return {}; }
+  const auto masterScore = notation->masterScore();
+  IF_ASSERT_FAILED(masterScore) { return {}; }
+  const auto dpi = uiConfiguration()->logicalDpi();
+  const auto inches = scoreRenderer()->pageSizeInch(masterScore->score());
+  return mu::Size{static_cast<int>(inches.width() * dpi),
+                  static_cast<int>(inches.height() * dpi)};
 }
 } // namespace dgk::orchestrion

@@ -31,7 +31,7 @@ ApplicationWindow {
     id: root
     visible: true
     width: 800
-    height: 600
+    height: 350
     title: "Orchestrion" // titleProvider.title
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
 
@@ -121,6 +121,9 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
+            Component.onCompleted: {
+                init();
+            }
         }
     }
 
