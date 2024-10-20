@@ -24,8 +24,6 @@
 namespace dgk::orchestrion
 {
 
-class OrchestrionNotationController;
-
 class OrchestrionNotationModule : public muse::modularity::IModuleSetup
 {
 public:

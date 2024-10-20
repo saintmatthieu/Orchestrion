@@ -25,24 +25,12 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
 {
 }
 
-void OrchestrionNotationPaintView::init()
-{
-  m_controller.pageSizeChanged().onNotify(this,
-                                          [this]() { emit pageSizeChanged(); });
-}
-
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   load();
   // So that we have one long horizontal scrolling view.
   dispatcher()->dispatch("view-mode-continuous");
   alignVertically();
-}
-
-QSize OrchestrionNotationPaintView::pageSize() const
-{
-  const auto size = m_controller.pageSize();
-  return QSize(size.width(), size.height());
 }
 
 void OrchestrionNotationPaintView::alignVertically()

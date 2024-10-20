@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include "../internal/OrchestrionNotationController.h"
 #include "notation/view/notationpaintview.h"
 
 namespace dgk::orchestrion
@@ -26,22 +25,13 @@ namespace dgk::orchestrion
 class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
   Q_OBJECT
-  Q_PROPERTY(QSize pageSize READ pageSize NOTIFY pageSizeChanged)
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
 
-  Q_INVOKABLE void init();
   Q_INVOKABLE void loadOrchestrionNotation();
-
-  QSize pageSize() const;
-
-signals:
-  void pageSizeChanged();
 
 private:
   void alignVertically();
-
-  OrchestrionNotationController m_controller;
 };
 } // namespace dgk::orchestrion

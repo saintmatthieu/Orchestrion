@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionShellModule.h"
-#include "internal/OrchestrionActionController.h"
 #include "modularity/ioc.h"
 #include "view/NotationPaintViewLoaderModel.h"
 #include <QQmlEngine>
