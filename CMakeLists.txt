@@ -39,28 +39,28 @@ target_link_libraries(Orchestrion PRIVATE
     Qt6::Quick
     Qt6::Widgets
 
-    actions
-    accessibility
-    audio
+    muse_actions
+    muse_accessibility
+    muse_audio
     braille
     commonscene
     context
-    diagnostics
-    draw
+    muse_diagnostics
+    muse_draw
     engraving
-    extensions
-    global
+    muse_extensions
+    muse_global
     iex_guitarpro
-    midi
-    mpe
-    multiinstances
+    muse_midi
+    muse_mpe
+    muse_multiinstances
     orchestrionsequencer
     playback
     project
-    shortcuts
-    ui
-    uicomponents
-    workspace
+    muse_shortcuts
+    muse_ui
+    muse_uicomponents
+    muse_workspace
 
     MusescoreShell
     OrchestrionNotation
@@ -75,6 +75,7 @@ qt_add_qml_module(Orchestrion
 )
 
 qt_add_resources(RESOURCES resources.qrc)
+qt_add_resources(RESOURCES MuseScore/src/app/app.qrc)
 
 target_sources(Orchestrion PRIVATE
     ${RESOURCES}

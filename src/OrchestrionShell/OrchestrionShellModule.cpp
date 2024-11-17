@@ -36,7 +36,7 @@ std::string OrchestrionShellModule::moduleName() const
 
 void OrchestrionShellModule::registerExports()
 {
-  mu::modularity::ioc()->registerExport<IOrchestrionActionController>(
+  ioc()->registerExport<IOrchestrionActionController>(
       moduleName(), m_applicationActionController);
 }
 
@@ -52,9 +52,9 @@ void OrchestrionShellModule::registerUiTypes()
       "Orchestrion.OrchestrionShell", 1, 0, "NotationPaintViewLoaderModel");
 }
 
-void OrchestrionShellModule::onPreInit(const mu::IApplication::RunMode &mode)
+void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &mode)
 {
-  if (mode == mu::IApplication::RunMode::AudioPluginRegistration)
+  if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
 
   m_applicationActionController->preInit();

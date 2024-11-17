@@ -20,10 +20,10 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 
-import MuseScore.Ui 1.0
+import Muse.Ui 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
-import MuseScore.Shortcuts 1.0
+import Muse.Shortcuts 1.0
 import Orchestrion.OrchestrionShell 1.0
 import Orchestrion.OrchestrionNotation 1.0
 

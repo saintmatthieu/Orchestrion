@@ -38,6 +38,6 @@ void OrchestrionNotationPaintView::alignVertically()
   const auto canvasRect = fromLogical(notationContentRect());
   const auto y = (height() - canvasRect.height()) / 2.;
   // Don't know why we need to negate.
-  moveCanvasToPosition(toLogical(mu::PointF{-y, -y}));
+  moveCanvasToPosition(toLogical(muse::PointF{-y, -y}));
 }
 } // namespace dgk::orchestrion

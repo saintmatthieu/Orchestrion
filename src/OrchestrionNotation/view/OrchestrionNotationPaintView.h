@@ -25,6 +25,7 @@ namespace dgk::orchestrion
 class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
   Q_OBJECT
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);

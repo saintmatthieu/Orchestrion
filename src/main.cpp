@@ -28,10 +28,10 @@
 #include "braille/braillemodule.h"
 #include "commonscene/commonscenemodule.h"
 #include "context/contextmodule.h"
-#include "diagnostics/diagnosticsmodule.h"
 #include "draw/drawmodule.h"
 #include "engraving/engravingmodule.h"
 #include "extensions/extensionsmodule.h"
+#include "global/globalmodule.h"
 #include "midi/midimodule.h"
 #include "mpe/mpemodule.h"
 #include "multiinstances/multiinstancesmodule.h"
@@ -45,32 +45,31 @@
 
 int main(int argc, char *argv[])
 {
-  dgk::orchestrion::App app;
+  const auto app = std::make_shared<dgk::orchestrion::App>();
 
-  app.addModule(new dgk::orchestrion::MusescoreShellModule());
-  app.addModule(new dgk::orchestrion::OrchestrionNotationModule());
-  app.addModule(new dgk::orchestrion::OrchestrionShellModule());
+  app->addModule(new dgk::orchestrion::MusescoreShellModule());
+  app->addModule(new dgk::orchestrion::OrchestrionNotationModule());
+  app->addModule(new dgk::orchestrion::OrchestrionShellModule());
 
-  app.addModule(new muse::accessibility::AccessibilityModule());
-  app.addModule(new muse::actions::ActionsModule());
-  app.addModule(new muse::audio::AudioModule());
-  app.addModule(new mu::braille::BrailleModule());
-  app.addModule(new mu::commonscene::CommonSceneModule());
-  app.addModule(new mu::context::ContextModule());
-  app.addModule(new mu::diagnostics::DiagnosticsModule());
-  app.addModule(new muse::draw::DrawModule());
-  app.addModule(new mu::engraving::EngravingModule());
-  app.addModule(new muse::extensions::ExtensionsModule());
-  app.addModule(new muse::midi::MidiModule());
-  app.addModule(new muse::mpe::MpeModule());
-  app.addModule(new muse::mi::MultiInstancesModule());
-  app.addModule(new mu::notation::NotationModule());
-  app.addModule(new mu::playback::PlaybackModule());
-  app.addModule(new mu::project::ProjectModule());
-  app.addModule(new muse::shortcuts::ShortcutsModule());
-  app.addModule(new muse::ui::UiModule());
-  app.addModule(new muse::uicomponents::UiComponentsModule());
-  app.addModule(new muse::workspace::WorkspaceModule());
+  app->addModule(new muse::accessibility::AccessibilityModule());
+  app->addModule(new muse::actions::ActionsModule());
+  app->addModule(new muse::audio::AudioModule());
+  app->addModule(new mu::braille::BrailleModule());
+  app->addModule(new mu::commonscene::CommonSceneModule());
+  app->addModule(new mu::context::ContextModule());
+  app->addModule(new muse::draw::DrawModule());
+  app->addModule(new mu::engraving::EngravingModule());
+  app->addModule(new muse::extensions::ExtensionsModule());
+  app->addModule(new muse::midi::MidiModule());
+  app->addModule(new muse::mpe::MpeModule());
+  app->addModule(new muse::mi::MultiInstancesModule());
+  app->addModule(new mu::notation::NotationModule());
+  app->addModule(new mu::playback::PlaybackModule());
+  app->addModule(new mu::project::ProjectModule());
+  app->addModule(new muse::shortcuts::ShortcutsModule());
+  app->addModule(new muse::ui::UiModule());
+  app->addModule(new muse::uicomponents::UiComponentsModule());
+  app->addModule(new muse::workspace::WorkspaceModule());
 
-  return app.run(argc, argv);
+  return app->run(argc, argv);
 }

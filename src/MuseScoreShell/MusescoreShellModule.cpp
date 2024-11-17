@@ -36,17 +36,16 @@ std::string MusescoreShellModule::moduleName() const
 
 void MusescoreShellModule::resolveImports()
 {
-  auto ir = mu::modularity::ioc()->resolve<muse::ui::IInteractiveUriRegister>(
-      moduleName());
+  auto ir = ioc()->resolve<muse::ui::IInteractiveUriRegister>(moduleName());
   if (ir)
   {
     ir->registerUri(
-        mu::Uri("musescore://notation"),
+        muse::Uri("musescore://notation"),
         muse::ui::ContainerMeta(muse::ui::ContainerType::PrimaryPage));
-    ir->registerUri(mu::Uri("musescore://about/musescore"),
+    ir->registerUri(muse::Uri("musescore://about/musescore"),
                     muse::ui::ContainerMeta(muse::ui::ContainerType::QmlDialog,
                                             "AboutDialog.qml"));
-    ir->registerUri(mu::Uri("musescore://about/musicxml"),
+    ir->registerUri(muse::Uri("musescore://about/musicxml"),
                     muse::ui::ContainerMeta(muse::ui::ContainerType::QmlDialog,
                                             "AboutMusicXMLDialog.qml"));
   }

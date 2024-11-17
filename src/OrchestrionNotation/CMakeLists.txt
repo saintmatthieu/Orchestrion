@@ -11,4 +11,4 @@ set(MODULE_SRC
 
 set(MODULE_LINK notation)
 
-include(${MuseScore_ROOT_DIR}/build/module.cmake)
+setup_module()

@@ -68,7 +68,7 @@ OrchestrionMenuModel::makeMenuItem(const muse::actions::ActionCode &actionCode,
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
 {
   muse::uicomponents::MenuItemList fileItems{makeMenuItem("file-open")};
-  return makeMenu(mu::TranslatableString("appshell/menu/file", "&File"),
+  return makeMenu(muse::TranslatableString("appshell/menu/file", "&File"),
                   fileItems, "menu-file");
 }
 

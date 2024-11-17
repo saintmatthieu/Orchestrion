@@ -36,7 +36,7 @@ public:
   void registerResources() override;
   void registerUiTypes() override;
 
-  void onPreInit(const mu::IApplication::RunMode &mode) override;
+  void onPreInit(const muse::IApplication::RunMode &mode) override;
 
 private:
   const std::shared_ptr<OrchestrionActionController>

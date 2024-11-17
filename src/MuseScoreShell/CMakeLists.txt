@@ -14,4 +14,4 @@ set(MODULE_SRC
 
 set(MODULE_LINK appshell)
 
-include(${MuseScore_ROOT_DIR}/build/module.cmake)
+setup_module()

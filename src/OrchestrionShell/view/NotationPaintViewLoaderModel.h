@@ -25,7 +25,7 @@
 
 namespace dgk::orchestrion
 {
-class NotationPaintViewLoaderModel : public QObject, public mu::async::Asyncable
+class NotationPaintViewLoaderModel : public QObject, public muse::async::Asyncable
 {
   Q_OBJECT
 

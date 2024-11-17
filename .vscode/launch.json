@@ -12,14 +12,6 @@
       "sourceFileMap": {
         "C:/Users/qt/work/qt": "${QTDIR}/../../Src"
       },
-      "windows": {
-        "environment": [
-          {
-            "name": "PATH",
-            "value": "${env:PATH};${command:qt-cpp.kitDirectory}${/}bin"
-          }
-        ]
-      }
     }
   ]
 }

@@ -29,6 +29,8 @@ set(CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_LIST_DIR}/MuseScore
     ${CMAKE_CURRENT_LIST_DIR}/MuseScore/build
     ${CMAKE_CURRENT_LIST_DIR}/MuseScore/build/cmake
+    ${CMAKE_CURRENT_LIST_DIR}/MuseScore/buildscripts/cmake
+    ${CMAKE_CURRENT_LIST_DIR}/MuseScore/src/framework/cmake
     ${CMAKE_MODULE_PATH}
     )
 
@@ -36,6 +38,8 @@ set(CMAKE_MODULE_PATH
 # Setup option and build settings
 ###########################################
 include(GetPaths)
+
+set(MUSE_MODULE_UI ON CACHE BOOL "Enable UI module")
 
 set(MUSESCORE_BUILD_CONFIGURATION "app" CACHE STRING "Build configuration")
 # Possible MUSESCORE_BUILD_CONFIGURATION values:
@@ -52,7 +56,7 @@ set(MUSESCORE_BUILD_MODE "dev" CACHE STRING "Build mode")
 
 set(MUSESCORE_REVISION "" CACHE STRING "Build revision")
 
-include(muse_framework/DeclareOptions)
+# include(muse_framework/DeclareOptions)
 
 option(MUE_BUILD_APPSHELL_MODULE "Build appshell module" ON)
 option(MUE_BUILD_BRAILLE_MODULE "Build braille module" ON)
@@ -67,6 +71,7 @@ option(MUE_BUILD_PLAYBACK_MODULE "Build playback module" ON)
 option(MUE_BUILD_PROJECT_MODULE "Build project module" ON)
 option(MUE_BUILD_VIDEOEXPORT_MODULE "Build videoexport module" OFF)
 option(MUE_BUILD_IMAGESEXPORT_MODULE "Build imagesexport module" OFF)
+option(MUSE_ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 
 # Function to configure the target-specific setting for playback module
 function(configure_target_playback_module target_name)
@@ -158,8 +163,6 @@ if (OS_IS_WIN)
     set(DEPENDENCIES_INC ${DEPENDENCIES_DIR}/include)
 endif(OS_IS_WIN)
 
-include(FindSndFile)
-
 if (MUE_DOWNLOAD_SOUNDFONT)
     include(DownloadSoundFont)
 endif(MUE_DOWNLOAD_SOUNDFONT)
@@ -175,7 +178,7 @@ add_subdirectory(MuseScore/src/appshell)
 add_subdirectory(MuseScore/src/braille)
 add_subdirectory(MuseScore/src/context)
 add_subdirectory(MuseScore/src/commonscene)
-add_subdirectory(MuseScore/src/diagnostics)
+add_subdirectory(MuseScore/src/framework/diagnostics)
 add_subdirectory(MuseScore/src/engraving)
 add_subdirectory(MuseScore/src/importexport/guitarpro)
 add_subdirectory(MuseScore/src/notation)
@@ -206,7 +209,7 @@ if (OS_IS_LIN)
 endif(OS_IS_LIN)
 
 if (OS_IS_WIN)
-    include(SetupWindowsPackaging)
+    include(${CMAKE_CURRENT_LIST_DIR}/MuseScore/buildscripts/packaging/Windows/SetupWindowsPackaging.cmake)
 endif(OS_IS_WIN)
 
 set(PROJECT_SOURCE_DIR ${PREV_PROJECT_SOURCE_DIR})

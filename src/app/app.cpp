@@ -29,11 +29,13 @@
 
 #include <future>
 
-static mu::GlobalModule globalModule;
+static muse::GlobalModule globalModule;
 
 namespace dgk::orchestrion
 {
-void App::addModule(mu::modularity::IModuleSetup *module)
+App::App() : m_context(std::make_shared<muse::modularity::Context>()) {}
+
+void App::addModule(muse::modularity::IModuleSetup *module)
 {
   m_modules.push_back(module);
 };
@@ -45,34 +47,36 @@ int App::run(int argc, char **argv)
   QCoreApplication::setApplicationName("Orchestrion");
   QCoreApplication::setApplicationVersion("0.1.0");
 
+  globalModule.setApplication(shared_from_this());
   globalModule.registerResources();
   globalModule.registerExports();
   globalModule.registerUiTypes();
 
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
+  {
+    m->setApplication(globalModule.application());
     m->registerResources();
+  }
 
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
     m->registerExports();
 
   globalModule.resolveImports();
   globalModule.registerApi();
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
   {
     m->registerUiTypes();
     m->resolveImports();
     m->registerApi();
   }
 
-  constexpr auto runMode = mu::IApplication::RunMode::GuiApp;
-  muapplication()->setRunMode(runMode);
-
+  constexpr auto runMode = muse::IApplication::RunMode::GuiApp;
   globalModule.onPreInit(runMode);
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
     m->onPreInit(runMode);
 
   globalModule.onInit(runMode);
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
   {
     if (m->moduleName() == "audio_engine")
     {
@@ -94,7 +98,7 @@ int App::run(int argc, char **argv)
   }
 
   globalModule.onAllInited(runMode);
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
     m->onAllInited(runMode);
 
   QMetaObject::invokeMethod(
@@ -102,7 +106,7 @@ int App::run(int argc, char **argv)
       [this]
       {
         globalModule.onStartApp();
-        for (mu::modularity::IModuleSetup *m : m_modules)
+        for (muse::modularity::IModuleSetup *m : m_modules)
           m->onStartApp();
       },
       Qt::QueuedConnection);
@@ -112,9 +116,8 @@ int App::run(int argc, char **argv)
   options.isAskAgain = false;
   config->setMigrationOptions(mu::project::MigrationType::Ver_3_6, options);
 
-  QQmlApplicationEngine *engine = mu::modularity::ioc()
-                                      ->resolve<muse::ui::IUiEngine>("app")
-                                      ->qmlAppEngine();
+  QQmlApplicationEngine *engine =
+      ioc()->resolve<muse::ui::IUiEngine>("app")->qmlAppEngine();
 
   const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));
 
@@ -130,7 +133,7 @@ int App::run(int argc, char **argv)
         if (url == objUrl)
         {
           globalModule.onDelayedInit();
-          for (mu::modularity::IModuleSetup *m : m_modules)
+          for (muse::modularity::IModuleSetup *m : m_modules)
             m->onDelayedInit();
         }
       },
@@ -157,12 +160,12 @@ int App::run(int argc, char **argv)
 
   globalModule.invokeQueuedCalls();
 
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
     m->onDeinit();
 
   globalModule.onDeinit();
 
-  for (mu::modularity::IModuleSetup *m : m_modules)
+  for (muse::modularity::IModuleSetup *m : m_modules)
     m->onDestroy();
 
   globalModule.onDestroy();
@@ -170,10 +173,22 @@ int App::run(int argc, char **argv)
   // Delete modules
   qDeleteAll(m_modules);
   m_modules.clear();
-  mu::modularity::ioc()->reset();
+  ioc()->reset();
 
   delete qapp;
 
   return retCode;
 }
+
+muse::modularity::ModulesIoC *App::ioc() const
+{
+  return muse::modularity::_ioc(m_context);
+}
+
+const muse::modularity::ContextPtr App::iocContext() const { return m_context; }
+
+QWindow *App::focusWindow() const { return nullptr; }
+
+bool App::notify(QObject *, QEvent *) { return false; }
+
 } // namespace dgk::orchestrion

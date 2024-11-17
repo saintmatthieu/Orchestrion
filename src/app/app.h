@@ -25,16 +25,35 @@
 
 namespace dgk::orchestrion
 {
-class App
+class App : public muse::IApplication, public std::enable_shared_from_this<App>
 {
-public:
-  INJECT(mu::IApplication, muapplication);
   INJECT(mu::project::IProjectConfiguration, projectConfiguration);
 
-  void addModule(mu::modularity::IModuleSetup *module);
+public:
+  App();
+
+  void addModule(muse::modularity::IModuleSetup *module);
   int run(int argc, char **argv);
 
+  muse::String name() const override { return muse::String{"Orchestrion"}; }
+  muse::String title() const override { return muse::String{"Orchestrion"}; }
+  bool unstable() const override { return true; }
+  muse::Version version() const override { return muse::Version(0, 0, 0); }
+  muse::Version fullVersion() const override { return muse::Version(0, 0, 0); }
+  muse::String build() const override { return muse::String{"0"}; }
+  muse::String revision() const override { return muse::String{"0"}; }
+  RunMode runMode() const override { return RunMode::GuiApp; }
+  bool noGui() const override { return false; }
+  void perform() override {}
+  void finish() override {}
+  void restart() override {}
+  muse::modularity::ModulesIoC *ioc() const override;
+  const muse::modularity::ContextPtr iocContext() const override;
+  QWindow *focusWindow() const override;
+  bool notify(QObject *, QEvent *) override;
+
 private:
-  QList<mu::modularity::IModuleSetup *> m_modules;
+  const std::shared_ptr<muse::modularity::Context> m_context;
+  QList<muse::modularity::IModuleSetup *> m_modules;
 };
 } // namespace dgk::orchestrion
