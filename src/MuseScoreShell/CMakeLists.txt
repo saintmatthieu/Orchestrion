@@ -10,8 +10,12 @@ set(MODULE_SRC
   MusescoreShellModule.h
   view/OrchestrionMenuModel.cpp
   view/OrchestrionMenuModel.h
+  OrchestrionActionIds.h
 )
 
-set(MODULE_LINK appshell)
+set(MODULE_LINK
+  appshell
+  OrchestrionShell # circular dependency - consider merging the two
+  )
 
 setup_module()

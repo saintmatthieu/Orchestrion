@@ -18,12 +18,16 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IOrchestrionUiActions.h"
+#include "actions/actionable.h"
+#include "actions/iactionsdispatcher.h"
 #include "uicomponents/view/abstractmenumodel.h"
 #include <QWindow>
 
 namespace dgk::orchestrion
 {
-class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel
+class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
+                             public muse::actions::Actionable
 {
   Q_OBJECT
 
@@ -34,6 +38,9 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel
                  NOTIFY appMenuAreaRectChanged)
   Q_PROPERTY(QRect openedMenuAreaRect READ openedMenuAreaRect WRITE
                  setOpenedMenuAreaRect NOTIFY openedMenuAreaRectChanged)
+
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
+  muse::Inject<IOrchestrionUiActions> orchestrionUiActions = {this};
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);
@@ -63,11 +70,10 @@ signals:
 private:
   using muse::uicomponents::AbstractMenuModel::makeMenuItem;
 
-  muse::uicomponents::MenuItem *
-  makeMenuItem(const muse::actions::ActionCode &actionCode,
-               muse::uicomponents::MenuItemRole role);
-
   muse::uicomponents::MenuItem *makeFileMenu();
+  muse::uicomponents::MenuItem *makeAudioMidiMenu();
+  QList<muse::uicomponents::MenuItem *> getPlaybackDeviceMenuItems();
+  void updatePlaybackDeviceMenuItems();
 
   QWindow *m_appWindow = nullptr;
   QRect m_appMenuAreaRect;

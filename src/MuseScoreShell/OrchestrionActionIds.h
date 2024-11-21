@@ -18,15 +18,7 @@
  */
 #pragma once
 
-#include "modularity/imoduleinterface.h"
-
-namespace dgk::orchestrion
+namespace dgk::orchestrion::actionIds
 {
-class IOrchestrionActionController : MODULE_EXPORT_INTERFACE
-{
-  INTERFACE_ID(IOrchestrionActionController)
-
-public:
-  virtual ~IOrchestrionActionController() = default;
-};
-}
+constexpr auto choosePlaybackDeviceSubmenu = "choosePlaybackDeviceSubmenu";
+} // namespace dgk::orchestrion::actionIds

@@ -18,25 +18,25 @@
  */
 #pragma once
 
-#include "IOrchestrionActionController.h"
-#include "actions/iactionsdispatcher.h"
-#include "project/iprojectfilescontroller.h"
-
-#include "modularity/ioc.h"
-#include <QObject>
+#include "async/notification.h"
+#include "modularity/imoduleinterface.h"
 
 namespace dgk::orchestrion
 {
-class OrchestrionActionController : public QObject,
-                                    public IOrchestrionActionController
+struct DeviceAction
 {
-  INJECT(muse::actions::IActionsDispatcher, dispatcher);
-  INJECT(mu::project::IProjectFilesController, projectFilesController);
+  const std::string id;
+  const std::string name;
+};
+
+class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
+{
+  INTERFACE_ID(IOrchestrionUiActions);
 
 public:
-  void preInit();
+  virtual ~IOrchestrionUiActions() = default;
 
-private:
-  bool eventFilter(QObject *watched, QEvent *event) override;
+  virtual muse::async::Notification settablePlaybackDevicesChanged() const = 0;
+  virtual std::vector<DeviceAction> settablePlaybackDevices() const = 0;
 };
 } // namespace dgk::orchestrion

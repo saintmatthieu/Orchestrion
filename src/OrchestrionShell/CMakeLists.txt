@@ -3,13 +3,13 @@ set(MODULE OrchestrionShell)
 set(MODULE_QRC ${CMAKE_CURRENT_LIST_DIR}/OrchestrionShell.qrc)
 
 set(MODULE_SRC
-  internal/OrchestrionActionController.cpp
-  internal/OrchestrionActionController.h
+  internal/OrchestrionUiActions.cpp
+  internal/OrchestrionUiActions.h
   view/NotationPaintViewLoaderModel.cpp
   view/NotationPaintViewLoaderModel.h
+  IOrchestrionUiActions.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
-  IOrchestrionActionController.h
 )
 
 set(MODULE_LINK MusescoreShell)

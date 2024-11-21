@@ -24,7 +24,8 @@
 
 namespace dgk::orchestrion
 {
-class OrchestrionActionController;
+class OrchestrionUiActions;
+
 class OrchestrionShellModule : public muse::modularity::IModuleSetup
 {
 public:
@@ -32,14 +33,14 @@ public:
 
   std::string moduleName() const override;
   void registerExports() override;
+  void resolveImports() override;
 
   void registerResources() override;
   void registerUiTypes() override;
 
-  void onPreInit(const muse::IApplication::RunMode &mode) override;
+  void onInit(const muse::IApplication::RunMode& mode) override;
 
 private:
-  const std::shared_ptr<OrchestrionActionController>
-      m_applicationActionController;
+  const std::shared_ptr<OrchestrionUiActions> m_orchestrionUiActions;
 };
 } // namespace dgk::orchestrion

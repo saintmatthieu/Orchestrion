@@ -17,15 +17,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionShellModule.h"
+#include "internal/OrchestrionUiActions.h"
 #include "modularity/ioc.h"
+#include "ui/iuiactionsregister.h"
 #include "view/NotationPaintViewLoaderModel.h"
 #include <QQmlEngine>
 
 namespace dgk::orchestrion
 {
 OrchestrionShellModule::OrchestrionShellModule()
-    : m_applicationActionController(
-          std::make_shared<OrchestrionActionController>())
+    : m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>()}
 {
 }
 
@@ -36,8 +37,15 @@ std::string OrchestrionShellModule::moduleName() const
 
 void OrchestrionShellModule::registerExports()
 {
-  ioc()->registerExport<IOrchestrionActionController>(
-      moduleName(), m_applicationActionController);
+  ioc()->registerExport<IOrchestrionUiActions>(moduleName(),
+                                               m_orchestrionUiActions);
+}
+
+void OrchestrionShellModule::resolveImports()
+{
+  auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(moduleName());
+  if (ar)
+    ar->reg(m_orchestrionUiActions);
 }
 
 void OrchestrionShellModule::registerResources()
@@ -52,11 +60,11 @@ void OrchestrionShellModule::registerUiTypes()
       "Orchestrion.OrchestrionShell", 1, 0, "NotationPaintViewLoaderModel");
 }
 
-void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &mode)
+void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
 {
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
 
-  m_applicationActionController->preInit();
+  m_orchestrionUiActions->init();
 }
 } // namespace dgk::orchestrion
