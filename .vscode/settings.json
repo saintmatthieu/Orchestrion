@@ -1,8 +1,0 @@
-{
-  "cmake.generator": "Ninja",
-  "C_Cpp.autoAddFileAssociations": false,
-  "qt-official.qmlls.customExePath": "C:/Qt/Tools/QtDesignStudio/qt6_design_studio_reduced_version/bin/qmlls.exe",
-  "qt-official.qmlls.enabled": true,
-  "qt-official.qmlls.traceLsp": "messages",
-  "uncrustify.configPath.windows": "MuseScore/tools/codestyle/uncrustify_musescore.cfg",
-}
