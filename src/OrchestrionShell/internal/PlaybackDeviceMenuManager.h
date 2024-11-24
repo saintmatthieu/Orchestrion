@@ -18,25 +18,25 @@
  */
 #pragma once
 
-#include "OrchestrionShellTypes.h"
-#include "async/channel.h"
-#include "async/notification.h"
-#include "modularity/imoduleinterface.h"
+#include "DeviceMenuManager.h"
+#include <async/asyncable.h>
+#include <audio/iaudiodriver.h>
 
 namespace dgk::orchestrion
 {
-class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
+class PlaybackDeviceMenuManager : public DeviceMenuManager
 {
-  INTERFACE_ID(IOrchestrionUiActions);
+  muse::Inject<muse::audio::IAudioDriver> audioDriver = {this};
+  muse::async::Notification availableDevicesChanged() const override;
+  std::vector<DeviceDesc> availableDevices() const override;
+  std::string getMenuId(int deviceIndex) const override;
+  std::string selectedDevice() const override;
+  bool selectDevice(const std::string &deviceId) override;
+  void doInit() override;
 
-public:
-  virtual ~IOrchestrionUiActions() = default;
+  void updateAudioDevices();
 
-  virtual muse::async::Notification
-      settableDevicesChanged(DeviceType) const = 0;
-  virtual std::vector<DeviceAction> settableDevices(DeviceType) const = 0;
-  virtual std::string selectedDevice(DeviceType) const = 0;
-  virtual muse::async::Channel<std::string>
-      selectedDeviceChanged(DeviceType) const = 0;
+  muse::async::Notification m_availableDevicesChanged;
+  muse::audio::AudioDeviceList m_audioDevices;
 };
 } // namespace dgk::orchestrion

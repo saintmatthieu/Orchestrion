@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionUiActions.h"
+#include "DeviceMenuManager.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include "context/shortcutcontext.h"
 #include "context/uicontext.h"
@@ -25,14 +26,14 @@ namespace dgk::orchestrion
 {
 namespace
 {
-std::string menuIdFromDeviceNameIndex(int index)
-{
-  return "choosePlaybackDevice_" + std::to_string(index);
-}
-
-muse::ui::UiActionList makeActions()
+muse::ui::UiActionList
+makeActions(const DeviceMenuManager &midiControllerMenuManager,
+            const DeviceMenuManager &playbackDeviceMenuManager)
 {
   muse::ui::UiActionList actions;
+  actions.push_back(muse::ui::UiAction(actionIds::chooseMidiControllerSubmenu,
+                                       mu::context::UiCtxAny,
+                                       mu::context::CTX_ANY));
   actions.push_back(muse::ui::UiAction(actionIds::choosePlaybackDeviceSubmenu,
                                        mu::context::UiCtxAny,
                                        mu::context::CTX_ANY));
@@ -40,69 +41,56 @@ muse::ui::UiActionList makeActions()
   // reserve some actions for playback device selection
   actions.reserve(100 + actions.size());
   for (auto i = 0; i < 100; ++i)
-    actions.push_back(muse::ui::UiAction(menuIdFromDeviceNameIndex(i),
+  {
+    actions.push_back(muse::ui::UiAction(midiControllerMenuManager.getMenuId(i),
                                          mu::context::UiCtxAny,
                                          mu::context::CTX_ANY));
+    actions.push_back(muse::ui::UiAction(playbackDeviceMenuManager.getMenuId(i),
+                                         mu::context::UiCtxAny,
+                                         mu::context::CTX_ANY));
+  }
   return actions;
 }
 } // namespace
 
-OrchestrionUiActions::OrchestrionUiActions() : m_actions{makeActions()} {}
+OrchestrionUiActions::OrchestrionUiActions(
+    std::shared_ptr<DeviceMenuManager> midiControllerMenuManager,
+    std::shared_ptr<DeviceMenuManager> playbackDeviceMenuManager)
+    : m_actions{makeActions(*midiControllerMenuManager,
+                            *playbackDeviceMenuManager)},
+      m_deviceMenuManagers{
+          {DeviceType::MidiController, midiControllerMenuManager},
+          {DeviceType::PlaybackDevice, playbackDeviceMenuManager}}
+{
+}
 
 void OrchestrionUiActions::init()
 {
-  audioDriver()->availableOutputDevicesChanged().onNotify(
-      this,
-      [this]
-      {
-        fillDeviceCache();
-        m_settablePlaybackDevicesChanged.notify();
-      });
-  fillDeviceCache();
-}
-
-void OrchestrionUiActions::fillDeviceCache()
-{
-  std::for_each(m_deviceCache.begin(), m_deviceCache.end(),
-                [this](DeviceItem &device) { device.available = false; });
-  for (const auto &device : audioDriver()->availableOutputDevices())
-  {
-    const auto it = std::find_if(m_deviceCache.begin(), m_deviceCache.end(),
-                                 [&device](const DeviceItem &item)
-                                 { return item.id == device.id; });
-    if (it == m_deviceCache.end())
-    {
-      // New device
-      const auto menuId = menuIdFromDeviceNameIndex(m_deviceCache.size());
-      dispatcher()->reg(this, menuId, [this, device]()
-                        { audioDriver()->selectOutputDevice(device.id); });
-      m_deviceCache.push_back({device.id, device.name, true});
-    }
-    else
-      // Device already known
-      it->available = true;
-  }
+  m_deviceMenuManagers.at(DeviceType::MidiController)->init();
+  m_deviceMenuManagers.at(DeviceType::PlaybackDevice)->init();
 }
 
 muse::async::Notification
-OrchestrionUiActions::settablePlaybackDevicesChanged() const
+OrchestrionUiActions::settableDevicesChanged(DeviceType deviceType) const
 {
-  return m_settablePlaybackDevicesChanged;
+  return m_deviceMenuManagers.at(deviceType)->settableDevicesChanged();
 }
 
-std::vector<DeviceAction> OrchestrionUiActions::settablePlaybackDevices() const
+std::vector<DeviceAction>
+OrchestrionUiActions::settableDevices(DeviceType deviceType) const
 {
-  std::vector<DeviceAction> devices;
-  auto i = 0;
-  std::for_each(m_deviceCache.begin(), m_deviceCache.end(),
-                [&](const DeviceItem &device)
-                {
-                  if (device.available)
-                    devices.push_back(
-                        {menuIdFromDeviceNameIndex(i), device.name});
-                  ++i;
-                });
-  return devices;
+  return m_deviceMenuManagers.at(deviceType)->settableDevices();
+}
+
+std::string OrchestrionUiActions::selectedDevice(DeviceType deviceType) const
+{
+  return m_deviceMenuManagers.at(deviceType)->selectedDevice();
+}
+
+muse::async::Channel<std::string>
+OrchestrionUiActions::selectedDeviceChanged(DeviceType deviceType) const
+{
+  return m_deviceMenuManagers.at(deviceType)->selectedPlaybackDeviceChanged();
 }
 
 const muse::ui::UiActionList &OrchestrionUiActions::actionsList() const

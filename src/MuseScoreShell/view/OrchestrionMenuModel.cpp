@@ -48,19 +48,75 @@ void OrchestrionMenuModel::load()
 {
   AbstractMenuModel::load();
 
-  orchestrionUiActions()->settablePlaybackDevicesChanged().onNotify(
-      this, [this]() { updatePlaybackDeviceMenuItems(); });
+  orchestrionUiActions()
+      ->settableDevicesChanged(DeviceType::MidiController)
+      .onNotify(this,
+                [this]
+                {
+                  updateMenuItems(orchestrionUiActions()->settableDevices(
+                                      DeviceType::MidiController),
+                                  actionIds::chooseMidiControllerSubmenu);
+                });
+
+  orchestrionUiActions()
+      ->settableDevicesChanged(DeviceType::PlaybackDevice)
+      .onNotify(this,
+                [this]
+                {
+                  updateMenuItems(orchestrionUiActions()->settableDevices(
+                                      DeviceType::PlaybackDevice),
+                                  actionIds::choosePlaybackDeviceSubmenu);
+                });
+
+  orchestrionUiActions()
+      ->selectedDeviceChanged(DeviceType::MidiController)
+      .onReceive(this,
+                 [this](const std::string &deviceId)
+                 {
+                   selectMenuItem(actionIds::chooseMidiControllerSubmenu,
+                                  deviceId);
+                 });
+
+  orchestrionUiActions()
+      ->selectedDeviceChanged(DeviceType::PlaybackDevice)
+      .onReceive(this,
+                 [this](const std::string &deviceId)
+                 {
+                   selectMenuItem(actionIds::choosePlaybackDeviceSubmenu,
+                                  deviceId);
+                 });
 
   muse::uicomponents::MenuItemList items{makeFileMenu(), makeAudioMidiMenu()};
   setItems(items);
+  selectMenuItem(
+      actionIds::chooseMidiControllerSubmenu,
+      orchestrionUiActions()->selectedDevice(DeviceType::MidiController));
+  selectMenuItem(
+      actionIds::choosePlaybackDeviceSubmenu,
+      orchestrionUiActions()->selectedDevice(DeviceType::PlaybackDevice));
 }
 
-void OrchestrionMenuModel::updatePlaybackDeviceMenuItems()
+void OrchestrionMenuModel::selectMenuItem(const char *submenuId,
+                                          const std::string &deviceId)
 {
   using namespace muse::uicomponents;
-  auto &menu = findItem(QString{actionIds::choosePlaybackDeviceSubmenu});
+  const QList<MenuItem *> subitems = findItem(QString{submenuId}).subitems();
+  std::for_each(subitems.begin(), subitems.end(),
+                [](MenuItem *item) { item->setSelected(false); });
+  const auto it = std::find_if(
+      subitems.begin(), subitems.end(), [deviceId](const MenuItem *item)
+      { return item->args().arg<std::string>(1) == deviceId; });
+  IF_ASSERT_FAILED(it != subitems.end()) return;
+  (*it)->setSelected(true);
+}
+
+void OrchestrionMenuModel::updateMenuItems(
+    const std::vector<DeviceAction> &devices, const std::string &menuId)
+{
+  using namespace muse::uicomponents;
+  auto &menu = findItem(QString::fromStdString(menuId));
   IF_ASSERT_FAILED(menu.isValid()) return;
-  menu.setSubitems(getPlaybackDeviceMenuItems());
+  menu.setSubitems(getMenuItems(devices));
   emit itemChanged(&menu);
 }
 
@@ -78,39 +134,52 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
                   fileItems, "menu-file");
 }
 
+muse::uicomponents::MenuItem *
+OrchestrionMenuModel::makeAudioMidiSubmenu(DeviceType deviceType)
+{
+  auto subenu = makeMenuItem(deviceType == DeviceType::MidiController
+                                 ? actionIds::chooseMidiControllerSubmenu
+                                 : actionIds::choosePlaybackDeviceSubmenu);
+  if (subenu)
+  {
+    subenu->setTitle(muse::TranslatableString(
+        "appshell/menu/audio-midi", deviceType == DeviceType::MidiController
+                                        ? "&MIDI controller"
+                                        : "&Playback device"));
+    subenu->setSubitems(
+        getMenuItems(orchestrionUiActions()->settableDevices(deviceType)));
+  }
+  return subenu;
+}
+
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
 {
   using namespace muse::uicomponents;
-  auto menu = makeMenuItem(actionIds::choosePlaybackDeviceSubmenu);
-  IF_ASSERT_FAILED(menu) return nullptr;
-  menu->setTitle(
-      muse::TranslatableString("appshell/menu/audio-midi", "Playback device"));
-  menu->setSubitems(getPlaybackDeviceMenuItems());
-
   return makeMenu(
       muse::TranslatableString("appshell/menu/audio-midi", "&Audio/MIDI"),
-      {menu}, "menu-audio-midi");
+      {makeAudioMidiSubmenu(DeviceType::MidiController),
+       makeAudioMidiSubmenu(DeviceType::PlaybackDevice)},
+      "menu-audio-midi");
 }
 
 QList<muse::uicomponents::MenuItem *>
-OrchestrionMenuModel::getPlaybackDeviceMenuItems()
+OrchestrionMenuModel::getMenuItems(const std::vector<DeviceAction> &devices)
 {
   using namespace muse::uicomponents;
   QList<MenuItem *> menu;
-  const std::vector<DeviceAction> devices =
-      orchestrionUiActions()->settablePlaybackDevices();
-  std::for_each(
-      devices.begin(), devices.end(),
-      [this, &menu](const DeviceAction &device)
-      {
-        auto item = makeMenuItem(device.id);
-        IF_ASSERT_FAILED(item) return;
-        item->setTitle(muse::TranslatableString::untranslatable(
-            muse::String::fromStdString(device.name)));
-        item->setArgs(
-            muse::actions::ActionData::make_arg1<std::string>(device.id));
-        menu.append(item);
-      });
+  std::for_each(devices.begin(), devices.end(),
+                [this, &menu](const DeviceAction &action)
+                {
+                  auto item = makeMenuItem(action.id);
+                  IF_ASSERT_FAILED(item) return;
+                  item->setTitle(muse::TranslatableString::untranslatable(
+                      muse::String::fromStdString(action.deviceName)));
+                  item->setArgs(
+                      muse::actions::ActionData::make_arg2<std::string>(
+                          action.id, action.deviceId));
+                  item->setSelectable(true);
+                  menu.append(item);
+                });
   return menu;
 }
 

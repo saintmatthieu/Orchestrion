@@ -19,33 +19,30 @@
 #pragma once
 
 #include "IOrchestrionUiActions.h"
-#include "actions/actionable.h"
-#include "actions/iactionsdispatcher.h"
-#include "async/asyncable.h"
-#include "audio/iaudiodriver.h"
-#include "modularity/ioc.h"
 #include "ui/iuiactionsmodule.h"
+#include <unordered_map>
 
 namespace dgk::orchestrion
 {
-class OrchestrionUiActions : public IOrchestrionUiActions,
-                             public muse::ui::IUiActionsModule,
-                             public muse::async::Asyncable,
-                             public muse::Injectable,
-                             public muse::actions::Actionable
-{
-  muse::Inject<muse::audio::IAudioDriver> audioDriver = {this};
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
+class DeviceMenuManager;
 
+class OrchestrionUiActions : public IOrchestrionUiActions,
+                             public muse::ui::IUiActionsModule
+{
 public:
-  OrchestrionUiActions();
+  OrchestrionUiActions(
+      std::shared_ptr<DeviceMenuManager> midiControllerMenuManager,
+      std::shared_ptr<DeviceMenuManager> playbackDeviceMenuManager);
 
   void init();
 
   // IOrchestrionUiActions
 private:
-  muse::async::Notification settablePlaybackDevicesChanged() const override;
-  std::vector<DeviceAction> settablePlaybackDevices() const override;
+  muse::async::Notification settableDevicesChanged(DeviceType) const override;
+  std::vector<DeviceAction> settableDevices(DeviceType) const override;
+  std::string selectedDevice(DeviceType) const override;
+  muse::async::Channel<std::string>
+      selectedDeviceChanged(DeviceType) const override;
 
   // muse::ui::IUiActionsModule
 private:
@@ -58,20 +55,12 @@ private:
   muse::async::Channel<muse::actions::ActionCodeList>
   actionCheckedChanged() const override;
 
-  void fillDeviceCache();
-
 private:
-  struct DeviceItem
-  {
-    std::string id;
-    std::string name;
-    bool available = true;
-  };
-
   const muse::ui::UiActionList m_actions;
   muse::async::Channel<muse::actions::ActionCodeList> m_actionEnabledChanged;
   muse::async::Channel<muse::actions::ActionCodeList> m_actionCheckedChanged;
-  muse::async::Notification m_settablePlaybackDevicesChanged;
-  std::vector<DeviceItem> m_deviceCache;
+
+  const std::unordered_map<DeviceType, std::shared_ptr<DeviceMenuManager>>
+      m_deviceMenuManagers;
 };
 } // namespace dgk::orchestrion

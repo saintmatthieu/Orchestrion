@@ -21,4 +21,5 @@
 namespace dgk::orchestrion::actionIds
 {
 constexpr auto choosePlaybackDeviceSubmenu = "choosePlaybackDeviceSubmenu";
+constexpr auto chooseMidiControllerSubmenu = "chooseMidiControllerSubmenu";
 } // namespace dgk::orchestrion::actionIds

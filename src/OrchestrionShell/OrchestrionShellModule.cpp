@@ -17,7 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionShellModule.h"
+#include "internal/MidiControllerMenuManager.h"
 #include "internal/OrchestrionUiActions.h"
+#include "internal/PlaybackDeviceMenuManager.h"
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
 #include "view/NotationPaintViewLoaderModel.h"
@@ -26,7 +28,11 @@
 namespace dgk::orchestrion
 {
 OrchestrionShellModule::OrchestrionShellModule()
-    : m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>()}
+    : m_playbackDeviceMenuManager{std::make_shared<
+          PlaybackDeviceMenuManager>()},
+      m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
+          std::make_shared<MidiControllerMenuManager>(),
+          m_playbackDeviceMenuManager)}
 {
 }
 
@@ -58,6 +64,11 @@ void OrchestrionShellModule::registerUiTypes()
 {
   qmlRegisterType<NotationPaintViewLoaderModel>(
       "Orchestrion.OrchestrionShell", 1, 0, "NotationPaintViewLoaderModel");
+}
+
+void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &mode)
+{
+  m_playbackDeviceMenuManager->init();
 }
 
 void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)

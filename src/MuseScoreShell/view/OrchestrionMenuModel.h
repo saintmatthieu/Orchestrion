@@ -72,8 +72,14 @@ private:
 
   muse::uicomponents::MenuItem *makeFileMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
-  QList<muse::uicomponents::MenuItem *> getPlaybackDeviceMenuItems();
-  void updatePlaybackDeviceMenuItems();
+  muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
+
+  QList<muse::uicomponents::MenuItem *>
+  getMenuItems(const std::vector<DeviceAction> &devices);
+
+  void updateMenuItems(const std::vector<DeviceAction> &devices,
+                       const std::string &menuId);
+  void selectMenuItem(const char *submenuId, const std::string &deviceId);
 
   QWindow *m_appWindow = nullptr;
   QRect m_appMenuAreaRect;

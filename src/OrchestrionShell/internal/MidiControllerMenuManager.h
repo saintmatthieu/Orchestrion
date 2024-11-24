@@ -18,25 +18,18 @@
  */
 #pragma once
 
-#include "OrchestrionShellTypes.h"
-#include "async/channel.h"
-#include "async/notification.h"
-#include "modularity/imoduleinterface.h"
+#include "DeviceMenuManager.h"
+#include "midi/imidiinport.h"
 
 namespace dgk::orchestrion
 {
-class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
+class MidiControllerMenuManager : public DeviceMenuManager
 {
-  INTERFACE_ID(IOrchestrionUiActions);
-
-public:
-  virtual ~IOrchestrionUiActions() = default;
-
-  virtual muse::async::Notification
-      settableDevicesChanged(DeviceType) const = 0;
-  virtual std::vector<DeviceAction> settableDevices(DeviceType) const = 0;
-  virtual std::string selectedDevice(DeviceType) const = 0;
-  virtual muse::async::Channel<std::string>
-      selectedDeviceChanged(DeviceType) const = 0;
+  muse::Inject<muse::midi::IMidiInPort> midiInPort = {this};
+  muse::async::Notification availableDevicesChanged() const override;
+  std::vector<DeviceDesc> availableDevices() const override;
+  std::string getMenuId(int deviceIndex) const override;
+  std::string selectedDevice() const override;
+  bool selectDevice(const std::string &deviceId) override;
 };
 } // namespace dgk::orchestrion
