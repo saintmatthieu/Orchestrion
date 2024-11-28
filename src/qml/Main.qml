@@ -26,14 +26,20 @@ import MuseScore.AppShell 1.0
 import Muse.Shortcuts 1.0
 import Orchestrion.OrchestrionShell 1.0
 import Orchestrion.OrchestrionNotation 1.0
+import Orchestrion.OrchestrionOnboarding 1.0
 
 ApplicationWindow {
     id: root
     visible: true
     width: 800
     height: 350
-    title: "Orchestrion" // titleProvider.title
+    title: titleProvider.title
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
+
+    Component.onCompleted: {
+        onboardingModel.startOnboarding()
+        titleProvider.load()
+    }
 
     // provide a rectangle for the title bar to move the window
     Rectangle {
@@ -46,10 +52,6 @@ ApplicationWindow {
             anchors.fill: parent
             onPressed: root.startSystemMove()
         }
-    }
-
-    Component.onCompleted: {
-        // framelessWindowModel.init(this)
     }
 
     function toggleMaximized() {
@@ -69,7 +71,11 @@ ApplicationWindow {
         }
     }
 
-    MainWindowTitleProvider {
+    OrchestrionOnboardingModel {
+        id: onboardingModel
+    }
+
+    OrchestrionWindowTitleProvider {
         id: titleProvider
     }
 

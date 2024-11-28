@@ -13,6 +13,8 @@ set(MODULE_SRC
   internal/PlaybackDeviceMenuManager.h
   view/NotationPaintViewLoaderModel.cpp
   view/NotationPaintViewLoaderModel.h
+  view/OrchestrionWindowTitleProvider.cpp
+  view/OrchestrionWindowTitleProvider.h
   IOrchestrionUiActions.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h

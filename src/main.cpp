@@ -19,8 +19,9 @@
 #include "app/app.h"
 
 #include "MuseScoreShell/MusescoreShellModule.h"
-#include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
+#include "OrchestrionNotation/OrchestrionNotationModule.h"
+#include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"
 
 #include "accessibility/accessibilitymodule.h"
 #include "actions/actionsmodule.h"
@@ -48,8 +49,9 @@ int main(int argc, char *argv[])
   const auto app = std::make_shared<dgk::orchestrion::App>();
 
   app->addModule(new dgk::orchestrion::MusescoreShellModule());
-  app->addModule(new dgk::orchestrion::OrchestrionNotationModule());
   app->addModule(new dgk::orchestrion::OrchestrionShellModule());
+  app->addModule(new dgk::orchestrion::OrchestrionNotationModule());
+  app->addModule(new dgk::orchestrion::OrchestrionOnboardingModule());
 
   app->addModule(new muse::accessibility::AccessibilityModule());
   app->addModule(new muse::actions::ActionsModule());

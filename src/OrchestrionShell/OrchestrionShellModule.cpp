@@ -23,6 +23,7 @@
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
 #include "view/NotationPaintViewLoaderModel.h"
+#include "view/OrchestrionWindowTitleProvider.h"
 #include <QQmlEngine>
 
 namespace dgk::orchestrion
@@ -64,6 +65,8 @@ void OrchestrionShellModule::registerUiTypes()
 {
   qmlRegisterType<NotationPaintViewLoaderModel>(
       "Orchestrion.OrchestrionShell", 1, 0, "NotationPaintViewLoaderModel");
+  qmlRegisterType<OrchestrionWindowTitleProvider>(
+      "Orchestrion.OrchestrionShell", 1, 0, "OrchestrionWindowTitleProvider");
 }
 
 void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &mode)

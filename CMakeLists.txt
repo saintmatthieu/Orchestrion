@@ -17,6 +17,7 @@ include(MuseScore.cmake)
 
 add_subdirectory(src/MusescoreShell)
 add_subdirectory(src/OrchestrionNotation)
+add_subdirectory(src/OrchestrionOnboarding)
 add_subdirectory(src/OrchestrionShell)
 
 # Add the executable
@@ -64,6 +65,7 @@ target_link_libraries(Orchestrion PRIVATE
 
     MusescoreShell
     OrchestrionNotation
+    OrchestrionOnboarding
     OrchestrionShell
 )
 
@@ -85,3 +87,12 @@ target_sources(Orchestrion PRIVATE
 add_custom_command(TARGET Orchestrion POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:Orchestrion>
 )
+
+add_subdirectory(MuseScore/share/sound) # installs soundfonts
+install(TARGETS Orchestrion RUNTIME DESTINATION bin)
+install(FILES "${CMAKE_SOURCE_DIR}/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz" DESTINATION "scores")
+if (SNDFILE_DLL)
+    install(FILES ${SNDFILE_DLL} DESTINATION bin)
+else()
+    message(FATAL_ERROR "Could not find sndfile DLL")
+endif()
