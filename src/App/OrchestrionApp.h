@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "CommandOptions.h"
 #include <global/iapplication.h>
 #include <modularity/imodulesetup.h>
 #include <modularity/ioc.h>
@@ -25,15 +26,15 @@
 
 namespace dgk::orchestrion
 {
-class App : public muse::IApplication, public std::enable_shared_from_this<App>
+class OrchestrionApp : public muse::IApplication,
+                       public std::enable_shared_from_this<OrchestrionApp>
 {
   INJECT(mu::project::IProjectConfiguration, projectConfiguration);
 
 public:
-  App();
+  OrchestrionApp(CommandOptions options);
 
   void addModule(muse::modularity::IModuleSetup *module);
-  int run(int argc, char **argv);
 
   muse::String name() const override { return muse::String{"Orchestrion"}; }
   muse::String title() const override { return muse::String{"Orchestrion"}; }
@@ -44,7 +45,7 @@ public:
   muse::String revision() const override { return muse::String{"0"}; }
   RunMode runMode() const override { return RunMode::GuiApp; }
   bool noGui() const override { return false; }
-  void perform() override {}
+  void perform() override;
   void finish() override {}
   void restart() override {}
   muse::modularity::ModulesIoC *ioc() const override;
@@ -53,6 +54,7 @@ public:
   bool notify(QObject *, QEvent *) override;
 
 private:
+  const CommandOptions m_options;
   const std::shared_ptr<muse::modularity::Context> m_context;
   QList<muse::modularity::IModuleSetup *> m_modules;
 };

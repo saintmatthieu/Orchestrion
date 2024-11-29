@@ -17,7 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "app.h"
+#include "OrchestrionApp.h"
 
 #include <global/globalmodule.h>
 #include <modularity/ioc.h>
@@ -33,20 +33,19 @@ static muse::GlobalModule globalModule;
 
 namespace dgk::orchestrion
 {
-App::App() : m_context(std::make_shared<muse::modularity::Context>()) {}
+OrchestrionApp::OrchestrionApp(CommandOptions options)
+    : m_options{std::move(options)},
+      m_context(std::make_shared<muse::modularity::Context>())
+{
+}
 
-void App::addModule(muse::modularity::IModuleSetup *module)
+void OrchestrionApp::addModule(muse::modularity::IModuleSetup *module)
 {
   m_modules.push_back(module);
 };
 
-int App::run(int argc, char **argv)
+void OrchestrionApp::perform()
 {
-  Q_INIT_RESOURCE(resources);
-  const auto qapp = new QApplication(argc, argv);
-  QCoreApplication::setApplicationName("Orchestrion");
-  QCoreApplication::setApplicationVersion("0.1.0");
-
   globalModule.setApplication(shared_from_this());
   globalModule.registerResources();
   globalModule.registerExports();
@@ -122,7 +121,7 @@ int App::run(int argc, char **argv)
   const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));
 
   QObject::connect(
-      engine, &QQmlApplicationEngine::objectCreated, qapp,
+      engine, &QQmlApplicationEngine::objectCreated, qApp,
       [this, url](QObject *obj, const QUrl &objUrl)
       {
         if (!obj && url == objUrl)
@@ -149,7 +148,7 @@ int App::run(int argc, char **argv)
 
   engine->load(url);
 
-  const auto retCode = qapp->exec();
+  const auto retCode = qApp->exec();
 
   QThreadPool *globalThreadPool = QThreadPool::globalInstance();
   if (globalThreadPool)
@@ -173,22 +172,24 @@ int App::run(int argc, char **argv)
   // Delete modules
   qDeleteAll(m_modules);
   m_modules.clear();
+
   ioc()->reset();
 
-  delete qapp;
-
-  return retCode;
+  delete qApp;
 }
 
-muse::modularity::ModulesIoC *App::ioc() const
+muse::modularity::ModulesIoC *OrchestrionApp::ioc() const
 {
   return muse::modularity::_ioc(m_context);
 }
 
-const muse::modularity::ContextPtr App::iocContext() const { return m_context; }
+const muse::modularity::ContextPtr OrchestrionApp::iocContext() const
+{
+  return m_context;
+}
 
-QWindow *App::focusWindow() const { return nullptr; }
+QWindow *OrchestrionApp::focusWindow() const { return nullptr; }
 
-bool App::notify(QObject *, QEvent *) { return false; }
+bool OrchestrionApp::notify(QObject *, QEvent *) { return false; }
 
 } // namespace dgk::orchestrion

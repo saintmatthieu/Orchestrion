@@ -23,8 +23,13 @@ add_subdirectory(src/OrchestrionShell)
 # Add the executable
 qt_add_executable(Orchestrion WIN32
     src/main.cpp
-    src/app/app.cpp
-    src/app/app.h
+    src/App/CommandLineParser.cpp
+    src/App/CommandLineParser.h
+    src/App/CommandOptions.h
+    src/App/OrchestrionApp.cpp
+    src/App/OrchestrionApp.h
+    src/App/OrchestrionAppFactory.cpp
+    src/App/OrchestrionAppFactory.h
 )
 
 set_target_properties(Orchestrion PROPERTIES
