@@ -9,12 +9,15 @@ set(MODULE_SRC
   internal/MidiControllerMenuManager.h
   internal/OrchestrionUiActions.cpp
   internal/OrchestrionUiActions.h
+  internal/OrchestrionStartupScenario.cpp
+  internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
   view/NotationPaintViewLoaderModel.cpp
   view/NotationPaintViewLoaderModel.h
   view/OrchestrionWindowTitleProvider.cpp
   view/OrchestrionWindowTitleProvider.h
+  IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h

@@ -18,30 +18,28 @@
  */
 #pragma once
 
-#include "OrchestrionShell/IOrchestrionStartupScenario.h"
-#include <QQuickItem>
-#include <actions/iactionsdispatcher.h>
-#include <global/iglobalconfiguration.h>
-#include <modularity/ioc.h>
+#include <QUrl>
+#include <filesystem>
+#include <modularity/imoduleinterface.h>
 #include <optional>
 
 namespace dgk::orchestrion
 {
-class OrchestrionOnboardingModel : public QQuickItem, public muse::Injectable
+struct StartupProjectFile
 {
-  Q_OBJECT
+  QUrl url;
+  std::string displayNameOverride;
+};
 
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
-  muse::Inject<IOrchestrionStartupScenario> startupScenario = {this};
+class IOrchestrionStartupScenario : MODULE_EXPORT_INTERFACE
+{
+  INTERFACE_ID(IOrchestrionStartupScenario);
 
 public:
-  Q_INVOKABLE void startOnboarding();
+  virtual ~IOrchestrionStartupScenario() = default;
 
-  explicit OrchestrionOnboardingModel(QQuickItem *parent = nullptr);
-
-private:
-  std::optional<muse::actions::ActionData>
-  getFileOpenArgs(const StartupProjectFile &) const;
+  virtual const StartupProjectFile &startupProjectFile() const = 0;
+  virtual void
+  setStartupScoreFile(const std::optional<StartupProjectFile> &file) = 0;
 };
 } // namespace dgk::orchestrion

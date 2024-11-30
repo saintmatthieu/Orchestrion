@@ -16,32 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#pragma once
-
-#include "OrchestrionShell/IOrchestrionStartupScenario.h"
-#include <QQuickItem>
-#include <actions/iactionsdispatcher.h>
-#include <global/iglobalconfiguration.h>
-#include <modularity/ioc.h>
-#include <optional>
+#include "OrchestrionStartupScenario.h"
 
 namespace dgk::orchestrion
 {
-class OrchestrionOnboardingModel : public QQuickItem, public muse::Injectable
+const StartupProjectFile &OrchestrionStartupScenario::startupProjectFile() const
 {
-  Q_OBJECT
+  return m_startupProjectFile;
+}
 
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
-  muse::Inject<IOrchestrionStartupScenario> startupScenario = {this};
-
-public:
-  Q_INVOKABLE void startOnboarding();
-
-  explicit OrchestrionOnboardingModel(QQuickItem *parent = nullptr);
-
-private:
-  std::optional<muse::actions::ActionData>
-  getFileOpenArgs(const StartupProjectFile &) const;
-};
+void OrchestrionStartupScenario::setStartupScoreFile(
+    const std::optional<StartupProjectFile> &file)
+{
+  if (file)
+  {
+    m_startupProjectFile = *file;
+  }
+  else
+  {
+    m_startupProjectFile = {};
+  }
+}
 } // namespace dgk::orchestrion

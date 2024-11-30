@@ -34,7 +34,7 @@ static muse::GlobalModule globalModule;
 namespace dgk::orchestrion
 {
 OrchestrionApp::OrchestrionApp(CommandOptions options)
-    : m_options{std::move(options)},
+    : m_opts{std::move(options)},
       m_context(std::make_shared<muse::modularity::Context>())
 {
 }
@@ -69,6 +69,19 @@ void OrchestrionApp::perform()
     m->registerApi();
   }
 
+  if (m_opts.startup.scoreUrl.has_value())
+  {
+    StartupProjectFile file{
+        *m_opts.startup.scoreUrl,
+        m_opts.startup.scoreDisplayNameOverride.value_or("").toStdString()};
+
+    if (m_opts.startup.scoreDisplayNameOverride.has_value())
+      file.displayNameOverride =
+          m_opts.startup.scoreDisplayNameOverride->toStdString();
+
+    startupScenario()->setStartupScoreFile(file);
+  }
+
   // set migration options
   {
     mu::project::MigrationOptions migration;
@@ -82,9 +95,9 @@ void OrchestrionApp::perform()
     migration.isApplyLeland = false;
     migration.isRemapPercussion = false;
 
-    if (m_options.project.fullMigration)
+    if (m_opts.project.fullMigration)
     {
-      bool isMigration = m_options.project.fullMigration.value();
+      bool isMigration = m_opts.project.fullMigration.value();
       migration.isApplyMigration = isMigration;
       migration.isApplyEdwin = isMigration;
       migration.isApplyLeland = isMigration;
@@ -136,11 +149,6 @@ void OrchestrionApp::perform()
           m->onStartApp();
       },
       Qt::QueuedConnection);
-
-  const auto config = projectConfiguration();
-  auto options = config->migrationOptions(mu::project::MigrationType::Ver_3_6);
-  options.isAskAgain = false;
-  config->setMigrationOptions(mu::project::MigrationType::Ver_3_6, options);
 
   QQmlApplicationEngine *engine =
       ioc()->resolve<muse::ui::IUiEngine>("app")->qmlAppEngine();

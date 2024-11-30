@@ -28,21 +28,35 @@ OrchestrionOnboardingModel::OrchestrionOnboardingModel(QQuickItem *parent)
 {
 }
 
+std::optional<muse::actions::ActionData>
+OrchestrionOnboardingModel::getFileOpenArgs(
+    const StartupProjectFile &projectFile) const
+{
+  if (projectFile.url.isEmpty())
+  {
+    const muse::io::path_t path =
+        globalConfiguration()->appDataPath() +
+        "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
+    IF_ASSERT_FAILED(std::filesystem::exists(path.toStdString()))
+    {
+      LOGE() << "File not found: " << path;
+      return std::nullopt;
+    }
+    QUrl url{QString::fromStdString(path.toStdString())};
+    url.setScheme("file");
+    return muse::actions::ActionData::make_arg2(
+        url, QString{"Chopin - Nocturne Op 9 No 2 E Flat Major"});
+  }
+  else
+    return muse::actions::ActionData::make_arg2(
+        projectFile.url, projectFile.displayNameOverride);
+}
+
 void OrchestrionOnboardingModel::startOnboarding()
 {
-  const muse::io::path_t path =
-      globalConfiguration()->appDataPath() +
-      "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
-  IF_ASSERT_FAILED(std::filesystem::exists(path.toStdString()))
-  {
-    LOGE() << "File not found: " << path;
-    return;
-  }
-  QUrl url{QString::fromStdString(path.toStdString())};
-  url.setScheme("file");
-  dispatcher()->dispatch(
-      "file-open",
-      muse::actions::ActionData::make_arg2(
-          std::move(url), QString{"Chopin - Nocturne Op 9 No 2 E Flat Major"}));
+  if (const auto args =
+          getFileOpenArgs(startupScenario()->startupProjectFile());
+      args)
+    dispatcher()->dispatch("file-open", *args);
 }
 } // namespace dgk::orchestrion

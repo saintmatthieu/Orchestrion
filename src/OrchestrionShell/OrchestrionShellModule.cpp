@@ -18,6 +18,7 @@
  */
 #include "OrchestrionShellModule.h"
 #include "internal/MidiControllerMenuManager.h"
+#include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
 #include "modularity/ioc.h"
@@ -46,6 +47,8 @@ void OrchestrionShellModule::registerExports()
 {
   ioc()->registerExport<IOrchestrionUiActions>(moduleName(),
                                                m_orchestrionUiActions);
+  ioc()->registerExport<IOrchestrionStartupScenario>(
+      moduleName(), std::make_shared<OrchestrionStartupScenario>());
 }
 
 void OrchestrionShellModule::resolveImports()

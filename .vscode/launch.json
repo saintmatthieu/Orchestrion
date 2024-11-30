@@ -12,6 +12,9 @@
       "sourceFileMap": {
         "C:/Users/qt/work/qt": "${QTDIR}/../../Src"
       },
+      "args": [
+        // "C:/Users/saint/Downloads/Bruder_Jakob.mscz"
+      ]
     }
   ]
 }

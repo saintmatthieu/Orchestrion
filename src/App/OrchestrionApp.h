@@ -19,6 +19,7 @@
 #pragma once
 
 #include "CommandOptions.h"
+#include "OrchestrionShell/IOrchestrionStartupScenario.h"
 #include <global/iapplication.h>
 #include <modularity/imodulesetup.h>
 #include <modularity/ioc.h>
@@ -30,6 +31,7 @@ class OrchestrionApp : public muse::IApplication,
                        public std::enable_shared_from_this<OrchestrionApp>
 {
   INJECT(mu::project::IProjectConfiguration, projectConfiguration);
+  INJECT(IOrchestrionStartupScenario, startupScenario);
 
 public:
   OrchestrionApp(CommandOptions options);
@@ -54,7 +56,7 @@ public:
   bool notify(QObject *, QEvent *) override;
 
 private:
-  const CommandOptions m_options;
+  const CommandOptions m_opts;
   const std::shared_ptr<muse::modularity::Context> m_context;
   QList<muse::modularity::IModuleSetup *> m_modules;
 };
