@@ -69,6 +69,33 @@ void OrchestrionApp::perform()
     m->registerApi();
   }
 
+  // set migration options
+  {
+    mu::project::MigrationOptions migration;
+    migration.appVersion = mu::engraving::Constants::MSC_VERSION;
+
+    migration.isAskAgain = false;
+    // Keep everything false by default: we don't want to modify a user's score,
+    // and we don't want conversion to happen on every load.
+    migration.isApplyMigration = false;
+    migration.isApplyEdwin = false;
+    migration.isApplyLeland = false;
+    migration.isRemapPercussion = false;
+
+    if (m_options.project.fullMigration)
+    {
+      bool isMigration = m_options.project.fullMigration.value();
+      migration.isApplyMigration = isMigration;
+      migration.isApplyEdwin = isMigration;
+      migration.isApplyLeland = isMigration;
+      migration.isRemapPercussion = isMigration;
+    }
+
+    //! NOTE Don't write to settings, just on current session
+    for (mu::project::MigrationType type : mu::project::allMigrationTypes())
+      projectConfiguration()->setMigrationOptions(type, migration, false);
+  }
+
   constexpr auto runMode = muse::IApplication::RunMode::GuiApp;
   globalModule.onPreInit(runMode);
   for (muse::modularity::IModuleSetup *m : m_modules)
