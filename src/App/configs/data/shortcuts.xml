@@ -125,16 +125,6 @@
     <autorepeat>0</autorepeat>
     </SC>
   <SC>
-    <key>file-new</key>
-    <seq>Ctrl+N</seq>
-    <autorepeat>0</autorepeat>
-    </SC>
-  <SC>
-    <key>print</key>
-    <seq>Ctrl+P</seq>
-    <autorepeat>0</autorepeat>
-    </SC>
-  <SC>
     <key>undo</key>
     <std>11</std>
     </SC>
