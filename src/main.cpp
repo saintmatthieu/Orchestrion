@@ -62,7 +62,7 @@ static void crashCallback(int signum)
 
 static void app_init_qrc()
 {
-  Q_INIT_RESOURCE(app);
+  Q_INIT_RESOURCE(OrchestrionApp);
 
 #ifdef Q_OS_WIN
   // Q_INIT_RESOURCE(app_win);

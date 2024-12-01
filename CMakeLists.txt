@@ -82,7 +82,7 @@ qt_add_qml_module(Orchestrion
 )
 
 qt_add_resources(RESOURCES resources.qrc)
-qt_add_resources(RESOURCES MuseScore/src/app/app.qrc)
+qt_add_resources(RESOURCES src/App/OrchestrionApp.qrc)
 
 target_sources(Orchestrion PRIVATE
     ${RESOURCES}
