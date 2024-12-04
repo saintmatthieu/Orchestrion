@@ -17,13 +17,12 @@ set(MODULE_SRC
   view/NotationPaintViewLoaderModel.h
   view/OrchestrionWindowTitleProvider.cpp
   view/OrchestrionWindowTitleProvider.h
+  IMidiControllerManager.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
   OrchestrionShellTypes.h
 )
-
-set(MODULE_LINK MusescoreShell)
 
 setup_module()

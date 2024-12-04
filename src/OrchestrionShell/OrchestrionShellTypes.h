@@ -31,9 +31,3 @@ struct DeviceAction
   const std::string deviceName;
   const std::string deviceId;
 };
-
-enum class DeviceType
-{
-  MidiController,
-  PlaybackDevice
-};

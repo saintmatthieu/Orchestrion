@@ -36,6 +36,12 @@ ApplicationWindow {
     title: titleProvider.title
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
 
+    onActiveChanged: {
+        console.log("Active changed: " + active)
+        if (active)
+            onboardingModel.onGainedFocus()
+    }
+
     Component.onCompleted: {
         onboardingModel.startOnboarding()
         titleProvider.load()

@@ -26,29 +26,22 @@ namespace dgk::orchestrion
 {
 namespace
 {
-muse::ui::UiActionList
-makeActions(const DeviceMenuManager &midiControllerMenuManager,
-            const DeviceMenuManager &playbackDeviceMenuManager)
+muse::ui::UiActionList makeActions(
+    const std::unordered_map<DeviceType, std::shared_ptr<DeviceMenuManager>>
+        &managers)
 {
   muse::ui::UiActionList actions;
-  actions.push_back(muse::ui::UiAction(actionIds::chooseMidiControllerSubmenu,
-                                       mu::context::UiCtxAny,
-                                       mu::context::CTX_ANY));
-  actions.push_back(muse::ui::UiAction(actionIds::choosePlaybackDeviceSubmenu,
-                                       mu::context::UiCtxAny,
-                                       mu::context::CTX_ANY));
+  for (const auto &[_, menuId] : actionIds::chooseDevicesSubmenu)
+    actions.push_back(muse::ui::UiAction(menuId, mu::context::UiCtxAny,
+                                         mu::context::CTX_ANY));
 
   // reserve some actions for playback device selection
   actions.reserve(100 + actions.size());
   for (auto i = 0; i < 100; ++i)
-  {
-    actions.push_back(muse::ui::UiAction(midiControllerMenuManager.getMenuId(i),
-                                         mu::context::UiCtxAny,
-                                         mu::context::CTX_ANY));
-    actions.push_back(muse::ui::UiAction(playbackDeviceMenuManager.getMenuId(i),
-                                         mu::context::UiCtxAny,
-                                         mu::context::CTX_ANY));
-  }
+    for (const auto &[_, manager] : managers)
+      actions.push_back(muse::ui::UiAction(
+          manager->getMenuId(i), mu::context::UiCtxAny, mu::context::CTX_ANY));
+
   return actions;
 }
 } // namespace
@@ -56,11 +49,11 @@ makeActions(const DeviceMenuManager &midiControllerMenuManager,
 OrchestrionUiActions::OrchestrionUiActions(
     std::shared_ptr<DeviceMenuManager> midiControllerMenuManager,
     std::shared_ptr<DeviceMenuManager> playbackDeviceMenuManager)
-    : m_actions{makeActions(*midiControllerMenuManager,
-                            *playbackDeviceMenuManager)},
-      m_deviceMenuManagers{
-          {DeviceType::MidiController, midiControllerMenuManager},
-          {DeviceType::PlaybackDevice, playbackDeviceMenuManager}}
+    : m_deviceMenuManagers{{DeviceType::MidiController,
+                            midiControllerMenuManager},
+                           {DeviceType::PlaybackDevice,
+                            playbackDeviceMenuManager}},
+      m_actions{makeActions(m_deviceMenuManagers)}
 {
 }
 

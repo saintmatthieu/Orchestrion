@@ -19,17 +19,33 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
-#include "midi/imidiinport.h"
+#include "IMidiControllerManager.h"
+#include <context/iglobalcontext.h>
+#include <midi/imidiinport.h>
+#include <multiinstances/imultiinstancesprovider.h>
 
 namespace dgk::orchestrion
 {
-class MidiControllerMenuManager : public DeviceMenuManager
+class MidiControllerMenuManager : public DeviceMenuManager,
+                                  public IMidiControllerManager
 {
   muse::Inject<muse::midi::IMidiInPort> midiInPort = {this};
+  muse::Inject<muse::mi::IMultiInstancesProvider> multiInstances = {this};
+  muse::Inject<mu::context::IGlobalContext> globalContext = {this};
+
+  // DeviceMenuManager
+private:
+  void doInit() override;
   muse::async::Notification availableDevicesChanged() const override;
   std::vector<DeviceDesc> availableDevices() const override;
   std::string getMenuId(int deviceIndex) const override;
   std::string selectedDevice() const override;
   bool selectDevice(const std::string &deviceId) override;
+
+  // IMidiControllerManager
+private:
+  void onGainedFocus() override;
+
+  std::string m_selectedDevice;
 };
 } // namespace dgk::orchestrion

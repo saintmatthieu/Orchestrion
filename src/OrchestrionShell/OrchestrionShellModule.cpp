@@ -30,11 +30,12 @@
 namespace dgk::orchestrion
 {
 OrchestrionShellModule::OrchestrionShellModule()
-    : m_playbackDeviceMenuManager{std::make_shared<
-          PlaybackDeviceMenuManager>()},
+    : m_midiControllerMenuManager{std::make_shared<
+          MidiControllerMenuManager>()},
+      m_playbackDeviceMenuManager{
+          std::make_shared<PlaybackDeviceMenuManager>()},
       m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
-          std::make_shared<MidiControllerMenuManager>(),
-          m_playbackDeviceMenuManager)}
+          m_midiControllerMenuManager, m_playbackDeviceMenuManager)}
 {
 }
 
@@ -49,6 +50,8 @@ void OrchestrionShellModule::registerExports()
                                                m_orchestrionUiActions);
   ioc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), std::make_shared<OrchestrionStartupScenario>());
+  ioc()->registerExport<IMidiControllerManager>(moduleName(),
+                                                m_midiControllerMenuManager);
 }
 
 void OrchestrionShellModule::resolveImports()

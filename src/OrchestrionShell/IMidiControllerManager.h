@@ -18,26 +18,17 @@
  */
 #pragma once
 
-#include "MuseScoreShell/MuseScoreShellTypes.h"
-#include "OrchestrionShellTypes.h"
-#include "async/channel.h"
-#include "async/notification.h"
-#include "modularity/imoduleinterface.h"
+#include <modularity/imoduleinterface.h>
 
 namespace dgk::orchestrion
 {
-class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
+class IMidiControllerManager : MODULE_EXPORT_INTERFACE
 {
-  INTERFACE_ID(IOrchestrionUiActions);
+  INTERFACE_ID(IMidiControllerManager);
 
 public:
-  virtual ~IOrchestrionUiActions() = default;
+  virtual ~IMidiControllerManager() = default;
 
-  virtual muse::async::Notification
-      settableDevicesChanged(DeviceType) const = 0;
-  virtual std::vector<DeviceAction> settableDevices(DeviceType) const = 0;
-  virtual std::string selectedDevice(DeviceType) const = 0;
-  virtual muse::async::Channel<std::string>
-      selectedDeviceChanged(DeviceType) const = 0;
+  virtual void onGainedFocus() = 0;
 };
 } // namespace dgk::orchestrion

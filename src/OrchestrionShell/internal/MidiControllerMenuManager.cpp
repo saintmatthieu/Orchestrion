@@ -17,9 +17,29 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "MidiControllerMenuManager.h"
+#include "log.h"
 
 namespace dgk::orchestrion
 {
+void MidiControllerMenuManager::doInit()
+{
+  multiInstances()->otherInstanceGainedFocus().onNotify(
+      this,
+      [this]
+      {
+        if (midiInPort()->isConnected())
+        {
+          const auto masterNotation = globalContext()->currentMasterNotation();
+          assert(masterNotation);
+          LOGI() << "Releasing control of MIDI device for "
+                 << (masterNotation ? masterNotation->notation()->name()
+                                    : "null");
+          midiInPort()->disconnect();
+        }
+      });
+  m_selectedDevice = midiInPort()->deviceID();
+}
+
 muse::async::Notification
 MidiControllerMenuManager::availableDevicesChanged() const
 {
@@ -44,11 +64,25 @@ std::string MidiControllerMenuManager::getMenuId(int deviceIndex) const
 
 std::string MidiControllerMenuManager::selectedDevice() const
 {
+  assert(m_selectedDevice == midiInPort()->deviceID());
   return midiInPort()->deviceID();
 }
 
 bool MidiControllerMenuManager::selectDevice(const std::string &deviceId)
 {
-  return midiInPort()->connect(deviceId).success();
+  if (midiInPort()->connect(deviceId))
+  {
+    m_selectedDevice = deviceId;
+    return true;
+  }
+  return false;
+}
+
+void MidiControllerMenuManager::onGainedFocus()
+{
+  if (midiInPort()->deviceID() == m_selectedDevice)
+    return;
+  LOGI() << "Reconnecting previously selected device: "
+         << midiInPort()->connect(m_selectedDevice);
 }
 } // namespace dgk::orchestrion

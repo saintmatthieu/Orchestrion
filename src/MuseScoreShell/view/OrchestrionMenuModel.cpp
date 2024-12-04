@@ -48,52 +48,43 @@ void OrchestrionMenuModel::load()
 {
   AbstractMenuModel::load();
 
-  orchestrionUiActions()
-      ->settableDevicesChanged(DeviceType::MidiController)
-      .onNotify(this,
-                [this]
-                {
-                  updateMenuItems(orchestrionUiActions()->settableDevices(
-                                      DeviceType::MidiController),
-                                  actionIds::chooseMidiControllerSubmenu);
-                });
+  multiInstances()->instancesChanged().onNotify(
+      this,
+      [this]
+      {
+        //
+        const auto instances = multiInstances()->instances();
+        const auto isMainInstance = multiInstances()->isMainInstance();
+      });
 
-  orchestrionUiActions()
-      ->settableDevicesChanged(DeviceType::PlaybackDevice)
-      .onNotify(this,
-                [this]
-                {
-                  updateMenuItems(orchestrionUiActions()->settableDevices(
-                                      DeviceType::PlaybackDevice),
-                                  actionIds::choosePlaybackDeviceSubmenu);
-                });
+  for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
+  {
+    orchestrionUiActions()
+        ->settableDevicesChanged(deviceType)
+        .onNotify(this,
+                  [this, deviceType, menuId]
+                  {
+                    updateMenuItems(
+                        orchestrionUiActions()->settableDevices(deviceType),
+                        menuId);
+                  });
 
-  orchestrionUiActions()
-      ->selectedDeviceChanged(DeviceType::MidiController)
-      .onReceive(this,
-                 [this](const std::string &deviceId)
-                 {
-                   selectMenuItem(actionIds::chooseMidiControllerSubmenu,
-                                  deviceId);
-                 });
-
-  orchestrionUiActions()
-      ->selectedDeviceChanged(DeviceType::PlaybackDevice)
-      .onReceive(this,
-                 [this](const std::string &deviceId)
-                 {
-                   selectMenuItem(actionIds::choosePlaybackDeviceSubmenu,
-                                  deviceId);
-                 });
+    orchestrionUiActions()
+        ->selectedDeviceChanged(deviceType)
+        .onReceive(this, [this, deviceType, menuId](const std::string &deviceId)
+                   { selectMenuItem(menuId, deviceId); });
+  }
 
   muse::uicomponents::MenuItemList items{makeFileMenu(), makeAudioMidiMenu()};
   setItems(items);
-  selectMenuItem(
-      actionIds::chooseMidiControllerSubmenu,
-      orchestrionUiActions()->selectedDevice(DeviceType::MidiController));
-  selectMenuItem(
-      actionIds::choosePlaybackDeviceSubmenu,
-      orchestrionUiActions()->selectedDevice(DeviceType::PlaybackDevice));
+
+  for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
+    if (const auto deviceId =
+            orchestrionUiActions()->selectedDevice(deviceType);
+        !deviceId.empty())
+    {
+      selectMenuItem(menuId, deviceId);
+    }
 }
 
 void OrchestrionMenuModel::selectMenuItem(const char *submenuId,
@@ -137,9 +128,7 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
 muse::uicomponents::MenuItem *
 OrchestrionMenuModel::makeAudioMidiSubmenu(DeviceType deviceType)
 {
-  auto subenu = makeMenuItem(deviceType == DeviceType::MidiController
-                                 ? actionIds::chooseMidiControllerSubmenu
-                                 : actionIds::choosePlaybackDeviceSubmenu);
+  auto subenu = makeMenuItem(actionIds::chooseDevicesSubmenu.at(deviceType));
   if (subenu)
   {
     subenu->setTitle(muse::TranslatableString(

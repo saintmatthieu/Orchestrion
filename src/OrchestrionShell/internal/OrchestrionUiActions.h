@@ -56,11 +56,10 @@ private:
   actionCheckedChanged() const override;
 
 private:
+  const std::unordered_map<DeviceType, std::shared_ptr<DeviceMenuManager>>
+      m_deviceMenuManagers;
   const muse::ui::UiActionList m_actions;
   muse::async::Channel<muse::actions::ActionCodeList> m_actionEnabledChanged;
   muse::async::Channel<muse::actions::ActionCodeList> m_actionCheckedChanged;
-
-  const std::unordered_map<DeviceType, std::shared_ptr<DeviceMenuManager>>
-      m_deviceMenuManagers;
 };
 } // namespace dgk::orchestrion

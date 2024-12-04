@@ -18,8 +18,12 @@
  */
 #pragma once
 
+#include "MuseScoreShellTypes.h"
+#include <unordered_map>
+
 namespace dgk::orchestrion::actionIds
 {
-constexpr auto choosePlaybackDeviceSubmenu = "choosePlaybackDeviceSubmenu";
-constexpr auto chooseMidiControllerSubmenu = "chooseMidiControllerSubmenu";
+static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
+    {{DeviceType::MidiController, "chooseMidiControllerSubmenu"},
+     {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
 } // namespace dgk::orchestrion::actionIds

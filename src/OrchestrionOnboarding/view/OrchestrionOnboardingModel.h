@@ -18,11 +18,13 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IMidiControllerManager.h"
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
 #include <QQuickItem>
 #include <actions/iactionsdispatcher.h>
 #include <global/iglobalconfiguration.h>
 #include <modularity/ioc.h>
+#include <multiinstances/imultiinstancesprovider.h>
 #include <optional>
 
 namespace dgk::orchestrion
@@ -34,9 +36,12 @@ class OrchestrionOnboardingModel : public QQuickItem, public muse::Injectable
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
   muse::Inject<IOrchestrionStartupScenario> startupScenario = {this};
+  muse::Inject<muse::mi::IMultiInstancesProvider> multiInstances = {this};
+  muse::Inject<IMidiControllerManager> midiControllerManager = {this};
 
 public:
   Q_INVOKABLE void startOnboarding();
+  Q_INVOKABLE void onGainedFocus();
 
   explicit OrchestrionOnboardingModel(QQuickItem *parent = nullptr);
 

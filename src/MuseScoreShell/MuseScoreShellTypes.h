@@ -18,26 +18,8 @@
  */
 #pragma once
 
-#include "MuseScoreShell/MuseScoreShellTypes.h"
-#include "OrchestrionShellTypes.h"
-#include "async/channel.h"
-#include "async/notification.h"
-#include "modularity/imoduleinterface.h"
-
-namespace dgk::orchestrion
+enum class DeviceType
 {
-class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
-{
-  INTERFACE_ID(IOrchestrionUiActions);
-
-public:
-  virtual ~IOrchestrionUiActions() = default;
-
-  virtual muse::async::Notification
-      settableDevicesChanged(DeviceType) const = 0;
-  virtual std::vector<DeviceAction> settableDevices(DeviceType) const = 0;
-  virtual std::string selectedDevice(DeviceType) const = 0;
-  virtual muse::async::Channel<std::string>
-      selectedDeviceChanged(DeviceType) const = 0;
+  MidiController,
+  PlaybackDevice,
 };
-} // namespace dgk::orchestrion
