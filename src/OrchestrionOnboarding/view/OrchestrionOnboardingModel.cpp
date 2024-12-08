@@ -17,9 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionOnboardingModel.h"
-#include "log.h"
 #include <QUrl>
 #include <filesystem>
+#include <log.h>
+#include <thread>
 
 namespace dgk::orchestrion
 {
@@ -63,6 +64,7 @@ void OrchestrionOnboardingModel::startOnboarding()
 void OrchestrionOnboardingModel::onGainedFocus()
 {
   multiInstances()->notifyAboutGainedFocus();
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   midiControllerManager()->onGainedFocus();
 }
 } // namespace dgk::orchestrion
