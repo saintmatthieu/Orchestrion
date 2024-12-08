@@ -48,15 +48,6 @@ void OrchestrionMenuModel::load()
 {
   AbstractMenuModel::load();
 
-  multiInstances()->instancesChanged().onNotify(
-      this,
-      [this]
-      {
-        //
-        const auto instances = multiInstances()->instances();
-        const auto isMainInstance = multiInstances()->isMainInstance();
-      });
-
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -73,6 +64,9 @@ void OrchestrionMenuModel::load()
         ->selectedDeviceChanged(deviceType)
         .onReceive(this, [this, deviceType, menuId](const std::string &deviceId)
                    { selectMenuItem(menuId, deviceId); });
+
+    midiControllerManager()->trySelectDefaultDevice();
+    playbackDeviceManager()->trySelectDefaultDevice();
   }
 
   muse::uicomponents::MenuItemList items{makeFileMenu(), makeAudioMidiMenu()};

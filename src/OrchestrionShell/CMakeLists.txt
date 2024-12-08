@@ -20,6 +20,7 @@ set(MODULE_SRC
   IMidiControllerManager.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
+  IPlaybackDeviceManager.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
   OrchestrionShellTypes.h

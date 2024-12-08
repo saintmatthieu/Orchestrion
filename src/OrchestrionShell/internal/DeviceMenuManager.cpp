@@ -21,6 +21,24 @@
 
 namespace dgk::orchestrion
 {
+DeviceMenuManager::DeviceMenuManager(DeviceType deviceType)
+    : m_deviceType(deviceType)
+{
+}
+
+muse::Settings::Key DeviceMenuManager::defaultDeviceIdKey() const
+{
+  switch (m_deviceType)
+  {
+  case DeviceType::MidiController:
+    return muse::Settings::Key{"midi", "default MIDI controller ID"};
+  case DeviceType::PlaybackDevice:
+    return muse::Settings::Key{"audio", "default playback device ID"};
+  }
+  assert(false);
+  return {};
+}
+
 void DeviceMenuManager::init()
 {
   doInit();
@@ -31,6 +49,22 @@ void DeviceMenuManager::init()
                                        m_settableDevicesChanged.notify();
                                      });
   fillDeviceCache();
+}
+
+void DeviceMenuManager::doTrySelectDefaultDevice()
+{
+  if (const auto value = settings()->value(defaultDeviceIdKey());
+      !value.isNull())
+  {
+    const auto deviceId = value.toString();
+    if (!deviceId.empty())
+      selectDevice(deviceId);
+  }
+}
+
+muse::Settings *DeviceMenuManager::settings()
+{
+  return muse::Settings::instance();
 }
 
 std::vector<DeviceAction> DeviceMenuManager::settableDevices() const
@@ -50,6 +84,20 @@ std::vector<DeviceAction> DeviceMenuManager::settableDevices() const
 muse::async::Notification DeviceMenuManager::settableDevicesChanged() const
 {
   return m_settableDevicesChanged;
+}
+
+std::string DeviceMenuManager::lastSelectedDevice() const
+{
+  return m_lastSelectedDevice;
+}
+
+void DeviceMenuManager::onDeviceSuccessfullySet(const std::string &deviceId)
+{
+  assert(!deviceId.empty());
+  if (deviceId.empty())
+    return;
+  m_lastSelectedDevice = deviceId;
+  settings()->setSharedValue(defaultDeviceIdKey(), muse::Val{deviceId});
 }
 
 muse::async::Channel<std::string>

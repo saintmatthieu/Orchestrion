@@ -22,14 +22,13 @@
 
 namespace dgk::orchestrion
 {
-class IMidiControllerManager : MODULE_EXPORT_INTERFACE
+class IPlaybackDeviceManager : MODULE_EXPORT_INTERFACE
 {
-  INTERFACE_ID(IMidiControllerManager);
+  INTERFACE_ID(IPlaybackDeviceManager);
 
 public:
-  virtual ~IMidiControllerManager() = default;
+  virtual ~IPlaybackDeviceManager() = default;
 
   virtual void trySelectDefaultDevice() = 0;
-  virtual void onGainedFocus() = 0;
 };
 } // namespace dgk::orchestrion

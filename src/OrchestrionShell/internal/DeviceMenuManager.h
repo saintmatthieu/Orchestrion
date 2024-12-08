@@ -18,14 +18,16 @@
  */
 #pragma once
 
+#include "MuseScoreShell/MuseScoreShellTypes.h"
 #include "OrchestrionShellTypes.h"
-#include "actions/actionable.h"
-#include "actions/iactionsdispatcher.h"
-#include "async/asyncable.h"
-#include "async/channel.h"
-#include "async/notification.h"
-#include "modularity/ioc.h"
+#include <actions/actionable.h>
+#include <actions/iactionsdispatcher.h>
+#include <async/asyncable.h>
+#include <async/channel.h>
+#include <async/notification.h>
+#include <global/settings.h>
 #include <memory>
+#include <modularity/ioc.h>
 
 namespace dgk::orchestrion
 {
@@ -37,13 +39,14 @@ class DeviceMenuManager : public muse::actions::Actionable,
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
 
 public:
+  DeviceMenuManager(DeviceType);
   virtual ~DeviceMenuManager() = default;
 
   void init();
   virtual std::string getMenuId(int deviceIndex) const = 0;
+  virtual std::string selectedDevice() const = 0;
   std::vector<DeviceAction> settableDevices() const;
   muse::async::Notification settableDevicesChanged() const;
-  virtual std::string selectedDevice() const = 0;
   muse::async::Channel<std::string> selectedPlaybackDeviceChanged() const;
 
 protected:
@@ -52,6 +55,11 @@ protected:
     std::string id;
     std::string name;
   };
+
+  void doTrySelectDefaultDevice();
+  std::string lastSelectedDevice() const;
+  void onDeviceSuccessfullySet(const std::string &deviceId);
+  muse::Settings *settings();
 
 private:
   struct DeviceItem : DeviceDesc
@@ -64,9 +72,12 @@ private:
   virtual bool selectDevice(const std::string &deviceId) = 0;
   virtual void doInit() {}
   void fillDeviceCache();
+  muse::Settings::Key defaultDeviceIdKey() const;
 
+  const DeviceType m_deviceType;
   muse::async::Notification m_settableDevicesChanged;
   muse::async::Channel<std::string> m_selectedPlaybackDeviceChanged;
   std::vector<DeviceItem> m_deviceCache;
+  std::string m_lastSelectedDevice;
 };
 } // namespace dgk::orchestrion

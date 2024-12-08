@@ -19,14 +19,23 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
+#include "IPlaybackDeviceManager.h"
 #include <async/asyncable.h>
 #include <audio/iaudiodriver.h>
 
 namespace dgk::orchestrion
 {
-class PlaybackDeviceMenuManager : public DeviceMenuManager
+class PlaybackDeviceMenuManager : public IPlaybackDeviceManager,
+                                  public DeviceMenuManager
 {
+public:
+  PlaybackDeviceMenuManager();
+
+private:
   muse::Inject<muse::audio::IAudioDriver> audioDriver = {this};
+
+  // DeviceMenuManager
+private:
   muse::async::Notification availableDevicesChanged() const override;
   std::vector<DeviceDesc> availableDevices() const override;
   std::string getMenuId(int deviceIndex) const override;
@@ -34,6 +43,11 @@ class PlaybackDeviceMenuManager : public DeviceMenuManager
   bool selectDevice(const std::string &deviceId) override;
   void doInit() override;
 
+  // IPlaybackDeviceManager
+private:
+  void trySelectDefaultDevice() override;
+
+private:
   void updateAudioDevices();
 
   muse::async::Notification m_availableDevicesChanged;

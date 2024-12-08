@@ -21,11 +21,21 @@
 
 namespace dgk::orchestrion
 {
+PlaybackDeviceMenuManager::PlaybackDeviceMenuManager()
+    : DeviceMenuManager(DeviceType::PlaybackDevice)
+{
+}
+
 void PlaybackDeviceMenuManager::doInit()
 {
   audioDriver()->availableOutputDevicesChanged().onNotify(
       this, [this] { updateAudioDevices(); });
   updateAudioDevices();
+}
+
+void PlaybackDeviceMenuManager::trySelectDefaultDevice()
+{
+  DeviceMenuManager::doTrySelectDefaultDevice();
 }
 
 void PlaybackDeviceMenuManager::updateAudioDevices()
@@ -67,6 +77,11 @@ std::string PlaybackDeviceMenuManager::selectedDevice() const
 
 bool PlaybackDeviceMenuManager::selectDevice(const std::string &deviceId)
 {
-  return audioDriver()->selectOutputDevice(deviceId);
+  if (audioDriver()->selectOutputDevice(deviceId))
+  {
+    onDeviceSuccessfullySet(deviceId);
+    return true;
+  }
+  return false;
 }
 } // namespace dgk::orchestrion

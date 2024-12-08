@@ -18,11 +18,12 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IMidiControllerManager.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
+#include "OrchestrionShell/IPlaybackDeviceManager.h"
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
-#include <multiinstances/imultiinstancesprovider.h>
 #include <uicomponents/view/abstractmenumodel.h>
 
 namespace dgk::orchestrion
@@ -42,7 +43,8 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
 
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions = {this};
-  muse::Inject<muse::mi::IMultiInstancesProvider> multiInstances = {this};
+  muse::Inject<IMidiControllerManager> midiControllerManager = {this};
+  muse::Inject<IPlaybackDeviceManager> playbackDeviceManager = {this};
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);

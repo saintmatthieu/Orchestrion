@@ -52,6 +52,8 @@ void OrchestrionShellModule::registerExports()
       moduleName(), std::make_shared<OrchestrionStartupScenario>());
   ioc()->registerExport<IMidiControllerManager>(moduleName(),
                                                 m_midiControllerMenuManager);
+  ioc()->registerExport<IPlaybackDeviceManager>(moduleName(),
+                                                m_playbackDeviceMenuManager);
 }
 
 void OrchestrionShellModule::resolveImports()
