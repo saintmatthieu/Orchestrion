@@ -72,7 +72,6 @@ ApplicationWindow {
         topParent: root
 
         onRequestedDockPage: function(uri, params) {
-            console.log("RequestedDockPage: " + uri + ", " + JSON.stringify(params))
             notationPaintView.loadOrchestrionNotation()
         }
     }
@@ -96,17 +95,16 @@ ApplicationWindow {
 
     Shortcuts { }
 
-    Item {
+    ColumnLayout {
 
-        width: parent.width
-        height: parent.height
+        anchors.fill: parent
+        spacing: 0
 
         AppTitleBar {
             id: appTitleBar
 
-            anchors.top: parent.top
-            width: parent.width
-            height: 32
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
 
             title: root.title
 
@@ -129,10 +127,8 @@ ApplicationWindow {
 
         OrchestrionNotationPaintView {
             id: notationPaintView
-            anchors.top: appTitleBar.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
     }
 
