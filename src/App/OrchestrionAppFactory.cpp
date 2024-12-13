@@ -22,6 +22,7 @@
 #include "MuseScoreShell/MusescoreShellModule.h"
 #include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"
+#include "OrchestrionSequencer/OrchestrionModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
 
 #include "accessibility/accessibilitymodule.h"
@@ -71,6 +72,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new OrchestrionShellModule());
   app->addModule(new OrchestrionNotationModule());
   app->addModule(new OrchestrionOnboardingModule());
+  app->addModule(new OrchestrionModule());
 
   app->addModule(new muse::accessibility::AccessibilityModule());
   app->addModule(new muse::actions::ActionsModule());
