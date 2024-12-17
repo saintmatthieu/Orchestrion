@@ -72,6 +72,7 @@ target_link_libraries(Orchestrion PRIVATE
     OrchestrionNotation
     OrchestrionOnboarding
     OrchestrionShell
+    ScoreAnimation
 )
 
 # Add QML files to the project (for IDEs and resource system)

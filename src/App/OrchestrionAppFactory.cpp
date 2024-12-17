@@ -24,6 +24,7 @@
 #include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"
 #include "OrchestrionSequencer/OrchestrionModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
+#include "ScoreAnimation/ScoreAnimationModule.h"
 
 #include "accessibility/accessibilitymodule.h"
 #include "actions/actionsmodule.h"
@@ -73,6 +74,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new OrchestrionNotationModule());
   app->addModule(new OrchestrionOnboardingModule());
   app->addModule(new OrchestrionModule());
+  app->addModule(new ScoreAnimationModule());
 
   app->addModule(new muse::accessibility::AccessibilityModule());
   app->addModule(new muse::actions::ActionsModule());
