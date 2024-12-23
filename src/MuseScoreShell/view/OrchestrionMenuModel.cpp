@@ -55,6 +55,7 @@ void OrchestrionMenuModel::load()
   updateSelectedKeyboardMenuItem();
 
   midiControllerManager()->trySelectDefaultDevice();
+  midiSynthesizerManager()->trySelectDefaultDevice();
   playbackDeviceManager()->trySelectDefaultDevice();
 
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
@@ -140,9 +141,10 @@ OrchestrionMenuModel::makeAudioMidiSubmenu(DeviceType deviceType)
   if (subenu)
   {
     subenu->setTitle(muse::TranslatableString(
-        "appshell/menu/audio-midi", deviceType == DeviceType::MidiController
-                                        ? "&MIDI controller"
-                                        : "&Playback device"));
+        "appshell/menu/audio-midi",
+        deviceType == DeviceType::MidiController    ? "&MIDI controller"
+        : deviceType == DeviceType::MidiSynthesizer ? "MIDI &synthesizer"
+                                                    : "&Playback device"));
     subenu->setSubitems(
         getMenuItems(orchestrionUiActions()->settableDevices(deviceType)));
   }
@@ -173,6 +175,7 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
   return makeMenu(
       muse::TranslatableString("appshell/menu/audio-midi", "&Audio/MIDI"),
       {makeAudioMidiSubmenu(DeviceType::MidiController),
+       makeAudioMidiSubmenu(DeviceType::MidiSynthesizer),
        makeAudioMidiSubmenu(DeviceType::PlaybackDevice)},
       "menu-audio-midi");
 }

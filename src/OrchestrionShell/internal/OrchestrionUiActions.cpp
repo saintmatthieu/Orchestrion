@@ -48,9 +48,12 @@ muse::ui::UiActionList makeActions(
 
 OrchestrionUiActions::OrchestrionUiActions(
     std::shared_ptr<DeviceMenuManager> midiControllerMenuManager,
+    std::shared_ptr<DeviceMenuManager> midiSynthesizerMenuManager,
     std::shared_ptr<DeviceMenuManager> playbackDeviceMenuManager)
     : m_deviceMenuManagers{{DeviceType::MidiController,
                             midiControllerMenuManager},
+                           {DeviceType::MidiSynthesizer,
+                            midiSynthesizerMenuManager},
                            {DeviceType::PlaybackDevice,
                             playbackDeviceMenuManager}},
       m_actions{makeActions(m_deviceMenuManagers)}
@@ -60,6 +63,7 @@ OrchestrionUiActions::OrchestrionUiActions(
 void OrchestrionUiActions::init()
 {
   m_deviceMenuManagers.at(DeviceType::MidiController)->init();
+  m_deviceMenuManagers.at(DeviceType::MidiSynthesizer)->init();
   m_deviceMenuManagers.at(DeviceType::PlaybackDevice)->init();
 }
 
@@ -91,7 +95,7 @@ const muse::ui::UiActionList &OrchestrionUiActions::actionsList() const
   return m_actions;
 }
 
-bool OrchestrionUiActions::actionEnabled(const muse::ui::UiAction &act) const
+bool OrchestrionUiActions::actionEnabled(const muse::ui::UiAction &) const
 {
   return true;
 }
@@ -102,7 +106,7 @@ OrchestrionUiActions::actionEnabledChanged() const
   return m_actionEnabledChanged;
 }
 
-bool OrchestrionUiActions::actionChecked(const muse::ui::UiAction &act) const
+bool OrchestrionUiActions::actionChecked(const muse::ui::UiAction &) const
 {
   return false;
 }

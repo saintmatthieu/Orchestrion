@@ -20,6 +20,7 @@
 
 #include "OrchestrionSequencer/IOrchestrionSequencerUiActions.h"
 #include "OrchestrionShell/IMidiControllerManager.h"
+#include "OrchestrionShell/IMidiSynthesizerManager.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionShell/IPlaybackDeviceManager.h"
 #include "orchestrionsequencer/IComputerKeyboard.h"
@@ -46,6 +47,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions = {this};
   muse::Inject<IMidiControllerManager> midiControllerManager = {this};
+  muse::Inject<IMidiSynthesizerManager> midiSynthesizerManager = {this};
   muse::Inject<IPlaybackDeviceManager> playbackDeviceManager = {this};
   muse::Inject<dgk::IComputerKeyboard> computerKeyboard = {this};
   muse::Inject<IOrchestrionSequencerUiActions> uiActions = {this};

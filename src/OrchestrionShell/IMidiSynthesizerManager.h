@@ -18,9 +18,17 @@
  */
 #pragma once
 
-enum class DeviceType
+#include <modularity/imoduleinterface.h>
+
+namespace dgk::orchestrion
 {
-  MidiController,
-  MidiSynthesizer,
-  PlaybackDevice,
+class IMidiSynthesizerManager : MODULE_EXPORT_INTERFACE
+{
+  INTERFACE_ID(IMidiSynthesizerManager);
+
+public:
+  virtual ~IMidiSynthesizerManager() = default;
+
+  virtual void trySelectDefaultDevice() = 0;
 };
+} // namespace dgk::orchestrion

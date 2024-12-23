@@ -25,5 +25,6 @@ namespace dgk::orchestrion::actionIds
 {
 static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
     {{DeviceType::MidiController, "chooseMidiControllerSubmenu"},
+     {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
 } // namespace dgk::orchestrion::actionIds

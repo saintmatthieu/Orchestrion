@@ -32,6 +32,8 @@ muse::Settings::Key DeviceMenuManager::defaultDeviceIdKey() const
   {
   case DeviceType::MidiController:
     return muse::Settings::Key{"midi", "default MIDI controller ID"};
+  case DeviceType::MidiSynthesizer:
+    return muse::Settings::Key{"midi", "default MIDI synthesizer ID"};
   case DeviceType::PlaybackDevice:
     return muse::Settings::Key{"audio", "default playback device ID"};
   }
@@ -118,7 +120,7 @@ void DeviceMenuManager::fillDeviceCache()
     if (it == m_deviceCache.end())
     {
       // New device
-      const auto menuId = getMenuId(m_deviceCache.size());
+      const auto menuId = getMenuId((int)m_deviceCache.size());
       dispatcher()->reg(this, menuId,
                         [this, wt = weak_from_this(), deviceId = device.id]()
                         {

@@ -7,6 +7,8 @@ set(MODULE_SRC
   internal/DeviceMenuManager.h
   internal/MidiControllerMenuManager.cpp
   internal/MidiControllerMenuManager.h
+  internal/MidiSynthesizerMenuManager.cpp
+  internal/MidiSynthesizerMenuManager.h
   internal/OrchestrionUiActions.cpp
   internal/OrchestrionUiActions.h
   internal/OrchestrionStartupScenario.cpp
@@ -18,6 +20,7 @@ set(MODULE_SRC
   view/OrchestrionWindowTitleProvider.cpp
   view/OrchestrionWindowTitleProvider.h
   IMidiControllerManager.h
+  IMidiSynthesizerManager.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   IPlaybackDeviceManager.h

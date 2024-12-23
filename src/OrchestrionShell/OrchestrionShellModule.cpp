@@ -18,6 +18,7 @@
  */
 #include "OrchestrionShellModule.h"
 #include "internal/MidiControllerMenuManager.h"
+#include "internal/MidiSynthesizerMenuManager.h"
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
@@ -32,10 +33,13 @@ namespace dgk::orchestrion
 OrchestrionShellModule::OrchestrionShellModule()
     : m_midiControllerMenuManager{std::make_shared<
           MidiControllerMenuManager>()},
+      m_midiSynthesizerMenuManager{
+          std::make_shared<MidiSynthesizerMenuManager>()},
       m_playbackDeviceMenuManager{
           std::make_shared<PlaybackDeviceMenuManager>()},
       m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
-          m_midiControllerMenuManager, m_playbackDeviceMenuManager)}
+          m_midiControllerMenuManager, m_midiSynthesizerMenuManager,
+          m_playbackDeviceMenuManager)}
 {
 }
 
@@ -52,6 +56,8 @@ void OrchestrionShellModule::registerExports()
       moduleName(), std::make_shared<OrchestrionStartupScenario>());
   ioc()->registerExport<IMidiControllerManager>(moduleName(),
                                                 m_midiControllerMenuManager);
+  ioc()->registerExport<IMidiSynthesizerManager>(moduleName(),
+                                                 m_midiSynthesizerMenuManager);
   ioc()->registerExport<IPlaybackDeviceManager>(moduleName(),
                                                 m_playbackDeviceMenuManager);
 }
@@ -77,7 +83,7 @@ void OrchestrionShellModule::registerUiTypes()
       "Orchestrion.OrchestrionShell", 1, 0, "OrchestrionWindowTitleProvider");
 }
 
-void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &mode)
+void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &)
 {
   m_playbackDeviceMenuManager->init();
 }

@@ -32,6 +32,7 @@ class OrchestrionUiActions : public IOrchestrionUiActions,
 public:
   OrchestrionUiActions(
       std::shared_ptr<DeviceMenuManager> midiControllerMenuManager,
+      std::shared_ptr<DeviceMenuManager> midiSynthesizerMenuManager,
       std::shared_ptr<DeviceMenuManager> playbackDeviceMenuManager);
 
   void init();
