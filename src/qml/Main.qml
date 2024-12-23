@@ -73,6 +73,7 @@ ApplicationWindow {
 
         onRequestedDockPage: function(uri, params) {
             notationPaintView.loadOrchestrionNotation()
+            onPageOpened()
         }
     }
 

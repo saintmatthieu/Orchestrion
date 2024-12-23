@@ -60,12 +60,14 @@ target_link_libraries(Orchestrion PRIVATE
     muse_midi
     muse_mpe
     muse_multiinstances
+    muse_network
     orchestrionsequencer
     playback
     project
     muse_shortcuts
     muse_ui
     muse_uicomponents
+    muse_update
     muse_workspace
 
     MusescoreShell

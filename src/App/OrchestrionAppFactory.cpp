@@ -39,12 +39,14 @@
 #include "midi/midimodule.h"
 #include "mpe/mpemodule.h"
 #include "multiinstances/multiinstancesmodule.h"
+#include "network/networkmodule.h"
 #include "notation/notationmodule.h"
 #include "playback/playbackmodule.h"
 #include "project/projectmodule.h"
 #include "shortcuts/shortcutsmodule.h"
 #include "ui/uimodule.h"
 #include "uicomponents/uicomponentsmodule.h"
+#include "update/updatemodule.h"
 #include "workspace/workspacemodule.h"
 
 namespace dgk::orchestrion
@@ -88,12 +90,14 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::midi::MidiModule());
   app->addModule(new muse::mpe::MpeModule());
   app->addModule(new muse::mi::MultiInstancesModule());
+  app->addModule(new muse::network::NetworkModule());
   app->addModule(new mu::notation::NotationModule());
   app->addModule(new mu::playback::PlaybackModule());
   app->addModule(new mu::project::ProjectModule());
   app->addModule(new muse::shortcuts::ShortcutsModule());
   app->addModule(new muse::ui::UiModule());
   app->addModule(new muse::uicomponents::UiComponentsModule());
+  app->addModule(new muse::update::UpdateModule());
   app->addModule(new muse::workspace::WorkspaceModule());
 
   return app;
