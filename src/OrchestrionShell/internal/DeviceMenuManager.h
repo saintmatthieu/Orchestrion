@@ -50,12 +50,6 @@ public:
   muse::async::Channel<std::string> selectedPlaybackDeviceChanged() const;
 
 protected:
-  struct DeviceDesc
-  {
-    std::string id;
-    std::string name;
-  };
-
   void doTrySelectDefaultDevice();
   std::string lastSelectedDevice() const;
   void onDeviceSuccessfullySet(const std::string &deviceId);
@@ -64,7 +58,11 @@ protected:
 private:
   struct DeviceItem : DeviceDesc
   {
-    bool available = true;
+    DeviceItem(std::string id, std::string name, bool available)
+        : DeviceDesc{id, name}, available{available}
+    {
+    }
+    bool available;
   };
 
   virtual muse::async::Notification availableDevicesChanged() const = 0;

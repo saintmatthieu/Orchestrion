@@ -23,13 +23,6 @@
 
 namespace dgk::orchestrion
 {
-enum class SynthType
-{
-  builtin,
-  plugin,
-  midi,
-};
-
 class ISynthesizerMenuManager : MODULE_EXPORT_INTERFACE
 {
   INTERFACE_ID(ISynthesizerMenuManager);
@@ -38,7 +31,5 @@ public:
   virtual ~ISynthesizerMenuManager() = default;
 
   virtual void trySelectDefaultDevice() = 0;
-  virtual SynthType synthType() const = 0;
-  virtual muse::async::Notification synthTypeChanged() const = 0;
 };
 } // namespace dgk::orchestrion

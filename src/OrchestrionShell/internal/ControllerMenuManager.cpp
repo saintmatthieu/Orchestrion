@@ -67,13 +67,13 @@ muse::async::Notification ControllerMenuManager::availableDevicesChanged() const
   return midiInPort()->availableDevicesChanged();
 }
 
-std::vector<DeviceMenuManager::DeviceDesc>
-ControllerMenuManager::availableDevices() const
+std::vector<DeviceDesc> ControllerMenuManager::availableDevices() const
 {
   const auto midiDevices = midiInPort()->availableDevices();
-  std::vector<DeviceDesc> descriptions(midiDevices.size());
-  std::transform(midiDevices.begin(), midiDevices.end(), descriptions.begin(),
-                 [](const auto &device)
+  std::vector<DeviceDesc> descriptions;
+  descriptions.reserve(midiDevices.size());
+  std::transform(midiDevices.begin(), midiDevices.end(),
+                 std::back_inserter(descriptions), [](const auto &device)
                  { return DeviceDesc{device.id, device.name}; });
   return descriptions;
 }

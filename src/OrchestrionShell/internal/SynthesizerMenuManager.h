@@ -27,8 +27,6 @@ private:
   // ISynthesizerMenuManager
 private:
   void trySelectDefaultDevice() override;
-  SynthType synthType() const override;
-  muse::async::Notification synthTypeChanged() const override;
 
   // DeviceMenuManager
 private:
@@ -41,7 +39,6 @@ private:
   std::vector<muse::audioplugins::AudioPluginInfo> availableSynths() const;
 
   muse::async::Notification m_availableDevicesChanged;
-  muse::async::Notification m_selectedSynthChanged;
   std::vector<muse::audioplugins::AudioPluginInfo> m_availableSynths;
   std::optional<std::string> m_selectedSynth;
 };

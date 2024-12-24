@@ -1,5 +1,4 @@
 #include "SynthesizerMenuManager.h"
-#include <log.h>
 
 namespace dgk::orchestrion
 {
@@ -44,8 +43,7 @@ SynthesizerMenuManager::availableDevicesChanged() const
   return m_availableDevicesChanged;
 }
 
-std::vector<DeviceMenuManager::DeviceDesc>
-SynthesizerMenuManager::availableDevices() const
+std::vector<DeviceDesc> SynthesizerMenuManager::availableDevices() const
 {
   using namespace muse;
   const std::vector<midi::MidiDevice> midiDevices =
@@ -78,32 +76,6 @@ SynthesizerMenuManager::availableSynths() const
       { return info.type == muse::audioplugins::AudioPluginType::Instrument; });
 }
 
-SynthType SynthesizerMenuManager::synthType() const
-{
-  if (!m_selectedSynth)
-    return SynthType::builtin;
-
-  const auto synths = availableSynths();
-  if (std::any_of(synths.begin(), synths.end(),
-                  [this](const muse::audioplugins::AudioPluginInfo &synth)
-                  { return synth.meta.id == *m_selectedSynth; }))
-    return SynthType::plugin;
-
-  // Not built-in, not plugin: must be MIDI
-  IF_ASSERT_FAILED(midiOutPort()->deviceID() == *m_selectedSynth)
-  {
-    // Hä? Fall-back to built-in
-    return SynthType::builtin;
-  }
-
-  return SynthType::midi;
-}
-
-muse::async::Notification SynthesizerMenuManager::synthTypeChanged() const
-{
-  return m_selectedSynthChanged;
-}
-
 bool SynthesizerMenuManager::selectDevice(const std::string &deviceId)
 {
   const auto synths = availableSynths();
@@ -122,7 +94,6 @@ bool SynthesizerMenuManager::selectDevice(const std::string &deviceId)
     m_selectedSynth.reset();
 
   onDeviceSuccessfullySet(deviceId);
-  m_selectedSynthChanged.notify();
   return true;
 }
 

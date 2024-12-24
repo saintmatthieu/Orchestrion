@@ -55,12 +55,12 @@ PlaybackDeviceMenuManager::availableDevicesChanged() const
   return m_availableDevicesChanged;
 }
 
-std::vector<DeviceMenuManager::DeviceDesc>
-PlaybackDeviceMenuManager::availableDevices() const
+std::vector<DeviceDesc> PlaybackDeviceMenuManager::availableDevices() const
 {
-  std::vector<DeviceDesc> descriptions(m_audioDevices.size());
+  std::vector<DeviceDesc> descriptions;
+  descriptions.reserve(m_audioDevices.size());
   std::transform(m_audioDevices.begin(), m_audioDevices.end(),
-                 descriptions.begin(), [](const auto &device)
+                 std::back_inserter(descriptions), [](const auto &device)
                  { return DeviceDesc{device.id, device.name}; });
   return descriptions;
 }
