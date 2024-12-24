@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "MidiControllerMenuManager.h"
+#include "ControllerMenuManager.h"
 #include <global/translation.h>
 #include <log.h>
 
@@ -28,12 +28,12 @@ const auto ignoreFailureKey =
     muse::Settings::Key{"midi", "ignore failure when setting MIDI controller"};
 } // namespace
 
-MidiControllerMenuManager::MidiControllerMenuManager()
+ControllerMenuManager::ControllerMenuManager()
     : DeviceMenuManager(DeviceType::MidiController)
 {
 }
 
-void MidiControllerMenuManager::doInit()
+void ControllerMenuManager::doInit()
 {
   multiInstances()->otherInstanceGainedFocus().onNotify(
       this,
@@ -52,24 +52,23 @@ void MidiControllerMenuManager::doInit()
       });
 }
 
-std::string MidiControllerMenuManager::selectedDevice() const
+std::string ControllerMenuManager::selectedDevice() const
 {
   return midiInPort()->deviceID();
 }
 
-void MidiControllerMenuManager::trySelectDefaultDevice()
+void ControllerMenuManager::trySelectDefaultDevice()
 {
   DeviceMenuManager::doTrySelectDefaultDevice();
 }
 
-muse::async::Notification
-MidiControllerMenuManager::availableDevicesChanged() const
+muse::async::Notification ControllerMenuManager::availableDevicesChanged() const
 {
   return midiInPort()->availableDevicesChanged();
 }
 
 std::vector<DeviceMenuManager::DeviceDesc>
-MidiControllerMenuManager::availableDevices() const
+ControllerMenuManager::availableDevices() const
 {
   const auto midiDevices = midiInPort()->availableDevices();
   std::vector<DeviceDesc> descriptions(midiDevices.size());
@@ -79,12 +78,12 @@ MidiControllerMenuManager::availableDevices() const
   return descriptions;
 }
 
-std::string MidiControllerMenuManager::getMenuId(int deviceIndex) const
+std::string ControllerMenuManager::getMenuId(int deviceIndex) const
 {
   return "chooseMidiDevice_" + std::to_string(deviceIndex);
 }
 
-bool MidiControllerMenuManager::selectDevice(const std::string &deviceId)
+bool ControllerMenuManager::selectDevice(const std::string &deviceId)
 {
   if (midiInPort()->connect(deviceId))
   {
@@ -131,7 +130,7 @@ bool MidiControllerMenuManager::selectDevice(const std::string &deviceId)
   return false;
 }
 
-bool MidiControllerMenuManager::maybePromptUser(const std::string &deviceId)
+bool ControllerMenuManager::maybePromptUser(const std::string &deviceId)
 {
   if (const muse::Val ignoreFailureSetting =
           settings()->value(ignoreFailureKey);
@@ -175,7 +174,7 @@ bool MidiControllerMenuManager::maybePromptUser(const std::string &deviceId)
   }
 }
 
-void MidiControllerMenuManager::onGainedFocus()
+void ControllerMenuManager::onGainedFocus()
 {
   if (midiInPort()->deviceID() == lastSelectedDevice() ||
       lastSelectedDevice().empty())

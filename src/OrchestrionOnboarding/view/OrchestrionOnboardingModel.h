@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "OrchestrionShell/IMidiControllerManager.h"
+#include "OrchestrionShell/IControllerMenuManager.h"
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
 #include <QQuickItem>
 #include <actions/iactionsdispatcher.h>
@@ -37,7 +37,7 @@ class OrchestrionOnboardingModel : public QQuickItem, public muse::Injectable
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
   muse::Inject<IOrchestrionStartupScenario> startupScenario = {this};
   muse::Inject<muse::mi::IMultiInstancesProvider> multiInstances = {this};
-  muse::Inject<IMidiControllerManager> midiControllerManager = {this};
+  muse::Inject<IControllerMenuManager> midiControllerManager = {this};
 
 public:
   Q_INVOKABLE void startOnboarding();

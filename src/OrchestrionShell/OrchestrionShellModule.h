@@ -24,10 +24,10 @@
 
 namespace dgk::orchestrion
 {
+class ControllerMenuManager;
 class OrchestrionUiActions;
-class MidiControllerMenuManager;
-class MidiSynthesizerMenuManager;
 class PlaybackDeviceMenuManager;
+class SynthesizerMenuManager;
 
 class OrchestrionShellModule : public muse::modularity::IModuleSetup
 {
@@ -46,8 +46,8 @@ public:
   void onAllInited(const muse::IApplication::RunMode &mode) override;
 
 private:
-  const std::shared_ptr<MidiControllerMenuManager> m_midiControllerMenuManager;
-  const std::shared_ptr<MidiSynthesizerMenuManager> m_midiSynthesizerMenuManager;
+  const std::shared_ptr<ControllerMenuManager> m_midiControllerMenuManager;
+  const std::shared_ptr<SynthesizerMenuManager> m_midiSynthesizerMenuManager;
   const std::shared_ptr<PlaybackDeviceMenuManager> m_playbackDeviceMenuManager;
   const std::shared_ptr<OrchestrionUiActions> m_orchestrionUiActions;
 };

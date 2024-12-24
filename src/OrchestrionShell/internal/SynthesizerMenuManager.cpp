@@ -1,4 +1,4 @@
-#include "MidiSynthesizerMenuManager.h"
+#include "SynthesizerMenuManager.h"
 #include <log.h>
 
 namespace dgk::orchestrion
@@ -7,45 +7,45 @@ namespace
 {
 constexpr auto builtinId = "builtin";
 }
-MidiSynthesizerMenuManager::MidiSynthesizerMenuManager()
+SynthesizerMenuManager::SynthesizerMenuManager()
     : DeviceMenuManager{DeviceType::MidiSynthesizer}
 {
 }
 
-void MidiSynthesizerMenuManager::onInit()
+void SynthesizerMenuManager::onInit()
 {
   midiOutPort()->availableDevicesChanged().onNotify(
       this, [this] { m_availableDevicesChanged.notify(); });
 }
 
-void MidiSynthesizerMenuManager::onAllInited()
+void SynthesizerMenuManager::onAllInited()
 {
   m_availableDevicesChanged.notify();
 }
 
-void MidiSynthesizerMenuManager::trySelectDefaultDevice()
+void SynthesizerMenuManager::trySelectDefaultDevice()
 {
   DeviceMenuManager::doTrySelectDefaultDevice();
 }
 
-std::string MidiSynthesizerMenuManager::getMenuId(int deviceIndex) const
+std::string SynthesizerMenuManager::getMenuId(int deviceIndex) const
 {
   return "chooseMidiSynth_" + std::to_string(deviceIndex);
 }
 
-std::string MidiSynthesizerMenuManager::selectedDevice() const
+std::string SynthesizerMenuManager::selectedDevice() const
 {
   return m_selectedSynth.value_or(builtinId);
 }
 
 muse::async::Notification
-MidiSynthesizerMenuManager::availableDevicesChanged() const
+SynthesizerMenuManager::availableDevicesChanged() const
 {
   return m_availableDevicesChanged;
 }
 
 std::vector<DeviceMenuManager::DeviceDesc>
-MidiSynthesizerMenuManager::availableDevices() const
+SynthesizerMenuManager::availableDevices() const
 {
   using namespace muse;
   const std::vector<midi::MidiDevice> midiDevices =
@@ -71,14 +71,14 @@ MidiSynthesizerMenuManager::availableDevices() const
 }
 
 std::vector<muse::audioplugins::AudioPluginInfo>
-MidiSynthesizerMenuManager::availableSynths() const
+SynthesizerMenuManager::availableSynths() const
 {
   return knownPlugins()->pluginInfoList(
       [](const muse::audioplugins::AudioPluginInfo &info)
       { return info.type == muse::audioplugins::AudioPluginType::Instrument; });
 }
 
-SynthType MidiSynthesizerMenuManager::synthType() const
+SynthType SynthesizerMenuManager::synthType() const
 {
   if (!m_selectedSynth)
     return SynthType::builtin;
@@ -99,12 +99,12 @@ SynthType MidiSynthesizerMenuManager::synthType() const
   return SynthType::midi;
 }
 
-muse::async::Notification MidiSynthesizerMenuManager::synthTypeChanged() const
+muse::async::Notification SynthesizerMenuManager::synthTypeChanged() const
 {
   return m_selectedSynthChanged;
 }
 
-bool MidiSynthesizerMenuManager::selectDevice(const std::string &deviceId)
+bool SynthesizerMenuManager::selectDevice(const std::string &deviceId)
 {
   const auto synths = availableSynths();
   const auto synthIt =

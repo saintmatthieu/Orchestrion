@@ -19,7 +19,7 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
-#include "IMidiControllerManager.h"
+#include "IControllerMenuManager.h"
 #include <context/iglobalcontext.h>
 #include <global/iinteractive.h>
 #include <midi/imidiinport.h>
@@ -27,11 +27,11 @@
 
 namespace dgk::orchestrion
 {
-class MidiControllerMenuManager : public IMidiControllerManager,
-                                  public DeviceMenuManager
+class ControllerMenuManager : public IControllerMenuManager,
+                              public DeviceMenuManager
 {
 public:
-  MidiControllerMenuManager();
+  ControllerMenuManager();
 
 private:
   muse::Inject<muse::midi::IMidiInPort> midiInPort = {this};
@@ -48,10 +48,10 @@ private:
   std::string getMenuId(int deviceIndex) const override;
   bool selectDevice(const std::string &deviceId) override;
 
-  // IMidiControllerManager
+  // IControllerMenuManager
 private:
   void trySelectDefaultDevice() override;
   void onGainedFocus() override;
-  bool maybePromptUser(const std::string& deviceId);
+  bool maybePromptUser(const std::string &deviceId);
 };
 } // namespace dgk::orchestrion

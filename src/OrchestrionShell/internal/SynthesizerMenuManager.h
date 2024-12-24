@@ -1,8 +1,8 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
-#include "IMidiControllerManager.h"
-#include "IMidiSynthesizerManager.h"
+#include "IControllerMenuManager.h"
+#include "ISynthesizerMenuManager.h"
 #include <audioplugins/iknownaudiopluginsregister.h>
 #include <midi/imidioutport.h>
 
@@ -10,11 +10,11 @@
 
 namespace dgk::orchestrion
 {
-class MidiSynthesizerMenuManager : public IMidiSynthesizerManager,
-                                   public DeviceMenuManager
+class SynthesizerMenuManager : public ISynthesizerMenuManager,
+                               public DeviceMenuManager
 {
 public:
-  MidiSynthesizerMenuManager();
+  SynthesizerMenuManager();
 
   void onInit();
   void onAllInited();
@@ -24,7 +24,7 @@ private:
   muse::Inject<muse::audioplugins::IKnownAudioPluginsRegister> knownPlugins = {
       this};
 
-  // IMidiSynthesizerManager
+  // ISynthesizerMenuManager
 private:
   void trySelectDefaultDevice() override;
   SynthType synthType() const override;

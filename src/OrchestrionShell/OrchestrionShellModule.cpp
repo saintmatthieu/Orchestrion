@@ -17,8 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionShellModule.h"
-#include "internal/MidiControllerMenuManager.h"
-#include "internal/MidiSynthesizerMenuManager.h"
+#include "internal/ControllerMenuManager.h"
+#include "internal/SynthesizerMenuManager.h"
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
@@ -32,9 +32,9 @@ namespace dgk::orchestrion
 {
 OrchestrionShellModule::OrchestrionShellModule()
     : m_midiControllerMenuManager{std::make_shared<
-          MidiControllerMenuManager>()},
+          ControllerMenuManager>()},
       m_midiSynthesizerMenuManager{
-          std::make_shared<MidiSynthesizerMenuManager>()},
+          std::make_shared<SynthesizerMenuManager>()},
       m_playbackDeviceMenuManager{
           std::make_shared<PlaybackDeviceMenuManager>()},
       m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
@@ -54,9 +54,9 @@ void OrchestrionShellModule::registerExports()
                                                m_orchestrionUiActions);
   ioc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), std::make_shared<OrchestrionStartupScenario>());
-  ioc()->registerExport<IMidiControllerManager>(moduleName(),
+  ioc()->registerExport<IControllerMenuManager>(moduleName(),
                                                 m_midiControllerMenuManager);
-  ioc()->registerExport<IMidiSynthesizerManager>(moduleName(),
+  ioc()->registerExport<ISynthesizerMenuManager>(moduleName(),
                                                  m_midiSynthesizerMenuManager);
   ioc()->registerExport<IPlaybackDeviceManager>(moduleName(),
                                                 m_playbackDeviceMenuManager);
