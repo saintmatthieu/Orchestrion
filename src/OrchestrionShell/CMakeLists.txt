@@ -29,4 +29,8 @@ set(MODULE_SRC
   OrchestrionShellTypes.h
 )
 
+set(MODULE_INCLUDE
+  ${vst3sdk_SOURCE_DIR}
+)
+
 setup_module()

@@ -18,10 +18,18 @@
  */
 #pragma once
 
+#include <async/notification.h>
 #include <modularity/imoduleinterface.h>
 
 namespace dgk::orchestrion
 {
+enum class SynthType
+{
+  builtin,
+  plugin,
+  midi,
+};
+
 class IMidiSynthesizerManager : MODULE_EXPORT_INTERFACE
 {
   INTERFACE_ID(IMidiSynthesizerManager);
@@ -30,5 +38,7 @@ public:
   virtual ~IMidiSynthesizerManager() = default;
 
   virtual void trySelectDefaultDevice() = 0;
+  virtual SynthType synthType() const = 0;
+  virtual muse::async::Notification synthTypeChanged() const = 0;
 };
 } // namespace dgk::orchestrion

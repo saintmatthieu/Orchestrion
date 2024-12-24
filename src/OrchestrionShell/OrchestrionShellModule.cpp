@@ -94,5 +94,11 @@ void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
     return;
 
   m_orchestrionUiActions->init();
+  m_midiSynthesizerMenuManager->onInit();
+}
+
+void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &)
+{
+  m_midiSynthesizerMenuManager->onAllInited();
 }
 } // namespace dgk::orchestrion

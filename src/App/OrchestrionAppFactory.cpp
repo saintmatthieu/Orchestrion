@@ -29,6 +29,7 @@
 #include "accessibility/accessibilitymodule.h"
 #include "actions/actionsmodule.h"
 #include "audio/audiomodule.h"
+#include "audioplugins/audiopluginsmodule.h"
 #include "braille/braillemodule.h"
 #include "commonscene/commonscenemodule.h"
 #include "context/contextmodule.h"
@@ -47,6 +48,7 @@
 #include "ui/uimodule.h"
 #include "uicomponents/uicomponentsmodule.h"
 #include "update/updatemodule.h"
+#include "vst/vstmodule.h"
 #include "workspace/workspacemodule.h"
 
 namespace dgk::orchestrion
@@ -81,6 +83,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::accessibility::AccessibilityModule());
   app->addModule(new muse::actions::ActionsModule());
   app->addModule(new muse::audio::AudioModule());
+  app->addModule(new muse::audioplugins::AudioPluginsModule());
   app->addModule(new mu::braille::BrailleModule());
   app->addModule(new mu::commonscene::CommonSceneModule());
   app->addModule(new mu::context::ContextModule());
@@ -98,6 +101,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::ui::UiModule());
   app->addModule(new muse::uicomponents::UiComponentsModule());
   app->addModule(new muse::update::UpdateModule());
+  app->addModule(new muse::vst::VSTModule());
   app->addModule(new muse::workspace::WorkspaceModule());
 
   return app;

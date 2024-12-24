@@ -43,6 +43,7 @@ public:
 
   void onPreInit(const muse::IApplication::RunMode &mode) override;
   void onInit(const muse::IApplication::RunMode &mode) override;
+  void onAllInited(const muse::IApplication::RunMode &mode) override;
 
 private:
   const std::shared_ptr<MidiControllerMenuManager> m_midiControllerMenuManager;

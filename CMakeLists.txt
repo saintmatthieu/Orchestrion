@@ -13,6 +13,7 @@ set(MuseScore_ROOT_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_BUILD_UNIT_TESTS OFF)
 
+include(vst3sdk.cmake)
 include(MuseScore.cmake)
 
 add_subdirectory(src/MusescoreShell)
@@ -45,9 +46,13 @@ target_link_libraries(Orchestrion PRIVATE
     Qt6::Quick
     Qt6::Widgets
 
+    vst3sdk::sdk
+    vst3sdk::sdk_hosting
+
     muse_actions
     muse_accessibility
     muse_audio
+    muse_audioplugins
     braille
     commonscene
     context
@@ -68,6 +73,7 @@ target_link_libraries(Orchestrion PRIVATE
     muse_ui
     muse_uicomponents
     muse_update
+    muse_vst
     muse_workspace
 
     MusescoreShell
