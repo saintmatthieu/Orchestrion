@@ -7,6 +7,8 @@ set(MODULE_SRC
   internal/ControllerMenuManager.h
   internal/DeviceMenuManager.cpp
   internal/DeviceMenuManager.h
+  internal/OrchestrionEventProcessor.cpp
+  internal/OrchestrionEventProcessor.h
   internal/OrchestrionUiActions.cpp
   internal/OrchestrionUiActions.h
   internal/OrchestrionStartupScenario.cpp

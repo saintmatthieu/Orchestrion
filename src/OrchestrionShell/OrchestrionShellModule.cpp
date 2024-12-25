@@ -18,6 +18,7 @@
  */
 #include "OrchestrionShellModule.h"
 #include "internal/ControllerMenuManager.h"
+#include "internal/OrchestrionEventProcessor.h"
 #include "internal/SynthesizerMenuManager.h"
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
@@ -37,6 +38,8 @@ OrchestrionShellModule::OrchestrionShellModule()
           std::make_shared<SynthesizerMenuManager>()},
       m_playbackDeviceMenuManager{
           std::make_shared<PlaybackDeviceMenuManager>()},
+      m_orchestrionEventProcessor{
+          std::make_shared<OrchestrionEventProcessor>()},
       m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
           m_midiControllerMenuManager, m_midiSynthesizerMenuManager,
           m_playbackDeviceMenuManager)}
@@ -93,6 +96,7 @@ void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
 
+  m_orchestrionEventProcessor->init();
   m_orchestrionUiActions->init();
   m_midiSynthesizerMenuManager->onInit();
 }
