@@ -23,7 +23,7 @@
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionShell/IPlaybackDeviceManager.h"
 #include "OrchestrionShell/ISynthesizerMenuManager.h"
-#include "orchestrionsequencer/IComputerKeyboard.h"
+#include "OrchestrionSequencer/IComputerKeyboard.h"
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>

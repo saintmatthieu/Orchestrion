@@ -13,13 +13,17 @@ set(MuseScore_ROOT_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_BUILD_UNIT_TESTS OFF)
 
+include_directories(${PROJECT_SOURCE_DIR}/src)
+
 include(vst3sdk.cmake)
 include(MuseScore.cmake)
 
 add_subdirectory(src/MusescoreShell)
 add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionOnboarding)
+add_subdirectory(src/OrchestrionSequencer)
 add_subdirectory(src/OrchestrionShell)
+add_subdirectory(src/ScoreAnimation)
 
 # Add the executable
 qt_add_executable(Orchestrion WIN32
@@ -66,7 +70,6 @@ target_link_libraries(Orchestrion PRIVATE
     muse_mpe
     muse_multiinstances
     muse_network
-    orchestrionsequencer
     playback
     project
     muse_shortcuts
@@ -75,10 +78,11 @@ target_link_libraries(Orchestrion PRIVATE
     muse_update
     muse_vst
     muse_workspace
-
+    
     MusescoreShell
     OrchestrionNotation
     OrchestrionOnboarding
+    OrchestrionSequencer
     OrchestrionShell
     ScoreAnimation
 )
