@@ -23,6 +23,7 @@
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
+#include "internal/SynthesizerManager.h"
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
 #include "view/NotationPaintViewLoaderModel.h"
@@ -32,17 +33,16 @@
 namespace dgk::orchestrion
 {
 OrchestrionShellModule::OrchestrionShellModule()
-    : m_midiControllerMenuManager{std::make_shared<
-          ControllerMenuManager>()},
-      m_midiSynthesizerMenuManager{
-          std::make_shared<SynthesizerMenuManager>()},
+    : m_midiControllerMenuManager{std::make_shared<ControllerMenuManager>()},
+      m_midiSynthesizerMenuManager{std::make_shared<SynthesizerMenuManager>()},
       m_playbackDeviceMenuManager{
           std::make_shared<PlaybackDeviceMenuManager>()},
       m_orchestrionEventProcessor{
           std::make_shared<OrchestrionEventProcessor>()},
       m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
           m_midiControllerMenuManager, m_midiSynthesizerMenuManager,
-          m_playbackDeviceMenuManager)}
+          m_playbackDeviceMenuManager)},
+      m_synthesizerManager{std::make_shared<SynthesizerManager>()}
 {
 }
 
@@ -63,6 +63,8 @@ void OrchestrionShellModule::registerExports()
                                                  m_midiSynthesizerMenuManager);
   ioc()->registerExport<IPlaybackDeviceManager>(moduleName(),
                                                 m_playbackDeviceMenuManager);
+  ioc()->registerExport<ISynthesizerManager>(moduleName(),
+                                             m_synthesizerManager);
 }
 
 void OrchestrionShellModule::resolveImports()
@@ -98,11 +100,11 @@ void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
 
   m_orchestrionEventProcessor->init();
   m_orchestrionUiActions->init();
-  m_midiSynthesizerMenuManager->onInit();
+  m_synthesizerManager->init();
 }
 
 void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &)
 {
-  m_midiSynthesizerMenuManager->onAllInited();
+  m_synthesizerManager->onAllInited();
 }
 } // namespace dgk::orchestrion
