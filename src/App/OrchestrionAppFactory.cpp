@@ -22,7 +22,7 @@
 #include "MuseScoreShell/MusescoreShellModule.h"
 #include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"
-#include "OrchestrionSequencer/OrchestrionModule.h"
+#include "Orchestrion/OrchestrionModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
 #include "ScoreAnimation/ScoreAnimationModule.h"
 

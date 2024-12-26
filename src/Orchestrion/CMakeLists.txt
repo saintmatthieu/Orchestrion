@@ -1,4 +1,4 @@
-declare_module(OrchestrionSequencer)
+declare_module(Orchestrion)
 
 set(MODULE_SRC
     internal/ComputerKeyboard.cpp

@@ -18,12 +18,12 @@
  */
 #pragma once
 
-#include "OrchestrionSequencer/IOrchestrionSequencerUiActions.h"
+#include "Orchestrion/IOrchestrionSequencerUiActions.h"
 #include "OrchestrionShell/IControllerMenuManager.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionShell/IPlaybackDeviceManager.h"
 #include "OrchestrionShell/ISynthesizerMenuManager.h"
-#include "OrchestrionSequencer/IComputerKeyboard.h"
+#include "Orchestrion/IComputerKeyboard.h"
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>

@@ -1,6 +1,6 @@
 #include "ScoreAnimator.h"
-#include "OrchestrionSequencer/IOrchestrionSequencer.h"
-#include "OrchestrionSequencer/OrchestrionTypes.h"
+#include "Orchestrion/IOrchestrionSequencer.h"
+#include "Orchestrion/OrchestrionTypes.h"
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/note.h>

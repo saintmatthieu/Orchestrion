@@ -19,14 +19,14 @@ include(vst3sdk.cmake)
 include(MuseScore.cmake)
 
 add_subdirectory(src/MusescoreShell)
+add_subdirectory(src/Orchestrion)
 add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionOnboarding)
-add_subdirectory(src/OrchestrionSequencer)
 add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/ScoreAnimation)
 
 # Add the executable
-qt_add_executable(Orchestrion WIN32
+qt_add_executable(OrchestrionApp WIN32
     src/main.cpp
     src/App/CommandLineParser.cpp
     src/App/CommandLineParser.h
@@ -37,13 +37,13 @@ qt_add_executable(Orchestrion WIN32
     src/App/OrchestrionAppFactory.h
 )
 
-set_target_properties(Orchestrion PROPERTIES
+set_target_properties(OrchestrionApp PROPERTIES
     AUTOMOC ON
     AUTORCC ON
     AUTOUIC ON
 )
 
-target_link_libraries(Orchestrion PRIVATE
+target_link_libraries(OrchestrionApp PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
@@ -80,16 +80,16 @@ target_link_libraries(Orchestrion PRIVATE
     muse_workspace
     
     MusescoreShell
+    Orchestrion
     OrchestrionNotation
     OrchestrionOnboarding
-    OrchestrionSequencer
     OrchestrionShell
     ScoreAnimation
 )
 
 # Add QML files to the project (for IDEs and resource system)
-qt_add_qml_module(Orchestrion
-    URI Orchestrion
+qt_add_qml_module(OrchestrionApp
+    URI OrchestrionApp
     VERSION 1.0
     QML_FILES "src/qml/Main.qml"
 )
@@ -97,17 +97,18 @@ qt_add_qml_module(Orchestrion
 qt_add_resources(RESOURCES resources.qrc)
 qt_add_resources(RESOURCES src/App/OrchestrionApp.qrc)
 
-target_sources(Orchestrion PRIVATE
+target_sources(OrchestrionApp PRIVATE
     ${RESOURCES}
 )
 
 # Add a post-build step to copy SNDFILE_DLL to the output directory
-add_custom_command(TARGET Orchestrion POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:Orchestrion>
+add_custom_command(TARGET OrchestrionApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>
 )
 
 add_subdirectory(MuseScore/share/sound) # installs soundfonts
-install(TARGETS Orchestrion RUNTIME DESTINATION bin)
+install(TARGETS OrchestrionApp RUNTIME DESTINATION bin)
+
 install(FILES "${CMAKE_SOURCE_DIR}/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz" DESTINATION "scores")
 if (SNDFILE_DLL)
     install(FILES ${SNDFILE_DLL} DESTINATION bin)

@@ -20,7 +20,7 @@
 
 #include "IChordRegistry.h"
 #include "IScoreAnimator.h"
-#include "OrchestrionSequencer/IOrchestrion.h"
+#include "Orchestrion/IOrchestrion.h"
 #include <async/asyncable.h>
 #include <context/iglobalcontext.h>
 #include <modularity/ioc.h>

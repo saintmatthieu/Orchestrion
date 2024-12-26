@@ -4,7 +4,7 @@
       "name": "Debug Qt Application with Visual Studio Debugger",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/install/bin/${workspaceFolderBasename}.exe",
+      "program": "${workspaceFolder}/build/install/bin/OrchestrionApp.exe",
       "preLaunchTask": "CMake: install",
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
