@@ -20,6 +20,7 @@
 
 #include "OrchestrionTypes.h"
 #include <async/channel.h>
+#include <audio/OrchestrionEventTypes.h>
 
 namespace dgk
 {

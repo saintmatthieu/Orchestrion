@@ -19,7 +19,6 @@
 #include <random>
 #include <thread>
 #include <unordered_set>
-#include <variant>
 #include <vector>
 
 namespace dgk
