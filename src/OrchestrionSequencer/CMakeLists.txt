@@ -1,4 +1,4 @@
-set(MODULE OrchestrionSequencer)
+declare_module(OrchestrionSequencer)
 
 set(MODULE_SRC
     internal/ComputerKeyboard.cpp
@@ -37,5 +37,6 @@ set(MODULE_SRC
 set(MODULE_NOT_LINK_GLOBAL ON)
 set(MODULE_USE_PCH_NONE ON)
 set(MODULE_USE_UNITY_NONE ON)
+set(MODULE_LINK muse_audio)
 
 setup_module()

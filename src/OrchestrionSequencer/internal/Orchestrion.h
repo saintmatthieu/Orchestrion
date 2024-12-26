@@ -4,6 +4,7 @@
 #include "OrchestrionSequencer.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
+#include <audio/internal/worker/iaudioengine.h>
 #include <context/iglobalcontext.h>
 
 namespace dgk
@@ -14,6 +15,7 @@ class Orchestrion : public IOrchestrion,
 {
   muse::Inject<mu::playback::IPlaybackController> playbackController = {this};
   muse::Inject<mu::context::IGlobalContext> globalContext = {this};
+  muse::Inject<muse::audio::IAudioEngine> audioEngine = {this};
 
 public:
   void init();

@@ -1,5 +1,7 @@
 #include "Orchestrion.h"
 #include "OrchestrionSequencerFactory.h"
+#include <async/async.h>
+#include <audio/internal/audiothread.h>
 #include <engraving/dom/masterscore.h>
 
 namespace dgk
@@ -24,6 +26,14 @@ void Orchestrion::init()
         }
         auto sequencer =
             OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation, map);
+
+        // This goes beyond just the official API of the audio module. Is there
+        // a better way?
+        muse::async::Async::call(
+            this, [this]
+            { audioEngine()->setMode(muse::audio::RenderMode::RealTimeMode); },
+            muse::audio::AudioThread::ID);
+
         setSequencer(std::move(sequencer));
       });
 }

@@ -25,7 +25,8 @@ void OrchestrionSequencerActionController::init()
   const auto ids = uiActions()->computerKeyboardSetterActionIds();
 
   for (const auto &[layout, id] : ids)
-    dispatcher()->reg(this, id, [layout, this](const muse::actions::ActionData &args)
+    dispatcher()->reg(this, id,
+                      [layout, this](const muse::actions::ActionData &)
                       { keyboard()->setLayout(layout); });
 }
 } // namespace dgk
