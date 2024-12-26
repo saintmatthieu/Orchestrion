@@ -56,19 +56,24 @@ void ComputerKeyboardImpl::init() { qApp->installEventFilter(this); }
 
 bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
 {
-  if (event->type() == QEvent::KeyPress)
+  const bool isKeyModifierPressed =
+      QApplication::keyboardModifiers() & Qt::KeyboardModifier::ControlModifier;
+  if (!isKeyModifierPressed)
   {
-    QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-    if (keyEvent->isAutoRepeat())
-      return false;
-    m_owner.onKeyPressed(keyEvent->key());
-  }
-  else if (event->type() == QEvent::KeyRelease)
-  {
-    QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-    if (keyEvent->isAutoRepeat())
-      return false;
-    m_owner.onKeyReleased(keyEvent->key());
+    if (event->type() == QEvent::KeyPress)
+    {
+      QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+      if (keyEvent->isAutoRepeat())
+        return false;
+      m_owner.onKeyPressed(keyEvent->key());
+    }
+    else if (event->type() == QEvent::KeyRelease)
+    {
+      QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+      if (keyEvent->isAutoRepeat())
+        return false;
+      m_owner.onKeyReleased(keyEvent->key());
+    }
   }
   return QObject::eventFilter(watched, event);
 }
