@@ -1,5 +1,6 @@
 #include "OrchestrionSequencer.h"
 #include <algorithm>
+#include <engraving/dom/note.h>
 #include <iterator>
 #include <notation/inotationmidiinput.h>
 #include <numeric>
@@ -93,6 +94,13 @@ OrchestrionSequencer::OrchestrionSequencer(int track, Hand rightHand,
         voiceSequencer->ChordActivationChanged().onReceive(
             this, [this, voiceSequencer](ChordActivationChange change)
             { m_chordActivationChanged.send(voiceSequencer->track, change); });
+      });
+  orchestrionNotationInteraction()->elementClicked().onReceive(
+      this,
+      [this](const mu::notation::EngravingItem *item)
+      {
+        if (const auto note = dynamic_cast<const mu::engraving::Note *>(item))
+          GoToTick(note->tick().ticks());
       });
 }
 

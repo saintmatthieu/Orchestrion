@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationModule.h"
+#include "internal/OrchestrionNotationInteraction.h"
 #include "view/OrchestrionNotationPaintView.h"
 
 namespace dgk::orchestrion
@@ -30,5 +31,11 @@ void OrchestrionNotationModule::registerUiTypes()
 {
   qmlRegisterType<OrchestrionNotationPaintView>(
       "Orchestrion.OrchestrionNotation", 1, 0, "OrchestrionNotationPaintView");
+}
+
+void OrchestrionNotationModule::registerExports()
+{
+  ioc()->registerExport<IOrchestrionNotationInteraction>(
+      moduleName(), std::make_shared<OrchestrionNotationInteraction>());
 }
 } // namespace dgk::orchestrion

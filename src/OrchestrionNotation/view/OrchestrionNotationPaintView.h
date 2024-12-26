@@ -18,7 +18,9 @@
  */
 #pragma once
 
-#include "notation/view/notationpaintview.h"
+#include "IOrchestrionNotationInteraction.h"
+#include <notation/inotationconfiguration.h>
+#include <notation/view/notationpaintview.h>
 
 namespace dgk::orchestrion
 {
@@ -26,6 +28,9 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
   Q_OBJECT
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
+  muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction =
+      {this};
+  muse::Inject<mu::notation::INotationConfiguration> configuration = {this};
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
@@ -33,6 +38,8 @@ public:
   Q_INVOKABLE void loadOrchestrionNotation();
 
 private:
+  void mousePressEvent(QMouseEvent *event) override;
+
   void alignVertically();
 };
 } // namespace dgk::orchestrion

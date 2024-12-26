@@ -25,6 +25,14 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
 {
 }
 
+void OrchestrionNotationPaintView::mousePressEvent(QMouseEvent *event)
+{
+  const muse::PointF logicPos = toLogical(event->pos());
+  const float hitWidth =
+      configuration()->selectionProximity() * 0.5f / currentScaling();
+  orchestrionNotationInteraction()->onMousePressed(logicPos, hitWidth);
+}
+
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   load();
