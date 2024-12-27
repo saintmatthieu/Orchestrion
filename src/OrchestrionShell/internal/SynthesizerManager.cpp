@@ -58,25 +58,7 @@ bool SynthesizerManager::selectSynth(const std::string &synthId)
           { return instrument.meta.id == synthId; });
       it != instruments.end())
   {
-    const auto tracks = playback()->tracks();
-    constexpr auto trackSequenceId = 0; // TODO
-    tracks->trackIdList(trackSequenceId)
-        .onResolve(this,
-                   [this, tracks, meta = it->meta,
-                    trackSequenceId](const muse::audio::TrackIdList &trackIds)
-                   {
-                     muse::audio::AudioInputParams params;
-                     params.resourceMeta = meta;
-                     for (const auto &trackId : trackIds)
-                       tracks->setInputParams(trackSequenceId, trackId, params);
-                   })
-        .onReject(this,
-                  [](int, const std::string &)
-                  {
-                    //
-                    LOGE() << "Failed to set input params";
-                  });
-
+    synthesizerConnector()->connectSynthesizer(it->meta);
     midiOutPort()->disconnect();
     m_selectedSynth = synthId;
 

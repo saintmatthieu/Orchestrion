@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ISynthesizerManager.h"
+#include "OrchestrionSynthesis/ISynthesizerConnector.h"
 #include <async/asyncable.h>
 #include <audio/iplayback.h>
 #include <audioplugins/iknownaudiopluginsregister.h>
@@ -17,6 +18,7 @@ class SynthesizerManager : public ISynthesizerManager,
   muse::Inject<muse::audioplugins::IKnownAudioPluginsRegister> knownPlugins = {
       this};
   muse::Inject<muse::audio::IPlayback> playback = {this};
+  muse::Inject<ISynthesizerConnector> synthesizerConnector = {this};
 
 public:
   SynthesizerManager() = default;

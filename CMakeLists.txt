@@ -23,6 +23,7 @@ add_subdirectory(src/Orchestrion)
 add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionOnboarding)
 add_subdirectory(src/OrchestrionShell)
+add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
 
 # Add the executable
@@ -84,6 +85,7 @@ target_link_libraries(OrchestrionApp PRIVATE
     OrchestrionNotation
     OrchestrionOnboarding
     OrchestrionShell
+    OrchestrionSynthesis
     ScoreAnimation
 )
 
