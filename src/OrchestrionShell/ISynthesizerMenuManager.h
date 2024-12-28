@@ -21,7 +21,7 @@
 #include <async/notification.h>
 #include <modularity/imoduleinterface.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class ISynthesizerMenuManager : MODULE_EXPORT_INTERFACE
 {
@@ -32,4 +32,4 @@ public:
 
   virtual void trySelectDefaultDevice() = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

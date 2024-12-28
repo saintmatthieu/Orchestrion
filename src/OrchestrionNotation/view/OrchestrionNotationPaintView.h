@@ -22,7 +22,7 @@
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
@@ -42,4 +42,4 @@ private:
 
   void alignVertically();
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

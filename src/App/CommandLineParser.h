@@ -25,7 +25,7 @@
 
 class QCoreApplication;
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class CommandLineParser
 {
@@ -55,4 +55,4 @@ private:
   QCommandLineParser m_parser;
   CommandOptions m_options;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

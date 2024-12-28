@@ -8,7 +8,7 @@
 #include <midi/imidioutport.h>
 #include <modularity/ioc.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class SynthesizerManager : public ISynthesizerManager,
                            public muse::Injectable,
@@ -38,4 +38,4 @@ private:
   std::vector<muse::audioplugins::AudioPluginInfo> m_availableSynths;
   std::optional<std::string> m_selectedSynth;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

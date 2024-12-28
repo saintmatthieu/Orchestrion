@@ -22,7 +22,7 @@
 #include "context/shortcutcontext.h"
 #include "context/uicontext.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 namespace
 {
@@ -116,4 +116,4 @@ OrchestrionUiActions::actionCheckedChanged() const
 {
   return m_actionCheckedChanged;
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

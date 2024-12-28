@@ -7,7 +7,7 @@
 #include "global/io/path.h"
 #include "global/logger.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 enum class ConvertType
 {
@@ -146,4 +146,4 @@ struct CommandOptions
     int failCode = 0;
   } audioPluginRegistration;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

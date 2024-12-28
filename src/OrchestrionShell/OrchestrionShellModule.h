@@ -22,7 +22,7 @@
 
 #include "modularity/imodulesetup.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class ControllerMenuManager;
 class OrchestrionUiActions;
@@ -55,4 +55,4 @@ private:
   const std::shared_ptr<OrchestrionUiActions> m_orchestrionUiActions;
   const std::shared_ptr<SynthesizerManager> m_synthesizerManager;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

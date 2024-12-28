@@ -20,7 +20,7 @@
 
 #include <modularity/imoduleinterface.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class IPlaybackDeviceManager : MODULE_EXPORT_INTERFACE
 {
@@ -31,4 +31,4 @@ public:
 
   virtual void trySelectDefaultDevice() = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

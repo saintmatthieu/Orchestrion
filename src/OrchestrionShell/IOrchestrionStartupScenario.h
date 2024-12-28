@@ -23,7 +23,7 @@
 #include <modularity/imoduleinterface.h>
 #include <optional>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 struct StartupProjectFile
 {
@@ -42,4 +42,4 @@ public:
   virtual void
   setStartupScoreFile(const std::optional<StartupProjectFile> &file) = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

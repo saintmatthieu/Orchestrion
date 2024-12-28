@@ -22,7 +22,7 @@
 
 #include "modularity/imodulesetup.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class MusescoreShellModule : public muse::modularity::IModuleSetup
 {
@@ -32,4 +32,4 @@ public:
   void registerResources() override;
   void registerUiTypes() override;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

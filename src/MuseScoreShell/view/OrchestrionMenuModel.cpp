@@ -21,7 +21,7 @@
 #include "log.h"
 #include "types/translatablestring.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
     : AbstractMenuModel(parent)
@@ -228,4 +228,4 @@ void OrchestrionMenuModel::setOpenedMenuAreaRect(QRect openedMenuAreaRect)
   m_openedMenuAreaRect = openedMenuAreaRect;
   emit openedMenuAreaRectChanged(m_openedMenuAreaRect);
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

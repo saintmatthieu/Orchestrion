@@ -20,7 +20,7 @@
 
 #include "modularity/imodulesetup.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionSynthesisModule : public muse::modularity::IModuleSetup
 {
@@ -32,4 +32,4 @@ private:
   void registerExports() override;
 };
 
-} // namespace dgk::orchestrion
+} // namespace dgk

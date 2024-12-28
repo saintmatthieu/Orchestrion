@@ -101,7 +101,7 @@ void ForAllSegments(
 }
 
 auto GetChordSequence(mu::engraving::Score &score,
-                      orchestrion::IChordRegistry &chordRegistry,
+                      IChordRegistry &chordRegistry,
                       size_t staffIdx, int voice)
 {
   std::vector<ChordPtr> sequence;

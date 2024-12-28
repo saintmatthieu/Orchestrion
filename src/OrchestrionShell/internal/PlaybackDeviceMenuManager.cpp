@@ -19,7 +19,7 @@
 #include "PlaybackDeviceMenuManager.h"
 #include <future>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 PlaybackDeviceMenuManager::PlaybackDeviceMenuManager()
     : DeviceMenuManager(DeviceType::PlaybackDevice)
@@ -84,4 +84,4 @@ bool PlaybackDeviceMenuManager::selectDevice(const std::string &deviceId)
   }
   return false;
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

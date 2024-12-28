@@ -18,7 +18,7 @@ class IOrchestrionSequencer;
 
 class OrchestrionSequencerFactory : public muse::Injectable
 {
-  muse::Inject<orchestrion::IChordRegistry> chordRegistry;
+  muse::Inject<IChordRegistry> chordRegistry;
 
 public:
   std::unique_ptr<IOrchestrionSequencer> CreateSequencer(

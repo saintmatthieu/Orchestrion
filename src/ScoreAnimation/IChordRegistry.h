@@ -33,7 +33,7 @@ namespace dgk
 class IChord;
 }
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class IChordRegistry : MODULE_EXPORT_INTERFACE
 {
@@ -46,4 +46,4 @@ public:
                              const mu::engraving::Segment *) = 0;
   virtual const mu::engraving::Segment *GetSegment(const IChord *) const = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

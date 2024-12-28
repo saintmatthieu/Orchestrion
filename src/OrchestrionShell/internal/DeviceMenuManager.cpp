@@ -19,7 +19,7 @@
 #include "DeviceMenuManager.h"
 #include <algorithm>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 DeviceMenuManager::DeviceMenuManager(DeviceType deviceType)
     : m_deviceType(deviceType)
@@ -138,4 +138,4 @@ void DeviceMenuManager::fillDeviceCache()
   }
 }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

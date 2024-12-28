@@ -3,10 +3,7 @@
 #include <async/async.h>
 #include <audio/internal/audiothread.h>
 
-namespace dgk::orchestrion
-{
-void SynthesizerConnector::connectSynthesizer(
-    const muse::audio::AudioResourceMeta &meta)
+namespace dgk
 {
   switch (meta.type)
   {
@@ -32,4 +29,4 @@ void SynthesizerConnector::connectSynthesizer(
     break;
   }
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

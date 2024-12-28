@@ -25,7 +25,7 @@
 
 #include "log.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 namespace
 {
@@ -729,4 +729,4 @@ void CommandLineParser::printLongVersion() const
            muse::BaseApplication::appRevision().toStdString().c_str());
   }
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

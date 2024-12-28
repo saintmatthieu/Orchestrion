@@ -18,7 +18,7 @@
  */
 #include "OrchestrionStartupScenario.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 const StartupProjectFile &OrchestrionStartupScenario::startupProjectFile() const
 {
@@ -37,4 +37,4 @@ void OrchestrionStartupScenario::setStartupScoreFile(
     m_startupProjectFile = {};
   }
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

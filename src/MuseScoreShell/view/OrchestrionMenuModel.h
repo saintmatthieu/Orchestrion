@@ -29,7 +29,7 @@
 #include <actions/iactionsdispatcher.h>
 #include <uicomponents/view/abstractmenumodel.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
                              public muse::actions::Actionable
@@ -98,4 +98,4 @@ private:
   QRect m_openedMenuAreaRect;
   QString m_openedMenuId;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

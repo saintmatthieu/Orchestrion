@@ -21,10 +21,10 @@
 #include "MuseScoreShellTypes.h"
 #include <unordered_map>
 
-namespace dgk::orchestrion::actionIds
+namespace dgk::actionIds
 {
 static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
     {{DeviceType::MidiController, "chooseMidiControllerSubmenu"},
      {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
-} // namespace dgk::orchestrion::actionIds
+} // namespace dgk::actionIds

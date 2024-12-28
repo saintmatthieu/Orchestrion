@@ -5,7 +5,7 @@
 #include <modularity/imoduleinterface.h>
 #include <vector>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class ISynthesizerManager : MODULE_EXPORT_INTERFACE
 {
@@ -19,4 +19,4 @@ public:
   virtual bool selectSynth(const std::string &synthId) = 0;
   virtual std::string selectedSynth() const = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

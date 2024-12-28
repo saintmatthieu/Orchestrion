@@ -19,7 +19,7 @@
 
 #include "NotationPaintViewLoaderModel.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 NotationPaintViewLoaderModel::NotationPaintViewLoaderModel(QObject *parent)
     : QObject(parent)
@@ -31,4 +31,4 @@ void NotationPaintViewLoaderModel::init()
   playbackController()->isPlayAllowedChanged().onNotify(
       this, [this]() { emit notationPaintViewReady(); });
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

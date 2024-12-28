@@ -23,7 +23,7 @@
 #include "playback/iplaybackcontroller.h"
 #include <QObject>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class NotationPaintViewLoaderModel : public QObject, public muse::async::Asyncable
 {
@@ -39,4 +39,4 @@ public:
 signals:
   void notationPaintViewReady();
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

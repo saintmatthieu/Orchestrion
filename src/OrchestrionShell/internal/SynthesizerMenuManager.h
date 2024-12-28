@@ -4,7 +4,7 @@
 #include "ISynthesizerManager.h"
 #include "ISynthesizerMenuManager.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class SynthesizerMenuManager : public ISynthesizerMenuManager,
                                public DeviceMenuManager
@@ -29,4 +29,4 @@ private:
   std::vector<DeviceDesc> availableDevices() const override;
   bool selectDevice(const std::string &deviceId) override;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

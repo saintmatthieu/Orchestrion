@@ -24,7 +24,7 @@
 #include "async/notification.h"
 #include "modularity/imoduleinterface.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
 {
@@ -40,4 +40,4 @@ public:
   virtual muse::async::Channel<std::string>
       selectedDeviceChanged(DeviceType) const = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

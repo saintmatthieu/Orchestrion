@@ -20,7 +20,7 @@
 #include <global/translation.h>
 #include <log.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 namespace
 {
@@ -182,4 +182,4 @@ void ControllerMenuManager::onGainedFocus()
   LOGI() << "Reconnecting previously selected device: "
          << selectDevice(lastSelectedDevice());
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

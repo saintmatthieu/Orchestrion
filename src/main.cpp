@@ -176,7 +176,7 @@ int main(int argc, char **argv)
   // ====================================================
   // Parse command line options
   // ====================================================
-  dgk::orchestrion::CommandLineParser commandLineParser;
+  dgk::CommandLineParser commandLineParser;
   commandLineParser.init();
   commandLineParser.parse(argcFinal, argvFinal);
 
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 
   commandLineParser.processBuiltinArgs(*qapp);
 
-  dgk::orchestrion::OrchestrionAppFactory f;
+  dgk::OrchestrionAppFactory f;
   std::shared_ptr<muse::IApplication> app =
       f.newApp(commandLineParser.options());
 

@@ -19,7 +19,7 @@
 #include "OrchestrionOnboardingModule.h"
 #include "view/OrchestrionOnboardingModel.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 std::string OrchestrionOnboardingModule::moduleName() const
 {
@@ -31,4 +31,4 @@ void OrchestrionOnboardingModule::registerUiTypes()
   qmlRegisterType<OrchestrionOnboardingModel>(
       "Orchestrion.OrchestrionOnboarding", 1, 0, "OrchestrionOnboardingModel");
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

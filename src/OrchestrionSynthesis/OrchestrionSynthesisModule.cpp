@@ -19,7 +19,7 @@
 #include "OrchestrionSynthesisModule.h"
 #include "internal/SynthesizerConnector.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 std::string OrchestrionSynthesisModule::moduleName() const
 {
@@ -30,4 +30,4 @@ void OrchestrionSynthesisModule::registerExports()
 {
   ioc()->registerExport<ISynthesizerConnector>(moduleName(), new SynthesizerConnector);
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

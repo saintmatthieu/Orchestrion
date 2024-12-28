@@ -23,7 +23,7 @@
 #include <async/asyncable.h>
 #include <audio/iaudiodriver.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class PlaybackDeviceMenuManager : public IPlaybackDeviceManager,
                                   public DeviceMenuManager
@@ -53,4 +53,4 @@ private:
   muse::async::Notification m_availableDevicesChanged;
   muse::audio::AudioDeviceList m_audioDevices;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

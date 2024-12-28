@@ -25,7 +25,7 @@
 #include <modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionApp : public muse::IApplication,
                        public std::enable_shared_from_this<OrchestrionApp>
@@ -60,4 +60,4 @@ private:
   const std::shared_ptr<muse::modularity::Context> m_context;
   QList<muse::modularity::IModuleSetup *> m_modules;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

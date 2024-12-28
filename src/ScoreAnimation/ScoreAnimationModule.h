@@ -21,7 +21,7 @@
 #include "ScoreAnimationModule.h"
 #include "modularity/imodulesetup.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class ScoreAnimator;
 
@@ -39,4 +39,4 @@ private:
   const std::shared_ptr<ScoreAnimator> m_scoreAnimator;
 };
 
-} // namespace dgk::orchestrion
+} // namespace dgk

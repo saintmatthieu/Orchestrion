@@ -25,7 +25,7 @@
 #include <midi/imidiinport.h>
 #include <multiinstances/imultiinstancesprovider.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class ControllerMenuManager : public IControllerMenuManager,
                               public DeviceMenuManager
@@ -54,4 +54,4 @@ private:
   void onGainedFocus() override;
   bool maybePromptUser(const std::string &deviceId);
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

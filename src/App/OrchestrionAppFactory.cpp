@@ -52,7 +52,7 @@
 #include "vst/vstmodule.h"
 #include "workspace/workspacemodule.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 std::shared_ptr<muse::IApplication>
 OrchestrionAppFactory::newApp(const CommandOptions &options) const
@@ -116,4 +116,4 @@ OrchestrionAppFactory::newConsoleApp(const CommandOptions &options) const
   return nullptr;
 }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

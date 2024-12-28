@@ -20,7 +20,7 @@
 #include "internal/ChordRegistry.h"
 #include "internal/ScoreAnimator.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 ScoreAnimationModule::ScoreAnimationModule()
     : m_scoreAnimator(std::make_shared<ScoreAnimator>())
@@ -42,4 +42,4 @@ void ScoreAnimationModule::onInit(const muse::IApplication::RunMode &)
 {
   m_scoreAnimator->init();
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

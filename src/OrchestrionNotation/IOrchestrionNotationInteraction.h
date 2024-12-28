@@ -5,7 +5,7 @@
 #include <modularity/imoduleinterface.h>
 #include <notation/notationtypes.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class IOrchestrionNotationInteraction : MODULE_EXPORT_INTERFACE
 {
@@ -19,4 +19,4 @@ public:
   virtual muse::async::Channel<const mu::notation::EngravingItem *>
   elementClicked() const = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

@@ -27,7 +27,7 @@
 #include <multiinstances/imultiinstancesprovider.h>
 #include <optional>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionOnboardingModel : public QQuickItem, public muse::Injectable
 {
@@ -49,4 +49,4 @@ private:
   std::optional<muse::actions::ActionData>
   getFileOpenArgs(const StartupProjectFile &) const;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

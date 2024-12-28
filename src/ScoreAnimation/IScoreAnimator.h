@@ -20,7 +20,7 @@
 
 #include <modularity/imoduleinterface.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class IScoreAnimator : MODULE_EXPORT_INTERFACE
 {
@@ -29,4 +29,4 @@ class IScoreAnimator : MODULE_EXPORT_INTERFACE
 public:
   virtual ~IScoreAnimator() = default;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

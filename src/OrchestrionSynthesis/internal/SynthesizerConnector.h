@@ -5,7 +5,7 @@
 #include <audio/internal/worker/iaudioengine.h>
 #include <modularity/ioc.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class SynthesizerConnector : public ISynthesizerConnector,
                              public muse::async::Asyncable,
@@ -20,4 +20,4 @@ private:
   void connectSynthesizer(const muse::audio::AudioResourceMeta &) override;
   muse::audio::TrackId m_trackId = 1000;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

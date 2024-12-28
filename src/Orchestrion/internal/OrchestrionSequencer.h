@@ -31,8 +31,7 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<muse::midi::IMidiInPort> midiInPort;
-  muse::Inject<orchestrion::IOrchestrionNotationInteraction>
-      orchestrionNotationInteraction;
+  muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
 
 public:
   using Hand = std::vector<std::unique_ptr<VoiceSequencer>>;

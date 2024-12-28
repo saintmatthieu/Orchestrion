@@ -10,8 +10,6 @@
 namespace dgk
 {
 class IOrchestrionSequencer;
-namespace orchestrion
-{
 class OrchestrionEventProcessor : public muse::Injectable,
                                   public muse::async::Asyncable
 {
@@ -25,8 +23,7 @@ public:
   void init();
 
 private:
-  void setupCallback(IOrchestrionSequencer& sequencer);
+  void setupCallback(IOrchestrionSequencer &sequencer);
   void onOrchestrionEvent(int track, EventVariant event);
 };
-} // namespace orchestrion
 } // namespace dgk

@@ -2,12 +2,7 @@
 
 #include <modularity/ioc.h>
 
-namespace muse::audio
-{
-struct AudioResourceMeta;
-}
-
-namespace dgk::orchestrion
+namespace dgk
 {
 class ISynthesizerConnector : MODULE_EXPORT_INTERFACE
 {
@@ -17,4 +12,4 @@ public:
   virtual ~ISynthesizerConnector() = default;
   virtual void connectSynthesizer(const muse::audio::AudioResourceMeta &) = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

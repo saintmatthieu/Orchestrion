@@ -30,7 +30,7 @@
 #include "view/OrchestrionWindowTitleProvider.h"
 #include <QQmlEngine>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 OrchestrionShellModule::OrchestrionShellModule()
     : m_midiControllerMenuManager{std::make_shared<ControllerMenuManager>()},
@@ -107,4 +107,4 @@ void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &)
 {
   m_synthesizerManager->onAllInited();
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

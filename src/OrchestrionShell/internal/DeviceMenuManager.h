@@ -29,7 +29,7 @@
 #include <memory>
 #include <modularity/ioc.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class DeviceMenuManager : public muse::actions::Actionable,
                           public muse::async::Asyncable,
@@ -78,4 +78,4 @@ private:
   std::vector<DeviceItem> m_deviceCache;
   std::string m_lastSelectedDevice;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

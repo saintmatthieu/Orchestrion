@@ -20,7 +20,7 @@
 
 #include "IOrchestrionStartupScenario.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionStartupScenario : public IOrchestrionStartupScenario
 {
@@ -32,4 +32,4 @@ public:
 private:
   StartupProjectFile m_startupProjectFile;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

@@ -4,7 +4,7 @@
 #include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionNotationInteraction : public IOrchestrionNotationInteraction,
                                        public muse::Injectable
@@ -20,4 +20,4 @@ public:
 private:
   muse::async::Channel<const mu::notation::EngravingItem *> m_elementClicked;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

@@ -20,7 +20,7 @@
 #include "internal/OrchestrionNotationInteraction.h"
 #include "view/OrchestrionNotationPaintView.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 std::string OrchestrionNotationModule::moduleName() const
 {
@@ -38,4 +38,4 @@ void OrchestrionNotationModule::registerExports()
   ioc()->registerExport<IOrchestrionNotationInteraction>(
       moduleName(), std::make_shared<OrchestrionNotationInteraction>());
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

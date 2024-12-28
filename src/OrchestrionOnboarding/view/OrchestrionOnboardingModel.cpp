@@ -22,7 +22,7 @@
 #include <log.h>
 #include <thread>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 OrchestrionOnboardingModel::OrchestrionOnboardingModel(QQuickItem *parent)
     : QQuickItem(parent)
@@ -67,4 +67,4 @@ void OrchestrionOnboardingModel::onGainedFocus()
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   midiControllerManager()->onGainedFocus();
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

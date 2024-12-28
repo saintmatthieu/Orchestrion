@@ -21,7 +21,7 @@
 #include "OrchestrionNotationModule.h"
 #include "modularity/imodulesetup.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 
 class OrchestrionNotationModule : public muse::modularity::IModuleSetup
@@ -32,4 +32,4 @@ public:
   void registerExports() override;
 };
 
-} // namespace dgk::orchestrion
+} // namespace dgk

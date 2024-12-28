@@ -20,7 +20,7 @@
 
 #include "modularity/imodulesetup.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 
 class OrchestrionOnboardingModule : public muse::modularity::IModuleSetup
@@ -30,4 +30,4 @@ public:
   void registerUiTypes() override;
 };
 
-} // namespace dgk::orchestrion
+} // namespace dgk

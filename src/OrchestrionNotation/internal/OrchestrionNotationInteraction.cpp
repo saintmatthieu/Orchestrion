@@ -2,7 +2,7 @@
 #include <engraving/dom/mscore.h>
 #include <notation/notationtypes.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 void OrchestrionNotationInteraction::onMousePressed(
     const muse::PointF &logicPos, float hitWidth)
@@ -29,4 +29,4 @@ OrchestrionNotationInteraction::elementClicked() const
 {
   return m_elementClicked;
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

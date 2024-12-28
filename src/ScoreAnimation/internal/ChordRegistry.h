@@ -21,7 +21,7 @@
 #include "IChordRegistry.h"
 #include <unordered_map>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class ChordRegistry : public IChordRegistry
 {
@@ -31,4 +31,4 @@ private:
 
   std::unordered_map<const IChord *, const mu::engraving::Segment *> m_chords;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

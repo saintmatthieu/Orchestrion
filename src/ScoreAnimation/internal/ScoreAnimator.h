@@ -35,8 +35,6 @@ namespace dgk
 {
 struct ChordActivationChange;
 
-namespace orchestrion
-{
 class ScoreAnimator : public IScoreAnimator,
                       public muse::Injectable,
                       public muse::async::Asyncable
@@ -56,5 +54,4 @@ private:
   mu::notation::INotationInteractionPtr GetInteraction() const;
   mu::engraving::MasterScore *GetScore() const;
 };
-} // namespace orchestrion
 } // namespace dgk

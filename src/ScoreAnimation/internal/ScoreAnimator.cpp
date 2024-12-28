@@ -7,7 +7,7 @@
 #include <engraving/dom/tie.h>
 #include <log.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 void ScoreAnimator::init()
 {
@@ -121,4 +121,4 @@ mu::engraving::MasterScore *ScoreAnimator::GetScore() const
   return masterNotation->masterScore();
 }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

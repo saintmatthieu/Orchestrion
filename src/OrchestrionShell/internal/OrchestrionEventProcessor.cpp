@@ -1,7 +1,7 @@
 #include "OrchestrionEventProcessor.h"
 #include "Orchestrion/IOrchestrionSequencer.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 namespace
 {
@@ -64,4 +64,4 @@ void OrchestrionEventProcessor::onOrchestrionEvent(int track,
   }
   synthResolver()->postEventVariant(track, event);
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

@@ -1,6 +1,6 @@
 #include "SynthesizerMenuManager.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 SynthesizerMenuManager::SynthesizerMenuManager()
     : DeviceMenuManager{DeviceType::MidiSynthesizer}
@@ -43,4 +43,4 @@ bool SynthesizerMenuManager::selectDevice(const std::string &deviceId)
   return false;
 }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

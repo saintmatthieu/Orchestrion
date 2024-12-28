@@ -2,7 +2,7 @@
 #include <audio/itracks.h>
 #include <log.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 namespace
 {
@@ -93,4 +93,4 @@ SynthesizerManager::availableInstruments() const
       { return info.type == muse::audioplugins::AudioPluginType::Instrument; });
 }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

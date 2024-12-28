@@ -31,7 +31,7 @@
 
 static muse::GlobalModule globalModule;
 
-namespace dgk::orchestrion
+namespace dgk
 {
 OrchestrionApp::OrchestrionApp(CommandOptions options)
     : m_opts{std::move(options)},
@@ -227,4 +227,4 @@ QWindow *OrchestrionApp::focusWindow() const { return nullptr; }
 
 bool OrchestrionApp::notify(QObject *, QEvent *) { return false; }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

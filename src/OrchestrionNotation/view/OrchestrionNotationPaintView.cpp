@@ -18,7 +18,7 @@
  */
 #include "OrchestrionNotationPaintView.h"
 
-namespace dgk::orchestrion
+namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent)
@@ -48,4 +48,4 @@ void OrchestrionNotationPaintView::alignVertically()
   // Don't know why we need to negate.
   moveCanvasToPosition(toLogical(muse::PointF{-y, -y}));
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

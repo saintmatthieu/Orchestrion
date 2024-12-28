@@ -27,7 +27,7 @@
 
 #include <QQmlEngine>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 std::string MusescoreShellModule::moduleName() const
 {
@@ -66,4 +66,4 @@ void MusescoreShellModule::registerUiTypes()
   qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,
                                         "AppMenuModel");
 }
-} // namespace dgk::orchestrion
+} // namespace dgk

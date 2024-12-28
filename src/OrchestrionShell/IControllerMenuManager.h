@@ -20,7 +20,7 @@
 
 #include <modularity/imoduleinterface.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class IControllerMenuManager : MODULE_EXPORT_INTERFACE
 {
@@ -32,4 +32,4 @@ public:
   virtual void trySelectDefaultDevice() = 0;
   virtual void onGainedFocus() = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

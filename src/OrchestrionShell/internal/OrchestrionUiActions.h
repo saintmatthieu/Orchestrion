@@ -22,7 +22,7 @@
 #include "ui/iuiactionsmodule.h"
 #include <unordered_map>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class DeviceMenuManager;
 
@@ -63,4 +63,4 @@ private:
   muse::async::Channel<muse::actions::ActionCodeList> m_actionEnabledChanged;
   muse::async::Channel<muse::actions::ActionCodeList> m_actionCheckedChanged;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk

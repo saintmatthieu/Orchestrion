@@ -21,20 +21,20 @@
 #include "CommandOptions.h"
 #include <global/iapplication.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 class OrchestrionAppFactory
 {
 public:
   std::shared_ptr<muse::IApplication>
-  newApp(const dgk::orchestrion::CommandOptions &options) const;
+  newApp(const dgk::CommandOptions &options) const;
 
 private:
   std::shared_ptr<muse::IApplication>
-  newGuiApp(const dgk::orchestrion::CommandOptions &options) const;
+  newGuiApp(const dgk::CommandOptions &options) const;
   std::shared_ptr<muse::IApplication>
-  newConsoleApp(const dgk::orchestrion::CommandOptions &options) const;
+  newConsoleApp(const dgk::CommandOptions &options) const;
 
   mutable int m_lastID = 0;
 };
-} // namespace dgk::orchestrion
+} // namespace dgk
