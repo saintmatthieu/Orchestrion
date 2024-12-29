@@ -82,7 +82,9 @@ void ComputerKeyboardMidiController::updateNoteMap()
     m_noteMap = std::move(usLayout);
     // Same as US, just swap y and z.
     const auto tmp = m_noteMap.at('y');
+    m_noteMap.erase('y');
     m_noteMap.emplace('y', m_noteMap.at('z'));
+    m_noteMap.erase('z');
     m_noteMap.emplace('z', tmp);
     break;
   }
