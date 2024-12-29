@@ -1,8 +1,13 @@
 declare_module(OrchestrionSynthesis)
 
 set(MODULE_SRC
+    internal/FluidSynthesizer.cpp
+    internal/FluidSynthesizer.h
     internal/FluidTrackAudioInput.cpp
     internal/FluidTrackAudioInput.h
+    internal/IOrchestrionSynthesizer.h
+    internal/LowpassFilteredSynthesizer.cpp
+    internal/LowpassFilteredSynthesizer.h
     internal/SynthesizerConnector.cpp
     internal/SynthesizerConnector.h
     internal/TrackAudioInput.cpp

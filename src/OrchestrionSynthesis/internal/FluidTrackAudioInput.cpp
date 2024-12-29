@@ -17,78 +17,78 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "FluidTrackAudioInput.h"
-#include <fluidsynth.h>
-
-namespace muse::audio::synth
-{
-// This is inline-defined in sfcachedloader.h, but including sfcachedloader.h
-// yields a linker error about duplicate symbols.
-// Since the linker finds the definition, we don't include the header and just
-// add the missing declaration here.
-fluid_sfont_t *loadSoundFont(fluid_sfloader_t *loader, const char *filename);
-} // namespace muse::audio::synth
+#include "FluidSynthesizer.h"
+#include "LowpassFilteredSynthesizer.h"
+#include <log.h>
 
 namespace dgk
 {
 namespace
 {
-constexpr double FLUID_GLOBAL_VOLUME_GAIN = 4.8;
-constexpr int DEFAULT_MIDI_VOLUME = 100;
-constexpr muse::audio::msecs_t MIN_NOTE_LENGTH = 10;
-constexpr unsigned int FLUID_AUDIO_CHANNELS_PAIR = 1;
-constexpr unsigned int FLUID_AUDIO_CHANNELS_COUNT =
-    FLUID_AUDIO_CHANNELS_PAIR * 2;
-
-constexpr int maxSamplesPerChannel = 4096;
+bool noteoffsAreBeforeNoteons(const dgk::NoteEvents &notes)
+{
+  const auto firstNoteOff =
+      std::find_if(notes.begin(), notes.end(), [](const auto &evt)
+                   { return evt.type == NoteEvent::Type::noteOff; });
+  const auto firstNoteOn =
+      std::find_if(notes.begin(), notes.end(), [](const auto &evt)
+                   { return evt.type == NoteEvent::Type::noteOn; });
+  return firstNoteOff == notes.end() || firstNoteOff < firstNoteOn;
+}
 } // namespace
-
-FluidTrackAudioInput::FluidTrackAudioInput()
-{
-  m_audioBuffer = new float *[FLUID_AUDIO_CHANNELS_COUNT];
-  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
-    m_audioBuffer[i] = new float[maxSamplesPerChannel];
-}
-
-FluidTrackAudioInput::~FluidTrackAudioInput()
-{
-  destroySynth();
-  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
-    delete[] m_audioBuffer[i];
-  delete[] m_audioBuffer;
-}
 
 void FluidTrackAudioInput::processEvent(const EventVariant &event)
 {
+  IF_ASSERT_FAILED(m_synthesizer) { return; }
   if (std::holds_alternative<dgk::NoteEvents>(event))
-    for (const auto &evt : std::get<dgk::NoteEvents>(event))
-    {
-      switch (evt.type)
-      {
-      case NoteEvent::Type::noteOn:
-      {
-        fluid_synth_noteon(m_fluidSynth, evt.channel, evt.pitch,
-                           evt.velocity * 127 + .5f);
+  {
+    auto notes = std::get<dgk::NoteEvents>(event);
+    IF_ASSERT_FAILED(noteoffsAreBeforeNoteons(notes)) { return; }
+    const int noteonOffset =
+        std::find_if(notes.begin(), notes.end(), [](const auto &evt)
+                     { return evt.type == NoteEvent::Type::noteOn; }) -
+        notes.begin();
 
-        const auto cutoff = evt.velocity * evt.velocity * 5000;
-        m_lowPassFilter.setup(lowpassOrder, m_sampleRate, cutoff);
-      }
-      break;
-      case NoteEvent::Type::noteOff:
-        fluid_synth_noteoff(m_fluidSynth, evt.channel, evt.pitch);
-        break;
-      default:
-        assert(false);
-      }
-    }
+    sendNoteoffs(notes.data(), noteonOffset);
+    sendNoteons(notes.data() + noteonOffset, notes.size() - noteonOffset);
+  }
   else if (std::holds_alternative<dgk::PedalEvent>(event))
   {
     const auto &pedalEvent = std::get<dgk::PedalEvent>(event);
-    fluid_synth_cc(m_fluidSynth, pedalEvent.channel, 0x40,
-                   pedalEvent.on ? 127 : 0);
+    m_synthesizer->onPedal(pedalEvent.on);
   }
 }
 
-bool FluidTrackAudioInput::_isActive() const { return m_fluidSynth != nullptr; }
+void FluidTrackAudioInput::sendNoteoffs(const NoteEvent *noteoffs,
+                                        size_t numNoteoffs)
+{
+  if (numNoteoffs == 0)
+    return;
+  int *const pitches = (int *)alloca(numNoteoffs * sizeof(int));
+  for (auto i = 0; i < numNoteoffs; ++i)
+    pitches[i] = noteoffs[i].pitch;
+  m_synthesizer->onNoteOffs(numNoteoffs, pitches);
+}
+
+void FluidTrackAudioInput::sendNoteons(const NoteEvent *noteons,
+                                       size_t numNoteons)
+{
+  if (numNoteons == 0)
+    return;
+  int *const pitches = (int *)alloca(numNoteons * sizeof(int));
+  float *const velocities = (float *)alloca(numNoteons * sizeof(float));
+  for (auto i = 0; i < numNoteons; ++i)
+  {
+    pitches[i] = noteons[i].pitch;
+    velocities[i] = noteons[i].velocity;
+  }
+  m_synthesizer->onNoteOns(numNoteons, pitches, velocities);
+}
+
+bool FluidTrackAudioInput::_isActive() const
+{
+  return m_synthesizer != nullptr;
+}
 
 void FluidTrackAudioInput::_setIsActive(bool) { assert(false); }
 
@@ -97,97 +97,15 @@ void FluidTrackAudioInput::_setSampleRate(unsigned int sampleRate)
   if (m_sampleRate == sampleRate || sampleRate == 0)
     return;
 
-  destroySynth();
-
-  m_sampleRate = sampleRate;
-
-  m_fluidSettings = new_fluid_settings();
-  fluid_settings_setnum(m_fluidSettings, "synth.gain",
-                        FLUID_GLOBAL_VOLUME_GAIN);
-  fluid_settings_setint(m_fluidSettings, "synth.audio-channels",
-                        FLUID_AUDIO_CHANNELS_PAIR); // 1 pair of audio channels
-  fluid_settings_setint(m_fluidSettings, "synth.lock-memory", 0);
-  fluid_settings_setint(m_fluidSettings, "synth.threadsafe-api", 0);
-  fluid_settings_setint(m_fluidSettings, "synth.midi-channels", 16);
-  fluid_settings_setint(m_fluidSettings, "synth.dynamic-sample-loading", 1);
-  fluid_settings_setint(m_fluidSettings, "synth.polyphony", 512);
-  fluid_settings_setint(m_fluidSettings, "synth.min-note-length",
-                        MIN_NOTE_LENGTH);
-  fluid_settings_setint(m_fluidSettings, "synth.chorus.active", 0);
-  fluid_settings_setint(m_fluidSettings, "synth.reverb.active", 0);
-  fluid_settings_setstr(m_fluidSettings, "audio.sample-format", "float");
-  fluid_settings_setnum(m_fluidSettings, "synth.sample-rate",
-                        static_cast<double>(m_sampleRate));
-
-  m_fluidSynth = new_fluid_synth(m_fluidSettings);
-  auto sfloader = new_fluid_sfloader(muse::audio::synth::loadSoundFont,
-                                     delete_fluid_sfloader);
-  fluid_sfloader_set_data(sfloader, m_fluidSettings);
-  fluid_synth_add_sfloader(m_fluidSynth, sfloader);
-
-  const auto soundFonts = soundFontRepository()->soundFonts();
-  std::for_each(
-      soundFonts.begin(), soundFonts.end(),
-      [this](const std::pair<muse::audio::synth::SoundFontPath,
-                             muse::audio::synth::SoundFontMeta> &entry)
-      { fluid_synth_sfload(m_fluidSynth, entry.first.c_str(), 0); });
-
-  fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
-  constexpr auto channelIdx =
-      0; // At the moment, only one staff (or instrument) at a time is
-         // supported, hence just one channel.
-  fluid_synth_set_interp_method(m_fluidSynth, channelIdx, FLUID_INTERP_DEFAULT);
-  fluid_synth_pitch_wheel_sens(m_fluidSynth, channelIdx, 24);
-
-  // The following will become relevant when we allow the user to change the
-  // sound. At the moment we just use piano.
-  fluid_synth_bank_select(m_fluidSynth, channelIdx, 0);
-  fluid_synth_program_change(m_fluidSynth, channelIdx, 0);
-
-  fluid_synth_cc(m_fluidSynth, channelIdx, 7, DEFAULT_MIDI_VOLUME);
-  fluid_synth_cc(m_fluidSynth, channelIdx, 74, 0);
-  fluid_synth_set_portamento_mode(m_fluidSynth, channelIdx,
-                                  FLUID_CHANNEL_PORTAMENTO_MODE_EACH_NOTE);
-  fluid_synth_set_legato_mode(m_fluidSynth, channelIdx,
-                              FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
-  fluid_synth_activate_tuning(m_fluidSynth, channelIdx, 0, 0, 0);
-
-  m_lowPassFilter.setup(lowpassOrder, m_sampleRate, m_sampleRate / 2);
-}
-
-void FluidTrackAudioInput::destroySynth()
-{
-  if (m_fluidSynth)
-  {
-    delete_fluid_synth(m_fluidSynth);
-    m_fluidSynth = nullptr;
-  }
-  if (m_fluidSettings)
-  {
-    delete_fluid_settings(m_fluidSettings);
-    m_fluidSettings = nullptr;
-  }
+  m_synthesizer = std::make_unique<LowpassFilteredSynthesizer>(
+      std::make_unique<FluidSynthesizer>(sampleRate));
 }
 
 muse::audio::samples_t
 FluidTrackAudioInput::_process(float *buffer,
                                muse::audio::samples_t samplesPerChannel)
 {
-  fluid_synth_write_float(m_fluidSynth, samplesPerChannel, buffer, 0,
-                          FLUID_AUDIO_CHANNELS_COUNT, buffer, 1,
-                          FLUID_AUDIO_CHANNELS_COUNT);
-  // Deinterleave `buffer` into `m_audioBuffer`.
-  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
-    for (muse::audio::samples_t j = 0; j < samplesPerChannel; ++j)
-      m_audioBuffer[i][j] = buffer[j * FLUID_AUDIO_CHANNELS_COUNT + i];
-
-  m_lowPassFilter.process(samplesPerChannel, m_audioBuffer);
-
-  // Interleave `m_audioBuffer` into `buffer`.
-  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
-    for (muse::audio::samples_t j = 0; j < samplesPerChannel; ++j)
-      buffer[j * FLUID_AUDIO_CHANNELS_COUNT + i] = m_audioBuffer[i][j];
-
-  return samplesPerChannel;
+  IF_ASSERT_FAILED(m_synthesizer) { return 0; }
+  return m_synthesizer->process(buffer, samplesPerChannel);
 }
 } // namespace dgk

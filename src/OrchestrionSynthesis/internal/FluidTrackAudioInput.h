@@ -18,20 +18,17 @@
  */
 #pragma once
 
+#include "IOrchestrionSynthesizer.h"
 #include "TrackAudioInput.h"
-#include <DSPFilters/Bessel.h>
-#include <audio/isoundfontrepository.h>
-#include <fluidsynth/types.h>
 
 namespace dgk
 {
+class IOrchestrionSynthesizer;
+
 class FluidTrackAudioInput : public TrackAudioInput
 {
-  muse::Inject<muse::audio::ISoundFontRepository> soundFontRepository;
-
 public:
-  FluidTrackAudioInput();
-  ~FluidTrackAudioInput() override;
+  FluidTrackAudioInput() = default;
 
 private:
   void processEvent(const EventVariant &event) override;
@@ -41,13 +38,10 @@ private:
   muse::audio::samples_t
   _process(float *buffer, muse::audio::samples_t samplesPerChannel) override;
 
-  void destroySynth();
+  void sendNoteoffs(const NoteEvent* noteoffs, size_t numNoteoffs);
+  void sendNoteons(const NoteEvent* noteons, size_t numNoteons);
 
-  fluid_synth_t *m_fluidSynth = nullptr;
-  fluid_settings_t *m_fluidSettings = nullptr;
   uint64_t m_sampleRate = 0;
-  static const auto lowpassOrder = 2;
-  Dsp::SimpleFilter<Dsp::Bessel::LowPass<lowpassOrder>, 2> m_lowPassFilter;
-  float** m_audioBuffer = nullptr;
+  std::unique_ptr<IOrchestrionSynthesizer> m_synthesizer;
 };
 } // namespace dgk
