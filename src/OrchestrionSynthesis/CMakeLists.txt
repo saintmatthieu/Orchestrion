@@ -33,6 +33,12 @@ set (MODULE_INCLUDE
     ${PROJECT_SOURCE_DIR}/MuseScore/src/framework/audio/internal/synthesizers/fluidsynth
     )
 
-set(MODULE_LINK muse_audio muse_vst vst3sdk::sdk fluidsynth)
+set(MODULE_LINK
+    muse_audio
+    muse_vst
+    vst3sdk::sdk
+    fluidsynth
+    DSPFilters::DSPFilters
+)
 
 setup_module()

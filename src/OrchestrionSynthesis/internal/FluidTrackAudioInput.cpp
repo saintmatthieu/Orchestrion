@@ -38,9 +38,24 @@ constexpr muse::audio::msecs_t MIN_NOTE_LENGTH = 10;
 constexpr unsigned int FLUID_AUDIO_CHANNELS_PAIR = 1;
 constexpr unsigned int FLUID_AUDIO_CHANNELS_COUNT =
     FLUID_AUDIO_CHANNELS_PAIR * 2;
+
+constexpr int maxSamplesPerChannel = 4096;
 } // namespace
 
-FluidTrackAudioInput::~FluidTrackAudioInput() { destroySynth(); }
+FluidTrackAudioInput::FluidTrackAudioInput()
+{
+  m_audioBuffer = new float *[FLUID_AUDIO_CHANNELS_COUNT];
+  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
+    m_audioBuffer[i] = new float[maxSamplesPerChannel];
+}
+
+FluidTrackAudioInput::~FluidTrackAudioInput()
+{
+  destroySynth();
+  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
+    delete[] m_audioBuffer[i];
+  delete[] m_audioBuffer;
+}
 
 void FluidTrackAudioInput::processEvent(const EventVariant &event)
 {
@@ -50,9 +65,14 @@ void FluidTrackAudioInput::processEvent(const EventVariant &event)
       switch (evt.type)
       {
       case NoteEvent::Type::noteOn:
+      {
         fluid_synth_noteon(m_fluidSynth, evt.channel, evt.pitch,
                            evt.velocity * 127 + .5f);
-        break;
+
+        const auto cutoff = evt.velocity * evt.velocity * 5000;
+        m_lowPassFilter.setup(lowpassOrder, m_sampleRate, cutoff);
+      }
+      break;
       case NoteEvent::Type::noteOff:
         fluid_synth_noteoff(m_fluidSynth, evt.channel, evt.pitch);
         break;
@@ -131,6 +151,8 @@ void FluidTrackAudioInput::_setSampleRate(unsigned int sampleRate)
   fluid_synth_set_legato_mode(m_fluidSynth, channelIdx,
                               FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
   fluid_synth_activate_tuning(m_fluidSynth, channelIdx, 0, 0, 0);
+
+  m_lowPassFilter.setup(lowpassOrder, m_sampleRate, m_sampleRate / 2);
 }
 
 void FluidTrackAudioInput::destroySynth()
@@ -154,6 +176,18 @@ FluidTrackAudioInput::_process(float *buffer,
   fluid_synth_write_float(m_fluidSynth, samplesPerChannel, buffer, 0,
                           FLUID_AUDIO_CHANNELS_COUNT, buffer, 1,
                           FLUID_AUDIO_CHANNELS_COUNT);
+  // Deinterleave `buffer` into `m_audioBuffer`.
+  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
+    for (muse::audio::samples_t j = 0; j < samplesPerChannel; ++j)
+      m_audioBuffer[i][j] = buffer[j * FLUID_AUDIO_CHANNELS_COUNT + i];
+
+  m_lowPassFilter.process(samplesPerChannel, m_audioBuffer);
+
+  // Interleave `m_audioBuffer` into `buffer`.
+  for (unsigned int i = 0; i < FLUID_AUDIO_CHANNELS_COUNT; ++i)
+    for (muse::audio::samples_t j = 0; j < samplesPerChannel; ++j)
+      buffer[j * FLUID_AUDIO_CHANNELS_COUNT + i] = m_audioBuffer[i][j];
+
   return samplesPerChannel;
 }
 } // namespace dgk

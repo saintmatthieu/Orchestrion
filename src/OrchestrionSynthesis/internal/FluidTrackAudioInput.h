@@ -19,6 +19,7 @@
 #pragma once
 
 #include "TrackAudioInput.h"
+#include <DSPFilters/Bessel.h>
 #include <audio/isoundfontrepository.h>
 #include <fluidsynth/types.h>
 
@@ -29,7 +30,7 @@ class FluidTrackAudioInput : public TrackAudioInput
   muse::Inject<muse::audio::ISoundFontRepository> soundFontRepository;
 
 public:
-  FluidTrackAudioInput() = default;
+  FluidTrackAudioInput();
   ~FluidTrackAudioInput() override;
 
 private:
@@ -45,5 +46,8 @@ private:
   fluid_synth_t *m_fluidSynth = nullptr;
   fluid_settings_t *m_fluidSettings = nullptr;
   uint64_t m_sampleRate = 0;
+  static const auto lowpassOrder = 2;
+  Dsp::SimpleFilter<Dsp::Bessel::LowPass<lowpassOrder>, 2> m_lowPassFilter;
+  float** m_audioBuffer = nullptr;
 };
 } // namespace dgk

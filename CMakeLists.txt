@@ -17,6 +17,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 include(vst3sdk.cmake)
 include(MuseScore.cmake)
+include(DSPFilters.cmake)
 
 add_subdirectory(src/MusescoreShell)
 add_subdirectory(src/Orchestrion)
@@ -79,7 +80,7 @@ target_link_libraries(OrchestrionApp PRIVATE
     muse_update
     muse_vst
     muse_workspace
-    
+
     MusescoreShell
     Orchestrion
     OrchestrionNotation
