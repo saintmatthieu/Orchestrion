@@ -2,7 +2,6 @@
 
 #include "OrchestrionTypes.h"
 #include <async/channel.h>
-#include <audio/OrchestrionEventTypes.h>
 #include <optional>
 #include <vector>
 

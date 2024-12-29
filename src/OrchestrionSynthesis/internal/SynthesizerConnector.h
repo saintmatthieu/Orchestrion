@@ -5,6 +5,11 @@
 #include <audio/internal/worker/iaudioengine.h>
 #include <modularity/ioc.h>
 
+namespace muse::audio
+{
+class MixerChannel;
+}
+
 namespace dgk
 {
 class SynthesizerConnector : public ISynthesizerConnector,
@@ -17,7 +22,9 @@ public:
   SynthesizerConnector() = default;
 
 private:
-  void connectSynthesizer(const muse::audio::AudioResourceMeta &) override;
-  muse::audio::TrackId m_trackId = 1000;
+  void connectVstInstrument(const muse::audio::AudioResourceId &) override;
+  void connectFluidSynth() override;
+  void disconnect() override;
+  std::weak_ptr<muse::audio::MixerChannel> m_currentChannel;
 };
 } // namespace dgk

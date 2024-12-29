@@ -1,5 +1,6 @@
 #pragma once
 
+#include <audio/audiotypes.h>
 #include <modularity/ioc.h>
 
 namespace dgk
@@ -10,6 +11,8 @@ class ISynthesizerConnector : MODULE_EXPORT_INTERFACE
 
 public:
   virtual ~ISynthesizerConnector() = default;
-  virtual void connectSynthesizer(const muse::audio::AudioResourceMeta &) = 0;
+  virtual void connectVstInstrument(const muse::audio::AudioResourceId &) = 0;
+  virtual void connectFluidSynth() = 0;
+  virtual void disconnect() = 0;
 };
 } // namespace dgk

@@ -62,6 +62,5 @@ void OrchestrionEventProcessor::onOrchestrionEvent(int track,
     const auto &pedalEvent = std::get<PedalEvent>(event);
     midiOutPort()->sendEvent(ToMuseMidiEvent(pedalEvent));
   }
-  synthResolver()->postEventVariant(track, event);
 }
 } // namespace dgk

@@ -17,13 +17,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "VstTrackAudioInput.h"
-#include "Orchestrion/IOrchestrionSequencer.h"
-#include <audio/OrchestrionEventTypes.h>
-#include <audioplugins/audiopluginstypes.h>
 #include <log.h>
 #include <pluginterfaces/vst/ivstevents.h>
+#include <vst/internal/vstaudioclient.h>
 
-namespace dgk::orchestrion
+namespace dgk
 {
 
 namespace
@@ -72,108 +70,54 @@ VstTrackAudioInput::VstTrackAudioInput(muse::vst::VstPluginPtr loadedVstPlugin)
   m_vstAudioClient = std::make_unique<muse::vst::VstAudioClient>();
   m_vstAudioClient->init(muse::audioplugins::AudioPluginType::Instrument,
                          std::move(loadedVstPlugin), channelCount);
-
-  orchestrion()->sequencerChanged().onNotify(
-      this,
-      [this]
-      {
-        if (const auto sequencer = orchestrion()->sequencer())
-          setupCallback(*sequencer);
-      });
-
-  if (const auto sequencer = orchestrion()->sequencer())
-    setupCallback(*sequencer);
 }
 
-void VstTrackAudioInput::setupCallback(const IOrchestrionSequencer &sequencer)
+void VstTrackAudioInput::processEvent(const EventVariant &event)
 {
-  sequencer.OutputEvent().onReceive(
-      this,
-      [this](EventVariant event)
-      {
-        IF_ASSERT_FAILED(m_vstAudioClient) { return; }
-        if (std::holds_alternative<NoteEvents>(event))
-        {
-          const auto &noteEvents = std::get<NoteEvents>(event);
-          std::for_each(noteEvents.begin(), noteEvents.end(),
-                        [this](const NoteEvent &noteEvent)
-                        {
-                          //
-                          m_vstAudioClient->handleEvent(
-                              toSteinbergEvent(noteEvent));
-                        });
-        }
-        else if (std::holds_alternative<PedalEvent>(event))
-        {
-          const auto &pedalEvent = std::get<PedalEvent>(event);
-          m_vstAudioClient->handleEvent(toSteinbergEvent(pedalEvent));
-        }
-        else
-        {
-          assert(false);
-        }
-      });
+  IF_ASSERT_FAILED(m_vstAudioClient) { return; }
+  if (std::holds_alternative<NoteEvents>(event))
+  {
+    const auto &noteEvents = std::get<NoteEvents>(event);
+    std::for_each(noteEvents.begin(), noteEvents.end(),
+                  [this](const NoteEvent &noteEvent)
+                  {
+                    //
+                    m_vstAudioClient->handleEvent(toSteinbergEvent(noteEvent));
+                  });
+  }
+  else if (std::holds_alternative<PedalEvent>(event))
+  {
+    const auto &pedalEvent = std::get<PedalEvent>(event);
+    m_vstAudioClient->handleEvent(toSteinbergEvent(pedalEvent));
+  }
+  else
+  {
+    assert(false);
+  }
 }
 
-void VstTrackAudioInput::seek(const muse::audio::msecs_t)
-{
-  // What do I do here?
-  assert(false);
-}
-
-const muse::audio::AudioInputParams &VstTrackAudioInput::inputParams() const
-{
-  return m_inputParams;
-}
-
-void VstTrackAudioInput::applyInputParams(
-    const muse::audio::AudioInputParams &params)
-{
-  assert(false); // What do I do here?
-  m_inputParams = params;
-}
-
-muse::async::Channel<muse::audio::AudioInputParams>
-VstTrackAudioInput::inputParamsChanged() const
-{
-  return m_inputParamsChanged;
-}
-
-bool VstTrackAudioInput::isActive() const
+bool VstTrackAudioInput::_isActive() const
 {
   return m_vstAudioClient != nullptr;
 }
 
-void VstTrackAudioInput::setIsActive(bool arg)
+void VstTrackAudioInput::_setIsActive(bool arg)
 {
   assert(m_vstAudioClient || !arg);
 }
 
-void VstTrackAudioInput::setSampleRate(unsigned int sampleRate)
+void VstTrackAudioInput::_setSampleRate(unsigned int sampleRate)
 {
   IF_ASSERT_FAILED(m_vstAudioClient) { return; }
   m_vstAudioClient->setSampleRate(sampleRate);
 }
 
-unsigned int VstTrackAudioInput::audioChannelsCount() const
-{
-  IF_ASSERT_FAILED(m_vstAudioClient) { return 0u; }
-  return channelCount;
-}
-
-muse::async::Channel<unsigned int>
-VstTrackAudioInput::audioChannelsCountChanged() const
-{
-  static muse::async::Channel<unsigned int> nullChannel;
-  return nullChannel;
-}
-
 muse::audio::samples_t
-VstTrackAudioInput::process(float *buffer,
-                            muse::audio::samples_t samplesPerChannel)
+VstTrackAudioInput::_process(float *buffer,
+                             muse::audio::samples_t samplesPerChannel)
 {
   IF_ASSERT_FAILED(m_vstAudioClient) { return 0u; }
   return m_vstAudioClient->process(buffer, samplesPerChannel);
 }
 
-} // namespace dgk::orchestrion
+} // namespace dgk

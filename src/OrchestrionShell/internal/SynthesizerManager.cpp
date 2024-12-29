@@ -58,7 +58,7 @@ bool SynthesizerManager::selectSynth(const std::string &synthId)
           { return instrument.meta.id == synthId; });
       it != instruments.end())
   {
-    synthesizerConnector()->connectSynthesizer(it->meta);
+    synthesizerConnector()->connectVstInstrument(it->meta.id);
     midiOutPort()->disconnect();
     m_selectedSynth = synthId;
 
@@ -70,13 +70,15 @@ bool SynthesizerManager::selectSynth(const std::string &synthId)
                   [&synthId](const auto &device)
                   { return device.id == synthId; }))
   {
+    synthesizerConnector()->disconnect();
     midiOutPort()->connect(synthId);
     m_selectedSynth = synthId;
     return true;
   }
 
   m_selectedSynth.reset();
-  // Also return true - we'll be using the built-in synth
+  synthesizerConnector()->connectFluidSynth();
+
   return true;
 }
 

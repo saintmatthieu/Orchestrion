@@ -19,19 +19,18 @@
 #pragma once
 
 #include "TrackAudioInput.h"
-#include <audio/audiotypes.h>
-#include <vst/internal/vstaudioclient.h>
+#include <audio/isoundfontrepository.h>
+#include <fluidsynth/types.h>
 
-namespace muse::vst
-{
-class VstAudioClient;
-}
 namespace dgk
 {
-class VstTrackAudioInput : public TrackAudioInput
+class FluidTrackAudioInput : public TrackAudioInput
 {
+  muse::Inject<muse::audio::ISoundFontRepository> soundFontRepository;
+
 public:
-  VstTrackAudioInput(muse::vst::VstPluginPtr loadedVstPlugin);
+  FluidTrackAudioInput() = default;
+  ~FluidTrackAudioInput() override;
 
 private:
   void processEvent(const EventVariant &event) override;
@@ -41,6 +40,10 @@ private:
   muse::audio::samples_t
   _process(float *buffer, muse::audio::samples_t samplesPerChannel) override;
 
-  std::unique_ptr<muse::vst::VstAudioClient> m_vstAudioClient;
+  void destroySynth();
+
+  fluid_synth_t *m_fluidSynth = nullptr;
+  fluid_settings_t *m_fluidSettings = nullptr;
+  uint64_t m_sampleRate = 0;
 };
 } // namespace dgk

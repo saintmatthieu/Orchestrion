@@ -3,7 +3,6 @@
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
 #include <async/asyncable.h>
-#include <audio/isynthresolver.h>
 #include <midi/imidioutport.h>
 #include <modularity/ioc.h>
 
@@ -14,7 +13,6 @@ class OrchestrionEventProcessor : public muse::Injectable,
                                   public muse::async::Asyncable
 {
   muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<muse::audio::synth::ISynthResolver> synthResolver;
   muse::Inject<muse::midi::IMidiOutPort> midiOutPort;
 
 public:
