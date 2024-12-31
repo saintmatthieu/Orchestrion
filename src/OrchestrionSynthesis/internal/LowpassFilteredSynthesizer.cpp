@@ -4,22 +4,17 @@ namespace dgk
 {
 namespace
 {
-// When re-parametrizing, how many samples used in the transition from old to
-// new coefs.
-constexpr auto interpolationSamples = 64;
 constexpr auto leastTimeBetweenReparametrizations = 0.05;
 constexpr auto maxSamplesPerChannel = 2048;
-constexpr auto maxCutoff = 10000;
 } // namespace
 
 LowpassFilteredSynthesizer::LowpassFilteredSynthesizer(
-    std::unique_ptr<IOrchestrionSynthesizer> synthesizer)
+    std::unique_ptr<IOrchestrionSynthesizer> synthesizer, double cutoff)
     : m_synthesizer{std::move(synthesizer)},
-      m_lowPassFilter{interpolationSamples},
       m_maxSamplesPerChannel{maxSamplesPerChannel}
 {
+  m_lowPassFilter.setup(lowpassOrder, m_synthesizer->sampleRate(), cutoff);
   initBuffers(maxSamplesPerChannel);
-  setCutoff(maxCutoff);
 }
 
 LowpassFilteredSynthesizer::~LowpassFilteredSynthesizer() { deleteBuffers(); }
@@ -37,15 +32,6 @@ void LowpassFilteredSynthesizer::deleteBuffers()
   for (auto i = 0; i < numChannels(); ++i)
     delete[] m_audioBuffer[i];
   delete[] m_audioBuffer;
-}
-
-void LowpassFilteredSynthesizer::setCutoff(double cutoff)
-{
-  Dsp::Params params;
-  params[0] = m_synthesizer->sampleRate();
-  params[1] = lowpassOrder;
-  params[2] = cutoff;
-  m_lowPassFilter.setParams(params);
 }
 
 int LowpassFilteredSynthesizer::sampleRate() const
@@ -91,17 +77,6 @@ void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
                                            const int *pitches,
                                            const float *velocities)
 {
-  // Assuming (as elswewhere in this file) that calls are made from the same
-  // thread.
-  if (m_samplesSinceReparametrization >=
-      leastTimeBetweenReparametrizations * sampleRate())
-  {
-    const auto max = *std::max_element(velocities, velocities + numNoteons);
-    assert(0 <= max && max <= 1);
-    setCutoff(max * max * maxCutoff);
-    m_samplesSinceReparametrization = 0;
-  }
-
   m_synthesizer->onNoteOns(numNoteons, pitches, velocities);
 }
 

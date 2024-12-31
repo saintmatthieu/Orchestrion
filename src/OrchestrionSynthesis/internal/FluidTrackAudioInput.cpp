@@ -25,9 +25,6 @@ namespace dgk
 {
 namespace
 {
-constexpr auto fluidPolicy = ITrackChannelMapper::Policy::oneChannelPerStaff;
-constexpr auto maxSamples = 4096;
-
 bool noteoffsAreBeforeNoteons(const NoteEvents &notes)
 {
   const auto firstNoteOff =
@@ -47,13 +44,9 @@ bool allFromSameStaff(const NoteEvents &notes)
 }
 } // namespace
 
-FluidTrackAudioInput::FluidTrackAudioInput()
-    : m_mixBuffer(maxSamples), m_maxSamples{maxSamples}
-{
-}
-
 void FluidTrackAudioInput::processEvent(const EventVariant &event)
 {
+  IF_ASSERT_FAILED(m_synthesizer) { return; }
   if (std::holds_alternative<NoteEvents>(event))
   {
     auto notes = std::get<NoteEvents>(event);
@@ -70,10 +63,7 @@ void FluidTrackAudioInput::processEvent(const EventVariant &event)
   else if (std::holds_alternative<PedalEvent>(event))
   {
     const auto &pedalEvent = std::get<PedalEvent>(event);
-    const auto channels =
-        mapper()->channelsForInstrument(pedalEvent.instrument, fluidPolicy);
-    for (const auto channel : channels)
-      m_synthesizers[channel]->onPedal(pedalEvent.on);
+    m_synthesizer->onPedal(pedalEvent.on);
   }
 }
 
@@ -82,12 +72,10 @@ void FluidTrackAudioInput::sendNoteoffs(const NoteEvent *noteoffs,
 {
   if (numNoteoffs == 0)
     return;
-  const auto channel =
-      mapper()->channelForTrack(noteoffs[0].track, fluidPolicy);
   int *const pitches = (int *)alloca(numNoteoffs * sizeof(int));
   for (auto i = 0; i < numNoteoffs; ++i)
     pitches[i] = noteoffs[i].pitch;
-  m_synthesizers[channel]->onNoteOffs(numNoteoffs, pitches);
+  m_synthesizer->onNoteOffs(numNoteoffs, pitches);
 }
 
 void FluidTrackAudioInput::sendNoteons(const NoteEvent *noteons,
@@ -95,7 +83,6 @@ void FluidTrackAudioInput::sendNoteons(const NoteEvent *noteons,
 {
   if (numNoteons == 0)
     return;
-  const auto channel = mapper()->channelForTrack(noteons[0].track, fluidPolicy);
   int *const pitches = (int *)alloca(numNoteons * sizeof(int));
   float *const velocities = (float *)alloca(numNoteons * sizeof(float));
   for (auto i = 0; i < numNoteons; ++i)
@@ -103,10 +90,13 @@ void FluidTrackAudioInput::sendNoteons(const NoteEvent *noteons,
     pitches[i] = noteons[i].pitch;
     velocities[i] = noteons[i].velocity;
   }
-  m_synthesizers[channel]->onNoteOns(numNoteons, pitches, velocities);
+  m_synthesizer->onNoteOns(numNoteons, pitches, velocities);
 }
 
-bool FluidTrackAudioInput::_isActive() const { return !m_synthesizers.empty(); }
+bool FluidTrackAudioInput::_isActive() const
+{
+  return m_synthesizer != nullptr;
+}
 
 void FluidTrackAudioInput::_setIsActive(bool) { assert(false); }
 
@@ -115,29 +105,15 @@ void FluidTrackAudioInput::_setSampleRate(unsigned int sampleRate)
   if (m_sampleRate == sampleRate || sampleRate == 0)
     return;
 
-  m_synthesizers.clear();
-  for (auto i = 0; i < mapper()->numChannels(fluidPolicy); ++i)
-    m_synthesizers.emplace_back(std::make_unique<LowpassFilteredSynthesizer>(
-        std::make_unique<FluidSynthesizer>(sampleRate)));
+  m_synthesizer = std::make_unique<LowpassFilterBank>(
+      [sampleRate] { return std::make_unique<FluidSynthesizer>(sampleRate); });
 }
 
 muse::audio::samples_t
 FluidTrackAudioInput::_process(float *buffer,
                                muse::audio::samples_t samplesPerChannel)
 {
-  const auto numSamples = samplesPerChannel * m_synthesizers[0]->numChannels();
-  IF_ASSERT_FAILED(numSamples <= m_maxSamples)
-  {
-    m_mixBuffer.resize(numSamples);
-    m_maxSamples = numSamples;
-  }
-  std::fill(buffer, buffer + numSamples, 0.f);
-  for (auto i = 0; i < m_synthesizers.size(); ++i)
-  {
-    m_synthesizers[i]->process(m_mixBuffer.data(), samplesPerChannel);
-    for (auto j = 0; j < numSamples; ++j)
-      buffer[j] += m_mixBuffer[j];
-  }
-  return samplesPerChannel;
+  IF_ASSERT_FAILED(m_synthesizer) { return 0; }
+  return m_synthesizer->process(buffer, samplesPerChannel);
 }
 } // namespace dgk

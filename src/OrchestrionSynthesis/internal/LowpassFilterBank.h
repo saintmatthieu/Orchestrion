@@ -1,0 +1,34 @@
+#pragma once
+
+#include "LowpassFilteredSynthesizer.h"
+#include <array>
+#include <functional>
+
+namespace dgk
+{
+using SynthFactory =
+    std::function<std::unique_ptr<IOrchestrionSynthesizer>(void)>;
+
+class LowpassFilterBank : public IOrchestrionSynthesizer
+{
+public:
+  LowpassFilterBank(SynthFactory);
+
+private:
+  int sampleRate() const override;
+  int numChannels() const override;
+  size_t process(float *buffer, size_t samplesPerChannel) override;
+  void onNoteOns(size_t numNoteons, const int *pitches,
+                 const float *velocities) override;
+  void onNoteOffs(size_t numNoteoffs, const int *pitches) override;
+  void onPedal(bool on) override;
+
+  static const auto numVelocitySteps = 8;
+  const SynthFactory m_synthFactory;
+  std::array<std::shared_ptr<IOrchestrionSynthesizer>, numVelocitySteps>
+      m_synthesizers;
+  std::vector<float> m_mixBuffer;
+  std::unordered_map<int, int> m_pitchesToSynthIndex;
+  size_t m_maxSamples;
+};
+} // namespace dgk

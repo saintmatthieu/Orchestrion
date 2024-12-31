@@ -6,6 +6,8 @@ set(MODULE_SRC
     internal/FluidTrackAudioInput.cpp
     internal/FluidTrackAudioInput.h
     internal/IOrchestrionSynthesizer.h
+    internal/LowpassFilterBank.cpp
+    internal/LowpassFilterBank.h
     internal/LowpassFilteredSynthesizer.cpp
     internal/LowpassFilteredSynthesizer.h
     internal/SynthesizerConnector.cpp

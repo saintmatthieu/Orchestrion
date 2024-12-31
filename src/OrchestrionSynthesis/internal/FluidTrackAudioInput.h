@@ -18,20 +18,15 @@
  */
 #pragma once
 
-#include "IOrchestrionSynthesizer.h"
-#include "ITrackChannelMapper.h"
+#include "LowpassFilterBank.h"
 #include "TrackAudioInput.h"
 
 namespace dgk
 {
-class IOrchestrionSynthesizer;
-
 class FluidTrackAudioInput : public TrackAudioInput
 {
-  muse::Inject<ITrackChannelMapper> mapper;
-
 public:
-  FluidTrackAudioInput();
+  FluidTrackAudioInput() = default;
 
 private:
   void processEvent(const EventVariant &event) override;
@@ -45,8 +40,6 @@ private:
   void sendNoteons(const NoteEvent *noteons, size_t numNoteons);
 
   uint64_t m_sampleRate = 0;
-  std::vector<std::unique_ptr<IOrchestrionSynthesizer>> m_synthesizers;
-  std::vector<float> m_mixBuffer;
-  size_t m_maxSamples;
+  std::unique_ptr<IOrchestrionSynthesizer> m_synthesizer;
 };
 } // namespace dgk
