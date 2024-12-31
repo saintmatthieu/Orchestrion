@@ -23,15 +23,18 @@ auto MakeAllVoices(const OrchestrionSequencer::Hand &rightHand,
   return allVoices;
 }
 
-dgk::NoteEvent ToDgkNoteEvent(const muse::midi::Event &museEvent)
+NoteEventType GetNoteEventType(const muse::midi::Event &event)
 {
-  const auto type = museEvent.opcode() == muse::midi::Event::Opcode::NoteOn
-                        ? dgk::NoteEvent::Type::noteOn
-                        : dgk::NoteEvent::Type::noteOff;
-  const int channel = museEvent.channel();
-  const int pitch = museEvent.note();
-  const float velocity = museEvent.velocity() / 128.0f;
-  return dgk::NoteEvent{type, channel, pitch, velocity};
+  return event.opcode() == muse::midi::Event::Opcode::NoteOn
+             ? dgk::NoteEventType::noteOn
+             : dgk::NoteEventType::noteOff;
+}
+
+int GetPitch(const muse::midi::Event &event) { return event.note(); }
+
+float GetVelocity(const muse::midi::Event &event)
+{
+  return event.velocity() / 128.0f;
 }
 } // namespace
 
@@ -68,10 +71,10 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
       }};
 }
 
-OrchestrionSequencer::OrchestrionSequencer(int track, Hand rightHand,
-                                           Hand leftHand,
+OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
+                                           Hand rightHand, Hand leftHand,
                                            PedalSequence pedalSequence)
-    : m_track{track}, m_rightHand{std::move(rightHand)},
+    : m_instrument{std::move(instrument)}, m_rightHand{std::move(rightHand)},
       m_leftHand{std::move(leftHand)},
       m_allVoices{MakeAllVoices(m_rightHand, m_leftHand)},
       m_pedalSequence{std::move(pedalSequence)},
@@ -104,7 +107,7 @@ OrchestrionSequencer::OrchestrionSequencer(int track, Hand rightHand,
       });
 }
 
-muse::async::Channel<int /* track */, ChordActivationChange>
+muse::async::Channel<TrackIndex, ChordActivationChange>
 OrchestrionSequencer::ChordActivationChanged() const
 {
   return m_chordActivationChanged;
@@ -129,14 +132,14 @@ void OrchestrionSequencer::OnMidiEventReceived(const muse::midi::Event &event)
       event.opcode() != muse::midi::Event::Opcode::NoteOff)
     return;
 
-  OnInputEvent(ToDgkNoteEvent(event));
+  OnInputEvent(GetNoteEventType(event), GetPitch(event), GetVelocity(event));
 }
 
 OrchestrionSequencer::~OrchestrionSequencer()
 {
   if (m_pedalDown)
   {
-    PostPedalEvent(PedalEvent{m_track, false});
+    PostPedalEvent(PedalEvent{m_instrument, false});
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(100ms);
   }
@@ -150,7 +153,7 @@ OrchestrionSequencer::~OrchestrionSequencer()
 namespace
 {
 auto GetNextNoteonTick(const OrchestrionSequencer::Hand &hand,
-                       NoteEvent::Type type)
+                       NoteEventType type)
 {
   return std::accumulate(
       hand.begin(), hand.end(), std::optional<dgk::Tick>{},
@@ -164,39 +167,39 @@ auto GetNextNoteonTick(const OrchestrionSequencer::Hand &hand,
 }
 } // namespace
 
-void OrchestrionSequencer::OnInputEvent(const NoteEvent &input)
+void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
+                                        float velocity)
 {
 
-  if (input.type == NoteEvent::Type::noteOn)
+  if (type == NoteEventType::noteOn)
   {
-    m_pressedKeys.insert(input.pitch);
+    m_pressedKeys.insert(pitch);
   }
-  else if (m_pressedKeys.count(input.pitch))
-    m_pressedKeys.erase(input.pitch);
+  else if (m_pressedKeys.count(pitch))
+    m_pressedKeys.erase(pitch);
 
   const auto loopEnabled = globalContext()
                                ->currentMasterNotation()
                                ->playback()
                                ->loopBoundaries()
                                .enabled;
-  OnInputEventRecursive(input, loopEnabled);
+  OnInputEventRecursive(type, pitch, velocity, loopEnabled);
 
   // Make sure to release the pedal if we've reached the end of this part.
-  if (m_pedalDown &&
-      !GetNextNoteonTick(m_rightHand, NoteEvent::Type::noteOff) &&
-      !GetNextNoteonTick(m_leftHand, NoteEvent::Type::noteOff) &&
-      input.type == NoteEvent::Type::noteOff && m_pressedKeys.empty())
-    PostPedalEvent(PedalEvent{m_track, false});
+  if (m_pedalDown && !GetNextNoteonTick(m_rightHand, NoteEventType::noteOff) &&
+      !GetNextNoteonTick(m_leftHand, NoteEventType::noteOff) &&
+      type == NoteEventType::noteOff && m_pressedKeys.empty())
+    PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
 namespace
 {
-void Append(dgk::NoteEvents &output, const std::vector<int> &notes, int voice,
-            float velocity, NoteEvent::Type type)
+void Append(dgk::NoteEvents &output, const std::vector<int> &notes,
+            TrackIndex track, float velocity, NoteEventType type)
 {
   std::transform(notes.begin(), notes.end(), std::back_inserter(output),
                  [&](int note)
-                 { return NoteEvent{type, voice, note, velocity}; });
+                 { return NoteEvent{type, track, note, velocity}; });
 }
 
 auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
@@ -211,36 +214,33 @@ auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
 }
 } // namespace
 
-void OrchestrionSequencer::OnInputEventRecursive(const NoteEvent &input,
-                                                 bool loop)
+void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
+                                                 float velocity, bool loop)
 {
 
-  auto &hand =
-      input.pitch < 60 && !m_leftHand.empty() ? m_leftHand : m_rightHand;
+  auto &hand = pitch < 60 && !m_leftHand.empty() ? m_leftHand : m_rightHand;
   const auto cursorTick =
-      GetNextNoteonTick(hand, input.type).value_or(GetFinalTick(m_allVoices));
+      GetNextNoteonTick(hand, type).value_or(GetFinalTick(m_allVoices));
 
   const auto &loopBoundaries =
       globalContext()->currentMasterNotation()->playback()->loopBoundaries();
 
-  if (loop && input.type == NoteEvent::Type::noteOn &&
-      loopBoundaries.loopOutTick > 0 &&
+  if (loop && type == NoteEventType::noteOn && loopBoundaries.loopOutTick > 0 &&
       cursorTick.withoutRepeats >= loopBoundaries.loopOutTick)
   {
     GoToTick(loopBoundaries.loopInTick);
-    return OnInputEventRecursive(input, false);
+    return OnInputEventRecursive(type, pitch, velocity, false);
   }
 
   std::vector<NoteEvent> output;
   for (auto &voiceSequencer : hand)
   {
-    const auto next =
-        voiceSequencer->OnInputEvent(input.type, input.pitch, cursorTick);
+    const auto next = voiceSequencer->OnInputEvent(type, pitch, cursorTick);
     output.reserve(output.size() + next.noteOffs.size() + next.noteOns.size());
-    Append(output, next.noteOffs, voiceSequencer->voice, input.velocity,
-           NoteEvent::Type::noteOff);
-    Append(output, next.noteOns, voiceSequencer->voice, input.velocity,
-           NoteEvent::Type::noteOn);
+    Append(output, next.noteOffs, voiceSequencer->track, velocity,
+           NoteEventType::noteOff);
+    Append(output, next.noteOns, voiceSequencer->track, velocity,
+           NoteEventType::noteOn);
   };
 
   if (!output.empty())
@@ -267,15 +267,15 @@ void OrchestrionSequencer::OnInputEventRecursive(const NoteEvent &input,
           : m_pedalSequence.end();
   if (newPedalSequenceIt > m_pedalSequenceIt)
   {
-    if (input.type == NoteEvent::Type::noteOff)
+    if (type == NoteEventType::noteOff)
     {
       // Just a release.
-      PostPedalEvent(PedalEvent{m_track, false});
+      PostPedalEvent(PedalEvent{m_instrument, false});
     }
     else
     {
       const auto &item = *(newPedalSequenceIt - 1);
-      PostPedalEvent(PedalEvent{m_track, item.down});
+      PostPedalEvent(PedalEvent{m_instrument, item.down});
       m_pedalSequenceIt = newPedalSequenceIt;
     }
   }
@@ -293,21 +293,24 @@ void OrchestrionSequencer::GoToTick(int tick)
       std::transform(next.begin(), next.end(), std::back_inserter(output),
                      [&](int note)
                      {
-                       return NoteEvent{NoteEvent::Type::noteOff,
-                                        sequencer->voice, note, 0.f};
+                       return NoteEvent{NoteEventType::noteOff,
+                                        sequencer->track, note, 0.f};
                      });
     }
   }
   if (!output.empty())
     m_outputEvent.send(output);
 
-  m_outputEvent.send(PedalEvent{m_track, false});
+  m_outputEvent.send(PedalEvent{m_instrument, false});
   m_pedalSequenceIt = std::lower_bound(
       m_pedalSequence.begin(), m_pedalSequence.end(), tick,
       [](const auto &item, int tick) { return item.tick < tick; });
 }
 
-int OrchestrionSequencer::GetTrack() const { return m_track; }
+InstrumentIndex OrchestrionSequencer::GetInstrumentIndex() const
+{
+  return m_instrument;
+}
 
 void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
 {
@@ -325,8 +328,8 @@ void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
     std::unique_lock lock{m.mutex};
     if (event.on && m_pedalDown)
       // Always insert a pedal off event between two pedal on events.
-      m.queue.emplace(
-          QueueEntry<PedalEvent>{std::nullopt, PedalEvent{m_track, false}});
+      m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt,
+                                             PedalEvent{m_instrument, false}});
     m.queue.emplace(QueueEntry<PedalEvent>{actionTime, std::move(event)});
   }
 
@@ -341,34 +344,42 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
 
   const auto numNoteons =
       std::count_if(events.begin(), events.end(), [](const auto &event)
-                    { return event.type == NoteEvent::Type::noteOn; });
+                    { return event.type == NoteEventType::noteOn; });
   if (numNoteons < 2)
   {
     m_outputEvent.send(std::move(events));
     return;
   }
 
-  // Randomize the order of the notes and add random delays.
-  std::shuffle(events.begin(), events.end(), m_rng);
-
   // Do not add unnecessary delay.
   std::vector<int> delays(events.size());
   std::generate(delays.begin(), delays.end(),
                 [&] { return m_delayDist(m_rng); });
-  const auto min = *std::min_element(delays.begin(), delays.end());
-  std::transform(delays.begin(), delays.end(), delays.begin(),
-                 [&](int delay) { return delay - min; });
-
-  std::vector<QueueEntry<NoteEvent>> entries;
-  entries.reserve(events.size());
-  const auto now = steady_clock::now();
+  // We sort the delays, and use the sorted order to shuffle the events.
+  const auto unsorted = delays;
+  std::sort(delays.begin(), delays.end());
+  NoteEvents shuffledEvents;
+  shuffledEvents.reserve(events.size());
   for (auto i = 0u; i < events.size(); ++i)
   {
-    auto &event = events[i];
-    event.velocity =
+    const auto it = std::find(unsorted.begin(), unsorted.end(), delays[i]);
+    const auto &e = events[it - unsorted.begin()];
+    shuffledEvents.emplace_back(e.type, e.track, e.pitch, e.velocity);
+  }
+  std::transform(delays.begin(), delays.end(), delays.begin(),
+                 [&](int delay) { return delay - delays[0]; });
+
+  std::vector<QueueEntry<NoteEvent>> entries;
+  entries.reserve(shuffledEvents.size());
+  const auto now = steady_clock::now();
+  for (auto i = 0u; i < shuffledEvents.size(); ++i)
+  {
+    const auto &event = shuffledEvents[i];
+    const auto velocity =
         std::clamp(event.velocity * m_velocityDist(m_rng) / 100, 0.f, 1.f);
-    entries.emplace_back(
-        QueueEntry<NoteEvent>{now + microseconds{delays[i]}, std::move(event)});
+    entries.emplace_back(QueueEntry<NoteEvent>{
+        now + microseconds{delays[i]},
+        NoteEvent{event.type, event.track, event.pitch, velocity}});
   }
 
   auto &m = m_noteThreadMembers;

@@ -6,23 +6,33 @@ namespace
 {
 // When re-parametrizing, how many samples used in the transition from old to
 // new coefs.
-constexpr auto interpolationSamples = 16;
+constexpr auto interpolationSamples = 64;
 constexpr auto leastTimeBetweenReparametrizations = 0.05;
+constexpr auto maxSamplesPerChannel = 2048;
+constexpr auto maxCutoff = 10000;
 } // namespace
 
 LowpassFilteredSynthesizer::LowpassFilteredSynthesizer(
     std::unique_ptr<IOrchestrionSynthesizer> synthesizer)
     : m_synthesizer{std::move(synthesizer)},
-      m_lowPassFilter{interpolationSamples}
+      m_lowPassFilter{interpolationSamples},
+      m_maxSamplesPerChannel{maxSamplesPerChannel}
+{
+  initBuffers(maxSamplesPerChannel);
+  setCutoff(maxCutoff);
+}
+
+LowpassFilteredSynthesizer::~LowpassFilteredSynthesizer() { deleteBuffers(); }
+
+void LowpassFilteredSynthesizer::initBuffers(size_t samplesPerChannel)
 {
   m_audioBuffer = new float *[numChannels()];
   for (auto i = 0; i < numChannels(); ++i)
     m_audioBuffer[i] = new float[maxSamplesPerChannel];
-
-  setCutoff(m_synthesizer->sampleRate() / 2);
+  m_maxSamplesPerChannel = samplesPerChannel;
 }
 
-LowpassFilteredSynthesizer::~LowpassFilteredSynthesizer()
+void LowpassFilteredSynthesizer::deleteBuffers()
 {
   for (auto i = 0; i < numChannels(); ++i)
     delete[] m_audioBuffer[i];
@@ -51,6 +61,12 @@ int LowpassFilteredSynthesizer::numChannels() const
 size_t LowpassFilteredSynthesizer::process(float *buffer,
                                            size_t samplesPerChannel)
 {
+  IF_ASSERT_FAILED(samplesPerChannel <= m_maxSamplesPerChannel)
+  {
+    deleteBuffers();
+    initBuffers(samplesPerChannel);
+  }
+
   const auto produced = m_synthesizer->process(buffer, samplesPerChannel);
   const auto C = numChannels();
 
@@ -81,7 +97,8 @@ void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
       leastTimeBetweenReparametrizations * sampleRate())
   {
     const auto max = *std::max_element(velocities, velocities + numNoteons);
-    setCutoff(max * max * 10000);
+    assert(0 <= max && max <= 1);
+    setCutoff(max * max * maxCutoff);
     m_samplesSinceReparametrization = 0;
   }
 

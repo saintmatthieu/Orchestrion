@@ -24,7 +24,7 @@ public:
   void onPedal(bool on) override;
 
 private:
-  int m_sampleRate = 0;
+  const int m_sampleRate;
   fluid_synth_t *m_fluidSynth = nullptr;
   fluid_settings_t *m_fluidSettings = nullptr;
 };

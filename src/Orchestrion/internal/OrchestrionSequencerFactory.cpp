@@ -29,9 +29,10 @@ bool HasUntiedNotes(const mu::engraving::Chord &chord)
                      { return !note->tieBack(); });
 }
 
-bool TakeIt(const mu::engraving::Segment &segment, int track, bool &prevWasRest)
+bool TakeIt(const mu::engraving::Segment &segment, TrackIndex track,
+            bool &prevWasRest)
 {
-  const auto element = segment.element(track);
+  const auto element = segment.element(track.value);
   if (!dynamic_cast<const mu::engraving::ChordRest *>(element))
     return false;
   const auto chord = dynamic_cast<const mu::engraving::Chord *>(element);
@@ -49,11 +50,11 @@ bool IsVisible(const mu::engraving::Staff &staff)
 
 // At the moment we are not flexible at all: we look for the first part that has
 // two staves and assume this is what we want to play.
-std::optional<std::pair<muse::audio::TrackId, size_t /*staff*/>>
-GetRightHandStaff(const std::vector<mu::engraving::RepeatSegment *> &repeats,
-                  const mu::playback::IPlaybackController::InstrumentTrackIdMap
-                      &instrumentTrackIdMap,
-                  size_t nScoreTracks)
+std::optional<int> GetRightHandStaffIndex(
+    const std::vector<mu::engraving::RepeatSegment *> &repeats,
+    const mu::playback::IPlaybackController::InstrumentTrackIdMap
+        &instrumentTrackIdMap,
+    size_t nScoreTracks)
 {
   for (auto track = 0u; track < nScoreTracks; ++track)
     for (const auto &repeat : repeats)
@@ -72,7 +73,7 @@ GetRightHandStaff(const std::vector<mu::engraving::RepeatSegment *> &repeats,
               if (!instrumentTrackIdMap.count(id))
                 continue;
               const auto trackId = instrumentTrackIdMap.at(id);
-              return {{trackId, chord->staff()->idx()}};
+              return TrackIndex{trackId}.staffIndex();
             }
           }
   return std::nullopt;
@@ -101,21 +102,18 @@ void ForAllSegments(
 }
 
 auto GetChordSequence(mu::engraving::Score &score,
-                      IChordRegistry &chordRegistry,
-                      size_t staffIdx, int voice)
+                      IChordRegistry &chordRegistry, TrackIndex track)
 {
   std::vector<ChordPtr> sequence;
   auto prevWasRest = true;
   dgk::Tick endTick{0, 0};
-  const auto track = static_cast<int>(staffIdx * mu::engraving::VOICES + voice);
   ForAllSegments(
       score,
       [&](const mu::engraving::Segment &segment, int measureTick)
       {
         if (TakeIt(segment, track, prevWasRest))
         {
-          auto chord =
-              std::make_shared<MuseChord>(segment, track, voice, measureTick);
+          auto chord = std::make_shared<MuseChord>(segment, track, measureTick);
           chordRegistry.RegisterChord(chord.get(), &segment);
           const auto chordEndTick = chord->GetEndTick();
           if (endTick.withRepeats > 0 // we don't care if the voice doesn't
@@ -179,11 +177,8 @@ auto MakeHand(size_t staffIdx, const Staff &staff)
 {
   OrchestrionSequencer::Hand hand;
   for (auto &[voice, sequence] : staff)
-  {
-    const int track = staffIdx * mu::engraving::VOICES + voice;
-    hand.emplace_back(
-        std::make_unique<VoiceSequencer>(track, voice, std::move(sequence)));
-  }
+    hand.emplace_back(std::make_unique<VoiceSequencer>(
+        TrackIndex{static_cast<int>(staffIdx), voice}, std::move(sequence)));
   return hand;
 }
 } // namespace
@@ -197,28 +192,29 @@ OrchestrionSequencerFactory::CreateSequencer(
   auto &score = *masterNotation.masterScore();
   const auto rightHandStaff =
       score.nstaves() == 1
-          ? std::make_optional(
-                std::make_pair<muse::audio::TrackId, size_t>(0, 0))
-          : GetRightHandStaff(score.repeatList(), instrumentTrackIdMap,
-                              score.ntracks());
+          ? std::make_optional<int>(0)
+          : GetRightHandStaffIndex(score.repeatList(), instrumentTrackIdMap,
+                                   score.ntracks());
   if (!rightHandStaff.has_value())
     return nullptr;
   Staff rightHand;
   Staff leftHand;
-  const auto &[trackId, staff] = *rightHandStaff;
+  const auto staff = *rightHandStaff;
   for (auto v = 0; v < numVoices; ++v)
   {
-    if (auto sequence = GetChordSequence(score, *chordRegistry(), staff, v);
+    if (auto sequence =
+            GetChordSequence(score, *chordRegistry(), TrackIndex{staff, v});
         !sequence.empty())
       rightHand.emplace(v, std::move(sequence));
-    if (auto sequence = GetChordSequence(score, *chordRegistry(), staff + 1, v);
+    if (auto sequence =
+            GetChordSequence(score, *chordRegistry(), TrackIndex{staff + 1, v});
         !sequence.empty())
       leftHand.emplace(v, std::move(sequence));
   }
   auto pedalSequence = GetPedalSequence(score, staff, staff + 2);
 
   return std::make_unique<OrchestrionSequencer>(
-      static_cast<int>(trackId), MakeHand(staff, rightHand),
+      mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
       MakeHand(staff + 1, leftHand), std::move(pedalSequence));
 }
 

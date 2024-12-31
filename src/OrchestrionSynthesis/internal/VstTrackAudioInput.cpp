@@ -35,7 +35,7 @@ Steinberg::Vst::Event toSteinbergEvent(const NoteEvent &noteEvent)
   event.sampleOffset = 0;
   event.ppqPosition = 0;
   event.flags = Steinberg::Vst::Event::kIsLive;
-  if (noteEvent.type == NoteEvent::Type::noteOn)
+  if (noteEvent.type == NoteEventType::noteOn)
   {
     event.type = Steinberg::Vst::Event::kNoteOnEvent;
     event.noteOn.channel = 0; // TODO

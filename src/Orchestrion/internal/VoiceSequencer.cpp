@@ -5,15 +5,14 @@
 
 namespace dgk
 {
-VoiceSequencer::VoiceSequencer(int track, int voice,
-                               std::vector<ChordPtr> chords)
-    : track{track}, voice{voice}, m_gestures{std::move(chords)},
+VoiceSequencer::VoiceSequencer(TrackIndex track, std::vector<ChordPtr> chords)
+    : track{std::move(track)}, m_gestures{std::move(chords)},
       m_numGestures{static_cast<int>(m_gestures.size())}
 {
 }
 
 dgk::VoiceSequencer::Next
-VoiceSequencer::OnInputEvent(NoteEvent::Type event, int midiPitch,
+VoiceSequencer::OnInputEvent(NoteEventType event, int midiPitch,
                              const dgk::Tick &cursorTick)
 {
   const auto before = m_active;
@@ -55,18 +54,18 @@ VoiceSequencer::OnInputEvent(NoteEvent::Type event, int midiPitch,
   return {noteOns, noteOffs};
 }
 
-void VoiceSequencer::Advance(NoteEvent::Type event, int midiPitch,
+void VoiceSequencer::Advance(NoteEventType event, int midiPitch,
                              const dgk::Tick &cursorTick)
 {
   Finally finally{[&]
                   {
-                    if (event == NoteEvent::Type::noteOn)
+                    if (event == NoteEventType::noteOn)
                       m_pressedKey = midiPitch;
                     else if (m_pressedKey == midiPitch)
                       m_pressedKey.reset();
                   }};
 
-  if (event == NoteEvent::Type::noteOff && m_pressedKey.has_value() &&
+  if (event == NoteEventType::noteOff && m_pressedKey.has_value() &&
       *m_pressedKey != midiPitch)
     // Probably playing with two or more fingers, legato style - ignore
     return;
@@ -93,7 +92,7 @@ void VoiceSequencer::Advance(NoteEvent::Type event, int midiPitch,
   m_active.begin = nextBegin;
   // Do not open up to the next chord if the user is releasing the key.
   m_active.end =
-      m_gestures[nextBegin]->IsChord() && event == NoteEvent::Type::noteOff
+      m_gestures[nextBegin]->IsChord() && event == NoteEventType::noteOff
           ? nextBegin
           : nextBegin + 1;
 }
@@ -122,7 +121,7 @@ std::vector<int> VoiceSequencer::GoToTick(int tick)
   return noteOffs;
 }
 
-int VoiceSequencer::GetNextBegin(NoteEvent::Type event) const
+int VoiceSequencer::GetNextBegin(NoteEventType event) const
 {
   auto nextActive = m_active.end;
 
@@ -132,12 +131,11 @@ int VoiceSequencer::GetNextBegin(NoteEvent::Type event) const
 
   const auto isChord = m_gestures[nextActive]->IsChord();
   // Skip the next rest if the user is pressing the key.
-  return !isChord && event == NoteEvent::Type::noteOn ? nextActive + 1
-                                                      : nextActive;
+  return !isChord && event == NoteEventType::noteOn ? nextActive + 1
+                                                    : nextActive;
 }
 
-std::optional<dgk::Tick>
-VoiceSequencer::GetNextTick(NoteEvent::Type event) const
+std::optional<dgk::Tick> VoiceSequencer::GetNextTick(NoteEventType event) const
 {
   const auto i = GetNextBegin(event);
   return i < m_numGestures ? std::make_optional(m_gestures[i]->GetBeginTick())

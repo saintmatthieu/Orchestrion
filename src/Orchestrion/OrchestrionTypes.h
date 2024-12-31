@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -11,30 +12,6 @@ namespace dgk
 {
 
 static constexpr auto numVoices = 4;
-
-struct NoteEvent
-{
-  enum class Type
-  {
-    noteOn,
-    noteOff
-  };
-
-  Type type = Type::noteOn;
-  int channel = 0;
-  int pitch = 0;
-  float velocity = 0.f;
-};
-
-using NoteEvents = std::vector<NoteEvent>;
-
-struct PedalEvent
-{
-  int channel = 0;
-  bool on = false;
-};
-
-using EventVariant = std::variant<NoteEvents, PedalEvent>;
 
 struct PedalSequenceItem
 {
@@ -62,6 +39,66 @@ struct ChordActivationChange
   const std::vector<const IChord *> deactivated;
   const IChord *const activated;
 };
+
+struct TrackIndex
+{
+  explicit TrackIndex(int value) : value{value} {}
+
+  TrackIndex(int staff, int voice) : value{staff * numVoices + voice}
+  {
+    assert(value >= 0);
+  }
+
+  TrackIndex() : value{-1} {}
+
+  const int value;
+  int voiceIndex() const { return value % numVoices; }
+  int staffIndex() const { return value / numVoices; }
+};
+
+enum class NoteEventType
+{
+  noteOn,
+  noteOff
+};
+
+struct NoteEvent
+{
+  NoteEvent(NoteEventType type, TrackIndex track, int pitch, float velocity)
+      : type{type}, track{std::move(track)}, pitch{pitch}, velocity{velocity}
+  {
+  }
+
+  // NoteEvent(const NoteEvent& other) = default;
+  // NoteEvent& operator=(const NoteEvent& other) = default;
+  // NoteEvent(NoteEvent&& other) = default;
+
+  const NoteEventType type;
+  const TrackIndex track;
+  const int pitch;
+  const float velocity;
+};
+
+using NoteEvents = std::vector<NoteEvent>;
+
+struct InstrumentIndex
+{
+  explicit InstrumentIndex(int value) : value{value} {}
+  const int value;
+};
+
+struct PedalEvent
+{
+  PedalEvent(InstrumentIndex instrument, bool on)
+      : instrument{std::move(instrument)}, on{on}
+  {
+  }
+
+  const InstrumentIndex instrument;
+  const bool on;
+};
+
+using EventVariant = std::variant<NoteEvents, PedalEvent>;
 
 struct Tick
 {

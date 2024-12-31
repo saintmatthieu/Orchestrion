@@ -12,9 +12,12 @@ set(MODULE_SRC
     internal/SynthesizerConnector.h
     internal/TrackAudioInput.cpp
     internal/TrackAudioInput.h
+    internal/TrackChannelMapper.cpp
+    internal/TrackChannelMapper.h
     internal/VstTrackAudioInput.cpp
     internal/VstTrackAudioInput.h
     ISynthesizerConnector.h
+    ITrackChannelMapper.h
     OrchestrionSynthesisModule.cpp
     OrchestrionSynthesisModule.h
 )

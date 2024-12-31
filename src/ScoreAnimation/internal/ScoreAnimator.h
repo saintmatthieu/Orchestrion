@@ -21,6 +21,7 @@
 #include "IChordRegistry.h"
 #include "IScoreAnimator.h"
 #include "Orchestrion/IOrchestrion.h"
+#include "Orchestrion/OrchestrionTypes.h"
 #include <async/asyncable.h>
 #include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
@@ -48,9 +49,11 @@ public:
 
 private:
   void Subscribe(const IOrchestrionSequencer &sequencer);
-  void OnChordActivationChange(int track, const ChordActivationChange &change);
+  void OnChordActivationChange(TrackIndex track,
+                               const ChordActivationChange &change);
   std::vector<mu::engraving::EngravingItem *>
-  GetRelevantItems(int track, const mu::engraving::Segment *segment) const;
+  GetRelevantItems(TrackIndex track,
+                   const mu::engraving::Segment *segment) const;
   mu::notation::INotationInteractionPtr GetInteraction() const;
   mu::engraving::MasterScore *GetScore() const;
 };

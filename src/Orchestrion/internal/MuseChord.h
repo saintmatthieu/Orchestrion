@@ -18,7 +18,7 @@ namespace dgk
 class MuseChord : public IChord
 {
 public:
-  MuseChord(const mu::engraving::Segment &segment, int track, int voice,
+  MuseChord(const mu::engraving::Segment &segment, TrackIndex,
             int measurePlaybackTick);
 
   bool IsChord() const override;
@@ -33,9 +33,8 @@ private:
   std::vector<mu::engraving::Note *> GetNotes() const;
 
   const Tick m_tick;
-  const int m_track;
+  const TrackIndex m_track;
   const bool m_isChord;
-  const int m_voice;
 
   const mu::engraving::Segment &m_segment;
 };

@@ -22,6 +22,8 @@ private:
   void onPedal(bool on) override;
 
   void setCutoff(double cutoff);
+  void initBuffers(size_t samplesPerChannel);
+  void deleteBuffers();
 
   const std::unique_ptr<IOrchestrionSynthesizer> m_synthesizer;
 
@@ -31,6 +33,7 @@ private:
                             audioChannelCount>
       m_lowPassFilter;
   float **m_audioBuffer = nullptr;
+  size_t m_maxSamplesPerChannel;
 
   int m_samplesSinceReparametrization = 0;
 };

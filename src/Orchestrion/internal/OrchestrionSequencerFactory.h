@@ -1,5 +1,6 @@
 #pragma once
 
+#include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include "OrchestrionTypes.h"
 #include "ScoreAnimation/IChordRegistry.h"
 #include "playback/iplaybackcontroller.h"
@@ -19,6 +20,7 @@ class IOrchestrionSequencer;
 class OrchestrionSequencerFactory : public muse::Injectable
 {
   muse::Inject<IChordRegistry> chordRegistry;
+  muse::Inject<ITrackChannelMapper> mapper;
 
 public:
   std::unique_ptr<IOrchestrionSequencer> CreateSequencer(

@@ -17,24 +17,23 @@ public:
   };
 
 public:
-  VoiceSequencer(int track, int voice, std::vector<ChordPtr> chords);
+  VoiceSequencer(TrackIndex, std::vector<ChordPtr> chords);
 
-  const int track;
-  const int voice;
+  const TrackIndex track;
 
-  Next OnInputEvent(NoteEvent::Type, int midiPitch,
+  Next OnInputEvent(NoteEventType, int midiPitch,
                     const dgk::Tick &cursorTick);
   //! Returns noteoffs that were pending.
   std::vector<int> GoToTick(int tick);
 
-  std::optional<dgk::Tick> GetNextTick(NoteEvent::Type) const;
+  std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
   muse::async::Channel<ChordActivationChange> ChordActivationChanged() const;
 
 private:
-  void Advance(NoteEvent::Type, int midiPitch, const dgk::Tick &cursorTick);
-  int GetNextBegin(NoteEvent::Type) const;
+  void Advance(NoteEventType, int midiPitch, const dgk::Tick &cursorTick);
+  int GetNextBegin(NoteEventType) const;
 
   struct Range
   {

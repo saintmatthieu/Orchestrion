@@ -2,6 +2,7 @@
 
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
+#include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include <async/asyncable.h>
 #include <midi/imidioutport.h>
 #include <modularity/ioc.h>
@@ -14,6 +15,7 @@ class OrchestrionEventProcessor : public muse::Injectable,
 {
   muse::Inject<IOrchestrion> orchestrion;
   muse::Inject<muse::midi::IMidiOutPort> midiOutPort;
+  muse::Inject<ITrackChannelMapper> mapper;
 
 public:
   OrchestrionEventProcessor() = default;
@@ -22,6 +24,9 @@ public:
 
 private:
   void setupCallback(IOrchestrionSequencer &sequencer);
-  void onOrchestrionEvent(int track, EventVariant event);
+  void onOrchestrionEvent(InstrumentIndex, EventVariant event);
+
+  muse::midi::Event ToMuseMidiEvent(const NoteEvent &dgkEvent) const;
+  muse::midi::Event ToMuseMidiEvent(const PedalEvent &pedalEvent) const;
 };
 } // namespace dgk

@@ -11,21 +11,20 @@ namespace dgk
 
 namespace me = mu::engraving;
 
-MuseChord::MuseChord(const me::Segment &segment, int track, int voice,
+MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
     : m_tick{measurePlaybackTick + segment.rtick().ticks(),
              segment.tick().ticks()},
-      m_track{track},
-      m_isChord{dynamic_cast<const me::Chord *>(segment.element(m_track)) !=
-                nullptr},
-      m_voice{voice}, m_segment{segment}
+      m_track{track}, m_isChord{dynamic_cast<const me::Chord *>(
+                                    segment.element(m_track.value)) != nullptr},
+      m_segment{segment}
 {
 }
 
 std::vector<me::Note *> MuseChord::GetNotes() const
 {
   if (const auto museChord =
-          dynamic_cast<const me::Chord *>(m_segment.element(m_track)))
+          dynamic_cast<const me::Chord *>(m_segment.element(m_track.value)))
     return museChord->notes();
   return {};
 }
@@ -54,7 +53,8 @@ dgk::Tick MuseChord::GetEndTick() const
 
 dgk::Tick MuseChord::GetChordEndTick() const
 {
-  auto chord = dynamic_cast<const me::Chord *>(m_segment.element(m_track));
+  auto chord =
+      dynamic_cast<const me::Chord *>(m_segment.element(m_track.value));
   auto endTick = GetBeginTick();
   while (chord)
   {
@@ -70,7 +70,8 @@ dgk::Tick MuseChord::GetRestEndTick() const
   auto endTick = GetBeginTick();
   while (segment)
   {
-    const auto rest = dynamic_cast<const me::Rest *>(segment->element(m_track));
+    const auto rest =
+        dynamic_cast<const me::Rest *>(segment->element(m_track.value));
     if (!rest)
       break;
     endTick += rest->actualTicks().ticks();

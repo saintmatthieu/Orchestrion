@@ -108,12 +108,9 @@ void ComputerKeyboardMidiController::keyPressed(char letter)
   if (!sequencer)
     return;
 
-  NoteEvent evt;
-  evt.type = NoteEvent::Type::noteOn;
-  evt.pitch = m_noteMap.at(letter).pitch;
-  evt.velocity = m_noteMap.at(letter).velocity;
   m_pressedLetters.insert(letter);
-  sequencer->OnInputEvent(evt);
+  sequencer->OnInputEvent(NoteEventType::noteOn, m_noteMap.at(letter).pitch,
+                          m_noteMap.at(letter).velocity);
 }
 
 void ComputerKeyboardMidiController::keyReleased(char letter)
@@ -130,10 +127,7 @@ void ComputerKeyboardMidiController::keyReleased(char letter)
     return;
 
   m_pressedLetters.erase(letter);
-  NoteEvent evt;
-  evt.type = NoteEvent::Type::noteOff;
-  evt.velocity = 0.f;
-  evt.pitch = m_noteMap.at(letter).pitch;
-  sequencer->OnInputEvent(evt);
+  sequencer->OnInputEvent(NoteEventType::noteOff, m_noteMap.at(letter).pitch,
+                          0.f);
 }
 } // namespace dgk

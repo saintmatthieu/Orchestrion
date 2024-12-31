@@ -27,11 +27,11 @@ void ScoreAnimator::init()
 void ScoreAnimator::Subscribe(const IOrchestrionSequencer &sequencer)
 {
   sequencer.ChordActivationChanged().onReceive(
-      this, [this](int track, ChordActivationChange change)
+      this, [this](TrackIndex track, ChordActivationChange change)
       { OnChordActivationChange(track, change); });
 }
 
-void ScoreAnimator::OnChordActivationChange(int track,
+void ScoreAnimator::OnChordActivationChange(TrackIndex track,
                                             const ChordActivationChange &change)
 {
   const auto score = GetScore();
@@ -60,7 +60,7 @@ void ScoreAnimator::OnChordActivationChange(int track,
     const auto items = GetRelevantItems(track, segment);
     score->select(items, mu::engraving::SelectType::ADD);
     selectionChanged = true;
-    interaction->showItem(segment->element(track));
+    interaction->showItem(segment->element(track.value));
   }
 
   if (selectionChanged)
@@ -76,11 +76,11 @@ mu::notation::INotationInteractionPtr ScoreAnimator::GetInteraction() const
 }
 
 std::vector<mu::engraving::EngravingItem *>
-ScoreAnimator::GetRelevantItems(int track,
+ScoreAnimator::GetRelevantItems(TrackIndex track,
                                 const mu::engraving::Segment *segment) const
 {
   const auto chord =
-      dynamic_cast<const mu::engraving::Chord *>(segment->element(track));
+      dynamic_cast<const mu::engraving::Chord *>(segment->element(track.value));
   using NoteVector = std::vector<mu::engraving::Note *>;
   const NoteVector notes = chord ? chord->notes() : NoteVector{};
   std::vector<mu::engraving::EngravingItem *> items;
@@ -103,7 +103,7 @@ ScoreAnimator::GetRelevantItems(int track,
     // bars, clefs, etc.
     while (segment)
     {
-      auto item = segment->element(track);
+      auto item = segment->element(track.value);
       if (dynamic_cast<mu::engraving::Chord *>(item))
         break;
       if (const auto rest = dynamic_cast<mu::engraving::Rest *>(item))

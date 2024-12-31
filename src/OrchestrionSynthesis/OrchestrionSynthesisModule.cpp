@@ -18,6 +18,7 @@
  */
 #include "OrchestrionSynthesisModule.h"
 #include "internal/SynthesizerConnector.h"
+#include "internal/TrackChannelMapper.h"
 
 namespace dgk
 {
@@ -28,6 +29,9 @@ std::string OrchestrionSynthesisModule::moduleName() const
 
 void OrchestrionSynthesisModule::registerExports()
 {
-  ioc()->registerExport<ISynthesizerConnector>(moduleName(), new SynthesizerConnector);
+  ioc()->registerExport<ISynthesizerConnector>(moduleName(),
+                                               new SynthesizerConnector);
+  ioc()->registerExport<ITrackChannelMapper>(moduleName(),
+                                             new TrackChannelMapper);
 }
 } // namespace dgk

@@ -36,15 +36,15 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 public:
   using Hand = std::vector<std::unique_ptr<VoiceSequencer>>;
 
-  OrchestrionSequencer(int track, Hand rightHand, Hand leftHand, PedalSequence);
+  OrchestrionSequencer(InstrumentIndex, Hand rightHand, Hand leftHand, PedalSequence);
   ~OrchestrionSequencer();
 
-  void OnInputEvent(const NoteEvent &inputEvent) override;
+  void OnInputEvent(NoteEventType, int pitch, float velocity) override;
   //! Returns noteoffs that were pending.
   void GoToTick(int tick) override;
-  int GetTrack() const override;
+  InstrumentIndex GetInstrumentIndex() const override;
 
-  muse::async::Channel<int, ChordActivationChange>
+  muse::async::Channel<TrackIndex, ChordActivationChange>
   ChordActivationChanged() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
 
@@ -71,11 +71,12 @@ private:
                                 std::function<void(EventType)> cb);
 
   void OnMidiEventReceived(const muse::midi::Event &event);
-  void OnInputEventRecursive(const NoteEvent &inputEvent, bool loop);
+  void OnInputEventRecursive(NoteEventType, int pitch, float velocity,
+                             bool loop);
   void PostPedalEvent(PedalEvent event);
   void PostNoteEvents(NoteEvents events);
 
-  const int m_track;
+  const InstrumentIndex m_instrument;
 
   Hand m_rightHand;
   Hand m_leftHand;
@@ -96,7 +97,8 @@ private:
 
   std::unordered_set<int> m_pressedKeys;
 
-  muse::async::Channel<int, ChordActivationChange> m_chordActivationChanged;
+  muse::async::Channel<TrackIndex, ChordActivationChange>
+      m_chordActivationChanged;
   muse::async::Channel<EventVariant> m_outputEvent;
 };
 } // namespace dgk

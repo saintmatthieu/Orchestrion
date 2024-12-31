@@ -19,14 +19,11 @@ constexpr int defaultMidiVolume = 100;
 constexpr int minNoteLenMs = 10;
 constexpr unsigned int audioChannelPairs = 1;
 constexpr unsigned int audioChannelCount = audioChannelPairs * 2;
-
-constexpr int maxSamplesPerChannel = 4096;
+constexpr int midiChannel = 0;
 } // namespace
 
-FluidSynthesizer::FluidSynthesizer(int sampleRate)
+FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
 {
-  m_sampleRate = sampleRate;
-
   m_fluidSettings = new_fluid_settings();
   fluid_settings_setnum(m_fluidSettings, "synth.gain", globalVolumeGain);
   fluid_settings_setint(m_fluidSettings, "synth.audio-channels",
@@ -57,24 +54,22 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate)
       { fluid_synth_sfload(m_fluidSynth, entry.first.c_str(), 0); });
 
   fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
-  constexpr auto channelIdx =
-      0; // At the moment, only one staff (or instrument) at a time is
-         // supported, hence just one channel.
-  fluid_synth_set_interp_method(m_fluidSynth, channelIdx, FLUID_INTERP_DEFAULT);
-  fluid_synth_pitch_wheel_sens(m_fluidSynth, channelIdx, 24);
+  fluid_synth_set_interp_method(m_fluidSynth, midiChannel,
+                                FLUID_INTERP_DEFAULT);
+  fluid_synth_pitch_wheel_sens(m_fluidSynth, midiChannel, 24);
 
   // The following will become relevant when we allow the user to change the
   // sound. At the moment we just use piano.
-  fluid_synth_bank_select(m_fluidSynth, channelIdx, 0);
-  fluid_synth_program_change(m_fluidSynth, channelIdx, 0);
+  fluid_synth_bank_select(m_fluidSynth, midiChannel, 0);
+  fluid_synth_program_change(m_fluidSynth, midiChannel, 0);
 
-  fluid_synth_cc(m_fluidSynth, channelIdx, 7, defaultMidiVolume);
-  fluid_synth_cc(m_fluidSynth, channelIdx, 74, 0);
-  fluid_synth_set_portamento_mode(m_fluidSynth, channelIdx,
+  fluid_synth_cc(m_fluidSynth, midiChannel, 7, defaultMidiVolume);
+  fluid_synth_cc(m_fluidSynth, midiChannel, 74, 0);
+  fluid_synth_set_portamento_mode(m_fluidSynth, midiChannel,
                                   FLUID_CHANNEL_PORTAMENTO_MODE_EACH_NOTE);
-  fluid_synth_set_legato_mode(m_fluidSynth, channelIdx,
+  fluid_synth_set_legato_mode(m_fluidSynth, midiChannel,
                               FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
-  fluid_synth_activate_tuning(m_fluidSynth, channelIdx, 0, 0, 0);
+  fluid_synth_activate_tuning(m_fluidSynth, midiChannel, 0, 0, 0);
 }
 
 FluidSynthesizer::~FluidSynthesizer()
@@ -98,17 +93,18 @@ void FluidSynthesizer::onNoteOns(size_t numNoteons, const int *pitches,
                                  const float *velocities)
 {
   for (auto i = 0u; i < numNoteons; ++i)
-    fluid_synth_noteon(m_fluidSynth, 0, pitches[i], velocities[i] * 127 + .5f);
+    fluid_synth_noteon(m_fluidSynth, midiChannel, pitches[i],
+                       velocities[i] * 127 + .5f);
 }
 
 void FluidSynthesizer::onNoteOffs(size_t numNoteoffs, const int *pitches)
 {
   for (auto i = 0u; i < numNoteoffs; ++i)
-    fluid_synth_noteoff(m_fluidSynth, 0, pitches[i]);
+    fluid_synth_noteoff(m_fluidSynth, midiChannel, pitches[i]);
 }
 
 void FluidSynthesizer::onPedal(bool on)
 {
-  fluid_synth_cc(m_fluidSynth, 0, 0x40, on ? 127 : 0);
+  fluid_synth_cc(m_fluidSynth, midiChannel, 0x40, on ? 127 : 0);
 }
 } // namespace dgk
