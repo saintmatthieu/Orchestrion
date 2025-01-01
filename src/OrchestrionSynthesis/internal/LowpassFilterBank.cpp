@@ -1,4 +1,5 @@
 #include "LowpassFilterBank.h"
+#include <cmath>
 
 namespace dgk
 {
@@ -16,7 +17,8 @@ LowpassFilterBank::LowpassFilterBank(SynthFactory synthFactory)
   for (auto i = 0; i < numVelocitySteps; ++i)
   {
     const auto velocity = static_cast<double>(i + 1) / numVelocitySteps;
-    const auto cutoff = maxCutoff * velocity * velocity;
+    constexpr auto exp = 3.5;
+    const auto cutoff = maxCutoff * std::pow(velocity, exp);
     m_synthesizers[i] =
         std::make_shared<LowpassFilteredSynthesizer>(m_synthFactory(), cutoff);
   }
