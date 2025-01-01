@@ -106,7 +106,8 @@ void OrchestrionMenuModel::selectMenuItem(const char *submenuId,
   const auto it = std::find_if(
       subitems.begin(), subitems.end(), [deviceId](const MenuItem *item)
       { return item->args().arg<std::string>(1) == deviceId; });
-  IF_ASSERT_FAILED(it != subitems.end()) return;
+  if (it == subitems.end())
+    return;
   (*it)->setSelected(true);
 }
 
