@@ -92,8 +92,8 @@ private:
   bool m_finished = false;
   bool m_pedalDown = false;
   std::mt19937 m_rng{0};
-  std::uniform_int_distribution<int> m_delayDist{0, 50000};   // microseconds
-  std::uniform_int_distribution<int> m_velocityDist{70, 130}; // percents
+  std::uniform_int_distribution<int> m_delayDist{0, 30000};   // microseconds
+  std::uniform_int_distribution<int> m_velocityDist{90, 110}; // percents
 
   std::unordered_set<int> m_pressedKeys;
 
