@@ -1,11 +1,10 @@
 #include "LowpassFilterBank.h"
-#include <cmath>
+#include <array>
 
 namespace dgk
 {
 namespace
 {
-constexpr auto maxCutoff = 10000.0;
 constexpr auto maxSamples = 4096;
 
 } // namespace
@@ -16,9 +15,23 @@ LowpassFilterBank::LowpassFilterBank(SynthFactory synthFactory)
 {
   for (auto i = 0; i < numVelocitySteps; ++i)
   {
-    const auto velocity = static_cast<double>(i + 1) / numVelocitySteps;
-    constexpr auto exp = 3.5;
-    const auto cutoff = maxCutoff * std::pow(velocity, exp);
+    constexpr auto numPoints = 4;
+    constexpr std::array<double, numPoints> velocities{0., 0.25, 0.5, 0.75};
+    constexpr std::array<double, numPoints> cutoffs{200., 400., 1000., 7000.};
+    // Interpolate cutoff frequency linearly.
+    const auto velocity = i / (numVelocitySteps - 1.);
+    const auto it =
+        std::upper_bound(velocities.begin(), velocities.end(), velocity);
+    const auto index = it - velocities.begin();
+    const auto cutoff =
+        index == 0 ? cutoffs[0]
+        : index == numPoints
+            ? cutoffs[numPoints - 1]
+            : cutoffs[index - 1] +
+                  (cutoffs[index] - cutoffs[index - 1]) *
+                      (velocity - velocities[index - 1]) /
+                      (velocities[index] - velocities[index - 1]);
+
     m_synthesizers[i] =
         std::make_shared<LowpassFilteredSynthesizer>(m_synthFactory(), cutoff);
   }

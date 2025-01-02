@@ -13,7 +13,7 @@ LowpassFilteredSynthesizer::LowpassFilteredSynthesizer(
     : m_synthesizer{std::move(synthesizer)},
       m_maxSamplesPerChannel{maxSamplesPerChannel}
 {
-  m_lowPassFilter.setup(lowpassOrder, m_synthesizer->sampleRate(), cutoff);
+  m_lowPassFilter.setup(order, m_synthesizer->sampleRate(), cutoff);
   initBuffers(maxSamplesPerChannel);
 }
 
@@ -67,8 +67,6 @@ size_t LowpassFilteredSynthesizer::process(float *buffer,
   for (auto i = 0; i < C; ++i)
     for (muse::audio::samples_t j = 0; j < samplesPerChannel; ++j)
       buffer[j * C + i] = m_audioBuffer[i][j];
-
-  m_samplesSinceReparametrization += (int)samplesPerChannel;
 
   return produced;
 }

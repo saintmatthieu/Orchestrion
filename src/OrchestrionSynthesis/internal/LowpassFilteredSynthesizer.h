@@ -9,7 +9,8 @@ namespace dgk
 class LowpassFilteredSynthesizer : public IOrchestrionSynthesizer
 {
 public:
-  LowpassFilteredSynthesizer(std::unique_ptr<IOrchestrionSynthesizer>, double cutoff);
+  LowpassFilteredSynthesizer(std::unique_ptr<IOrchestrionSynthesizer>,
+                             double cutoff);
   ~LowpassFilteredSynthesizer();
 
 private:
@@ -26,13 +27,11 @@ private:
 
   const std::unique_ptr<IOrchestrionSynthesizer> m_synthesizer;
 
-  static const auto lowpassOrder = 2;
+  static const auto order = 2;
   static const auto audioChannelCount = 2;
-  Dsp::SimpleFilter<Dsp::Bessel::LowPass<lowpassOrder>, audioChannelCount>
+  Dsp::SimpleFilter<Dsp::Bessel::LowPass<order>, audioChannelCount>
       m_lowPassFilter;
   float **m_audioBuffer = nullptr;
   size_t m_maxSamplesPerChannel;
-
-  int m_samplesSinceReparametrization = 0;
 };
 } // namespace dgk

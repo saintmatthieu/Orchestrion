@@ -23,7 +23,7 @@ private:
   void onNoteOffs(size_t numNoteoffs, const int *pitches) override;
   void onPedal(bool on) override;
 
-  static const auto numVelocitySteps = 8;
+  static const auto numVelocitySteps = 9;
   const SynthFactory m_synthFactory;
   std::array<std::shared_ptr<IOrchestrionSynthesizer>, numVelocitySteps>
       m_synthesizers;
