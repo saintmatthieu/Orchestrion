@@ -38,8 +38,8 @@ public:
   Q_INVOKABLE void loadOrchestrionNotation();
 
 private:
-  void mousePressEvent(QMouseEvent *event) override;
-
   void alignVertically();
+  bool eventFilter(QObject *watched, QEvent *event) override;
+  void onMousePressed(const QPointF &pos);
 };
 } // namespace dgk

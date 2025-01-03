@@ -17,17 +17,29 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationPaintView.h"
+#include <QApplication>
 
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent)
 {
+  qApp->installEventFilter(this);
 }
 
-void OrchestrionNotationPaintView::mousePressEvent(QMouseEvent *event)
+bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 {
-  const muse::PointF logicPos = toLogical(event->pos());
+  if (watched == this && event->type() == QEvent::MouseButtonPress)
+  {
+    const auto mouseEvent = static_cast<QMouseEvent *>(event);
+    onMousePressed(mouseEvent->localPos());
+  }
+  return mu::notation::NotationPaintView::eventFilter(watched, event);
+}
+
+void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
+{
+  const muse::PointF logicPos = toLogical(pos);
   const float hitWidth =
       configuration()->selectionProximity() * 0.5f / currentScaling();
   orchestrionNotationInteraction()->onMousePressed(logicPos, hitWidth);
