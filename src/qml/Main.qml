@@ -126,10 +126,14 @@ ApplicationWindow {
             }
         }
 
-        OrchestrionNotationPaintView {
-            id: notationPaintView
+        NotationScrollAndZoomArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            OrchestrionNotationPaintView {
+                id: notationPaintView
+                anchors.fill: parent
+            }
         }
     }
 
