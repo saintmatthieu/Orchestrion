@@ -48,9 +48,14 @@ void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   load();
-  // So that we have one long horizontal scrolling view.
-  dispatcher()->dispatch("view-mode-continuous");
+  setViewMode(mu::notation::ViewMode::LINE);
   alignVertically();
+}
+
+void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
+{
+  notation()->viewState()->setViewMode(mode);
+  notation()->painting()->setViewMode(mode);
 }
 
 void OrchestrionNotationPaintView::alignVertically()

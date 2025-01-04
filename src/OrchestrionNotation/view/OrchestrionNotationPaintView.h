@@ -27,10 +27,8 @@ namespace dgk
 class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
   Q_OBJECT
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction =
-      {this};
-  muse::Inject<mu::notation::INotationConfiguration> configuration = {this};
+  muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
+  muse::Inject<mu::notation::INotationConfiguration> configuration;
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
@@ -39,6 +37,7 @@ public:
 
 private:
   void alignVertically();
+  void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void onMousePressed(const QPointF &pos);
 };
