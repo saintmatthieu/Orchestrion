@@ -98,13 +98,9 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
             this, [this, voiceSequencer](ChordActivationChange change)
             { m_chordActivationChanged.send(voiceSequencer->track, change); });
       });
-  orchestrionNotationInteraction()->elementClicked().onReceive(
-      this,
-      [this](const mu::notation::EngravingItem *item)
-      {
-        if (const auto note = dynamic_cast<const mu::engraving::Note *>(item))
-          GoToTick(note->tick().ticks());
-      });
+  orchestrionNotationInteraction()->noteClicked().onReceive(
+      this, [this](const mu::engraving::Note *note)
+      { GoToTick(note->tick().ticks()); });
 }
 
 muse::async::Channel<TrackIndex, ChordActivationChange>

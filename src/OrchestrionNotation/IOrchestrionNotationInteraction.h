@@ -16,7 +16,8 @@ public:
 
   virtual void onMousePressed(const muse::PointF &logicalPosition,
                               float hitWidth) = 0;
-  virtual muse::async::Channel<const mu::notation::EngravingItem *>
-  elementClicked() const = 0;
+  virtual void onMouseMoved() = 0;
+  virtual muse::async::Channel<const mu::notation::Note *>
+  noteClicked() const = 0;
 };
 } // namespace dgk

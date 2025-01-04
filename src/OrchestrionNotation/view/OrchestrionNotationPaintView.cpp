@@ -29,11 +29,14 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
 
 bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 {
-  if (watched == this && event->type() == QEvent::MouseButtonPress)
+  if (event->type() == QEvent::MouseButtonPress)
   {
     const auto mouseEvent = static_cast<QMouseEvent *>(event);
     onMousePressed(mouseEvent->localPos());
   }
+  else if (event->type() == QEvent::MouseMove)
+    orchestrionNotationInteraction()->onMouseMoved();
+
   return mu::notation::NotationPaintView::eventFilter(watched, event);
 }
 

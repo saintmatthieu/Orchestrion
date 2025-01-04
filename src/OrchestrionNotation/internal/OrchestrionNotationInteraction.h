@@ -14,10 +14,11 @@ class OrchestrionNotationInteraction : public IOrchestrionNotationInteraction,
 public:
   void onMousePressed(const muse::PointF &logicalPosition,
                       float hitWidth) override;
-  muse::async::Channel<const mu::notation::EngravingItem *>
-  elementClicked() const override;
+  void onMouseMoved() override;
+  muse::async::Channel<const mu::notation::Note *> noteClicked() const override;
 
 private:
-  muse::async::Channel<const mu::notation::EngravingItem *> m_elementClicked;
+  mu::notation::INotationInteractionPtr muInteraction() const;
+  muse::async::Channel<const mu::notation::Note *> m_noteClicked;
 };
 } // namespace dgk

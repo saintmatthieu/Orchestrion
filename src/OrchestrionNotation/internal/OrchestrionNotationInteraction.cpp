@@ -7,26 +7,37 @@ namespace dgk
 void OrchestrionNotationInteraction::onMousePressed(
     const muse::PointF &logicPos, float hitWidth)
 {
-  const auto interaction = globalContext()->currentNotation()->interaction();
+  const auto interaction = muInteraction();
   mu::notation::EngravingItem *hitElement =
       interaction->hitElement(logicPos, hitWidth);
-  if (!hitElement)
-  {
-    interaction->deleteSelection();
+  const auto note = dynamic_cast<mu::engraving::Note *>(hitElement);
+  if (!note)
+    // interaction->clearSelection(); using this might be needed.
     return;
-  }
 
   const auto hitStaff = interaction->hitStaff(logicPos);
   const auto hitStaffIndex = hitStaff ? hitStaff->idx() : muse::nidx;
-  interaction->select({hitElement}, mu::engraving::SelectType::REPLACE,
+  interaction->select({note}, mu::engraving::SelectType::REPLACE,
                       hitStaffIndex);
 
-  m_elementClicked.send(hitElement);
+  m_noteClicked.send(note);
 }
 
-muse::async::Channel<const mu::notation::EngravingItem *>
-OrchestrionNotationInteraction::elementClicked() const
+void OrchestrionNotationInteraction::onMouseMoved()
 {
-  return m_elementClicked;
+  // This will prevent dragging from editing the score.
+  muInteraction()->clearSelection();
+}
+
+muse::async::Channel<const mu::notation::Note *>
+OrchestrionNotationInteraction::noteClicked() const
+{
+  return m_noteClicked;
+}
+
+mu::notation::INotationInteractionPtr
+OrchestrionNotationInteraction::muInteraction() const
+{
+  return globalContext()->currentNotation()->interaction();
 }
 } // namespace dgk
