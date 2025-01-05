@@ -51,10 +51,6 @@ private:
   void Subscribe(const IOrchestrionSequencer &sequencer);
   void OnChordActivationChange(TrackIndex track,
                                const ChordActivationChange &change);
-  std::vector<mu::engraving::EngravingItem *>
-  GetRelevantItems(TrackIndex track,
-                   const mu::engraving::Segment *segment) const;
   mu::notation::INotationInteractionPtr GetInteraction() const;
-  mu::engraving::MasterScore *GetScore() const;
 };
 } // namespace dgk

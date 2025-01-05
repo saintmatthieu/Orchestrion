@@ -19,8 +19,12 @@
 #pragma once
 
 #include "IOrchestrionNotationInteraction.h"
+#include "Orchestrion/IOrchestrion.h"
+#include "Orchestrion/OrchestrionTypes.h"
+#include "ScoreAnimation/IChordRegistry.h"
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
+#include <unordered_map>
 
 namespace dgk
 {
@@ -29,6 +33,8 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
   Q_OBJECT
   muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
   muse::Inject<mu::notation::INotationConfiguration> configuration;
+  muse::Inject<IOrchestrion> orchestrion;
+  muse::Inject<IChordRegistry> chordRegistry;
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
@@ -36,9 +42,16 @@ public:
   Q_INVOKABLE void loadOrchestrionNotation();
 
 private:
+  void subscribe(const IOrchestrionSequencer &sequencer);
   void alignVertically();
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
+  void paint(QPainter *painter) override;
   void onMousePressed(const QPointF &pos);
+  std::vector<mu::engraving::EngravingItem *>
+  getRelevantItems(TrackIndex track,
+                   const mu::engraving::Segment *segment) const;
+
+  std::unordered_map<int, QRectF> m_boxes;
 };
 } // namespace dgk
