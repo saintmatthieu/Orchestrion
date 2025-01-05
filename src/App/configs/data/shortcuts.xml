@@ -5,4 +5,19 @@
     <std>3</std>
     <autorepeat>0</autorepeat>
   </SC>
+  <SC>
+    <key>play</key>
+    <seq>Space</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>rewind</key>
+    <seq>Home</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>loop</key>
+    <seq>Ctrl+L</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
 </Shortcuts>
