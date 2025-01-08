@@ -36,7 +36,8 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 public:
   using Hand = std::vector<std::unique_ptr<VoiceSequencer>>;
 
-  OrchestrionSequencer(InstrumentIndex, Hand rightHand, Hand leftHand, PedalSequence);
+  OrchestrionSequencer(InstrumentIndex, Hand rightHand, Hand leftHand,
+                       PedalSequence);
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch, float velocity) override;
@@ -44,8 +45,8 @@ public:
   void GoToTick(int tick) override;
   InstrumentIndex GetInstrumentIndex() const override;
 
-  muse::async::Channel<TrackIndex, ChordActivationChange>
-  ChordActivationChanged() const override;
+  muse::async::Channel<TrackIndex, ChordTransition>
+  ChordTransitionTriggered() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
 
 private:
@@ -97,8 +98,7 @@ private:
 
   std::unordered_set<int> m_pressedKeys;
 
-  muse::async::Channel<TrackIndex, ChordActivationChange>
-      m_chordActivationChanged;
+  muse::async::Channel<TrackIndex, ChordTransition> m_chordTransitionTriggered;
   muse::async::Channel<EventVariant> m_outputEvent;
 };
 } // namespace dgk

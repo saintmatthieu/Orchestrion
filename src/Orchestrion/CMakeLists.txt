@@ -5,6 +5,8 @@ set(MODULE_SRC
     internal/ComputerKeyboard.h
     internal/ComputerKeyboardMidiController.cpp
     internal/ComputerKeyboardMidiController.h
+    internal/ChordTransitionUtil.cpp
+    internal/ChordTransitionUtil.h
     internal/MuseChord.cpp
     internal/MuseChord.h
     internal/Orchestrion.cpp

@@ -5,160 +5,157 @@
 
 namespace dgk
 {
+VoiceEvent VoiceSequencer::GetVoiceEvent(const std::vector<ChordPtr> &chords,
+                                         int index)
+{
+  if (index >= chords.size())
+    return VoiceEvent::none;
+  else if (chords[index]->IsChord())
+    return VoiceEvent::chord;
+  else if (index + 1 == chords.size())
+    return VoiceEvent::finalRest;
+  else
+    return VoiceEvent::rest;
+}
+
 VoiceSequencer::VoiceSequencer(TrackIndex track, std::vector<ChordPtr> chords)
     : track{std::move(track)}, m_gestures{std::move(chords)},
       m_numGestures{static_cast<int>(m_gestures.size())}
 {
 }
 
-dgk::VoiceSequencer::Next
-VoiceSequencer::OnInputEvent(NoteEventType event, int midiPitch,
-                             const dgk::Tick &cursorTick)
+ChordTransitionType VoiceSequencer::GetNextTransition(NoteEventType event,
+                                                      uint8_t midiPitch) const
 {
-  const auto before = m_active;
-  Advance(event, midiPitch, cursorTick);
-
-  std::vector<int> noteOffs;
-  std::vector<const IChord *> deactivated;
-  for (auto i = before.begin; i < m_active.begin; ++i)
-  {
-    const auto &gesture = m_gestures[i];
-    const auto pitches = gesture->GetPitches();
-    deactivated.push_back(gesture.get());
-    noteOffs.insert(noteOffs.end(), pitches.begin(), pitches.end());
-  }
-
-  std::vector<int> noteOns;
-  for (auto i = before.end; i < m_active.end; ++i)
-  {
-    const auto pitches = m_gestures[i]->GetPitches();
-    noteOns.insert(noteOns.end(), pitches.begin(), pitches.end());
-  }
-
-  // Remove entries in noteOffs that are in noteOns
-  noteOffs.erase(std::remove_if(noteOffs.begin(), noteOffs.end(),
-                                [&noteOns](int note)
-                                {
-                                  return std::find(noteOns.begin(),
-                                                   noteOns.end(),
-                                                   note) != noteOns.end();
-                                }),
-                 noteOffs.end());
-
-  const IChord *activated = m_active.begin < m_active.end
-                                ? m_gestures[m_active.end - 1].get()
-                                : nullptr;
-
-  m_chordActivationChanged.send({deactivated, activated});
-
-  return {noteOns, noteOffs};
+  const VoiceEvent prev =
+      m_onImplicitRest ? VoiceEvent::none : GetVoiceEvent(m_gestures, m_index);
+  const VoiceEvent next =
+      GetVoiceEvent(m_gestures, m_onImplicitRest ? m_index : m_index + 1);
+  return event == NoteEventType::noteOn
+             ? CTU::GetTransitionForNoteon(prev, next)
+             : CTU::GetTransitionForNoteoff(prev, next, m_pressedKey,
+                                            midiPitch);
 }
 
-void VoiceSequencer::Advance(NoteEventType event, int midiPitch,
-                             const dgk::Tick &cursorTick)
+namespace
 {
-  Finally finally{[&]
-                  {
-                    if (event == NoteEventType::noteOn)
-                      m_pressedKey = midiPitch;
-                    else if (m_pressedKey == midiPitch)
-                      m_pressedKey.reset();
-                  }};
-
-  if (event == NoteEventType::noteOff && m_pressedKey.has_value() &&
-      *m_pressedKey != midiPitch)
-    // Probably playing with two or more fingers, legato style - ignore
-    return;
-
-  // If there is something active, then the end tick of the first active
-  // gesture. Else, the tick of the next gesture.
-  const auto nextBegin = GetNextBegin(event);
-
-  if (nextBegin == m_numGestures)
+int GetIndexIncrement(ChordTransitionType transition)
+{
+  assert(static_cast<int>(ChordTransitionType::_count) == 9);
+  // Principle: the index is incremented when a chord or rest is finished.
+  switch (transition)
   {
-    // `nextBegin` might show the end for this event type, yet don't switch
-    // anything off until the cursor has reached it.
-    if (m_active.end == m_numGestures ||
-        cursorTick >= m_gestures[m_active.end]->GetBeginTick())
-      // Ok then.
-      m_active.begin = m_active.end = nextBegin;
-    return;
+  case ChordTransitionType::none:
+  case ChordTransitionType::implicitRestToChord:
+    return 0;
+  case ChordTransitionType::chordToImplicitRest:
+  case ChordTransitionType::restToImplicitRest:
+  case ChordTransitionType::chordToChord:
+  case ChordTransitionType::chordToRest:
+  case ChordTransitionType::restToChord:
+  case ChordTransitionType::implicitRestToChordOverSkippedRest:
+    return 1;
+  case ChordTransitionType::chordToChordOverSkippedRest:
+    return 2;
   }
+}
+} // namespace
 
-  if (cursorTick < m_gestures[nextBegin]->GetBeginTick())
-    // We're finished or the cursor hasn't reached our next event yet.
-    return;
+ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event, int midiPitch,
+                                             const dgk::Tick &cursorTick)
+{
+  const ChordTransitionType transitionType =
+      GetNextTransition(event, midiPitch);
 
-  m_active.begin = nextBegin;
-  // Do not open up to the next chord if the user is releasing the key.
-  m_active.end =
-      m_gestures[nextBegin]->IsChord() && event == NoteEventType::noteOff
-          ? nextBegin
-          : nextBegin + 1;
+  if (event == NoteEventType::noteOn)
+    m_pressedKey = midiPitch;
+  else if (m_pressedKey == midiPitch)
+    m_pressedKey.reset();
+
+  m_index += GetIndexIncrement(transitionType);
+  if (transitionType != ChordTransitionType::none)
+    m_onImplicitRest =
+        transitionType == ChordTransitionType::chordToImplicitRest ||
+        transitionType == ChordTransitionType::restToImplicitRest;
+
+  switch (transitionType)
+  {
+  case ChordTransitionType::none:
+    return {};
+  case ChordTransitionType::chordToChordOverSkippedRest:
+    return {ChordTransition::Deactivated{m_gestures[m_index - 2].get()},
+            ChordTransition::SkippedRest{m_gestures[m_index - 1].get()},
+            ChordTransition::Activated{m_gestures[m_index].get()}};
+  case ChordTransitionType::chordToImplicitRest:
+  case ChordTransitionType::restToImplicitRest:
+    return {ChordTransition::Deactivated{m_gestures[m_index - 1].get()},
+            ChordTransition::SkippedRest{nullptr},
+            ChordTransition::Activated{nullptr}};
+  case ChordTransitionType::chordToChord:
+  case ChordTransitionType::chordToRest:
+  case ChordTransitionType::restToChord:
+    return {ChordTransition::Deactivated{m_gestures[m_index - 1].get()},
+            ChordTransition::SkippedRest{nullptr},
+            ChordTransition::Activated{m_gestures[m_index].get()}};
+  case ChordTransitionType::implicitRestToChord:
+    return {ChordTransition::Deactivated{nullptr},
+            ChordTransition::SkippedRest{nullptr},
+            ChordTransition::Activated{m_gestures[m_index].get()}};
+  case ChordTransitionType::implicitRestToChordOverSkippedRest:
+    return {ChordTransition::Deactivated{nullptr},
+            ChordTransition::SkippedRest{m_gestures[m_index - 1].get()},
+            ChordTransition::Activated{m_gestures[m_index].get()}};
+  default:
+    assert(false);
+    return {};
+  }
 }
 
 std::vector<int> VoiceSequencer::GoToTick(int tick)
 {
+  const auto noteOffs =
+      m_index < m_numGestures && m_gestures[m_index]->IsChord()
+          ? m_gestures[m_index]->GetPitches()
+          : std::vector<int>{};
 
-  std::vector<int> noteOffs;
-  for (auto i = m_active.begin; i < m_active.end; ++i)
-  {
-    const auto &gesture = m_gestures[i];
-    const auto pitches = gesture->GetPitches();
-    noteOffs.insert(noteOffs.end(), pitches.begin(), pitches.end());
-  }
-
-  m_active.begin = m_active.end = m_numGestures;
   for (auto i = 0; i < m_gestures.size(); ++i)
     if (m_gestures[i]->IsChord() &&
         m_gestures[i]->GetBeginTick().withoutRepeats >= tick)
     {
-      m_active.begin = m_active.end = i;
+      m_index = i;
       break;
     }
 
+  m_onImplicitRest = true;
   m_pressedKey.reset();
   return noteOffs;
 }
 
-int VoiceSequencer::GetNextBegin(NoteEventType event) const
+int VoiceSequencer::GetNextIndex(NoteEventType event) const
 {
-  auto nextActive = m_active.end;
-
-  if (nextActive == m_numGestures)
-    // The end.
-    return m_numGestures;
-
-  const auto isChord = m_gestures[nextActive]->IsChord();
-  // Skip the next rest if the user is pressing the key.
-  return !isChord && event == NoteEventType::noteOn ? nextActive + 1
-                                                    : nextActive;
+  const VoiceEvent prev = GetVoiceEvent(m_gestures, m_index);
+  const VoiceEvent next = GetVoiceEvent(m_gestures, m_index + 1);
+  const auto transition = CTU::GetTransitionForNoteon(prev, next);
+  return m_index + GetIndexIncrement(transition);
 }
 
 std::optional<dgk::Tick> VoiceSequencer::GetNextTick(NoteEventType event) const
 {
-  const auto i = GetNextBegin(event);
+  const auto i = GetNextIndex(event);
   return i < m_numGestures ? std::make_optional(m_gestures[i]->GetBeginTick())
                            : std::nullopt;
 }
 
 std::optional<dgk::Tick> VoiceSequencer::GetTickForPedal() const
 {
-  // m_active.begin is also the end of the gestures consumed so far.
+  // m_index is also the end of the gestures consumed so far.
   // We add to this the upcoming gesture if this is a rest.
-  if (m_active.begin == m_numGestures)
+  if (m_index == m_numGestures)
     return std::nullopt;
-  else if (m_gestures[m_active.begin]->IsChord() ||
-           m_active.begin + 1 == m_numGestures)
-    return m_gestures[m_active.begin]->GetBeginTick();
+  else if (m_gestures[m_index]->IsChord() || m_index + 1 == m_numGestures)
+    return m_gestures[m_index]->GetBeginTick();
   else
     return std::nullopt;
-}
-
-muse::async::Channel<ChordActivationChange>
-VoiceSequencer::ChordActivationChanged() const
-{
-  return m_chordActivationChanged;
 }
 
 dgk::Tick VoiceSequencer::GetFinalTick() const

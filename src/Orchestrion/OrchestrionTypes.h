@@ -26,18 +26,56 @@ class IChord;
 using ChordPtr = std::shared_ptr<IChord>;
 using Staff = std::map<int /*voice*/, std::vector<ChordPtr>>;
 
-struct ChordActivationChange
+// clang-format off
+/*!
+ * \brief There are four gesture transitions possible: off->on, on->off, on->on (legato) and off->off (e.g. succession of key releases)
+ * The possible chord transitions for each are as follows:
+ * -- OFF -> ON :
+ *     - implicit rest (nullptr) to chord like at the beginning of a piece or when playing non-legato
+ *     - rest to chord
+ * -- ON -> OFF :
+ *     - chord to implicit rest (nullptr) like at the end of a piece or when playing non-legato
+ * -- ON -> ON (legato) :
+ *    - chord to chord
+ *    - chord to chord over skipped rest
+ * -- OFF -> OFF :
+ *    - rest to rest
+ * The ChordTransition represents all these possibilities.
+ */
+// clang-format on
+struct ChordTransition
 {
-  ChordActivationChange(std::vector<const IChord *> deactivated,
-                        const IChord *activated)
-      : deactivated{std::move(deactivated)}, activated{activated}
+  struct Deactivated
+  {
+    explicit Deactivated(const IChord *chord) : chord{chord} {}
+    const IChord *const chord;
+  };
+  struct SkippedRest
+  {
+    explicit SkippedRest(const IChord *chord) : chord{chord} {}
+    const IChord *const chord;
+  };
+  struct Activated
+  {
+    explicit Activated(const IChord *chord) : chord{chord} {}
+    const IChord *const chord;
+  };
+
+  ChordTransition()
+      : deactivated{nullptr}, skippedRest{nullptr}, activated{nullptr}
   {
   }
 
-  ChordActivationChange() : deactivated{}, activated{nullptr} {}
+  ChordTransition(Deactivated deactivated, SkippedRest skippedRest,
+                  Activated activated)
+      : deactivated{std::move(deactivated)},
+        skippedRest{std::move(skippedRest)}, activated{std::move(activated)}
+  {
+  }
 
-  const std::vector<const IChord *> deactivated;
-  const IChord *const activated;
+  const Deactivated deactivated;
+  const SkippedRest skippedRest;
+  const Activated activated;
 };
 
 struct TrackIndex

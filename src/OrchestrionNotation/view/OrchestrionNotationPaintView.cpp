@@ -45,16 +45,17 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
 void OrchestrionNotationPaintView::subscribe(
     const IOrchestrionSequencer &sequencer)
 {
-  sequencer.ChordActivationChanged().onReceive(
+  sequencer.ChordTransitionTriggered().onReceive(
       this,
-      [this](TrackIndex track, ChordActivationChange change)
+      [this](TrackIndex track, ChordTransition transition)
       {
-        if (!change.deactivated.empty())
+        if (transition.skippedRest.chord || transition.deactivated.chord)
           m_boxes.erase(track.value);
-        if (!change.activated)
+        if (!transition.activated.chord)
           return;
 
-        const auto segment = chordRegistry()->GetSegment(change.activated);
+        const auto segment =
+            chordRegistry()->GetSegment(transition.activated.chord);
         IF_ASSERT_FAILED(segment) { return; }
         const std::vector<mu::engraving::EngravingItem *> items =
             getRelevantItems(track, segment);

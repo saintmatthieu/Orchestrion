@@ -1,4 +1,5 @@
 #include "OrchestrionSequencer.h"
+#include "IChord.h"
 #include <algorithm>
 #include <engraving/dom/note.h>
 #include <iterator>
@@ -90,23 +91,15 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   midiInPort()->eventReceived().onReceive(
       this, [this](const muse::midi::tick_t, const muse::midi::Event &event)
       { OnMidiEventReceived(event); });
-  std::for_each(
-      m_allVoices.begin(), m_allVoices.end(),
-      [this](const VoiceSequencer *voiceSequencer)
-      {
-        voiceSequencer->ChordActivationChanged().onReceive(
-            this, [this, voiceSequencer](ChordActivationChange change)
-            { m_chordActivationChanged.send(voiceSequencer->track, change); });
-      });
   orchestrionNotationInteraction()->noteClicked().onReceive(
       this, [this](const mu::engraving::Note *note)
       { GoToTick(note->tick().ticks()); });
 }
 
-muse::async::Channel<TrackIndex, ChordActivationChange>
-OrchestrionSequencer::ChordActivationChanged() const
+muse::async::Channel<TrackIndex, ChordTransition>
+OrchestrionSequencer::ChordTransitionTriggered() const
 {
-  return m_chordActivationChanged;
+  return m_chordTransitionTriggered;
 }
 
 muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
@@ -231,12 +224,17 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   std::vector<NoteEvent> output;
   for (auto &voiceSequencer : hand)
   {
-    const auto next = voiceSequencer->OnInputEvent(type, pitch, cursorTick);
-    output.reserve(output.size() + next.noteOffs.size() + next.noteOns.size());
-    Append(output, next.noteOffs, voiceSequencer->track, velocity,
-           NoteEventType::noteOff);
-    Append(output, next.noteOns, voiceSequencer->track, velocity,
-           NoteEventType::noteOn);
+    const ChordTransition transition =
+        voiceSequencer->OnInputEvent(type, pitch, cursorTick);
+    if (transition.deactivated.chord)
+      Append(output, transition.deactivated.chord->GetPitches(),
+             voiceSequencer->track, velocity, NoteEventType::noteOff);
+    if (transition.activated.chord)
+      Append(output, transition.activated.chord->GetPitches(),
+             voiceSequencer->track, velocity, NoteEventType::noteOn);
+    if (transition.activated.chord || transition.skippedRest.chord ||
+        transition.deactivated.chord)
+      m_chordTransitionTriggered.send(voiceSequencer->track, transition);
   };
 
   if (!output.empty())

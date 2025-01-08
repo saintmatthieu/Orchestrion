@@ -34,7 +34,7 @@ class Segment;
 
 namespace dgk
 {
-struct ChordActivationChange;
+struct ChordTransition;
 
 class ScoreAnimator : public IScoreAnimator,
                       public muse::Injectable,
@@ -49,8 +49,7 @@ public:
 
 private:
   void Subscribe(const IOrchestrionSequencer &sequencer);
-  void OnChordActivationChange(TrackIndex track,
-                               const ChordActivationChange &change);
+  void OnChordTransition(TrackIndex, const ChordTransition &);
   mu::notation::INotationInteractionPtr GetInteraction() const;
 };
 } // namespace dgk

@@ -26,19 +26,20 @@ void ScoreAnimator::init()
 
 void ScoreAnimator::Subscribe(const IOrchestrionSequencer &sequencer)
 {
-  sequencer.ChordActivationChanged().onReceive(
-      this, [this](TrackIndex track, ChordActivationChange change)
-      { OnChordActivationChange(track, change); });
+  sequencer.ChordTransitionTriggered().onReceive(
+      this, [this](TrackIndex track, ChordTransition transition)
+      { OnChordTransition(track, transition); });
 }
 
-void ScoreAnimator::OnChordActivationChange(TrackIndex track,
-                                            const ChordActivationChange &change)
+void ScoreAnimator::OnChordTransition(TrackIndex track,
+                                      const ChordTransition &transition)
 {
   const auto interaction = GetInteraction();
   IF_ASSERT_FAILED(interaction) { return; }
-  if (change.activated)
+  if (transition.activated.chord)
   {
-    const auto segment = chordRegistry()->GetSegment(change.activated);
+    const auto segment =
+        chordRegistry()->GetSegment(transition.activated.chord);
     IF_ASSERT_FAILED(segment) { return; }
     interaction->showItem(segment->element(track.value));
   }

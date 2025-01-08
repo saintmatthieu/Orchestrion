@@ -31,8 +31,8 @@ public:
   virtual void OnInputEvent(NoteEventType, int pitch, float velocity) = 0;
   virtual void GoToTick(int tick) = 0;
   virtual InstrumentIndex GetInstrumentIndex() const = 0;
-  virtual muse::async::Channel<TrackIndex, ChordActivationChange>
-  ChordActivationChanged() const = 0;
+  virtual muse::async::Channel<TrackIndex, ChordTransition>
+  ChordTransitionTriggered() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
 };
 } // namespace dgk
