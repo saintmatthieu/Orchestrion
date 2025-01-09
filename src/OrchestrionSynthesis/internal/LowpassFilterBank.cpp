@@ -9,9 +9,8 @@ constexpr auto maxSamples = 4096;
 
 } // namespace
 
-LowpassFilterBank::LowpassFilterBank(SynthFactory synthFactory)
-    : m_synthFactory{std::move(synthFactory)}, m_mixBuffer(maxSamples),
-      m_maxSamples{maxSamples}
+LowpassFilterBank::LowpassFilterBank(const SynthFactory& synthFactory)
+    : m_mixBuffer(maxSamples), m_maxSamples{maxSamples}
 {
   for (auto i = 0; i < numVelocitySteps; ++i)
   {
@@ -33,7 +32,7 @@ LowpassFilterBank::LowpassFilterBank(SynthFactory synthFactory)
                       (velocities[index] - velocities[index - 1]);
 
     m_synthesizers[i] =
-        std::make_shared<LowpassFilteredSynthesizer>(m_synthFactory(), cutoff);
+        std::make_shared<LowpassFilteredSynthesizer>(synthFactory(), cutoff);
   }
 }
 

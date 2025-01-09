@@ -12,7 +12,7 @@ using SynthFactory =
 class LowpassFilterBank : public IOrchestrionSynthesizer
 {
 public:
-  LowpassFilterBank(SynthFactory);
+  LowpassFilterBank(const SynthFactory&);
 
 private:
   int sampleRate() const override;
@@ -24,7 +24,6 @@ private:
   void onPedal(bool on) override;
 
   static const auto numVelocitySteps = 9;
-  const SynthFactory m_synthFactory;
   std::array<std::shared_ptr<IOrchestrionSynthesizer>, numVelocitySteps>
       m_synthesizers;
   std::vector<float> m_mixBuffer;
