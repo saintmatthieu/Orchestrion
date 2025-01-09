@@ -35,13 +35,6 @@ bool noteoffsAreBeforeNoteons(const NoteEvents &notes)
                    { return evt.type == NoteEventType::noteOn; });
   return firstNoteOff == notes.end() || firstNoteOff < firstNoteOn;
 }
-
-bool allFromSameStaff(const NoteEvents &notes)
-{
-  const auto ref = notes[0].track.staffIndex();
-  return std::all_of(notes.begin(), notes.end(), [&](const NoteEvent &note)
-                     { return note.track.staffIndex() == ref; });
-}
 } // namespace
 
 void FluidTrackAudioInput::processEvent(const EventVariant &event)
@@ -51,7 +44,6 @@ void FluidTrackAudioInput::processEvent(const EventVariant &event)
   {
     auto notes = std::get<NoteEvents>(event);
     IF_ASSERT_FAILED(noteoffsAreBeforeNoteons(notes)) { return; }
-    IF_ASSERT_FAILED(allFromSameStaff(notes)) { return; }
     const int noteonOffset =
         std::find_if(notes.begin(), notes.end(), [](const auto &evt)
                      { return evt.type == NoteEventType::noteOn; }) -
