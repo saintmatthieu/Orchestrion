@@ -31,6 +31,8 @@ public:
   virtual void OnInputEvent(NoteEventType, int pitch, float velocity) = 0;
   virtual void GoToTick(int tick) = 0;
   virtual InstrumentIndex GetInstrumentIndex() const = 0;
+  virtual std::vector<TrackIndex> GetAllVoices() const = 0;
+  virtual ChordTransition GetFirstChordTransition(TrackIndex) const = 0;
   virtual muse::async::Channel<TrackIndex, ChordTransition>
   ChordTransitionTriggered() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;

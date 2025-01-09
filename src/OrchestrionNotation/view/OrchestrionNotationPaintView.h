@@ -51,7 +51,15 @@ private:
   std::vector<mu::engraving::EngravingItem *>
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
+  void OnChordTransition(TrackIndex track, const ChordTransition &transition);
 
-  std::unordered_map<int, QRectF> m_boxes;
+  struct Box
+  {
+    QRectF rect;
+    QPen pen;
+    double opacity = 1.0;
+    bool active = false;
+  };
+  std::unordered_map<int, Box> m_boxes;
 };
 } // namespace dgk

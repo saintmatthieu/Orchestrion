@@ -22,6 +22,7 @@ public:
   std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
+  const IChord *GetFirstChord() const;
 
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordPtr> &chords,
@@ -29,6 +30,7 @@ private:
   int GetNextIndex(NoteEventType event) const;
   ChordTransitionType GetNextTransition(NoteEventType event,
                                         uint8_t midiPitch) const;
+  const IChord* GetChord(int index) const;
 
   const std::vector<ChordPtr> m_gestures;
   const int m_numGestures;

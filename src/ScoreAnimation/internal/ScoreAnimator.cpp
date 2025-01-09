@@ -36,10 +36,11 @@ void ScoreAnimator::OnChordTransition(TrackIndex track,
 {
   const auto interaction = GetInteraction();
   IF_ASSERT_FAILED(interaction) { return; }
-  if (transition.activated.chord)
+  const auto chord = transition.activated.chord ? transition.activated.chord
+                                                : transition.next.chord;
+  if (chord)
   {
-    const auto segment =
-        chordRegistry()->GetSegment(transition.activated.chord);
+    const auto segment = chordRegistry()->GetSegment(chord);
     IF_ASSERT_FAILED(segment) { return; }
     interaction->showItem(segment->element(track.value));
   }

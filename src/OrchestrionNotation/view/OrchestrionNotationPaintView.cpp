@@ -49,24 +49,42 @@ void OrchestrionNotationPaintView::subscribe(
       this,
       [this](TrackIndex track, ChordTransition transition)
       {
-        if (transition.skippedRest.chord || transition.deactivated.chord)
-          m_boxes.erase(track.value);
-        if (!transition.activated.chord)
-          return;
-
-        const auto segment =
-            chordRegistry()->GetSegment(transition.activated.chord);
-        IF_ASSERT_FAILED(segment) { return; }
-        const std::vector<mu::engraving::EngravingItem *> items =
-            getRelevantItems(track, segment);
-        mu::engraving::RectF box;
-        for (const auto item : items)
-          box = box.united(item->pageBoundingRect());
-        auto rect = box.toQRectF();
-        const auto spatium = items.front()->spatium();
-        m_boxes[track.value] =
-            rect.adjusted(-spatium, -spatium, spatium, spatium);
+        OnChordTransition(track, transition);
+        update();
       });
+
+  for (const TrackIndex &voice : sequencer.GetAllVoices())
+  {
+    const auto transition = sequencer.GetFirstChordTransition(voice);
+    OnChordTransition(voice, transition);
+  }
+  update();
+}
+
+void OrchestrionNotationPaintView::OnChordTransition(
+    TrackIndex track, const ChordTransition &transition)
+{
+  if (transition.skippedRest.chord || transition.deactivated.chord)
+    m_boxes.erase(track.value);
+  const auto chord = transition.activated.chord ? transition.activated.chord
+                                                : transition.next.chord;
+  if (!chord)
+    return;
+
+  const auto segment = chordRegistry()->GetSegment(chord);
+  IF_ASSERT_FAILED(segment) { return; }
+  const std::vector<mu::engraving::EngravingItem *> items =
+      getRelevantItems(track, segment);
+  mu::engraving::RectF huggingBox;
+  for (const auto item : items)
+    huggingBox = huggingBox.united(item->pageBoundingRect());
+  const auto huggingRect = huggingBox.toQRectF();
+  const auto spatium = items.front()->spatium();
+  Box &box = m_boxes[track.value];
+  box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
+  box.active = transition.activated.chord != nullptr;
+  box.opacity = box.active ? 0.9 : 0.4;
+  box.pen = QPen{Qt::darkCyan, 10, box.active ? Qt::SolidLine : Qt::DotLine};
 }
 
 std::vector<mu::engraving::EngravingItem *>
@@ -113,7 +131,7 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
   if (event->type() == QEvent::MouseButtonPress)
   {
     const auto mouseEvent = static_cast<QMouseEvent *>(event);
-    onMousePressed(mouseEvent->localPos());
+    onMousePressed(mouseEvent->position());
   }
   else if (event->type() == QEvent::MouseMove)
     orchestrionNotationInteraction()->onMouseMoved();
@@ -156,15 +174,17 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
 
   painter->restore();
   painter->setRenderHint(QPainter::Antialiasing);
-  painter->setPen(QPen(QColorConstants::DarkCyan, 10));
   painter->setBrush(Qt::NoBrush);
 
   std::for_each(m_boxes.begin(), m_boxes.end(),
                 [painter](const auto &entry)
                 {
-                  const auto &box = entry.second;
-                  painter->drawRoundedRect(box, box.width() * .45,
-                                           box.height() * .45);
+                  const Box &box = entry.second;
+                  const QRectF &rect = box.rect;
+                  painter->setPen(box.pen);
+                  painter->setOpacity(box.opacity);
+                  painter->drawRoundedRect(rect, rect.width() * .45,
+                                           rect.height() * .45);
                 });
 }
 } // namespace dgk

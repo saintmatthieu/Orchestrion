@@ -60,22 +60,60 @@ struct ChordTransition
     explicit Activated(const IChord *chord) : chord{chord} {}
     const IChord *const chord;
   };
+  struct Next
+  {
+    explicit Next(const IChord *chord) : chord{chord} {}
+    const IChord *const chord;
+  };
 
   ChordTransition()
-      : deactivated{nullptr}, skippedRest{nullptr}, activated{nullptr}
+      : deactivated{nullptr}, skippedRest{nullptr}, activated{nullptr},
+        next{nullptr}
+  {
+  }
+
+  ChordTransition(Next next)
+      : deactivated{nullptr}, skippedRest{nullptr}, activated{nullptr},
+        next{std::move(next)}
+  {
+  }
+
+  ChordTransition(Deactivated deactivated, Next next)
+      : deactivated{std::move(deactivated)}, skippedRest{nullptr},
+        activated{nullptr}, next{std::move(next)}
+  {
+  }
+
+  ChordTransition(Deactivated deactivated, Activated activated, Next next)
+      : deactivated{std::move(deactivated)}, skippedRest{nullptr},
+        activated{std::move(activated)}, next{std::move(next)}
+  {
+  }
+
+  ChordTransition(Activated activated, Next next)
+      : deactivated{nullptr}, skippedRest{nullptr},
+        activated{std::move(activated)}, next{std::move(next)}
+  {
+  }
+
+  ChordTransition(SkippedRest skippedRest, Activated activated, Next next)
+      : deactivated{nullptr}, skippedRest{std::move(skippedRest)},
+        activated{std::move(activated)}, next{std::move(next)}
   {
   }
 
   ChordTransition(Deactivated deactivated, SkippedRest skippedRest,
-                  Activated activated)
+                  Activated activated, Next next)
       : deactivated{std::move(deactivated)},
-        skippedRest{std::move(skippedRest)}, activated{std::move(activated)}
+        skippedRest{std::move(skippedRest)}, activated{std::move(activated)},
+        next{std::move(next)}
   {
   }
 
   const Deactivated deactivated;
   const SkippedRest skippedRest;
   const Activated activated;
+  const Next next;
 };
 
 struct TrackIndex
@@ -92,6 +130,9 @@ struct TrackIndex
   const int value;
   int voiceIndex() const { return value % numVoices; }
   int staffIndex() const { return value / numVoices; }
+
+  bool operator==(const TrackIndex &rhs) const { return value == rhs.value; }
+  bool operator!=(const TrackIndex &rhs) const { return !(*this == rhs); }
 };
 
 enum class NoteEventType
