@@ -36,8 +36,8 @@ OrchestrionOnboardingModel::getFileOpenArgs(
   if (projectFile.url.isEmpty())
   {
     const muse::io::path_t path =
-        globalConfiguration()->appDataPath() +
-        "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
+        globalConfiguration()->appDataPath() + "/scores/AVE_MARIA.mscz";
+    // "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
     IF_ASSERT_FAILED(std::filesystem::exists(path.toStdString()))
     {
       LOGE() << "File not found: " << path;

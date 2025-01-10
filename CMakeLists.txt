@@ -112,7 +112,7 @@ add_custom_command(TARGET OrchestrionApp POST_BUILD
 add_subdirectory(MuseScore/share/sound) # installs soundfonts
 install(TARGETS OrchestrionApp RUNTIME DESTINATION bin)
 
-install(FILES "${CMAKE_SOURCE_DIR}/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz" DESTINATION "scores")
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/" DESTINATION scores)
 if (SNDFILE_DLL)
     install(FILES ${SNDFILE_DLL} DESTINATION bin)
 else()
