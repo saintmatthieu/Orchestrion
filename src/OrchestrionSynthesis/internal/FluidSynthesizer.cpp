@@ -70,6 +70,8 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
   fluid_synth_set_legato_mode(m_fluidSynth, midiChannel,
                               FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
   fluid_synth_activate_tuning(m_fluidSynth, midiChannel, 0, 0, 0);
+
+  fluid_synth_reverb_on(m_fluidSynth, 0, 1);
 }
 
 FluidSynthesizer::~FluidSynthesizer()
