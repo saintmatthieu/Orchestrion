@@ -33,6 +33,15 @@ NoteEventType GetNoteEventType(const muse::midi::Event &event)
 
 int GetPitch(const muse::midi::Event &event) { return event.note(); }
 
+float CompressVelocity(float velocity)
+{
+  // It's a little hard to play piano at a constant level. For now we hard-code
+  // a compression. Making it parametric would be helpful, especially to use
+  // harder compression for kids.
+  constexpr auto minVelocity = 0.2f;
+  return minVelocity + (1 - minVelocity) * velocity;
+}
+
 float GetVelocity(const muse::midi::Event &event)
 {
   return event.velocity() / 128.0f;
@@ -128,7 +137,8 @@ void OrchestrionSequencer::OnMidiEventReceived(const muse::midi::Event &event)
       event.opcode() != muse::midi::Event::Opcode::NoteOff)
     return;
 
-  OnInputEvent(GetNoteEventType(event), GetPitch(event), GetVelocity(event));
+  OnInputEvent(GetNoteEventType(event), GetPitch(event),
+               CompressVelocity(GetVelocity(event)));
 }
 
 OrchestrionSequencer::~OrchestrionSequencer()
