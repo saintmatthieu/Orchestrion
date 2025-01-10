@@ -27,19 +27,6 @@ namespace dgk
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent)
 {
-  qApp->installEventFilter(this);
-
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this]
-                                             {
-                                               const auto sequencer =
-                                                   orchestrion()->sequencer();
-                                               if (!sequencer)
-                                                 return;
-                                               subscribe(*sequencer);
-                                             });
-  if (const auto sequencer = orchestrion()->sequencer())
-    subscribe(*sequencer);
 }
 
 void OrchestrionNotationPaintView::subscribe(
@@ -149,6 +136,20 @@ void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
 
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
+  qApp->installEventFilter(this);
+
+  orchestrion()->sequencerChanged().onNotify(this,
+                                             [this]
+                                             {
+                                               const auto sequencer =
+                                                   orchestrion()->sequencer();
+                                               if (!sequencer)
+                                                 return;
+                                               subscribe(*sequencer);
+                                             });
+  if (const auto sequencer = orchestrion()->sequencer())
+    subscribe(*sequencer);
+
   load();
   setViewMode(mu::notation::ViewMode::LINE);
   alignVertically();
