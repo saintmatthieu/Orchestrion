@@ -84,21 +84,29 @@ struct ChordTransition
   {
   }
 
-  ChordTransition(Deactivated deactivated, Activated activated, Next next)
+  ChordTransition(Deactivated deactivated, SkippedRest skippedRest,
+                  Activated activated)
+      : deactivated{std::move(deactivated)},
+        skippedRest{std::move(skippedRest)}, activated{std::move(activated)},
+        next{nullptr}
+  {
+  }
+
+  ChordTransition(Deactivated deactivated, Activated activated)
       : deactivated{std::move(deactivated)}, skippedRest{nullptr},
-        activated{std::move(activated)}, next{std::move(next)}
+        activated{std::move(activated)}, next{nullptr}
   {
   }
 
-  ChordTransition(Activated activated, Next next)
+  ChordTransition(Activated activated)
       : deactivated{nullptr}, skippedRest{nullptr},
-        activated{std::move(activated)}, next{std::move(next)}
+        activated{std::move(activated)}, next{nullptr}
   {
   }
 
-  ChordTransition(SkippedRest skippedRest, Activated activated, Next next)
+  ChordTransition(SkippedRest skippedRest, Activated activated)
       : deactivated{nullptr}, skippedRest{std::move(skippedRest)},
-        activated{std::move(activated)}, next{std::move(next)}
+        activated{std::move(activated)}, next{nullptr}
   {
   }
 

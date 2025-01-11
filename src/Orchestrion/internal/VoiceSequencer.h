@@ -17,7 +17,7 @@ public:
   ChordTransition OnInputEvent(NoteEventType, int midiPitch,
                                const dgk::Tick &cursorTick);
   //! Returns noteoffs that were pending.
-  std::vector<int> GoToTick(int tick);
+  ChordTransition GoToTick(int tick);
 
   std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
   dgk::Tick GetFinalTick() const;

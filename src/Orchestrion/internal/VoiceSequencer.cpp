@@ -89,12 +89,11 @@ ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event, int midiPitch,
   switch (transitionType)
   {
   case ChordTransitionType::none:
-    return {ChordTransition::Next{GetChord(m_index)}};
+    return {};
   case ChordTransitionType::chordToChordOverSkippedRest:
     return {ChordTransition::Deactivated{m_gestures[m_index - 2].get()},
             ChordTransition::SkippedRest{m_gestures[m_index - 1].get()},
-            ChordTransition::Activated{m_gestures[m_index].get()},
-            ChordTransition::Next{GetChord(m_index + 1)}};
+            ChordTransition::Activated{m_gestures[m_index].get()}};
   case ChordTransitionType::chordToImplicitRest:
   case ChordTransitionType::restToImplicitRest:
     return {ChordTransition::Deactivated{m_gestures[m_index - 1].get()},
@@ -103,15 +102,12 @@ ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event, int midiPitch,
   case ChordTransitionType::chordToRest:
   case ChordTransitionType::restToChord:
     return {ChordTransition::Deactivated{m_gestures[m_index - 1].get()},
-            ChordTransition::Activated{m_gestures[m_index].get()},
-            ChordTransition::Next{GetChord(m_index + 1)}};
+            ChordTransition::Activated{m_gestures[m_index].get()}};
   case ChordTransitionType::implicitRestToChord:
-    return {ChordTransition::Activated{m_gestures[m_index].get()},
-            ChordTransition::Next{GetChord(m_index + 1)}};
+    return {ChordTransition::Activated{m_gestures[m_index].get()}};
   case ChordTransitionType::implicitRestToChordOverSkippedRest:
     return {ChordTransition::SkippedRest{m_gestures[m_index - 1].get()},
-            ChordTransition::Activated{m_gestures[m_index].get()},
-            ChordTransition::Next{GetChord(m_index + 1)}};
+            ChordTransition::Activated{m_gestures[m_index].get()}};
   default:
     assert(false);
     return {};
@@ -123,12 +119,9 @@ const IChord *VoiceSequencer::GetChord(int index) const
   return index < m_numGestures ? m_gestures[index].get() : nullptr;
 }
 
-std::vector<int> VoiceSequencer::GoToTick(int tick)
+ChordTransition VoiceSequencer::GoToTick(int tick)
 {
-  const auto noteOffs =
-      m_index < m_numGestures && m_gestures[m_index]->IsChord()
-          ? m_gestures[m_index]->GetPitches()
-          : std::vector<int>{};
+  const auto prevIndex = m_index;
 
   for (auto i = 0; i < m_gestures.size(); ++i)
     if (m_gestures[i]->IsChord() &&
@@ -138,9 +131,17 @@ std::vector<int> VoiceSequencer::GoToTick(int tick)
       break;
     }
 
-  m_onImplicitRest = true;
-  m_pressedKey.reset();
-  return noteOffs;
+  Finally finally{[this]
+                  {
+                    m_onImplicitRest = true;
+                    m_pressedKey.reset();
+                  }};
+
+  if (m_onImplicitRest)
+    return {ChordTransition::Next{GetChord(m_index)}};
+  else
+    return {ChordTransition::Deactivated{GetChord(prevIndex)},
+            ChordTransition::Next{GetChord(m_index)}};
 }
 
 int VoiceSequencer::GetNextIndex(NoteEventType event) const

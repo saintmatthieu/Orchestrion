@@ -53,6 +53,8 @@ public:
   muse::async::Channel<EventVariant> OutputEvent() const override;
 
 private:
+  void SendChordTransition(TrackIndex, ChordTransition, float velocity = 0.f);
+
   using OptTimePoint =
       std::optional<std::chrono::time_point<std::chrono::steady_clock>>;
 
