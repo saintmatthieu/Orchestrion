@@ -1,6 +1,7 @@
 #include "SynthesizerConnector.h"
 #include "OrchestrionSynthResolver.h"
 #include <async/async.h>
+#include <audio/iaudiooutput.h>
 #include <audio/internal/audiothread.h>
 #include <audio/itracks.h>
 
@@ -50,28 +51,36 @@ void SynthesizerConnector::onAllInited()
                                           m_orchestrionSynthResolver);
       },
       muse::audio::AudioThread::ID);
+
+  playbackController()->isPlayAllowedChanged().onNotify(
+      this,
+      [this]
+      {
+        if (playbackController()->isPlayAllowed())
+          setOutputParams();
+      });
 }
 
 void SynthesizerConnector::connectVstInstrument(
     const muse::audio::AudioResourceId &id)
 {
   m_orchestrionSynthResolver->resolveToVst(id);
-  setParams();
+  setInputParams();
 }
 
 void SynthesizerConnector::connectFluidSynth()
 {
   m_orchestrionSynthResolver->resolveToFluid();
-  setParams();
+  setInputParams();
 }
 
 void SynthesizerConnector::disconnect()
 {
   m_orchestrionSynthResolver->resolveToNone();
-  setParams();
+  setInputParams();
 }
 
-void SynthesizerConnector::setParams()
+void SynthesizerConnector::setInputParams()
 {
   muse::async::Async::call(
       this,
@@ -81,6 +90,22 @@ void SynthesizerConnector::setParams()
         const auto tracks = playback()->tracks();
         for (const auto &[sequenceId, trackId] : m_tracks)
           tracks->setInputParams(sequenceId, trackId, params);
+      },
+      muse::audio::AudioThread::ID);
+}
+
+void SynthesizerConnector::setOutputParams()
+{
+  muse::async::Async::call(
+      this,
+      [this]
+      {
+        const auto tracks = playback()->tracks();
+        const muse::audio::IAudioOutputPtr output = playback()->audioOutput();
+        // Keep things under control, disabling reverb and other effects.
+        const muse::audio::AudioOutputParams outParams{};
+        for (const auto &[sequenceId, trackId] : m_tracks)
+          output->setOutputParams(sequenceId, trackId, outParams);
       },
       muse::audio::AudioThread::ID);
 }

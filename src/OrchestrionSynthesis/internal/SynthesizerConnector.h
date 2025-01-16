@@ -7,6 +7,7 @@
 #include <audio/isynthresolver.h>
 #include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
+#include <playback/iplaybackcontroller.h>
 
 namespace dgk
 {
@@ -18,6 +19,7 @@ class SynthesizerConnector : public ISynthesizerConnector,
   muse::Inject<muse::audio::synth::ISynthResolver> synthResolver;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::audio::IPlayback> playback;
+  muse::Inject<mu::playback::IPlaybackController> playbackController;
 
 public:
   SynthesizerConnector();
@@ -28,7 +30,8 @@ private:
   void connectVstInstrument(const muse::audio::AudioResourceId &) override;
   void connectFluidSynth() override;
   void disconnect() override;
-  void setParams();
+  void setInputParams();
+  void setOutputParams();
 
   const std::shared_ptr<OrchestrionSynthResolver> m_orchestrionSynthResolver;
   std::optional<muse::audio::TrackSequenceId> m_trackSequenceId;
