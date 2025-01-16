@@ -23,8 +23,7 @@ class OrchestrionSequencerFactory : public muse::Injectable
   muse::Inject<ITrackChannelMapper> mapper;
 
 public:
-  std::unique_ptr<IOrchestrionSequencer> CreateSequencer(
-      mu::notation::IMasterNotation &masterNotation,
-      const mu::playback::IPlaybackController::InstrumentTrackIdMap &);
+  std::unique_ptr<IOrchestrionSequencer>
+  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
 };
 } // namespace dgk

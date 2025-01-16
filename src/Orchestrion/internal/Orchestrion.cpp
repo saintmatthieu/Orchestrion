@@ -18,14 +18,8 @@ void Orchestrion::init()
           setSequencer(nullptr);
           return;
         }
-        const auto &map = playbackController()->instrumentTrackIdMap();
-        if (map.empty())
-        {
-          setSequencer(nullptr);
-          return;
-        }
         auto sequencer =
-            OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation, map);
+            OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
 
         // This goes beyond just the official API of the audio module. Is there
         // a better way?

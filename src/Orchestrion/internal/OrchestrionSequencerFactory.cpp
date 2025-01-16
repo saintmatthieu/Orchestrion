@@ -42,40 +42,19 @@ bool TakeIt(const mu::engraving::Segment &segment, TrackIndex track,
   return HasUntiedNotes(*chord);
 }
 
-bool IsVisible(const mu::engraving::Staff &staff)
-{
-  return staff.visible() &&
-         !staff.staffType(mu::engraving::Fraction(0, 1))->isMuted();
-}
-
 // At the moment we are not flexible at all: we look for the first part that has
 // two staves and assume this is what we want to play.
 std::optional<int> GetRightHandStaffIndex(
-    const std::vector<mu::engraving::RepeatSegment *> &repeats,
-    const mu::playback::IPlaybackController::InstrumentTrackIdMap
-        &instrumentTrackIdMap,
-    size_t nScoreTracks)
+    const std::vector<mu::engraving::RepeatSegment *> &repeats, int nStaves)
 {
-  for (auto track = 0u; track < nScoreTracks; ++track)
+  for (auto staff = 0; staff < nStaves; ++staff)
     for (const auto &repeat : repeats)
       for (const auto &measure : repeat->measureList())
         for (const auto &segment : measure->segments())
           if (const auto chord = dynamic_cast<const mu::engraving::Chord *>(
-                  segment.element(track)))
-          {
-            const auto staves = chord->part()->staves();
-            if (staves.size() == 2 && IsVisible(*chord->staff()))
-            {
-              const auto instrumentIds = chord->part()->instrumentTrackIdSet();
-              if (instrumentIds.size() != 1)
-                continue;
-              const auto &id = *instrumentIds.begin();
-              if (!instrumentTrackIdMap.count(id))
-                continue;
-              const auto trackId = instrumentTrackIdMap.at(id);
-              return TrackIndex{trackId}.staffIndex();
-            }
-          }
+                  segment.element(TrackIndex{staff, 0}.value)))
+            if (chord->part()->staves().size() == 2)
+              return staff;
   return std::nullopt;
 }
 
@@ -185,16 +164,13 @@ auto MakeHand(size_t staffIdx, const Staff &staff)
 
 std::unique_ptr<IOrchestrionSequencer>
 OrchestrionSequencerFactory::CreateSequencer(
-    mu::notation::IMasterNotation &masterNotation,
-    const mu::playback::IPlaybackController::InstrumentTrackIdMap
-        &instrumentTrackIdMap)
+    mu::notation::IMasterNotation &masterNotation)
 {
   auto &score = *masterNotation.masterScore();
+  const auto nStaves = static_cast<int>(score.nstaves());
   const auto rightHandStaff =
-      score.nstaves() == 1
-          ? std::make_optional<int>(0)
-          : GetRightHandStaffIndex(score.repeatList(), instrumentTrackIdMap,
-                                   score.ntracks());
+      nStaves == 1 ? std::make_optional<int>(0)
+                   : GetRightHandStaffIndex(score.repeatList(), nStaves);
   if (!rightHandStaff.has_value())
     return nullptr;
   Staff rightHand;
