@@ -14,8 +14,7 @@ public:
 
   const TrackIndex track;
 
-  ChordTransition OnInputEvent(NoteEventType, int midiPitch,
-                               const dgk::Tick &cursorTick);
+  ChordTransition OnInputEvent(NoteEventType, const dgk::Tick &cursorTick);
   //! Returns noteoffs that were pending.
   ChordTransition GoToTick(int tick);
 
@@ -27,15 +26,12 @@ public:
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordPtr> &chords,
                                   int index);
-  int GetNextIndex(NoteEventType event) const;
-  ChordTransitionType GetNextTransition(NoteEventType event,
-                                        uint8_t midiPitch) const;
-  const IChord* GetChord(int index) const;
+  ChordTransitionType GetNextTransition(NoteEventType event) const;
+  const IChord *GetChord(int index) const;
 
   const std::vector<ChordPtr> m_gestures;
   const int m_numGestures;
   int m_index = 0;
   bool m_onImplicitRest = true;
-  std::optional<uint8_t> m_pressedKey;
 };
 } // namespace dgk

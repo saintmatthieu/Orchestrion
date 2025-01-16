@@ -56,14 +56,9 @@ ChordTransitionType CTU::GetTransitionForNoteon(VoiceEvent prev,
   return ChordTransitionType::none;
 }
 
-ChordTransitionType
-CTU::GetTransitionForNoteoff(VoiceEvent prev, VoiceEvent next,
-                             const std::optional<uint8_t> &lastKey,
-                             uint8_t midiPitch)
+ChordTransitionType CTU::GetTransitionForNoteoff(VoiceEvent prev,
+                                                 VoiceEvent next)
 {
-  if (lastKey != midiPitch)
-    return ChordTransitionType::none;
-
   switch (prev)
   {
   case VoiceEvent::chord:

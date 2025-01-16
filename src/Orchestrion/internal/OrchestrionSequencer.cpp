@@ -239,13 +239,12 @@ auto GetNextNoteonTick(const OrchestrionSequencer::Hand &hand,
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                         float velocity)
 {
-
   if (type == NoteEventType::noteOn)
-  {
-    m_pressedKeys.insert(pitch);
-  }
-  else if (m_pressedKeys.count(pitch))
-    m_pressedKeys.erase(pitch);
+    m_pressedKey = pitch;
+  else if (m_pressedKey == pitch)
+    m_pressedKey.reset();
+  else
+    return;
 
   const auto loopEnabled = globalContext()
                                ->currentMasterNotation()
@@ -257,7 +256,7 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
   // Make sure to release the pedal if we've reached the end of this part.
   if (m_pedalDown && !GetNextNoteonTick(m_rightHand, NoteEventType::noteOff) &&
       !GetNextNoteonTick(m_leftHand, NoteEventType::noteOff) &&
-      type == NoteEventType::noteOff && m_pressedKeys.empty())
+      type == NoteEventType::noteOff)
     PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
@@ -281,7 +280,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
   for (auto &voiceSequencer : hand)
     SendChordTransition(voiceSequencer->track,
-                        voiceSequencer->OnInputEvent(type, pitch, cursorTick),
+                        voiceSequencer->OnInputEvent(type, cursorTick),
                         velocity);
 
   // For the pedal we wait on the slowest of both hands.

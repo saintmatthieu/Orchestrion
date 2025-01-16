@@ -1,7 +1,6 @@
 #pragma once
 
 #include "OrchestrionTypes.h"
-#include <optional>
 
 namespace dgk
 {
@@ -32,11 +31,7 @@ enum class VoiceEvent
 namespace CTU
 {
 ChordTransitionType GetTransitionForNoteon(VoiceEvent prev, VoiceEvent next);
-
-ChordTransitionType
-GetTransitionForNoteoff(VoiceEvent prev, VoiceEvent next,
-                        const std::optional<uint8_t> &lastKey,
-                        uint8_t midiPitch);
+ChordTransitionType GetTransitionForNoteoff(VoiceEvent prev, VoiceEvent next);
 } // namespace CTU
 
 } // namespace dgk

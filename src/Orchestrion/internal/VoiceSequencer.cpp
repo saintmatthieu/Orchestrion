@@ -8,7 +8,7 @@ namespace dgk
 VoiceEvent VoiceSequencer::GetVoiceEvent(const std::vector<ChordPtr> &chords,
                                          int index)
 {
-  if (index >= chords.size())
+  if (index < 0 || chords.size() <= index)
     return VoiceEvent::none;
   else if (chords[index]->IsChord())
     return VoiceEvent::chord;
@@ -24,8 +24,7 @@ VoiceSequencer::VoiceSequencer(TrackIndex track, std::vector<ChordPtr> chords)
 {
 }
 
-ChordTransitionType VoiceSequencer::GetNextTransition(NoteEventType event,
-                                                      uint8_t midiPitch) const
+ChordTransitionType VoiceSequencer::GetNextTransition(NoteEventType event) const
 {
   const VoiceEvent prev =
       m_onImplicitRest ? VoiceEvent::none : GetVoiceEvent(m_gestures, m_index);
@@ -33,8 +32,7 @@ ChordTransitionType VoiceSequencer::GetNextTransition(NoteEventType event,
       GetVoiceEvent(m_gestures, m_onImplicitRest ? m_index : m_index + 1);
   return event == NoteEventType::noteOn
              ? CTU::GetTransitionForNoteon(prev, next)
-             : CTU::GetTransitionForNoteoff(prev, next, m_pressedKey,
-                                            midiPitch);
+             : CTU::GetTransitionForNoteoff(prev, next);
 }
 
 namespace
@@ -69,24 +67,23 @@ const IChord *VoiceSequencer::GetFirstChord() const
   return it != m_gestures.end() ? it->get() : nullptr;
 }
 
-ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event, int midiPitch,
+ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event,
                                              const dgk::Tick &cursorTick)
 {
-  const ChordTransitionType transitionType =
-      GetNextTransition(event, midiPitch);
+  const auto transition = GetNextTransition(event);
+  const auto indexIncrement = GetIndexIncrement(transition);
 
-  if (event == NoteEventType::noteOn)
-    m_pressedKey = midiPitch;
-  else if (m_pressedKey == midiPitch)
-    m_pressedKey.reset();
+  const auto nextIndex = m_index + indexIncrement;
+  if (nextIndex >= m_numGestures ||
+      m_gestures[nextIndex]->GetBeginTick() > cursorTick)
+    return {};
 
-  m_index += GetIndexIncrement(transitionType);
-  if (transitionType != ChordTransitionType::none)
-    m_onImplicitRest =
-        transitionType == ChordTransitionType::chordToImplicitRest ||
-        transitionType == ChordTransitionType::restToImplicitRest;
+  m_index = nextIndex;
+  if (transition != ChordTransitionType::none)
+    m_onImplicitRest = transition == ChordTransitionType::chordToImplicitRest ||
+                       transition == ChordTransitionType::restToImplicitRest;
 
-  switch (transitionType)
+  switch (transition)
   {
   case ChordTransitionType::none:
     return {};
@@ -131,11 +128,7 @@ ChordTransition VoiceSequencer::GoToTick(int tick)
       break;
     }
 
-  Finally finally{[this]
-                  {
-                    m_onImplicitRest = true;
-                    m_pressedKey.reset();
-                  }};
+  Finally finally{[this] { m_onImplicitRest = true; }};
 
   if (m_onImplicitRest)
     return {ChordTransition::Next{GetChord(m_index)}};
@@ -144,17 +137,10 @@ ChordTransition VoiceSequencer::GoToTick(int tick)
             ChordTransition::Next{GetChord(m_index)}};
 }
 
-int VoiceSequencer::GetNextIndex(NoteEventType event) const
-{
-  const VoiceEvent prev = GetVoiceEvent(m_gestures, m_index);
-  const VoiceEvent next = GetVoiceEvent(m_gestures, m_index + 1);
-  const auto transition = CTU::GetTransitionForNoteon(prev, next);
-  return m_index + GetIndexIncrement(transition);
-}
-
 std::optional<dgk::Tick> VoiceSequencer::GetNextTick(NoteEventType event) const
 {
-  const auto i = GetNextIndex(event);
+  const ChordTransitionType transition = GetNextTransition(event);
+  const auto i = m_index + GetIndexIncrement(transition);
   return i < m_numGestures ? std::make_optional(m_gestures[i]->GetBeginTick())
                            : std::nullopt;
 }

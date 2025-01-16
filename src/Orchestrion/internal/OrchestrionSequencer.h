@@ -18,7 +18,6 @@
 #include <queue>
 #include <random>
 #include <thread>
-#include <unordered_set>
 #include <vector>
 
 namespace dgk
@@ -101,7 +100,7 @@ private:
   std::uniform_int_distribution<int> m_delayDist{0, 30000};   // microseconds
   std::uniform_int_distribution<int> m_velocityDist{90, 110}; // percents
 
-  std::unordered_set<int> m_pressedKeys;
+  std::optional<int> m_pressedKey;
 
   muse::async::Channel<TrackIndex, ChordTransition> m_chordTransitionTriggered;
   muse::async::Channel<EventVariant> m_outputEvent;
