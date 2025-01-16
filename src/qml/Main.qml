@@ -32,6 +32,7 @@ import Orchestrion.OrchestrionOnboarding 1.0
 ApplicationWindow {
     id: root
     visible: true
+    visibility: Window.Maximized
     width: 800
     height: 350
     title: titleProvider.title
