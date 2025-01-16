@@ -18,8 +18,9 @@
  */
 #pragma once
 
-#include "TrackAudioInput.h"
+#include "IOrchestrionSynthesizer.h"
 #include <audio/audiotypes.h>
+#include <audio/isynthesizer.h>
 #include <vst/internal/vstaudioclient.h>
 
 namespace muse::vst
@@ -28,19 +29,21 @@ class VstAudioClient;
 }
 namespace dgk
 {
-class VstTrackAudioInput : public TrackAudioInput
+class OrchestrionVstSynthesizer : public IOrchestrionSynthesizer
 {
 public:
-  VstTrackAudioInput(muse::vst::VstPluginPtr loadedVstPlugin);
+  OrchestrionVstSynthesizer(muse::vst::VstPluginPtr loadedVstPlugin,
+                            int sampleRate);
 
 private:
-  void processEvent(const EventVariant &event) override;
-  bool _isActive() const override;
-  void _setIsActive(bool arg) override;
-  void _setSampleRate(unsigned int sampleRate) override;
-  muse::audio::samples_t
-  _process(float *buffer, muse::audio::samples_t samplesPerChannel) override;
+  int sampleRate() const override;
+  size_t process(float *buffer, size_t samplesPerChannel) override;
+  void onNoteOns(size_t numNoteons, const int *pitches,
+                 const float *velocities) override;
+  void onNoteOffs(size_t numNoteoffs, const int *pitches) override;
+  void onPedal(bool on) override;
 
+  const int m_sampleRate;
   std::unique_ptr<muse::vst::VstAudioClient> m_vstAudioClient;
 };
 } // namespace dgk

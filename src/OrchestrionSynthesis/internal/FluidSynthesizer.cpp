@@ -19,6 +19,8 @@ constexpr int defaultMidiVolume = 100;
 constexpr int minNoteLenMs = 10;
 constexpr unsigned int audioChannelPairs = 1;
 constexpr unsigned int audioChannelCount = audioChannelPairs * 2;
+static_assert(audioChannelCount == IOrchestrionSynthesizer::numChannels,
+              "Assumption is made in other IOrchestrionSynthesizer impls.");
 constexpr int midiChannel = 0;
 } // namespace
 
@@ -71,7 +73,7 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
                               FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
   fluid_synth_activate_tuning(m_fluidSynth, midiChannel, 0, 0, 0);
 
-  fluid_synth_reverb_on(m_fluidSynth, 0, 1);
+  // fluid_synth_reverb_on(m_fluidSynth, 0, 1);
 }
 
 FluidSynthesizer::~FluidSynthesizer()
@@ -81,8 +83,6 @@ FluidSynthesizer::~FluidSynthesizer()
 }
 
 int FluidSynthesizer::sampleRate() const { return m_sampleRate; }
-
-int FluidSynthesizer::numChannels() const { return audioChannelCount; }
 
 size_t FluidSynthesizer::process(float *buffer, size_t samplesPerChannel)
 {

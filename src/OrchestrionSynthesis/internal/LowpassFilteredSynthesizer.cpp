@@ -21,15 +21,15 @@ LowpassFilteredSynthesizer::~LowpassFilteredSynthesizer() { deleteBuffers(); }
 
 void LowpassFilteredSynthesizer::initBuffers(size_t samplesPerChannel)
 {
-  m_audioBuffer = new float *[numChannels()];
-  for (auto i = 0; i < numChannels(); ++i)
+  m_audioBuffer = new float *[numChannels];
+  for (auto i = 0; i < numChannels; ++i)
     m_audioBuffer[i] = new float[maxSamplesPerChannel];
   m_maxSamplesPerChannel = samplesPerChannel;
 }
 
 void LowpassFilteredSynthesizer::deleteBuffers()
 {
-  for (auto i = 0; i < numChannels(); ++i)
+  for (auto i = 0; i < numChannels; ++i)
     delete[] m_audioBuffer[i];
   delete[] m_audioBuffer;
 }
@@ -37,11 +37,6 @@ void LowpassFilteredSynthesizer::deleteBuffers()
 int LowpassFilteredSynthesizer::sampleRate() const
 {
   return m_synthesizer->sampleRate();
-}
-
-int LowpassFilteredSynthesizer::numChannels() const
-{
-  return m_synthesizer->numChannels();
 }
 
 size_t LowpassFilteredSynthesizer::process(float *buffer,
@@ -54,7 +49,7 @@ size_t LowpassFilteredSynthesizer::process(float *buffer,
   }
 
   const auto produced = m_synthesizer->process(buffer, samplesPerChannel);
-  const auto C = numChannels();
+  const auto C = numChannels;
 
   // Deinterleave
   for (auto i = 0; i < C; ++i)

@@ -9,7 +9,7 @@ constexpr auto maxSamples = 4096;
 
 } // namespace
 
-LowpassFilterBank::LowpassFilterBank(const SynthFactory& synthFactory)
+LowpassFilterBank::LowpassFilterBank(const SynthFactory &synthFactory)
     : m_mixBuffer(maxSamples), m_maxSamples{maxSamples}
 {
   for (auto i = 0; i < numVelocitySteps; ++i)
@@ -41,14 +41,9 @@ int LowpassFilterBank::sampleRate() const
   return m_synthesizers[0]->sampleRate();
 }
 
-int LowpassFilterBank::numChannels() const
-{
-  return m_synthesizers[0]->numChannels();
-}
-
 size_t LowpassFilterBank::process(float *buffer, size_t samplesPerChannel)
 {
-  const auto numSamples = samplesPerChannel * m_synthesizers[0]->numChannels();
+  const auto numSamples = samplesPerChannel * numChannels;
   IF_ASSERT_FAILED(numSamples <= m_maxSamples)
   {
     m_mixBuffer.resize(numSamples);

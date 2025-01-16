@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "VstTrackAudioInput.h"
+#include "OrchestrionVstSynthesizer.h"
 #include <log.h>
 #include <pluginterfaces/vst/ivstevents.h>
 #include <vst/internal/vstaudioclient.h>
@@ -28,20 +28,21 @@ namespace
 {
 constexpr auto channelCount = 2;
 
-Steinberg::Vst::Event toSteinbergEvent(const NoteEvent &noteEvent)
+Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int pitch,
+                                       float velocity)
 {
   Steinberg::Vst::Event event;
   event.busIndex = 0;
   event.sampleOffset = 0;
   event.ppqPosition = 0;
   event.flags = Steinberg::Vst::Event::kIsLive;
-  if (noteEvent.type == NoteEventType::noteOn)
+  if (type == NoteEventType::noteOn)
   {
     event.type = Steinberg::Vst::Event::kNoteOnEvent;
     event.noteOn.channel = 0; // TODO
-    event.noteOn.pitch = noteEvent.pitch;
+    event.noteOn.pitch = pitch;
     event.noteOn.tuning = 0.f;
-    event.noteOn.velocity = noteEvent.velocity;
+    event.noteOn.velocity = velocity;
     event.noteOn.length = 0;
     event.noteOn.noteId = 0; // What's that?
   }
@@ -50,8 +51,8 @@ Steinberg::Vst::Event toSteinbergEvent(const NoteEvent &noteEvent)
     event.type = Steinberg::Vst::Event::kNoteOffEvent;
     event.noteOff.channel = 0; // TODO
     event.noteOff.tuning = 0.f;
-    event.noteOff.pitch = noteEvent.pitch;
-    event.noteOff.velocity = noteEvent.velocity;
+    event.noteOff.pitch = pitch;
+    event.noteOff.velocity = velocity;
     event.noteOff.noteId = 0;
   }
   return event;
@@ -63,61 +64,47 @@ Steinberg::Vst::Event toSteinbergEvent(const PedalEvent &pedalEvent)
 }
 } // namespace
 
-VstTrackAudioInput::VstTrackAudioInput(muse::vst::VstPluginPtr loadedVstPlugin)
+OrchestrionVstSynthesizer::OrchestrionVstSynthesizer(
+    muse::vst::VstPluginPtr loadedVstPlugin, int sampleRate)
+    : m_sampleRate{sampleRate}
 {
   assert(loadedVstPlugin && loadedVstPlugin->isLoaded());
 
   m_vstAudioClient = std::make_unique<muse::vst::VstAudioClient>();
   m_vstAudioClient->init(muse::audioplugins::AudioPluginType::Instrument,
                          std::move(loadedVstPlugin), channelCount);
-}
-
-void VstTrackAudioInput::processEvent(const EventVariant &event)
-{
-  IF_ASSERT_FAILED(m_vstAudioClient) { return; }
-  if (std::holds_alternative<NoteEvents>(event))
-  {
-    const auto &noteEvents = std::get<NoteEvents>(event);
-    std::for_each(noteEvents.begin(), noteEvents.end(),
-                  [this](const NoteEvent &noteEvent)
-                  {
-                    //
-                    m_vstAudioClient->handleEvent(toSteinbergEvent(noteEvent));
-                  });
-  }
-  else if (std::holds_alternative<PedalEvent>(event))
-  {
-    const auto &pedalEvent = std::get<PedalEvent>(event);
-    m_vstAudioClient->handleEvent(toSteinbergEvent(pedalEvent));
-  }
-  else
-  {
-    assert(false);
-  }
-}
-
-bool VstTrackAudioInput::_isActive() const
-{
-  return m_vstAudioClient != nullptr;
-}
-
-void VstTrackAudioInput::_setIsActive(bool arg)
-{
-  assert(m_vstAudioClient || !arg);
-}
-
-void VstTrackAudioInput::_setSampleRate(unsigned int sampleRate)
-{
-  IF_ASSERT_FAILED(m_vstAudioClient) { return; }
   m_vstAudioClient->setSampleRate(sampleRate);
 }
 
-muse::audio::samples_t
-VstTrackAudioInput::_process(float *buffer,
-                             muse::audio::samples_t samplesPerChannel)
+int OrchestrionVstSynthesizer::sampleRate() const { return m_sampleRate; }
+
+size_t OrchestrionVstSynthesizer::process(float *buffer,
+                                          size_t samplesPerChannel)
 {
   IF_ASSERT_FAILED(m_vstAudioClient) { return 0u; }
   return m_vstAudioClient->process(buffer, samplesPerChannel);
+}
+
+void OrchestrionVstSynthesizer::onNoteOns(size_t numNoteons, const int *pitches,
+                                          const float *velocities)
+{
+  for (size_t i = 0; i < numNoteons; ++i)
+    m_vstAudioClient->handleEvent(
+        toSteinbergEvent(NoteEventType::noteOn, pitches[i], velocities[i]));
+}
+
+void OrchestrionVstSynthesizer::onNoteOffs(size_t numNoteoffs,
+                                           const int *pitches)
+{
+  for (size_t i = 0; i < numNoteoffs; ++i)
+    m_vstAudioClient->handleEvent(
+        toSteinbergEvent(NoteEventType::noteOff, pitches[i], 0.f));
+}
+
+void OrchestrionVstSynthesizer::onPedal(bool on)
+{
+  // TODO
+  assert(false);
 }
 
 } // namespace dgk

@@ -16,7 +16,6 @@ public:
 
 private:
   int sampleRate() const override;
-  int numChannels() const override;
   size_t process(float *buffer, size_t samplesPerChannel) override;
   void onNoteOns(size_t numNoteons, const int *pitches,
                  const float *velocities) override;

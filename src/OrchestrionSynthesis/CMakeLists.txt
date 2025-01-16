@@ -1,23 +1,27 @@
 declare_module(OrchestrionSynthesis)
 
 set(MODULE_SRC
+    internal/AntiMetronomeSynthesizer.cpp
+    internal/AntiMetronomeSynthesizer.h
     internal/FluidSynthesizer.cpp
     internal/FluidSynthesizer.h
-    internal/FluidTrackAudioInput.cpp
-    internal/FluidTrackAudioInput.h
     internal/IOrchestrionSynthesizer.h
     internal/LowpassFilterBank.cpp
     internal/LowpassFilterBank.h
     internal/LowpassFilteredSynthesizer.cpp
     internal/LowpassFilteredSynthesizer.h
+    internal/OrchestrionSynthesizerWrapper.cpp
+    internal/OrchestrionSynthesizerWrapper.h
+    internal/OrchestrionSynthResolver.cpp
+    internal/OrchestrionSynthResolver.h
+    internal/OrchestrionVstSynthesizer.cpp
+    internal/OrchestrionVstSynthesizer.h
+    internal/PromisedSynthesizer.cpp
+    internal/PromisedSynthesizer.h
     internal/SynthesizerConnector.cpp
     internal/SynthesizerConnector.h
-    internal/TrackAudioInput.cpp
-    internal/TrackAudioInput.h
     internal/TrackChannelMapper.cpp
     internal/TrackChannelMapper.h
-    internal/VstTrackAudioInput.cpp
-    internal/VstTrackAudioInput.h
     ISynthesizerConnector.h
     ITrackChannelMapper.h
     OrchestrionSynthesisModule.cpp

@@ -18,18 +18,24 @@
  */
 #pragma once
 
+#include "audio/isynthresolver.h"
 #include "modularity/imodulesetup.h"
 
 namespace dgk
 {
+class SynthesizerConnector;
+
 class OrchestrionSynthesisModule : public muse::modularity::IModuleSetup
 {
 public:
-  OrchestrionSynthesisModule() = default;
+  OrchestrionSynthesisModule();
 
 private:
   std::string moduleName() const override;
   void registerExports() override;
+  void onAllInited(const muse::IApplication::RunMode &mode) override;
+
+  const std::shared_ptr<SynthesizerConnector> m_synthesizerConnector;
 };
 
 } // namespace dgk

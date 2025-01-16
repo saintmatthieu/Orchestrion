@@ -22,6 +22,11 @@
 
 namespace dgk
 {
+OrchestrionSynthesisModule::OrchestrionSynthesisModule()
+    : m_synthesizerConnector{std::make_shared<SynthesizerConnector>()}
+{
+}
+
 std::string OrchestrionSynthesisModule::moduleName() const
 {
   return "OrchestrionSynthesis";
@@ -30,8 +35,14 @@ std::string OrchestrionSynthesisModule::moduleName() const
 void OrchestrionSynthesisModule::registerExports()
 {
   ioc()->registerExport<ISynthesizerConnector>(moduleName(),
-                                               new SynthesizerConnector);
+                                               m_synthesizerConnector);
   ioc()->registerExport<ITrackChannelMapper>(moduleName(),
                                              new TrackChannelMapper);
+}
+
+void OrchestrionSynthesisModule::onAllInited(
+    const muse::IApplication::RunMode &mode)
+{
+  m_synthesizerConnector->onAllInited();
 }
 } // namespace dgk
