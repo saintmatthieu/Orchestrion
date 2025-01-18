@@ -82,7 +82,7 @@ void ForAllSegments(
 }
 
 auto GetChordSequence(mu::engraving::Score &score,
-                      IChordRestRegistry &chordRegistry, TrackIndex track)
+                      ISegmentRegistry &segmentRegistry, TrackIndex track)
 {
   std::vector<ChordRestPtr> sequence;
   auto prevWasRest = true;
@@ -96,22 +96,23 @@ auto GetChordSequence(mu::engraving::Score &score,
           const auto isChord = dynamic_cast<const mu::engraving::Chord *>(
                                    segment.element(track.value)) != nullptr;
 
-          std::shared_ptr<IChordRest> chord;
+          std::shared_ptr<IMelodySegment> melodySeg;
           if (isChord)
-            chord = std::make_shared<MuseChord>(segment, track, measureTick);
+            melodySeg =
+                std::make_shared<MuseChord>(segment, track, measureTick);
           else
-            chord = std::make_shared<MuseRest>(segment, track, measureTick);
+            melodySeg = std::make_shared<MuseRest>(segment, track, measureTick);
 
-          chordRegistry.RegisterChord(chord.get(), &segment);
-          const auto chordEndTick = chord->GetEndTick();
+          segmentRegistry.RegisterSegment(melodySeg.get(), &segment);
+          const auto chordEndTick = melodySeg->GetEndTick();
           if (endTick.withRepeats > 0 // we don't care if the voice doesn't
                                       // begin at the start.
-              && endTick.withRepeats < chord->GetBeginTick().withRepeats)
+              && endTick.withRepeats < melodySeg->GetBeginTick().withRepeats)
             // There is a blank in this voice.
             sequence.push_back(
                 std::make_shared<VoiceBlank>(endTick, chordEndTick));
           endTick = chordEndTick;
-          sequence.push_back(std::move(chord));
+          sequence.push_back(std::move(melodySeg));
         }
       });
   return sequence;
@@ -188,11 +189,11 @@ OrchestrionSequencerFactory::CreateSequencer(
   for (auto v = 0; v < numVoices; ++v)
   {
     if (auto sequence =
-            GetChordSequence(score, *chordRegistry(), TrackIndex{staff, v});
+            GetChordSequence(score, *segmentRegistry(), TrackIndex{staff, v});
         !sequence.empty())
       rightHand.emplace(v, std::move(sequence));
-    if (auto sequence =
-            GetChordSequence(score, *chordRegistry(), TrackIndex{staff + 1, v});
+    if (auto sequence = GetChordSequence(score, *segmentRegistry(),
+                                         TrackIndex{staff + 1, v});
         !sequence.empty())
       leftHand.emplace(v, std::move(sequence));
   }

@@ -1,4 +1,4 @@
-#include "MuseChordRestImpl.h"
+#include "MuseMelodySegment.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/note.h"
 #include "engraving/dom/rest.h"
@@ -11,7 +11,7 @@ namespace dgk
 
 namespace me = mu::engraving;
 
-MuseChordRestImpl::MuseChordRestImpl(const me::Segment &segment,
+MuseMelodySegment::MuseMelodySegment(const me::Segment &segment,
                                      TrackIndex track, int measurePlaybackTick)
     : m_tick{measurePlaybackTick + segment.rtick().ticks(),
              segment.tick().ticks()},
@@ -19,5 +19,5 @@ MuseChordRestImpl::MuseChordRestImpl(const me::Segment &segment,
 {
 }
 
-dgk::Tick MuseChordRestImpl::GetBeginTick() const { return m_tick; }
+dgk::Tick MuseMelodySegment::GetBeginTick() const { return m_tick; }
 } // namespace dgk

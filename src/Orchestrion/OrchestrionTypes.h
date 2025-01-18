@@ -23,9 +23,9 @@ using PedalSequence = std::vector<PedalSequenceItem>;
 
 class IChord;
 class IRest;
-class IChordRest;
+class IMelodySegment;
 
-using ChordRestPtr = std::shared_ptr<IChordRest>;
+using ChordRestPtr = std::shared_ptr<IMelodySegment>;
 using Staff = std::map<int /*voice*/, std::vector<ChordRestPtr>>;
 
 // clang-format off
@@ -63,11 +63,10 @@ struct ChordTransition
   };
   struct ActivatedChordRest
   {
-    explicit ActivatedChordRest(const IChordRest *value) : value{value} {}
-    const IChordRest *const value;
+    explicit ActivatedChordRest(const IMelodySegment *value) : value{value} {}
+    const IMelodySegment *const value;
     operator bool() const { return value != nullptr; }
-    const IChordRest *operator->() const { return value; }
-    const IChord *AsChord() const { return value ? value->AsChord() : nullptr; }
+    const IMelodySegment *operator->() const { return value; }
   };
   struct NextChord
   {

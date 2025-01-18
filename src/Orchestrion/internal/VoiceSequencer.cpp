@@ -1,5 +1,5 @@
 #include "VoiceSequencer.h"
-#include "IChordRest.h"
+#include "IMelodySegment.h"
 #include <algorithm>
 #include <cassert>
 

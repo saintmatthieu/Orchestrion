@@ -13,7 +13,7 @@ namespace me = mu::engraving;
 
 MuseRest::MuseRest(const me::Segment &segment, TrackIndex track,
                    int measurePlaybackTick)
-    : MuseChordRestImpl(segment, track, measurePlaybackTick)
+    : MuseMelodySegment(segment, track, measurePlaybackTick)
 {
 }
 
@@ -25,7 +25,7 @@ IRest *MuseRest::AsRest() { return this; }
 
 dgk::Tick MuseRest::GetBeginTick() const
 {
-  return MuseChordRestImpl::GetBeginTick();
+  return MuseMelodySegment::GetBeginTick();
 }
 
 dgk::Tick MuseRest::GetEndTick() const

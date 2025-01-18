@@ -18,17 +18,33 @@
  */
 #pragma once
 
-#include "IChordRestRegistry.h"
-#include <unordered_map>
+#include <modularity/imoduleinterface.h>
+
+namespace mu
+{
+namespace engraving
+{
+class Segment;
+}
+} // namespace mu
 
 namespace dgk
 {
-class ChordRegistry : public IChordRestRegistry
-{
-private:
-  void RegisterChord(const IChordRest *, const mu::engraving::Segment *) override;
-  const mu::engraving::Segment *GetSegment(const IChordRest *) const override;
+class IMelodySegment;
+}
 
-  std::unordered_map<const IChordRest *, const mu::engraving::Segment *> m_chords;
+namespace dgk
+{
+class ISegmentRegistry : MODULE_EXPORT_INTERFACE
+{
+  INTERFACE_ID(ISegmentRegistry);
+
+public:
+  virtual ~ISegmentRegistry() = default;
+
+  virtual void RegisterSegment(const IMelodySegment *,
+                             const mu::engraving::Segment *) = 0;
+  virtual const mu::engraving::Segment *
+  GetSegment(const IMelodySegment *) const = 0;
 };
 } // namespace dgk

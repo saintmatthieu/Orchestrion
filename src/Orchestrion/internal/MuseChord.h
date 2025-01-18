@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IChord.h"
-#include "MuseChordRestImpl.h"
+#include "MuseMelodySegment.h"
 
 namespace mu::engraving
 {
@@ -11,7 +11,7 @@ class Segment;
 
 namespace dgk
 {
-class MuseChord : public IChord, private MuseChordRestImpl
+class MuseChord : public IChord, private MuseMelodySegment
 {
 public:
   MuseChord(const mu::engraving::Segment &segment, TrackIndex,

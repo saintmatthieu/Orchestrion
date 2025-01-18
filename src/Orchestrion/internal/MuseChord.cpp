@@ -13,7 +13,7 @@ namespace me = mu::engraving;
 
 MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
-    : MuseChordRestImpl(segment, track, measurePlaybackTick)
+    : MuseMelodySegment(segment, track, measurePlaybackTick)
 {
 }
 
@@ -45,7 +45,7 @@ std::vector<int> MuseChord::GetPitches() const
 
 dgk::Tick MuseChord::GetBeginTick() const
 {
-  return MuseChordRestImpl::GetBeginTick();
+  return MuseMelodySegment::GetBeginTick();
 }
 
 namespace

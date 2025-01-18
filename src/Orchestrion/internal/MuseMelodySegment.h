@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Orchestrion/IChordRest.h"
+#include "Orchestrion/IMelodySegment.h"
 
 namespace mu::engraving
 {
@@ -15,10 +15,10 @@ class INotationInteraction;
 
 namespace dgk
 {
-class MuseChordRestImpl
+class MuseMelodySegment
 {
 protected:
-  MuseChordRestImpl(const mu::engraving::Segment &segment, TrackIndex,
+  MuseMelodySegment(const mu::engraving::Segment &segment, TrackIndex,
                     int measurePlaybackTick);
 
   Tick GetBeginTick() const;

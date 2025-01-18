@@ -17,7 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ScoreAnimationModule.h"
-#include "internal/ChordRegistry.h"
+#include "internal/SegmentRegistry.h"
 #include "internal/ScoreAnimator.h"
 
 namespace dgk
@@ -35,7 +35,7 @@ std::string ScoreAnimationModule::moduleName() const
 void ScoreAnimationModule::registerExports()
 {
   ioc()->registerExport<IScoreAnimator>(moduleName(), m_scoreAnimator);
-  ioc()->registerExport<IChordRestRegistry>(moduleName(), new ChordRegistry());
+  ioc()->registerExport<ISegmentRegistry>(moduleName(), new SegmentRegistry());
 }
 
 void ScoreAnimationModule::onInit(const muse::IApplication::RunMode &)

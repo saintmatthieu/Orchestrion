@@ -8,10 +8,10 @@ namespace dgk
 class IChord;
 class IRest;
 
-class IChordRest
+class IMelodySegment
 {
 public:
-  virtual ~IChordRest() = default;
+  virtual ~IMelodySegment() = default;
 
   virtual const IChord *AsChord() const = 0;
   virtual IChord *AsChord() = 0;

@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "IChordRestRegistry.h"
+#include "ISegmentRegistry.h"
 #include "IScoreAnimator.h"
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
@@ -41,7 +41,7 @@ class ScoreAnimator : public IScoreAnimator,
                       public muse::async::Asyncable
 {
   muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<IChordRestRegistry> chordRegistry;
+  muse::Inject<ISegmentRegistry> melodySegRegistry;
   muse::Inject<mu::context::IGlobalContext> globalContext;
 
 public:

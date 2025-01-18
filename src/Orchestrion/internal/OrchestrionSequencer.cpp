@@ -154,8 +154,8 @@ void OrchestrionSequencer::SendChordTransition(TrackIndex track,
 {
   std::vector<NoteEvent> voiceOutput;
   const auto noteons =
-      transition.activatedChordRest.AsChord()
-          ? transition.activatedChordRest.AsChord()->GetPitches()
+      transition.activatedChordRest && transition.activatedChordRest->AsChord()
+          ? transition.activatedChordRest->AsChord()->GetPitches()
           : std::vector<int>{};
   if (transition.deactivatedChord)
     AppendNoteoffs(voiceOutput, transition.deactivatedChord->GetPitches(),

@@ -21,7 +21,7 @@
 #include "IOrchestrionNotationInteraction.h"
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
-#include "ScoreAnimation/IChordRestRegistry.h"
+#include "ScoreAnimation/ISegmentRegistry.h"
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
 #include <unordered_map>
@@ -34,7 +34,7 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
   muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
   muse::Inject<mu::notation::INotationConfiguration> configuration;
   muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<IChordRestRegistry> chordRegistry;
+  muse::Inject<ISegmentRegistry> chordRegistry;
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);

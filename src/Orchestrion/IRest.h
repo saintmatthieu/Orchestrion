@@ -1,10 +1,10 @@
 #pragma once
 
-#include "IChordRest.h"
+#include "IMelodySegment.h"
 
 namespace dgk
 {
-class IRest : public IChordRest
+class IRest : public IMelodySegment
 {
 public:
   virtual ~IRest() = default;

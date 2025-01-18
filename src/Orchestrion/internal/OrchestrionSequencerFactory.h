@@ -2,7 +2,7 @@
 
 #include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include "OrchestrionTypes.h"
-#include "ScoreAnimation/IChordRestRegistry.h"
+#include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <memory>
 #include <modularity/ioc.h>
@@ -19,7 +19,7 @@ class IOrchestrionSequencer;
 
 class OrchestrionSequencerFactory : public muse::Injectable
 {
-  muse::Inject<IChordRestRegistry> chordRegistry;
+  muse::Inject<ISegmentRegistry> segmentRegistry;
   muse::Inject<ITrackChannelMapper> mapper;
 
 public:

@@ -42,7 +42,7 @@ void ScoreAnimator::OnChordTransition(TrackIndex track,
                          : transition.nextChord.value;
   if (chord)
   {
-    const auto segment = chordRegistry()->GetSegment(chord);
+    const auto segment = melodySegRegistry()->GetSegment(chord);
     IF_ASSERT_FAILED(segment) { return; }
     interaction->showItem(segment->element(track.value));
   }
