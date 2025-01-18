@@ -25,7 +25,13 @@ std::vector<me::Note *> MuseChord::GetNotes() const
   return {};
 }
 
-bool MuseChord::IsChord() const { return true; }
+const IChord *MuseChord::AsChord() const { return this; }
+
+IChord *MuseChord::AsChord() { return this; }
+
+const IRest *MuseChord::AsRest() const { return nullptr; }
+
+IRest *MuseChord::AsRest() { return nullptr; }
 
 std::vector<int> MuseChord::GetPitches() const
 {

@@ -1,4 +1,5 @@
 #include "ScoreAnimator.h"
+#include "Orchestrion/IChord.h"
 #include "Orchestrion/IOrchestrionSequencer.h"
 #include "Orchestrion/OrchestrionTypes.h"
 #include <engraving/dom/chord.h>
@@ -36,8 +37,9 @@ void ScoreAnimator::OnChordTransition(TrackIndex track,
 {
   const auto interaction = GetInteraction();
   IF_ASSERT_FAILED(interaction) { return; }
-  const auto chord = transition.activated.chord ? transition.activated.chord
-                                                : transition.next.chord;
+  const auto chord = transition.activatedChordRest
+                         ? transition.activatedChordRest.value
+                         : transition.nextChord.value;
   if (chord)
   {
     const auto segment = chordRegistry()->GetSegment(chord);

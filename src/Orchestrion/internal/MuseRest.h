@@ -17,8 +17,12 @@ public:
   MuseRest(const mu::engraving::Segment &segment, TrackIndex,
            int measurePlaybackTick);
 
-  bool IsChord() const override;
-  std::vector<int> GetPitches() const override { return {}; }
+  const IChord *AsChord() const override;
+  IChord *AsChord() override;
+
+  const IRest *AsRest() const override;
+  IRest *AsRest() override;
+
   Tick GetBeginTick() const override;
   Tick GetEndTick() const override;
 };

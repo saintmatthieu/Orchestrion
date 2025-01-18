@@ -17,7 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationPaintView.h"
+#include "Orchestrion/IChord.h"
 #include "Orchestrion/IOrchestrionSequencer.h"
+#include "Orchestrion/IRest.h"
 #include <QApplication>
 #include <QPainter>
 #include <engraving/dom/tie.h>
@@ -40,19 +42,20 @@ void OrchestrionNotationPaintView::subscribe(
         update();
       });
 
-  const std::map<TrackIndex, const IChordRest *> chords = sequencer.GetNextChords();
+  const std::map<TrackIndex, const IChord *> chords = sequencer.GetNextChords();
   for (const auto &[track, chord] : chords)
-    OnChordTransition(track, {ChordTransition::Next{chord}});
+    OnChordTransition(track, {ChordTransition::NextChord{chord}});
   update();
 }
 
 void OrchestrionNotationPaintView::OnChordTransition(
     TrackIndex track, const ChordTransition &transition)
 {
-  if (transition.skippedRest.chord || transition.deactivated.chord)
+  if (transition.skippedRest || transition.deactivatedChord)
     m_boxes.erase(track.value);
-  const auto chord = transition.activated.chord ? transition.activated.chord
-                                                : transition.next.chord;
+  const auto chord = transition.activatedChordRest
+                         ? transition.activatedChordRest.value
+                         : transition.nextChord.value;
   if (!chord)
     return;
 
@@ -67,7 +70,7 @@ void OrchestrionNotationPaintView::OnChordTransition(
   const auto spatium = items.front()->spatium();
   Box &box = m_boxes[track.value];
   box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
-  box.active = transition.activated.chord != nullptr;
+  box.active = transition.activatedChordRest;
   box.opacity = box.active ? 0.9 : 0.4;
   box.pen = QPen{Qt::darkCyan, 10, box.active ? Qt::SolidLine : Qt::DotLine};
 }

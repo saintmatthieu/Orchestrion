@@ -1,5 +1,5 @@
 #include "OrchestrionSequencer.h"
-#include "IChordRest.h"
+#include "IChord.h"
 #include <algorithm>
 #include <engraving/dom/note.h>
 #include <iterator>
@@ -153,13 +153,14 @@ void OrchestrionSequencer::SendChordTransition(TrackIndex track,
                                                float velocity)
 {
   std::vector<NoteEvent> voiceOutput;
-  const auto noteons = transition.activated.chord
-                           ? transition.activated.chord->GetPitches()
-                           : std::vector<int>{};
-  if (transition.deactivated.chord)
-    AppendNoteoffs(voiceOutput, transition.deactivated.chord->GetPitches(),
+  const auto noteons =
+      transition.activatedChordRest.AsChord()
+          ? transition.activatedChordRest.AsChord()->GetPitches()
+          : std::vector<int>{};
+  if (transition.deactivatedChord)
+    AppendNoteoffs(voiceOutput, transition.deactivatedChord->GetPitches(),
                    track, velocity, noteons);
-  if (transition.activated.chord)
+  if (transition.activatedChordRest)
     AppendNoteons(voiceOutput, noteons, track, velocity);
 
   if (!voiceOutput.empty())
@@ -338,9 +339,9 @@ std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
   return voices;
 }
 
-std::map<TrackIndex, const IChordRest *> OrchestrionSequencer::GetNextChords() const
+std::map<TrackIndex, const IChord *> OrchestrionSequencer::GetNextChords() const
 {
-  std::map<TrackIndex, const IChordRest *> nextChords;
+  std::map<TrackIndex, const IChord *> nextChords;
   for (const auto voice : m_allVoices)
     nextChords[voice->track] = voice->GetNextChord();
   return nextChords;

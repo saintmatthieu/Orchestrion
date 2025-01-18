@@ -5,12 +5,20 @@
 
 namespace dgk
 {
+class IChord;
+class IRest;
+
 class IChordRest
 {
 public:
   virtual ~IChordRest() = default;
-  virtual bool IsChord() const = 0;
-  virtual std::vector<int> GetPitches() const = 0;
+
+  virtual const IChord *AsChord() const = 0;
+  virtual IChord *AsChord() = 0;
+
+  virtual const IRest *AsRest() const = 0;
+  virtual IRest *AsRest() = 0;
+
   virtual Tick GetBeginTick() const = 0;
   virtual Tick GetEndTick() const = 0;
 };

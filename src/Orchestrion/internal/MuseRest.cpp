@@ -17,7 +17,11 @@ MuseRest::MuseRest(const me::Segment &segment, TrackIndex track,
 {
 }
 
-bool MuseRest::IsChord() const { return false; }
+const IChord *MuseRest::AsChord() const { return nullptr; }
+IChord *MuseRest::AsChord() { return nullptr; }
+
+const IRest *MuseRest::AsRest() const { return this; }
+IRest *MuseRest::AsRest() { return this; }
 
 dgk::Tick MuseRest::GetBeginTick() const
 {

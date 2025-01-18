@@ -1,15 +1,19 @@
 #pragma once
 
-#include "IChordRest.h"
+#include "IRest.h"
 
-namespace dgk {
-class VoiceBlank : public IChordRest {
+namespace dgk
+{
+class VoiceBlank : public IRest
+{
 public:
   VoiceBlank(Tick beginTick, Tick endTick);
 
 private:
-  bool IsChord() const override;
-  std::vector<int> GetPitches() const override;
+  const IChord *AsChord() const override;
+  IChord *AsChord() override;
+  const IRest *AsRest() const override;
+  IRest *AsRest() override;
   Tick GetBeginTick() const override;
   Tick GetEndTick() const override;
 

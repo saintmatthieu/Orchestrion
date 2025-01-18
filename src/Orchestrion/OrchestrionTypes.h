@@ -21,10 +21,12 @@ struct PedalSequenceItem
 
 using PedalSequence = std::vector<PedalSequenceItem>;
 
+class IChord;
+class IRest;
 class IChordRest;
 
-using ChordPtr = std::shared_ptr<IChordRest>;
-using Staff = std::map<int /*voice*/, std::vector<ChordPtr>>;
+using ChordRestPtr = std::shared_ptr<IChordRest>;
+using Staff = std::map<int /*voice*/, std::vector<ChordRestPtr>>;
 
 // clang-format off
 /*!
@@ -45,83 +47,95 @@ using Staff = std::map<int /*voice*/, std::vector<ChordPtr>>;
 // clang-format on
 struct ChordTransition
 {
-  struct Deactivated
+  struct DeactivatedChord
   {
-    explicit Deactivated(const IChordRest *chord) : chord{chord} {}
-    const IChordRest *const chord;
+    explicit DeactivatedChord(const IChord *value) : value{value} {}
+    const IChord *const value;
+    operator bool() const { return value != nullptr; }
+    const IChord *operator->() const { return value; }
   };
   struct SkippedRest
   {
-    explicit SkippedRest(const IChordRest *chord) : chord{chord} {}
-    const IChordRest *const chord;
+    explicit SkippedRest(const IRest *value) : value{value} {}
+    const IRest *const value;
+    operator bool() const { return value != nullptr; }
+    const IRest *operator->() const { return value; }
   };
-  struct Activated
+  struct ActivatedChordRest
   {
-    explicit Activated(const IChordRest *chord) : chord{chord} {}
-    const IChordRest *const chord;
+    explicit ActivatedChordRest(const IChordRest *value) : value{value} {}
+    const IChordRest *const value;
+    operator bool() const { return value != nullptr; }
+    const IChordRest *operator->() const { return value; }
+    const IChord *AsChord() const { return value ? value->AsChord() : nullptr; }
   };
-  struct Next
+  struct NextChord
   {
-    explicit Next(const IChordRest *chord) : chord{chord} {}
-    const IChordRest *const chord;
+    explicit NextChord(const IChord *value) : value{value} {}
+    const IChord *const value;
+    operator bool() const { return value != nullptr; }
+    const IChord *operator->() const { return value; }
   };
 
   ChordTransition()
-      : deactivated{nullptr}, skippedRest{nullptr}, activated{nullptr},
-        next{nullptr}
+      : deactivatedChord{nullptr}, skippedRest{nullptr},
+        activatedChordRest{nullptr}, nextChord{nullptr}
   {
   }
 
-  ChordTransition(Next next)
-      : deactivated{nullptr}, skippedRest{nullptr}, activated{nullptr},
-        next{std::move(next)}
+  ChordTransition(NextChord nextChord)
+      : deactivatedChord{nullptr}, skippedRest{nullptr},
+        activatedChordRest{nullptr}, nextChord{std::move(nextChord)}
   {
   }
 
-  ChordTransition(Deactivated deactivated, Next next)
-      : deactivated{std::move(deactivated)}, skippedRest{nullptr},
-        activated{nullptr}, next{std::move(next)}
+  ChordTransition(DeactivatedChord deactivatedChord, NextChord nextChord)
+      : deactivatedChord{std::move(deactivatedChord)}, skippedRest{nullptr},
+        activatedChordRest{nullptr}, nextChord{std::move(nextChord)}
   {
   }
 
-  ChordTransition(Deactivated deactivated, SkippedRest skippedRest,
-                  Activated activated)
-      : deactivated{std::move(deactivated)},
-        skippedRest{std::move(skippedRest)}, activated{std::move(activated)},
-        next{nullptr}
+  ChordTransition(DeactivatedChord deactivatedChord, SkippedRest skippedRest,
+                  ActivatedChordRest activatedChordRest)
+      : deactivatedChord{std::move(deactivatedChord)},
+        skippedRest{std::move(skippedRest)},
+        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
   {
   }
 
-  ChordTransition(Deactivated deactivated, Activated activated)
-      : deactivated{std::move(deactivated)}, skippedRest{nullptr},
-        activated{std::move(activated)}, next{nullptr}
+  ChordTransition(DeactivatedChord deactivatedChord,
+                  ActivatedChordRest activatedChordRest)
+      : deactivatedChord{std::move(deactivatedChord)}, skippedRest{nullptr},
+        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
   {
   }
 
-  ChordTransition(Activated activated)
-      : deactivated{nullptr}, skippedRest{nullptr},
-        activated{std::move(activated)}, next{nullptr}
+  ChordTransition(ActivatedChordRest activatedChordRest)
+      : deactivatedChord{nullptr}, skippedRest{nullptr},
+        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
   {
   }
 
-  ChordTransition(SkippedRest skippedRest, Activated activated)
-      : deactivated{nullptr}, skippedRest{std::move(skippedRest)},
-        activated{std::move(activated)}, next{nullptr}
+  ChordTransition(SkippedRest skippedRest,
+                  ActivatedChordRest activatedChordRest)
+      : deactivatedChord{nullptr}, skippedRest{std::move(skippedRest)},
+        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
   {
   }
 
-  ChordTransition(Deactivated deactivated, SkippedRest skippedRest,
-                  Activated activated, Next next)
-      : deactivated{std::move(deactivated)},
-        skippedRest{std::move(skippedRest)}, activated{std::move(activated)},
-        next{std::move(next)}
+  ChordTransition(DeactivatedChord deactivatedChord, SkippedRest skippedRest,
+                  ActivatedChordRest activatedChordRest, NextChord nextChord)
+      : deactivatedChord{std::move(deactivatedChord)},
+        skippedRest{std::move(skippedRest)},
+        activatedChordRest{std::move(activatedChordRest)},
+        nextChord{std::move(nextChord)}
   {
   }
 
-  const Deactivated deactivated;
+  const DeactivatedChord deactivatedChord;
   const SkippedRest skippedRest;
-  const Activated activated;
-  const Next next;
+  const ActivatedChordRest activatedChordRest;
+  const NextChord nextChord;
 };
 
 struct TrackIndex

@@ -46,7 +46,7 @@ public:
 
   std::vector<TrackIndex> GetAllVoices() const override;
 
-  std::map<TrackIndex, const IChordRest *> GetNextChords() const override;
+  std::map<TrackIndex, const IChord *> GetNextChords() const override;
 
   muse::async::Channel<TrackIndex, ChordTransition>
   ChordTransitionTriggered() const override;

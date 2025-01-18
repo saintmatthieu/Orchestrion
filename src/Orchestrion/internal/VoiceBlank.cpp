@@ -7,9 +7,13 @@ VoiceBlank::VoiceBlank(Tick beginTick, Tick endTick)
 {
 }
 
-bool VoiceBlank::IsChord() const { return false; }
+const IChord *VoiceBlank::AsChord() const { return nullptr; }
 
-std::vector<int> VoiceBlank::GetPitches() const { return {}; }
+IChord *VoiceBlank::AsChord() { return nullptr; }
+
+const IRest *VoiceBlank::AsRest() const { return this; }
+
+IRest *VoiceBlank::AsRest() { return this; }
 
 Tick VoiceBlank::GetBeginTick() const { return m_beginTick; }
 

@@ -84,7 +84,7 @@ void ForAllSegments(
 auto GetChordSequence(mu::engraving::Score &score,
                       IChordRestRegistry &chordRegistry, TrackIndex track)
 {
-  std::vector<ChordPtr> sequence;
+  std::vector<ChordRestPtr> sequence;
   auto prevWasRest = true;
   dgk::Tick endTick{0, 0};
   ForAllSegments(

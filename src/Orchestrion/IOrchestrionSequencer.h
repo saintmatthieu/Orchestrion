@@ -33,7 +33,7 @@ public:
   virtual void GoToTick(int tick) = 0;
   virtual InstrumentIndex GetInstrumentIndex() const = 0;
   virtual std::vector<TrackIndex> GetAllVoices() const = 0;
-  virtual std::map<TrackIndex, const IChordRest *> GetNextChords() const = 0;
+  virtual std::map<TrackIndex, const IChord *> GetNextChords() const = 0;
   virtual muse::async::Channel<TrackIndex, ChordTransition>
   ChordTransitionTriggered() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;

@@ -10,7 +10,7 @@ namespace dgk
 class VoiceSequencer
 {
 public:
-  VoiceSequencer(TrackIndex, std::vector<ChordPtr> chords);
+  VoiceSequencer(TrackIndex, std::vector<ChordRestPtr> chords);
 
   const TrackIndex track;
 
@@ -21,15 +21,15 @@ public:
   std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
-  const IChordRest *GetNextChord() const;
+  const IChord *GetNextChord() const;
 
 private:
-  static VoiceEvent GetVoiceEvent(const std::vector<ChordPtr> &chords,
+  static VoiceEvent GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                                   int index);
   ChordTransitionType GetNextTransition(NoteEventType event) const;
-  const IChordRest *GetChord(int index) const;
+  const IChord *GetNextChord(int index) const;
 
-  const std::vector<ChordPtr> m_gestures;
+  const std::vector<ChordRestPtr> m_gestures;
   const int m_numGestures;
   int m_index = 0;
   bool m_onImplicitRest = true;
