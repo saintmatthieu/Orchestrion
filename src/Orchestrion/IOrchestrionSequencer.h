@@ -30,9 +30,6 @@ public:
   virtual ~IOrchestrionSequencer() = default;
 
   virtual void OnInputEvent(NoteEventType, int pitch, float velocity) = 0;
-  virtual void GoToTick(int tick) = 0;
-  virtual InstrumentIndex GetInstrumentIndex() const = 0;
-  virtual std::vector<TrackIndex> GetAllVoices() const = 0;
   virtual std::map<TrackIndex, const IChord *> GetNextChords() const = 0;
   virtual muse::async::Channel<TrackIndex, ChordTransition>
   ChordTransitionTriggered() const = 0;

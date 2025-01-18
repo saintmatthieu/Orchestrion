@@ -40,11 +40,6 @@ public:
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch, float velocity) override;
-  //! Returns noteoffs that were pending.
-  void GoToTick(int tick) override;
-  InstrumentIndex GetInstrumentIndex() const override;
-
-  std::vector<TrackIndex> GetAllVoices() const override;
 
   std::map<TrackIndex, const IChord *> GetNextChords() const override;
 
@@ -54,6 +49,7 @@ public:
 
 private:
   void SendChordTransition(TrackIndex, ChordTransition, float velocity = 0.f);
+  void GoToTick(int tick);
 
   using OptTimePoint =
       std::optional<std::chrono::time_point<std::chrono::steady_clock>>;

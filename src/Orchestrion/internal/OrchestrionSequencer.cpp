@@ -324,21 +324,6 @@ void OrchestrionSequencer::GoToTick(int tick)
       [](const auto &item, int tick) { return item.tick < tick; });
 }
 
-InstrumentIndex OrchestrionSequencer::GetInstrumentIndex() const
-{
-  return m_instrument;
-}
-
-std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
-{
-  std::vector<TrackIndex> voices;
-  voices.reserve(m_allVoices.size());
-  std::transform(m_allVoices.begin(), m_allVoices.end(),
-                 std::back_inserter(voices),
-                 [](const VoiceSequencer *voice) { return voice->track; });
-  return voices;
-}
-
 std::map<TrackIndex, const IChord *> OrchestrionSequencer::GetNextChords() const
 {
   std::map<TrackIndex, const IChord *> nextChords;

@@ -24,7 +24,7 @@ public:
 
 private:
   void setupCallback(IOrchestrionSequencer &sequencer);
-  void onOrchestrionEvent(InstrumentIndex, EventVariant event);
+  void onOrchestrionEvent(EventVariant event);
 
   muse::midi::Event ToMuseMidiEvent(const NoteEvent &dgkEvent) const;
   muse::midi::Event ToMuseMidiEvent(const PedalEvent &pedalEvent) const;

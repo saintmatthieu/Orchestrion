@@ -49,17 +49,11 @@ void OrchestrionEventProcessor::init()
 
 void OrchestrionEventProcessor::setupCallback(IOrchestrionSequencer &sequencer)
 {
-  sequencer.OutputEvent().onReceive(
-      this,
-      [this](EventVariant event)
-      {
-        onOrchestrionEvent(orchestrion()->sequencer()->GetInstrumentIndex(),
-                           event);
-      });
+  sequencer.OutputEvent().onReceive(this, [this](EventVariant event)
+                                    { onOrchestrionEvent(event); });
 }
 
-void OrchestrionEventProcessor::onOrchestrionEvent(InstrumentIndex,
-                                                   EventVariant event)
+void OrchestrionEventProcessor::onOrchestrionEvent(EventVariant event)
 {
   if (std::holds_alternative<NoteEvents>(event))
   {
