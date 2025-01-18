@@ -35,7 +35,7 @@ std::string ScoreAnimationModule::moduleName() const
 void ScoreAnimationModule::registerExports()
 {
   ioc()->registerExport<IScoreAnimator>(moduleName(), m_scoreAnimator);
-  ioc()->registerExport<IChordRegistry>(moduleName(), new ChordRegistry());
+  ioc()->registerExport<IChordRestRegistry>(moduleName(), new ChordRegistry());
 }
 
 void ScoreAnimationModule::onInit(const muse::IApplication::RunMode &)

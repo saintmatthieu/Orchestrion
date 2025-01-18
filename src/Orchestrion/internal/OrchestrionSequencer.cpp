@@ -1,5 +1,5 @@
 #include "OrchestrionSequencer.h"
-#include "IChord.h"
+#include "IChordRest.h"
 #include <algorithm>
 #include <engraving/dom/note.h>
 #include <iterator>
@@ -338,9 +338,9 @@ std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
   return voices;
 }
 
-std::map<TrackIndex, const IChord *> OrchestrionSequencer::GetNextChords() const
+std::map<TrackIndex, const IChordRest *> OrchestrionSequencer::GetNextChords() const
 {
-  std::map<TrackIndex, const IChord *> nextChords;
+  std::map<TrackIndex, const IChordRest *> nextChords;
   for (const auto voice : m_allVoices)
     nextChords[voice->track] = voice->GetNextChord();
   return nextChords;

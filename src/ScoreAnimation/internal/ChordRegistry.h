@@ -18,17 +18,17 @@
  */
 #pragma once
 
-#include "IChordRegistry.h"
+#include "IChordRestRegistry.h"
 #include <unordered_map>
 
 namespace dgk
 {
-class ChordRegistry : public IChordRegistry
+class ChordRegistry : public IChordRestRegistry
 {
 private:
-  void RegisterChord(const IChord *, const mu::engraving::Segment *) override;
-  const mu::engraving::Segment *GetSegment(const IChord *) const override;
+  void RegisterChord(const IChordRest *, const mu::engraving::Segment *) override;
+  const mu::engraving::Segment *GetSegment(const IChordRest *) const override;
 
-  std::unordered_map<const IChord *, const mu::engraving::Segment *> m_chords;
+  std::unordered_map<const IChordRest *, const mu::engraving::Segment *> m_chords;
 };
 } // namespace dgk

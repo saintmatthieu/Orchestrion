@@ -21,9 +21,9 @@ struct PedalSequenceItem
 
 using PedalSequence = std::vector<PedalSequenceItem>;
 
-class IChord;
+class IChordRest;
 
-using ChordPtr = std::shared_ptr<IChord>;
+using ChordPtr = std::shared_ptr<IChordRest>;
 using Staff = std::map<int /*voice*/, std::vector<ChordPtr>>;
 
 // clang-format off
@@ -47,23 +47,23 @@ struct ChordTransition
 {
   struct Deactivated
   {
-    explicit Deactivated(const IChord *chord) : chord{chord} {}
-    const IChord *const chord;
+    explicit Deactivated(const IChordRest *chord) : chord{chord} {}
+    const IChordRest *const chord;
   };
   struct SkippedRest
   {
-    explicit SkippedRest(const IChord *chord) : chord{chord} {}
-    const IChord *const chord;
+    explicit SkippedRest(const IChordRest *chord) : chord{chord} {}
+    const IChordRest *const chord;
   };
   struct Activated
   {
-    explicit Activated(const IChord *chord) : chord{chord} {}
-    const IChord *const chord;
+    explicit Activated(const IChordRest *chord) : chord{chord} {}
+    const IChordRest *const chord;
   };
   struct Next
   {
-    explicit Next(const IChord *chord) : chord{chord} {}
-    const IChord *const chord;
+    explicit Next(const IChordRest *chord) : chord{chord} {}
+    const IChordRest *const chord;
   };
 
   ChordTransition()

@@ -1,4 +1,4 @@
-#include "MuseChord.h"
+#include "MuseChordRest.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/note.h"
 #include "engraving/dom/rest.h"
@@ -11,7 +11,7 @@ namespace dgk
 
 namespace me = mu::engraving;
 
-MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
+MuseChordRest::MuseChordRest(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
     : m_tick{measurePlaybackTick + segment.rtick().ticks(),
              segment.tick().ticks()},
@@ -21,7 +21,7 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
 {
 }
 
-std::vector<me::Note *> MuseChord::GetNotes() const
+std::vector<me::Note *> MuseChordRest::GetNotes() const
 {
   if (const auto museChord =
           dynamic_cast<const me::Chord *>(m_segment.element(m_track.value)))
@@ -29,9 +29,9 @@ std::vector<me::Note *> MuseChord::GetNotes() const
   return {};
 }
 
-bool MuseChord::IsChord() const { return m_isChord; }
+bool MuseChordRest::IsChord() const { return m_isChord; }
 
-std::vector<int> MuseChord::GetPitches() const
+std::vector<int> MuseChordRest::GetPitches() const
 {
   std::vector<int> chord;
   const auto notes = GetNotes();
@@ -41,9 +41,9 @@ std::vector<int> MuseChord::GetPitches() const
   return chord;
 }
 
-dgk::Tick MuseChord::GetBeginTick() const { return m_tick; }
+dgk::Tick MuseChordRest::GetBeginTick() const { return m_tick; }
 
-dgk::Tick MuseChord::GetEndTick() const
+dgk::Tick MuseChordRest::GetEndTick() const
 {
   if (m_isChord)
     return GetChordEndTick();
@@ -104,7 +104,7 @@ const mu::engraving::Chord *GetNextTiedChord(const mu::engraving::Chord &chord)
 }
 } // namespace
 
-dgk::Tick MuseChord::GetChordEndTick() const
+dgk::Tick MuseChordRest::GetChordEndTick() const
 {
   auto chord =
       dynamic_cast<const me::Chord *>(m_segment.element(m_track.value));
@@ -117,7 +117,7 @@ dgk::Tick MuseChord::GetChordEndTick() const
   return endTick;
 }
 
-dgk::Tick MuseChord::GetRestEndTick() const
+dgk::Tick MuseChordRest::GetRestEndTick() const
 {
   const me::Segment *segment = &m_segment;
   auto endTick = GetBeginTick();

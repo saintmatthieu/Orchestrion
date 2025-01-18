@@ -5,7 +5,7 @@ set(MODULE_SRC
   internal/ChordRegistry.h
   internal/ScoreAnimator.cpp
   internal/ScoreAnimator.h
-  IChordRegistry.h
+  IChordRestRegistry.h
   IScoreAnimator.h
   ScoreAnimationModule.cpp
   ScoreAnimationModule.h

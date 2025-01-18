@@ -1,5 +1,5 @@
 #include "VoiceSequencer.h"
-#include "IChord.h"
+#include "IChordRest.h"
 #include <algorithm>
 #include <cassert>
 
@@ -59,7 +59,7 @@ int GetIndexIncrement(ChordTransitionType transition)
 }
 } // namespace
 
-const IChord *VoiceSequencer::GetNextChord() const { return GetChord(m_index); }
+const IChordRest *VoiceSequencer::GetNextChord() const { return GetChord(m_index); }
 
 ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event,
                                              const dgk::Tick &cursorTick)
@@ -105,7 +105,7 @@ ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event,
   }
 }
 
-const IChord *VoiceSequencer::GetChord(int index) const
+const IChordRest *VoiceSequencer::GetChord(int index) const
 {
   return index < m_numGestures ? m_gestures[index].get() : nullptr;
 }

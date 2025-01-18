@@ -21,13 +21,13 @@ public:
   std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
-  const IChord *GetNextChord() const;
+  const IChordRest *GetNextChord() const;
 
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordPtr> &chords,
                                   int index);
   ChordTransitionType GetNextTransition(NoteEventType event) const;
-  const IChord *GetChord(int index) const;
+  const IChordRest *GetChord(int index) const;
 
   const std::vector<ChordPtr> m_gestures;
   const int m_numGestures;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Orchestrion/IChord.h"
+#include "Orchestrion/IChordRest.h"
 
 namespace mu::engraving
 {
@@ -15,11 +15,11 @@ class INotationInteraction;
 
 namespace dgk
 {
-class MuseChord : public IChord
+class MuseChordRest : public IChordRest
 {
 public:
-  MuseChord(const mu::engraving::Segment &segment, TrackIndex,
-            int measurePlaybackTick);
+  MuseChordRest(const mu::engraving::Segment &segment, TrackIndex,
+                int measurePlaybackTick);
 
   bool IsChord() const override;
   Tick GetBeginTick() const override;

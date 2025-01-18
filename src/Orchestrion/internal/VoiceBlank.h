@@ -1,9 +1,9 @@
 #pragma once
 
-#include "IChord.h"
+#include "IChordRest.h"
 
 namespace dgk {
-class VoiceBlank : public IChord {
+class VoiceBlank : public IChordRest {
 public:
   VoiceBlank(Tick beginTick, Tick endTick);
 

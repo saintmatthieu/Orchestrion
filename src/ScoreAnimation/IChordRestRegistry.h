@@ -30,20 +30,21 @@ class Segment;
 
 namespace dgk
 {
-class IChord;
+class IChordRest;
 }
 
 namespace dgk
 {
-class IChordRegistry : MODULE_EXPORT_INTERFACE
+class IChordRestRegistry : MODULE_EXPORT_INTERFACE
 {
-  INTERFACE_ID(IChordRegistry);
+  INTERFACE_ID(IChordRestRegistry);
 
 public:
-  virtual ~IChordRegistry() = default;
+  virtual ~IChordRestRegistry() = default;
 
-  virtual void RegisterChord(const IChord *,
+  virtual void RegisterChord(const IChordRest *,
                              const mu::engraving::Segment *) = 0;
-  virtual const mu::engraving::Segment *GetSegment(const IChord *) const = 0;
+  virtual const mu::engraving::Segment *
+  GetSegment(const IChordRest *) const = 0;
 };
 } // namespace dgk
