@@ -1,5 +1,6 @@
 #include "OrchestrionSequencerFactory.h"
-#include "MuseChordRest.h"
+#include "MuseChord.h"
+#include "MuseRest.h"
 #include "OrchestrionSequencer.h"
 #include "VoiceBlank.h"
 #include "engraving/dom/chord.h"
@@ -92,7 +93,15 @@ auto GetChordSequence(mu::engraving::Score &score,
       {
         if (TakeIt(segment, track, prevWasRest))
         {
-          auto chord = std::make_shared<MuseChordRest>(segment, track, measureTick);
+          const auto isChord = dynamic_cast<const mu::engraving::Chord *>(
+                                   segment.element(track.value)) != nullptr;
+
+          std::shared_ptr<IChordRest> chord;
+          if (isChord)
+            chord = std::make_shared<MuseChord>(segment, track, measureTick);
+          else
+            chord = std::make_shared<MuseRest>(segment, track, measureTick);
+
           chordRegistry.RegisterChord(chord.get(), &segment);
           const auto chordEndTick = chord->GetEndTick();
           if (endTick.withRepeats > 0 // we don't care if the voice doesn't

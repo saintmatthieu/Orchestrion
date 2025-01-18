@@ -5,10 +5,14 @@ set(MODULE_SRC
     internal/ComputerKeyboard.h
     internal/ComputerKeyboardMidiController.cpp
     internal/ComputerKeyboardMidiController.h
+    internal/MuseChord.cpp
+    internal/MuseChord.h
     internal/ChordTransitionUtil.cpp
     internal/ChordTransitionUtil.h
-    internal/MuseChordRest.cpp
-    internal/MuseChordRest.h
+    internal/MuseChordRestImpl.cpp
+    internal/MuseChordRestImpl.h
+    internal/MuseRest.cpp
+    internal/MuseRest.h
     internal/Orchestrion.cpp
     internal/Orchestrion.h
     internal/OrchestrionSequencer.cpp
@@ -25,6 +29,7 @@ set(MODULE_SRC
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp
     internal/VoiceSequencer.h
+    IChord.h
     OrchestrionTypes.h
     IComputerKeyboard.h
     IComputerKeyboardMidiController.h
@@ -32,6 +37,7 @@ set(MODULE_SRC
     IOrchestrion.h
     IOrchestrionSequencer.h
     IOrchestrionSequencerUiActions.h
+    IRest.h
     OrchestrionModule.cpp
     OrchestrionModule.h
 )
