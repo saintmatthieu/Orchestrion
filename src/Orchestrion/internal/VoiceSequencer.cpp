@@ -59,13 +59,7 @@ int GetIndexIncrement(ChordTransitionType transition)
 }
 } // namespace
 
-const IChord *VoiceSequencer::GetFirstChord() const
-{
-  const auto it =
-      std::find_if(m_gestures.begin(), m_gestures.end(),
-                   [](const auto &gesture) { return gesture->IsChord(); });
-  return it != m_gestures.end() ? it->get() : nullptr;
-}
+const IChord *VoiceSequencer::GetNextChord() const { return GetChord(m_index); }
 
 ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event,
                                              const dgk::Tick &cursorTick)

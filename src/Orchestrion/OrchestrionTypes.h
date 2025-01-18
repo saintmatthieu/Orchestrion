@@ -141,6 +141,7 @@ struct TrackIndex
 
   bool operator==(const TrackIndex &rhs) const { return value == rhs.value; }
   bool operator!=(const TrackIndex &rhs) const { return !(*this == rhs); }
+  bool operator<(const TrackIndex &rhs) const { return value < rhs.value; }
 };
 
 enum class NoteEventType

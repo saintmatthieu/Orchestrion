@@ -43,9 +43,10 @@ public:
   //! Returns noteoffs that were pending.
   void GoToTick(int tick) override;
   InstrumentIndex GetInstrumentIndex() const override;
-  
+
   std::vector<TrackIndex> GetAllVoices() const override;
-  ChordTransition GetFirstChordTransition(TrackIndex) const override;
+
+  std::map<TrackIndex, const IChord *> GetNextChords() const override;
 
   muse::async::Channel<TrackIndex, ChordTransition>
   ChordTransitionTriggered() const override;

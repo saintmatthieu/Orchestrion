@@ -40,11 +40,9 @@ void OrchestrionNotationPaintView::subscribe(
         update();
       });
 
-  for (const TrackIndex &voice : sequencer.GetAllVoices())
-  {
-    const auto transition = sequencer.GetFirstChordTransition(voice);
-    OnChordTransition(voice, transition);
-  }
+  const std::map<TrackIndex, const IChord *> chords = sequencer.GetNextChords();
+  for (const auto &[track, chord] : chords)
+    OnChordTransition(track, {ChordTransition::Next{chord}});
   update();
 }
 

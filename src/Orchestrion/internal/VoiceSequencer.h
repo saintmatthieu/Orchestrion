@@ -21,7 +21,7 @@ public:
   std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
-  const IChord *GetFirstChord() const;
+  const IChord *GetNextChord() const;
 
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordPtr> &chords,

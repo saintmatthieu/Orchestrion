@@ -103,13 +103,6 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   orchestrionNotationInteraction()->noteClicked().onReceive(
       this, [this](const mu::engraving::Note *note)
       { GoToTick(note->tick().ticks()); });
-  std::for_each(m_allVoices.begin(), m_allVoices.end(),
-                [&](const VoiceSequencer *voice)
-                {
-                  SendChordTransition(
-                      voice->track,
-                      {ChordTransition::Next{voice->GetFirstChord()}});
-                });
 }
 
 namespace
@@ -345,14 +338,12 @@ std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
   return voices;
 }
 
-ChordTransition
-OrchestrionSequencer::GetFirstChordTransition(TrackIndex track) const
+std::map<TrackIndex, const IChord *> OrchestrionSequencer::GetNextChords() const
 {
-  const auto it = std::find_if(m_allVoices.begin(), m_allVoices.end(),
-                               [&](const VoiceSequencer *voice)
-                               { return voice->track == track; });
-  return it != m_allVoices.end() ? ChordTransition::Next{(*it)->GetFirstChord()}
-                                 : ChordTransition::Next{nullptr};
+  std::map<TrackIndex, const IChord *> nextChords;
+  for (const auto voice : m_allVoices)
+    nextChords[voice->track] = voice->GetNextChord();
+  return nextChords;
 }
 
 void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
