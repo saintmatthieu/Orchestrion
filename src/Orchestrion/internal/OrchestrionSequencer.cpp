@@ -10,8 +10,8 @@ namespace dgk
 {
 namespace
 {
-auto MakeAllVoices(const OrchestrionSequencer::Hand &rightHand,
-                   const OrchestrionSequencer::Hand &leftHand)
+auto MakeAllVoices(const OrchestrionSequencer::HandVoices &rightHand,
+                   const OrchestrionSequencer::HandVoices &leftHand)
 {
   std::vector<const VoiceSequencer *> allVoices;
   allVoices.reserve(rightHand.size() + leftHand.size());
@@ -82,11 +82,12 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
 }
 
 OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
-                                           Hand rightHand, Hand leftHand,
+                                           HandVoices rightHand,
+                                           HandVoices leftHand,
                                            PedalSequence pedalSequence)
     : m_instrument{std::move(instrument)}, m_rightHand{std::move(rightHand)},
       m_leftHand{std::move(leftHand)},
-      m_allVoices{MakeAllVoices(m_rightHand, m_leftHand)},
+      m_allVoices{MakeAllVoices(m_rightHand.voices, m_leftHand.voices)},
       m_pedalSequence{std::move(pedalSequence)},
       m_pedalSequenceIt{m_pedalSequence.begin()},
       m_pedalThread{MakeThread<PedalEvent>(*this, m_pedalThreadMembers,
@@ -103,6 +104,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   orchestrionNotationInteraction()->noteClicked().onReceive(
       this, [this](const mu::engraving::Note *note)
       { GoToTick(note->tick().ticks()); });
+  GoToTick(0);
 }
 
 namespace
@@ -146,33 +148,77 @@ auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
                     { return a->GetFinalTick() < b->GetFinalTick(); }))
                    ->GetFinalTick();
 }
+
+void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
+{
+  // Use the time where transitions aren't yet all mingled in one map to apply
+  // the per-staff algorithm.
+  // For a given staff, there must remain at most one future chord, and it must
+  // be that of the earliest.
+  std::vector<TrackIndex> futureChordTracks;
+  for (const auto &[track, transition] : transitions)
+    if (GetFutureChord(transition))
+      futureChordTracks.push_back(track);
+  if (futureChordTracks.size() < 2)
+    return;
+  Tick::value_type earliestTick = std::numeric_limits<Tick::value_type>::max();
+  for (const auto &track : futureChordTracks)
+  {
+    const auto tick = Get<FutureChord>(transitions.at(track))
+                          ->future->GetBeginTick()
+                          .withRepeats;
+    if (tick < earliestTick)
+      earliestTick = tick;
+  }
+  // All entries with futures that aren't the earliest see their futures
+  // removed.
+  for (const auto &track : futureChordTracks)
+  {
+    const auto transition = transitions.at(track);
+    const auto tick = GetFutureChord(transition)->GetBeginTick().withRepeats;
+    if (tick <= earliestTick)
+      continue;
+    if (Get<FutureChord>(transition))
+      // Nothing left if we remove the future.
+      transitions.erase(track);
+    else
+      transitions.emplace(
+          track, PastChord{Get<PastChordAndFutureChord>(transition)->past});
+  }
+}
 } // namespace
 
-void OrchestrionSequencer::SendChordTransition(TrackIndex track,
-                                               ChordTransition transition,
-                                               float velocity)
+void OrchestrionSequencer::SendTransitions(
+    std::map<TrackIndex, ChordTransition> transitions, float velocity)
 {
-  std::vector<NoteEvent> voiceOutput;
-  const auto noteons =
-      transition.activatedChordRest && transition.activatedChordRest->AsChord()
-          ? transition.activatedChordRest->AsChord()->GetPitches()
-          : std::vector<int>{};
-  if (transition.deactivatedChord)
-    AppendNoteoffs(voiceOutput, transition.deactivatedChord->GetPitches(),
-                   track, velocity, noteons);
-  if (transition.activatedChordRest)
-    AppendNoteons(voiceOutput, noteons, track, velocity);
+  if (transitions.empty())
+    return;
 
-  if (!voiceOutput.empty())
-    PostNoteEvents(voiceOutput);
+  for (const auto &[track, transition] : transitions)
+  {
+    std::vector<NoteEvent> voiceOutput;
+    const auto past = GetPastChord(transition);
+    const auto present = GetPresentChord(transition);
+    std::vector<int> noteons;
+    if (present)
+      noteons = present->GetPitches();
 
-  m_chordTransitionTriggered.send(track, std::move(transition));
+    if (past)
+      AppendNoteoffs(voiceOutput, past->GetPitches(), track, velocity, noteons);
+    if (present)
+      AppendNoteons(voiceOutput, present->GetPitches(), track, velocity);
+
+    if (!voiceOutput.empty())
+      PostNoteEvents(voiceOutput);
+  }
+
+  m_transitions.set(std::move(transitions));
 }
 
-muse::async::Channel<TrackIndex, ChordTransition>
-OrchestrionSequencer::ChordTransitionTriggered() const
+muse::async::Channel<std::map<TrackIndex, ChordTransition>>
+OrchestrionSequencer::ChordTransitions() const
 {
-  return m_chordTransitionTriggered;
+  return m_transitions.ch;
 }
 
 muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
@@ -215,14 +261,13 @@ OrchestrionSequencer::~OrchestrionSequencer()
 
 namespace
 {
-auto GetNextNoteonTick(const OrchestrionSequencer::Hand &hand,
-                       NoteEventType type)
+auto GetNextNoteonTick(const OrchestrionSequencer::HandVoices &hand)
 {
   return std::accumulate(
       hand.begin(), hand.end(), std::optional<dgk::Tick>{},
-      [&](const auto &acc, const auto &voice)
+      [](const auto &acc, const std::unique_ptr<VoiceSequencer> &voice)
       {
-        const auto tick = voice->GetNextTick(type);
+        const auto tick = voice->GetNextNoteonTick();
         return tick.has_value()
                    ? std::make_optional(std::min(acc.value_or(*tick), *tick))
                    : acc;
@@ -233,13 +278,6 @@ auto GetNextNoteonTick(const OrchestrionSequencer::Hand &hand,
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                         float velocity)
 {
-  if (type == NoteEventType::noteOn)
-    m_pressedKey = pitch;
-  else if (m_pressedKey == pitch)
-    m_pressedKey.reset();
-  else
-    return;
-
   const auto loopEnabled = globalContext()
                                ->currentMasterNotation()
                                ->playback()
@@ -248,19 +286,40 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
   OnInputEventRecursive(type, pitch, velocity, loopEnabled);
 
   // Make sure to release the pedal if we've reached the end of this part.
-  if (m_pedalDown && !GetNextNoteonTick(m_rightHand, NoteEventType::noteOff) &&
-      !GetNextNoteonTick(m_leftHand, NoteEventType::noteOff) &&
-      type == NoteEventType::noteOff)
+  if (m_pedalDown && type == NoteEventType::noteOff &&
+      !GetNextNoteonTick(m_rightHand.voices) &&
+      !GetNextNoteonTick(m_leftHand.voices))
     PostPedalEvent(PedalEvent{m_instrument, false});
+}
+
+std::map<TrackIndex, ChordTransition>
+OrchestrionSequencer::PrepareStaffransitions(
+    const HandVoices &voices,
+    std::function<std::optional<ChordTransition>(VoiceSequencer &)> op)
+{
+  std::map<TrackIndex, ChordTransition> transitions;
+  for (const auto &voiceSequencer : voices)
+    if (const auto transition = op(*voiceSequencer))
+      transitions.emplace(voiceSequencer->track, *transition);
+  UniteStaffTransitions(transitions);
+  return transitions;
 }
 
 void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                                                  float velocity, bool loop)
 {
 
-  auto &hand = pitch < 60 && !m_leftHand.empty() ? m_leftHand : m_rightHand;
+  auto &hand =
+      pitch < 60 && !m_leftHand.voices.empty() ? m_leftHand : m_rightHand;
+  if (type == NoteEventType::noteOn)
+    hand.pressedKey = pitch;
+  else if (hand.pressedKey == pitch)
+    hand.pressedKey.reset();
+  else
+    return;
+
   const auto cursorTick =
-      GetNextNoteonTick(hand, type).value_or(GetFinalTick(m_allVoices));
+      GetNextNoteonTick(hand.voices).value_or(GetFinalTick(m_allVoices));
 
   const auto &loopBoundaries =
       globalContext()->currentMasterNotation()->playback()->loopBoundaries();
@@ -272,10 +331,10 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
     return OnInputEventRecursive(type, pitch, velocity, false);
   }
 
-  for (auto &voiceSequencer : hand)
-    SendChordTransition(voiceSequencer->track,
-                        voiceSequencer->OnInputEvent(type, cursorTick),
-                        velocity);
+  const std::map<TrackIndex, ChordTransition> transitions =
+      PrepareStaffransitions(hand.voices, [&](VoiceSequencer &voice)
+                             { return voice.OnInputEvent(type, cursorTick); });
+  SendTransitions(transitions, velocity);
 
   // For the pedal we wait on the slowest of both hands.
   const auto leastPedalTick = std::accumulate(
@@ -314,22 +373,24 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
 void OrchestrionSequencer::GoToTick(int tick)
 {
-  for (auto hand : {&m_rightHand, &m_leftHand})
-    for (auto &sequencer : *hand)
-      SendChordTransition(sequencer->track, sequencer->GoToTick(tick));
-
+  {
+    std::map<TrackIndex, ChordTransition> transitions;
+    for (auto voices : {&m_rightHand.voices, &m_leftHand.voices})
+      transitions.merge(
+          PrepareStaffransitions(*voices, [&](VoiceSequencer &voice)
+                                 { return voice.GoToTick(tick); }));
+    SendTransitions(std::move(transitions));
+  }
   m_outputEvent.send(PedalEvent{m_instrument, false});
   m_pedalSequenceIt = std::lower_bound(
       m_pedalSequence.begin(), m_pedalSequence.end(), tick,
       [](const auto &item, int tick) { return item.tick < tick; });
 }
 
-std::map<TrackIndex, const IChord *> OrchestrionSequencer::GetNextChords() const
+const std::map<TrackIndex, ChordTransition> &
+OrchestrionSequencer::GetCurrentTransitions() const
 {
-  std::map<TrackIndex, const IChord *> nextChords;
-  for (const auto voice : m_allVoices)
-    nextChords[voice->track] = voice->GetNextChord();
-  return nextChords;
+  return m_transitions.val;
 }
 
 void OrchestrionSequencer::PostPedalEvent(PedalEvent event)

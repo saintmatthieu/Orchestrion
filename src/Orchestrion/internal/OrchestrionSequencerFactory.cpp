@@ -164,7 +164,7 @@ PedalSequence GetPedalSequence(mu::engraving::Score &score, int beginStaffIdx,
 
 auto MakeHand(size_t staffIdx, const Staff &staff)
 {
-  OrchestrionSequencer::Hand hand;
+  OrchestrionSequencer::HandVoices hand;
   for (auto &[voice, sequence] : staff)
     hand.emplace_back(std::make_unique<VoiceSequencer>(
         TrackIndex{static_cast<int>(staffIdx), voice}, std::move(sequence)));

@@ -1,5 +1,7 @@
 #include "VoiceSequencer.h"
+#include "IChord.h"
 #include "IMelodySegment.h"
+#include "IRest.h"
 #include <algorithm>
 #include <cassert>
 
@@ -41,7 +43,7 @@ namespace
 {
 int GetIndexIncrement(ChordTransitionType transition)
 {
-  assert(static_cast<int>(ChordTransitionType::_count) == 9);
+  assert(static_cast<int>(ChordTransitionType::_count) == 7);
   // Principle: the index is incremented when a chord or rest is finished.
   switch (transition)
   {
@@ -49,11 +51,9 @@ int GetIndexIncrement(ChordTransitionType transition)
   case ChordTransitionType::implicitRestToChord:
     return 0;
   case ChordTransitionType::chordToImplicitRest:
-  case ChordTransitionType::restToImplicitRest:
   case ChordTransitionType::chordToChord:
   case ChordTransitionType::chordToRest:
   case ChordTransitionType::restToChord:
-  case ChordTransitionType::implicitRestToChordOverSkippedRest:
     return 1;
   case ChordTransitionType::chordToChordOverSkippedRest:
     return 2;
@@ -63,11 +63,11 @@ int GetIndexIncrement(ChordTransitionType transition)
 
 const IChord *VoiceSequencer::GetNextChord() const
 {
-  return GetNextChord(m_index);
+  return GetNextChord(m_index + 1);
 }
 
-ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event,
-                                             const dgk::Tick &cursorTick)
+std::optional<ChordTransition>
+VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
 {
   const auto transition = GetNextTransition(event);
   const auto indexIncrement = GetIndexIncrement(transition);
@@ -79,34 +79,37 @@ ChordTransition VoiceSequencer::OnInputEvent(NoteEventType event,
 
   m_index = nextIndex;
   if (transition != ChordTransitionType::none)
-    m_onImplicitRest = transition == ChordTransitionType::chordToImplicitRest ||
-                       transition == ChordTransitionType::restToImplicitRest;
+    m_onImplicitRest = transition == ChordTransitionType::chordToImplicitRest;
 
+  static_assert(static_cast<int>(ChordTransitionType::_count) == 7);
   switch (transition)
   {
   case ChordTransitionType::none:
-    return {};
-  case ChordTransitionType::chordToChordOverSkippedRest:
-    return {ChordTransition::DeactivatedChord{m_gestures[m_index - 2]->AsChord()},
-            ChordTransition::SkippedRest{m_gestures[m_index - 1]->AsRest()},
-            ChordTransition::ActivatedChordRest{m_gestures[m_index].get()}};
-  case ChordTransitionType::chordToImplicitRest:
-  case ChordTransitionType::restToImplicitRest:
-    return {ChordTransition::DeactivatedChord{m_gestures[m_index - 1]->AsChord()},
-            ChordTransition::NextChord{GetNextChord(m_index)}};
+    return std::nullopt;
   case ChordTransitionType::chordToChord:
+    return PastChordAndPresentChord{m_gestures[m_index - 1]->AsChord(),
+                                    m_gestures[m_index]->AsChord()};
+  case ChordTransitionType::chordToChordOverSkippedRest:
+    return PastChordAndPresentChord{m_gestures[m_index - 2]->AsChord(),
+                                    m_gestures[m_index]->AsChord()};
+  case ChordTransitionType::chordToImplicitRest:
+  {
+    const auto past = m_gestures[m_index - 1]->AsChord();
+    const auto future = GetNextChord(m_index);
+    if (future)
+      return PastChordAndFutureChord{past, future};
+    else
+      return PastChord{past};
+  }
   case ChordTransitionType::chordToRest:
+    return PastChordAndPresentRest{m_gestures[m_index - 1]->AsChord(),
+                                   m_gestures[m_index]->AsRest()};
   case ChordTransitionType::restToChord:
-    return {ChordTransition::DeactivatedChord{m_gestures[m_index - 1]->AsChord()},
-            ChordTransition::ActivatedChordRest{m_gestures[m_index].get()}};
   case ChordTransitionType::implicitRestToChord:
-    return {ChordTransition::ActivatedChordRest{m_gestures[m_index].get()}};
-  case ChordTransitionType::implicitRestToChordOverSkippedRest:
-    return {ChordTransition::SkippedRest{m_gestures[m_index - 1]->AsRest()},
-            ChordTransition::ActivatedChordRest{m_gestures[m_index].get()}};
+    return PresentChord{m_gestures[m_index]->AsChord()};
   default:
     assert(false);
-    return {};
+    return std::nullopt;
   }
 }
 
@@ -121,7 +124,7 @@ const IChord *VoiceSequencer::GetNextChord(int index) const
   return nullptr;
 }
 
-ChordTransition VoiceSequencer::GoToTick(int tick)
+std::optional<ChordTransition> VoiceSequencer::GoToTick(int tick)
 {
   const auto prevIndex = m_index;
 
@@ -136,18 +139,33 @@ ChordTransition VoiceSequencer::GoToTick(int tick)
   Finally finally{[this] { m_onImplicitRest = true; }};
 
   if (m_onImplicitRest)
-    return {ChordTransition::NextChord{GetNextChord(m_index)}};
+  {
+    if (const auto chord = GetNextChord(m_index))
+      return FutureChord{chord};
+    else
+      return std::nullopt;
+  }
   else
-    return {ChordTransition::DeactivatedChord{GetNextChord(prevIndex)},
-            ChordTransition::NextChord{GetNextChord(m_index)}};
+  {
+    const IChord *const prevChord =
+        prevIndex < m_numGestures ? m_gestures[prevIndex]->AsChord() : nullptr;
+    const IChord *const nextChord = GetNextChord(m_index);
+    if (prevChord && !nextChord)
+      return PastChord{prevChord};
+    else if (!prevChord && nextChord)
+      return FutureChord{nextChord};
+    else if (prevChord && nextChord)
+      return PastChordAndFutureChord{prevChord, nextChord};
+    else
+      return std::nullopt;
+  }
 }
 
-std::optional<dgk::Tick> VoiceSequencer::GetNextTick(NoteEventType event) const
+std::optional<dgk::Tick> VoiceSequencer::GetNextNoteonTick() const
 {
-  const ChordTransitionType transition = GetNextTransition(event);
-  const auto i = m_index + GetIndexIncrement(transition);
-  return i < m_numGestures ? std::make_optional(m_gestures[i]->GetBeginTick())
-                           : std::nullopt;
+  const auto nextChord = GetNextChord();
+  return nextChord ? std::make_optional<Tick>(nextChord->GetBeginTick())
+                   : std::nullopt;
 }
 
 std::optional<dgk::Tick> VoiceSequencer::GetTickForPedal() const

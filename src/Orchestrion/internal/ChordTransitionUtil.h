@@ -9,9 +9,7 @@ enum class ChordTransitionType
 {
   none,
   implicitRestToChord,
-  implicitRestToChordOverSkippedRest,
   restToChord,
-  restToImplicitRest,
   chordToImplicitRest,
   chordToChord,
   chordToRest,

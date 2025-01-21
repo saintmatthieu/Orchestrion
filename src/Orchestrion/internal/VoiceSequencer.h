@@ -14,11 +14,11 @@ public:
 
   const TrackIndex track;
 
-  ChordTransition OnInputEvent(NoteEventType, const dgk::Tick &cursorTick);
-  //! Returns noteoffs that were pending.
-  ChordTransition GoToTick(int tick);
+  std::optional<ChordTransition> OnInputEvent(NoteEventType,
+                                              const dgk::Tick &cursorTick);
+  std::optional<ChordTransition> GoToTick(int tick);
 
-  std::optional<dgk::Tick> GetNextTick(NoteEventType) const;
+  std::optional<dgk::Tick> GetNextNoteonTick() const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
   const IChord *GetNextChord() const;

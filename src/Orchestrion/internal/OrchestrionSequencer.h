@@ -33,23 +33,34 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
   muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
 
 public:
-  using Hand = std::vector<std::unique_ptr<VoiceSequencer>>;
+  using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
-  OrchestrionSequencer(InstrumentIndex, Hand rightHand, Hand leftHand,
-                       PedalSequence);
+  OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
+                       HandVoices leftHand, PedalSequence);
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch, float velocity) override;
 
-  std::map<TrackIndex, const IChord *> GetNextChords() const override;
+  const std::map<TrackIndex, ChordTransition> &
+  GetCurrentTransitions() const override;
 
-  muse::async::Channel<TrackIndex, ChordTransition>
-  ChordTransitionTriggered() const override;
+  muse::async::Channel<std::map<TrackIndex, ChordTransition>>
+  ChordTransitions() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
 
 private:
-  void SendChordTransition(TrackIndex, ChordTransition, float velocity = 0.f);
+  struct Hand
+  {
+    HandVoices voices;
+    std::optional<int> pressedKey;
+  };
+
+  void SendTransitions(std::map<TrackIndex, ChordTransition>,
+                       float velocity = 0.f);
   void GoToTick(int tick);
+  std::map<TrackIndex, ChordTransition> PrepareStaffransitions(
+      const HandVoices &,
+      std::function<std::optional<ChordTransition>(VoiceSequencer &)>);
 
   using OptTimePoint =
       std::optional<std::chrono::time_point<std::chrono::steady_clock>>;
@@ -97,9 +108,7 @@ private:
   std::uniform_int_distribution<int> m_delayDist{0, 30000};   // microseconds
   std::uniform_int_distribution<int> m_velocityDist{90, 110}; // percents
 
-  std::optional<int> m_pressedKey;
-
-  muse::async::Channel<TrackIndex, ChordTransition> m_chordTransitionTriggered;
+  muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
   muse::async::Channel<EventVariant> m_outputEvent;
 };
 } // namespace dgk

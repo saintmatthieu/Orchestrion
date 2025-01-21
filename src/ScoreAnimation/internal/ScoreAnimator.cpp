@@ -27,24 +27,28 @@ void ScoreAnimator::init()
 
 void ScoreAnimator::Subscribe(const IOrchestrionSequencer &sequencer)
 {
-  sequencer.ChordTransitionTriggered().onReceive(
-      this, [this](TrackIndex track, ChordTransition transition)
-      { OnChordTransition(track, transition); });
+  sequencer.ChordTransitions().onReceive(
+      this, [this](std::map<TrackIndex, ChordTransition> transitions)
+      { OnChordTransitions(transitions); });
 }
 
-void ScoreAnimator::OnChordTransition(TrackIndex track,
-                                      const ChordTransition &transition)
+void ScoreAnimator::OnChordTransitions(
+    const std::map<TrackIndex, ChordTransition> &transitions)
 {
   const auto interaction = GetInteraction();
   IF_ASSERT_FAILED(interaction) { return; }
-  const auto chord = transition.activatedChordRest
-                         ? transition.activatedChordRest.value
-                         : transition.nextChord.value;
-  if (chord)
+  for (const auto &[track, transition] : transitions)
   {
-    const auto segment = melodySegRegistry()->GetSegment(chord);
-    IF_ASSERT_FAILED(segment) { return; }
-    interaction->showItem(segment->element(track.value));
+    const auto chord =
+        Get<PresentChord>(transition)  ? Get<PresentChord>(transition)->present
+        : Get<FutureChord>(transition) ? Get<FutureChord>(transition)->future
+                                       : nullptr;
+    if (chord)
+    {
+      const auto segment = melodySegRegistry()->GetSegment(chord);
+      IF_ASSERT_FAILED(segment) { return; }
+      interaction->showItem(segment->element(track.value));
+    }
   }
   interaction->selectionChanged().notify();
 }

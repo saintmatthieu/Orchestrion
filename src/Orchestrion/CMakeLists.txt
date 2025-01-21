@@ -25,6 +25,7 @@ set(MODULE_SRC
     internal/OrchestrionSequencerFactory.h
     internal/OrchestrionSequencerUiActions.cpp
     internal/OrchestrionSequencerUiActions.h
+    internal/OrchestrionTypes.cpp
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp

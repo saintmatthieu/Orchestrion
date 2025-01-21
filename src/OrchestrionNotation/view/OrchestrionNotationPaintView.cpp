@@ -34,45 +34,50 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
 void OrchestrionNotationPaintView::subscribe(
     const IOrchestrionSequencer &sequencer)
 {
-  sequencer.ChordTransitionTriggered().onReceive(
+  sequencer.ChordTransitions().onReceive(
       this,
-      [this](TrackIndex track, ChordTransition transition)
+      [this](std::map<TrackIndex, ChordTransition> transitions)
       {
-        OnChordTransition(track, transition);
+        OnTransitions(transitions);
         update();
       });
 
-  const std::map<TrackIndex, const IChord *> chords = sequencer.GetNextChords();
-  for (const auto &[track, chord] : chords)
-    OnChordTransition(track, {ChordTransition::NextChord{chord}});
+  if (const auto &transitions = sequencer.GetCurrentTransitions();
+      !transitions.empty())
+    OnTransitions(transitions);
+
   update();
 }
 
-void OrchestrionNotationPaintView::OnChordTransition(
-    TrackIndex track, const ChordTransition &transition)
+void OrchestrionNotationPaintView::OnTransitions(
+    const std::map<TrackIndex, ChordTransition> &transitions)
 {
-  if (transition.skippedRest || transition.deactivatedChord)
-    m_boxes.erase(track.value);
-  const auto chord = transition.activatedChordRest
-                         ? transition.activatedChordRest.value
-                         : transition.nextChord.value;
-  if (!chord)
-    return;
+  for (const auto &[track, transition] : transitions)
+  {
+    if (GetPastChord(transition))
+      m_boxes.erase(track.value);
 
-  const auto segment = chordRegistry()->GetSegment(chord);
-  IF_ASSERT_FAILED(segment) { return; }
-  const std::vector<mu::engraving::EngravingItem *> items =
-      getRelevantItems(track, segment);
-  mu::engraving::RectF huggingBox;
-  for (const auto item : items)
-    huggingBox = huggingBox.united(item->pageBoundingRect());
-  const auto huggingRect = huggingBox.toQRectF();
-  const auto spatium = items.front()->spatium();
-  Box &box = m_boxes[track.value];
-  box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
-  box.active = transition.activatedChordRest;
-  box.opacity = box.active ? 0.9 : 0.4;
-  box.pen = QPen{Qt::darkCyan, 10, box.active ? Qt::SolidLine : Qt::DotLine};
+    const IMelodySegment *present = GetPresentThing(transition);
+    const IChord *future = GetFutureChord(transition);
+    const auto thing = present ? present : future;
+    if (!thing)
+      continue;
+
+    const auto segment = chordRegistry()->GetSegment(thing);
+    IF_ASSERT_FAILED(segment) { continue; }
+    const std::vector<mu::engraving::EngravingItem *> items =
+        getRelevantItems(track, segment);
+    mu::engraving::RectF huggingBox;
+    for (const auto item : items)
+      huggingBox = huggingBox.united(item->pageBoundingRect());
+    const auto huggingRect = huggingBox.toQRectF();
+    const auto spatium = items.front()->spatium();
+    Box &box = m_boxes[track.value];
+    box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
+    box.active = present != nullptr;
+    box.opacity = box.active ? 0.9 : 0.4;
+    box.pen = QPen{Qt::darkCyan, 10, box.active ? Qt::SolidLine : Qt::DotLine};
+  }
 }
 
 std::vector<mu::engraving::EngravingItem *>

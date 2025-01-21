@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "ISegmentRegistry.h"
 #include "IScoreAnimator.h"
+#include "ISegmentRegistry.h"
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
 #include <async/asyncable.h>
@@ -34,8 +34,6 @@ class Segment;
 
 namespace dgk
 {
-struct ChordTransition;
-
 class ScoreAnimator : public IScoreAnimator,
                       public muse::Injectable,
                       public muse::async::Asyncable
@@ -49,7 +47,7 @@ public:
 
 private:
   void Subscribe(const IOrchestrionSequencer &sequencer);
-  void OnChordTransition(TrackIndex, const ChordTransition &);
+  void OnChordTransitions(const std::map<TrackIndex, ChordTransition> &);
   mu::notation::INotationInteractionPtr GetInteraction() const;
 };
 } // namespace dgk

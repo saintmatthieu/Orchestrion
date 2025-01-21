@@ -30,9 +30,10 @@ public:
   virtual ~IOrchestrionSequencer() = default;
 
   virtual void OnInputEvent(NoteEventType, int pitch, float velocity) = 0;
-  virtual std::map<TrackIndex, const IChord *> GetNextChords() const = 0;
-  virtual muse::async::Channel<TrackIndex, ChordTransition>
-  ChordTransitionTriggered() const = 0;
+  virtual muse::async::Channel<std::map<TrackIndex, ChordTransition>>
+  ChordTransitions() const = 0;
+  virtual const std::map<TrackIndex, ChordTransition> &
+  GetCurrentTransitions() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
 };
 } // namespace dgk

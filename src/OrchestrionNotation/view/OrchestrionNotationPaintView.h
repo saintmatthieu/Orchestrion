@@ -51,7 +51,7 @@ private:
   std::vector<mu::engraving::EngravingItem *>
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
-  void OnChordTransition(TrackIndex track, const ChordTransition &transition);
+  void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
 
   struct Box
   {

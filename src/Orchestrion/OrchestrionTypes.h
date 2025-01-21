@@ -28,114 +28,95 @@ class IMelodySegment;
 using ChordRestPtr = std::shared_ptr<IMelodySegment>;
 using Staff = std::map<int /*voice*/, std::vector<ChordRestPtr>>;
 
-// clang-format off
-/*!
- * \brief There are four gesture transitions possible: off->on, on->off, on->on (legato) and off->off (e.g. succession of key releases)
- * The possible chord transitions for each are as follows:
- * -- OFF -> ON :
- *     - implicit rest (nullptr) to chord like at the beginning of a piece or when playing non-legato
- *     - rest to chord
- * -- ON -> OFF :
- *     - chord to implicit rest (nullptr) like at the end of a piece or when playing non-legato
- * -- ON -> ON (legato) :
- *    - chord to chord
- *    - chord to chord over skipped rest
- * -- OFF -> OFF :
- *    - rest to rest
- * The ChordTransition represents all these possibilities.
- */
-// clang-format on
-struct ChordTransition
+struct PastChord
 {
-  struct DeactivatedChord
-  {
-    explicit DeactivatedChord(const IChord *value) : value{value} {}
-    const IChord *const value;
-    operator bool() const { return value != nullptr; }
-    const IChord *operator->() const { return value; }
-  };
-  struct SkippedRest
-  {
-    explicit SkippedRest(const IRest *value) : value{value} {}
-    const IRest *const value;
-    operator bool() const { return value != nullptr; }
-    const IRest *operator->() const { return value; }
-  };
-  struct ActivatedChordRest
-  {
-    explicit ActivatedChordRest(const IMelodySegment *value) : value{value} {}
-    const IMelodySegment *const value;
-    operator bool() const { return value != nullptr; }
-    const IMelodySegment *operator->() const { return value; }
-  };
-  struct NextChord
-  {
-    explicit NextChord(const IChord *value) : value{value} {}
-    const IChord *const value;
-    operator bool() const { return value != nullptr; }
-    const IChord *operator->() const { return value; }
-  };
-
-  ChordTransition()
-      : deactivatedChord{nullptr}, skippedRest{nullptr},
-        activatedChordRest{nullptr}, nextChord{nullptr}
-  {
-  }
-
-  ChordTransition(NextChord nextChord)
-      : deactivatedChord{nullptr}, skippedRest{nullptr},
-        activatedChordRest{nullptr}, nextChord{std::move(nextChord)}
-  {
-  }
-
-  ChordTransition(DeactivatedChord deactivatedChord, NextChord nextChord)
-      : deactivatedChord{std::move(deactivatedChord)}, skippedRest{nullptr},
-        activatedChordRest{nullptr}, nextChord{std::move(nextChord)}
-  {
-  }
-
-  ChordTransition(DeactivatedChord deactivatedChord, SkippedRest skippedRest,
-                  ActivatedChordRest activatedChordRest)
-      : deactivatedChord{std::move(deactivatedChord)},
-        skippedRest{std::move(skippedRest)},
-        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
-  {
-  }
-
-  ChordTransition(DeactivatedChord deactivatedChord,
-                  ActivatedChordRest activatedChordRest)
-      : deactivatedChord{std::move(deactivatedChord)}, skippedRest{nullptr},
-        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
-  {
-  }
-
-  ChordTransition(ActivatedChordRest activatedChordRest)
-      : deactivatedChord{nullptr}, skippedRest{nullptr},
-        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
-  {
-  }
-
-  ChordTransition(SkippedRest skippedRest,
-                  ActivatedChordRest activatedChordRest)
-      : deactivatedChord{nullptr}, skippedRest{std::move(skippedRest)},
-        activatedChordRest{std::move(activatedChordRest)}, nextChord{nullptr}
-  {
-  }
-
-  ChordTransition(DeactivatedChord deactivatedChord, SkippedRest skippedRest,
-                  ActivatedChordRest activatedChordRest, NextChord nextChord)
-      : deactivatedChord{std::move(deactivatedChord)},
-        skippedRest{std::move(skippedRest)},
-        activatedChordRest{std::move(activatedChordRest)},
-        nextChord{std::move(nextChord)}
-  {
-  }
-
-  const DeactivatedChord deactivatedChord;
-  const SkippedRest skippedRest;
-  const ActivatedChordRest activatedChordRest;
-  const NextChord nextChord;
+  explicit PastChord(const IChord *past) : past{past} { assert(past); }
+  const IChord *const past;
+  const IChord *operator->() const { return past; }
 };
+
+struct PresentChord
+{
+  explicit PresentChord(const IChord *present) : present{present}
+  {
+    assert(present);
+  }
+  const IChord *const present;
+  const IChord *operator->() const { return present; }
+};
+
+struct FutureChord
+{
+  explicit FutureChord(const IChord *future) : future{future}
+  {
+    assert(future);
+  }
+  const IChord *const future;
+  const IChord *operator->() const { return future; }
+};
+
+struct PastChordAndPresentChord
+{
+  PastChordAndPresentChord(const IChord *past, const IChord *present)
+      : past{past}, present{present}
+  {
+    assert(past);
+    assert(present);
+  }
+  const IChord *const past;
+  const IChord *const present;
+};
+
+struct PastChordAndPresentRest
+{
+  PastChordAndPresentRest(const IChord *past, const IRest *present)
+      : past{past}, present{present}
+  {
+    assert(past);
+    assert(present);
+  }
+  const IChord *const past;
+  const IRest *const present;
+};
+
+struct PastChordAndFutureChord
+{
+  PastChordAndFutureChord(const IChord *past, const IChord *future)
+      : past{past}, future{future}
+  {
+    assert(past);
+    assert(future);
+  }
+  const IChord *const past;
+  const IChord *const future;
+};
+
+using ChordTransition = std::variant<PastChord,                //
+                                     PresentChord,             //
+                                     FutureChord,              //
+                                     PastChordAndPresentChord, //
+                                     PastChordAndFutureChord,  //
+                                     PastChordAndPresentRest   //
+                                     >;
+
+// helper type for the visitor #4
+template <class... Ts> struct overloaded : Ts...
+{
+  using Ts::operator()...;
+};
+
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+const IChord *GetPastChord(const ChordTransition &);
+const IChord *GetPresentChord(const ChordTransition &);
+const IMelodySegment *GetPresentThing(const ChordTransition &);
+const IChord *GetFutureChord(const ChordTransition &);
+
+template <typename T> const T *Get(const ChordTransition &transition)
+{
+  return std::get_if<T>(&transition);
+}
 
 struct TrackIndex
 {
@@ -203,6 +184,8 @@ using EventVariant = std::variant<NoteEvents, PedalEvent>;
 
 struct Tick
 {
+  using value_type = int;
+
   Tick(int withRepeats, int withoutRepeats)
       : withRepeats{withRepeats}, withoutRepeats{withoutRepeats}
   {
@@ -227,8 +210,8 @@ struct Tick
 
   constexpr bool operator>(const Tick &rhs) const { return rhs < *this; }
 
-  int withRepeats;
-  int withoutRepeats;
+  value_type withRepeats;
+  value_type withoutRepeats;
 };
 
 class Finally
