@@ -74,8 +74,6 @@ ChordTransitionType CTU::GetTransitionForNoteoff(VoiceEvent prev,
 
   case VoiceEvent::rest:
   case VoiceEvent::finalRest:
-    // Shouldn't be possible.
-    assert(false);
   case VoiceEvent::none:
     // Must have reached the end and still be playing.
     return ChordTransitionType::none;

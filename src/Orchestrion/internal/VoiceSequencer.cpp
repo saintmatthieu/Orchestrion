@@ -69,12 +69,16 @@ const IChord *VoiceSequencer::GetNextChord() const
 std::optional<ChordTransition>
 VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
 {
+  if (m_index == m_numGestures)
+    return {};
+
   const auto transition = GetNextTransition(event);
   const auto indexIncrement = GetIndexIncrement(transition);
 
   const auto nextIndex = m_index + indexIncrement;
-  if (nextIndex >= m_numGestures ||
-      m_gestures[nextIndex]->GetBeginTick() > cursorTick)
+  if (nextIndex > m_numGestures ||
+      (nextIndex < m_numGestures &&
+       m_gestures[nextIndex]->GetBeginTick() > cursorTick))
     return {};
 
   m_index = nextIndex;

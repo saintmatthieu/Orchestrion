@@ -334,6 +334,13 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   const std::map<TrackIndex, ChordTransition> transitions =
       PrepareStaffransitions(hand.voices, [&](VoiceSequencer &voice)
                              { return voice.OnInputEvent(type, cursorTick); });
+
+  Finally maybeRewind{[this, doRewind = transitions.empty()]
+                      {
+                        if (doRewind)
+                          GoToTick(0);
+                      }};
+
   SendTransitions(transitions, velocity);
 
   // For the pedal we wait on the slowest of both hands.
