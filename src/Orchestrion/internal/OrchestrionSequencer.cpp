@@ -226,6 +226,11 @@ muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
   return m_outputEvent;
 }
 
+muse::async::Notification OrchestrionSequencer::AboutToJumpPosition() const
+{
+  return m_aboutToJumpPosition;
+}
+
 void OrchestrionSequencer::OnMidiEventReceived(const muse::midi::Event &event)
 {
   if (event.isChannelVoice20())
@@ -380,6 +385,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
 void OrchestrionSequencer::GoToTick(int tick)
 {
+  m_aboutToJumpPosition.notify();
   {
     std::map<TrackIndex, ChordTransition> transitions;
     for (auto voices : {&m_rightHand.voices, &m_leftHand.voices})

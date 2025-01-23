@@ -20,6 +20,7 @@
 
 #include "OrchestrionTypes.h"
 #include <async/channel.h>
+#include <async/notification.h>
 #include <map>
 
 namespace dgk
@@ -35,5 +36,6 @@ public:
   virtual const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
+  virtual muse::async::Notification AboutToJumpPosition() const = 0;
 };
 } // namespace dgk

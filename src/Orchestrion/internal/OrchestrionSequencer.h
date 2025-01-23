@@ -47,6 +47,7 @@ public:
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
+  muse::async::Notification AboutToJumpPosition() const override;
 
 private:
   struct Hand
@@ -110,5 +111,6 @@ private:
 
   muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
   muse::async::Channel<EventVariant> m_outputEvent;
+  muse::async::Notification m_aboutToJumpPosition;
 };
 } // namespace dgk

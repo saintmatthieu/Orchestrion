@@ -46,6 +46,13 @@ void OrchestrionNotationPaintView::subscribe(
       !transitions.empty())
     OnTransitions(transitions);
 
+  sequencer.AboutToJumpPosition().onNotify(this,
+                                           [this]
+                                           {
+                                             m_boxes.clear();
+                                             update();
+                                           });
+
   update();
 }
 
