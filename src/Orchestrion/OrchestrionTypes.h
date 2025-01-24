@@ -207,8 +207,8 @@ struct Tick
   }
 
   constexpr bool operator>=(const Tick &rhs) const { return !(*this < rhs); }
-
   constexpr bool operator>(const Tick &rhs) const { return rhs < *this; }
+  constexpr bool operator<=(const Tick &rhs) const { return !(*this > rhs); }
 
   value_type withRepeats;
   value_type withoutRepeats;

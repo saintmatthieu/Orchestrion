@@ -28,15 +28,23 @@ VoiceSequencer::VoiceSequencer(TrackIndex track,
 {
 }
 
-ChordTransitionType VoiceSequencer::GetNextTransition(NoteEventType event) const
+ChordTransitionType
+VoiceSequencer::GetNextTransition(NoteEventType event,
+                                  const Tick &cursorTick) const
 {
   const VoiceEvent prev =
       m_onImplicitRest ? VoiceEvent::none : GetVoiceEvent(m_gestures, m_index);
   const VoiceEvent next =
       GetVoiceEvent(m_gestures, m_onImplicitRest ? m_index : m_index + 1);
-  return event == NoteEventType::noteOn
-             ? CTU::GetTransitionForNoteon(prev, next)
-             : CTU::GetTransitionForNoteoff(prev, next);
+  const auto transition = event == NoteEventType::noteOn
+                              ? CTU::GetTransitionForNoteon(prev, next)
+                              : CTU::GetTransitionForNoteoff(prev, next);
+  if (transition == ChordTransitionType::chordToChordOverSkippedRest &&
+      GetFutureChord()->GetBeginTick() > cursorTick)
+    // A little amendmend ...
+    return ChordTransitionType::chordToRest;
+  else
+    return transition;
 }
 
 namespace
@@ -61,27 +69,17 @@ int GetIndexIncrement(ChordTransitionType transition)
 }
 } // namespace
 
-const IChord *VoiceSequencer::GetNextChord() const
-{
-  return GetNextChord(m_index + 1);
-}
-
 std::optional<ChordTransition>
 VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
 {
-  if (m_index == m_numGestures)
-    return {};
+  if (m_index >= m_numGestures ||
+      cursorTick < GetNextMatchingTick(event, cursorTick))
+    return std::nullopt;
 
-  const auto transition = GetNextTransition(event);
+  const auto transition = GetNextTransition(event, cursorTick);
   const auto indexIncrement = GetIndexIncrement(transition);
+  m_index += indexIncrement;
 
-  const auto nextIndex = m_index + indexIncrement;
-  if (nextIndex > m_numGestures ||
-      (nextIndex < m_numGestures &&
-       m_gestures[nextIndex]->GetBeginTick() > cursorTick))
-    return {};
-
-  m_index = nextIndex;
   if (transition != ChordTransitionType::none)
     m_onImplicitRest = transition == ChordTransitionType::chordToImplicitRest;
 
@@ -99,7 +97,7 @@ VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
   case ChordTransitionType::chordToImplicitRest:
   {
     const auto past = m_gestures[m_index - 1]->AsChord();
-    const auto future = GetNextChord(m_index);
+    const auto future = GetFutureChord();
     if (future)
       return PastChordAndFutureChord{past, future};
     else
@@ -117,8 +115,11 @@ VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
   }
 }
 
-const IChord *VoiceSequencer::GetNextChord(int index) const
+const IChord *VoiceSequencer::GetFutureChord() const
 {
+  auto index = m_index;
+  if (!m_onImplicitRest)
+    ++index;
   while (index < m_numGestures)
   {
     if (const auto chord = m_gestures[index]->AsChord())
@@ -128,9 +129,17 @@ const IChord *VoiceSequencer::GetNextChord(int index) const
   return nullptr;
 }
 
+const IMelodySegment *VoiceSequencer::GetPresentThing() const
+{
+  return m_onImplicitRest ? nullptr : m_gestures[m_index].get();
+}
+
 std::optional<ChordTransition> VoiceSequencer::GoToTick(int tick)
 {
-  const auto prevIndex = m_index;
+  const IChord *const past = m_onImplicitRest || m_index >= m_numGestures
+                                 ? nullptr
+                                 : m_gestures[m_index]->AsChord();
+  m_onImplicitRest = true;
 
   for (auto i = 0; i < m_gestures.size(); ++i)
     if (m_gestures[i]->AsChord() &&
@@ -140,36 +149,88 @@ std::optional<ChordTransition> VoiceSequencer::GoToTick(int tick)
       break;
     }
 
-  Finally finally{[this] { m_onImplicitRest = true; }};
+  const IChord *const future = GetFutureChord();
+  if (past && !future)
+    return PastChord{past};
+  else if (!past && future)
+    return FutureChord{future};
+  else if (past && future)
+    return PastChordAndFutureChord{past, future};
+  else
+    return std::nullopt;
+}
 
-  if (m_onImplicitRest)
+std::optional<dgk::Tick>
+VoiceSequencer::GetNextMatchingTick(NoteEventType event) const
+{
+  if (event == NoteEventType::noteOff)
+    return GetNextMatchingTickForNoteoff();
+  else
+    // For querying purpose ; ignore rests.
+    return GetNextMatchingTickForNoteon(true);
+}
+
+std::optional<dgk::Tick> VoiceSequencer::GetNextMatchingTick(
+    NoteEventType event, const std::optional<dgk::Tick> &upperLimit) const
+{
+  if (event == NoteEventType::noteOff)
+    return GetNextMatchingTickForNoteoff();
+
+  if (m_index >= m_numGestures)
+    return std::nullopt;
+
+  if (!upperLimit.has_value())
   {
-    if (const auto chord = GetNextChord(m_index))
-      return FutureChord{chord};
+    if (const auto future = GetFutureChord())
+      return future->GetBeginTick();
+    else
+    {
+      if (m_onImplicitRest)
+        return m_gestures[m_index]->GetBeginTick();
+      else
+        return m_gestures[m_index]->GetEndTick();
+    }
+  }
+  else
+  {
+    const auto future = GetFutureChord();
+    if (future && future->GetBeginTick() <= *upperLimit)
+      return future->GetBeginTick();
+    else
+      return m_gestures[m_index]->GetEndTick();
+  }
+}
+
+std::optional<dgk::Tick>
+VoiceSequencer::GetNextMatchingTickForNoteon(bool skippingRests) const
+{
+  if (m_index == m_numGestures)
+    return std::nullopt;
+
+  if (skippingRests)
+  {
+    if (const auto future = GetFutureChord())
+      return future->GetBeginTick();
     else
       return std::nullopt;
   }
   else
   {
-    const IChord *const prevChord =
-        prevIndex < m_numGestures ? m_gestures[prevIndex]->AsChord() : nullptr;
-    const IChord *const nextChord = GetNextChord(m_index);
-    if (prevChord && !nextChord)
-      return PastChord{prevChord};
-    else if (!prevChord && nextChord)
-      return FutureChord{nextChord};
-    else if (prevChord && nextChord)
-      return PastChordAndFutureChord{prevChord, nextChord};
-    else
-      return std::nullopt;
+    const auto index = m_onImplicitRest ? m_index : m_index + 1;
+    return index <= m_numGestures
+               ? std::make_optional(m_gestures[index]->GetBeginTick())
+               : std::nullopt;
   }
 }
 
-std::optional<dgk::Tick> VoiceSequencer::GetNextNoteonTick() const
+std::optional<dgk::Tick> VoiceSequencer::GetNextMatchingTickForNoteoff() const
 {
-  const auto nextChord = GetNextChord();
-  return nextChord ? std::make_optional<Tick>(nextChord->GetBeginTick())
-                   : std::nullopt;
+  if (m_index == m_numGestures)
+    return std::nullopt;
+  else if (m_onImplicitRest || m_gestures[m_index]->AsRest())
+    return std::nullopt;
+  else
+    return m_gestures[m_index]->AsChord()->GetEndTick();
 }
 
 std::optional<dgk::Tick> VoiceSequencer::GetTickForPedal() const

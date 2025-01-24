@@ -71,9 +71,22 @@ void OrchestrionNotationPaintView::OnTransitions(
       continue;
 
     const auto segment = chordRegistry()->GetSegment(thing);
-    IF_ASSERT_FAILED(segment) { continue; }
+    if (!segment)
+      // Could be a voice blank, which isn't represented by an engraving segment
+      continue;
     const std::vector<mu::engraving::EngravingItem *> items =
         getRelevantItems(track, segment);
+    const auto invisible = std::all_of(
+        items.begin(), items.end(),
+        [](const auto item)
+        {
+          if (const auto rest = dynamic_cast<mu::engraving::Rest *>(item))
+            return rest->isGap();
+          else
+            return false;
+        });
+    if (invisible)
+      continue;
     mu::engraving::RectF huggingBox;
     for (const auto item : items)
       huggingBox = huggingBox.united(item->pageBoundingRect());

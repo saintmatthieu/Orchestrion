@@ -46,6 +46,17 @@ float GetVelocity(const muse::midi::Event &event)
 {
   return event.velocity() / 128.0f;
 }
+
+auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
+{
+  return voices.empty()
+             ? dgk::Tick{0, 0}
+             : (*std::max_element(
+                    voices.begin(), voices.end(),
+                    [](const VoiceSequencer *a, const VoiceSequencer *b) -> bool
+                    { return a->GetFinalTick() < b->GetFinalTick(); }))
+                   ->GetFinalTick();
+}
 } // namespace
 
 template <typename EventType>
@@ -88,6 +99,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
     : m_instrument{std::move(instrument)}, m_rightHand{std::move(rightHand)},
       m_leftHand{std::move(leftHand)},
       m_allVoices{MakeAllVoices(m_rightHand.voices, m_leftHand.voices)},
+      m_finalTick{GetFinalTick(m_allVoices)},
       m_pedalSequence{std::move(pedalSequence)},
       m_pedalSequenceIt{m_pedalSequence.begin()},
       m_pedalThread{MakeThread<PedalEvent>(*this, m_pedalThreadMembers,
@@ -138,17 +150,6 @@ void AppendNoteons(dgk::NoteEvents &output, const std::vector<int> &noteons,
       { return NoteEvent{NoteEventType::noteOn, track, note, velocity}; });
 }
 
-auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
-{
-  return voices.empty()
-             ? dgk::Tick{0, 0}
-             : (*std::max_element(
-                    voices.begin(), voices.end(),
-                    [](const VoiceSequencer *a, const VoiceSequencer *b) -> bool
-                    { return a->GetFinalTick() < b->GetFinalTick(); }))
-                   ->GetFinalTick();
-}
-
 void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
 {
   // Use the time where transitions aren't yet all mingled in one map to apply
@@ -164,9 +165,8 @@ void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
   Tick::value_type earliestTick = std::numeric_limits<Tick::value_type>::max();
   for (const auto &track : futureChordTracks)
   {
-    const auto tick = Get<FutureChord>(transitions.at(track))
-                          ->future->GetBeginTick()
-                          .withRepeats;
+    const auto tick =
+        GetFutureChord(transitions.at(track))->GetBeginTick().withRepeats;
     if (tick < earliestTick)
       earliestTick = tick;
   }
@@ -266,17 +266,21 @@ OrchestrionSequencer::~OrchestrionSequencer()
 
 namespace
 {
-auto GetNextNoteonTick(const OrchestrionSequencer::HandVoices &hand)
+auto GetCursorTick(const OrchestrionSequencer::HandVoices &hand,
+                   NoteEventType event)
 {
-  return std::accumulate(
-      hand.begin(), hand.end(), std::optional<dgk::Tick>{},
-      [](const auto &acc, const std::unique_ptr<VoiceSequencer> &voice)
-      {
-        const auto tick = voice->GetNextNoteonTick();
-        return tick.has_value()
-                   ? std::make_optional(std::min(acc.value_or(*tick), *tick))
-                   : acc;
-      });
+  std::vector<std::optional<dgk::Tick>> ticks(hand.size());
+  std::transform(hand.begin(), hand.end(), ticks.begin(),
+                 [event](const std::unique_ptr<VoiceSequencer> &voice)
+                 {
+                   static const std::optional<Tick> upperLimit{};
+                   return voice->GetNextMatchingTick(event, upperLimit);
+                 });
+  std::optional<dgk::Tick> result;
+  for (const auto &tick : ticks)
+    if (tick.has_value())
+      result = result.has_value() ? std::min(*result, *tick) : *tick;
+  return result;
 }
 } // namespace
 
@@ -292,8 +296,8 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
 
   // Make sure to release the pedal if we've reached the end of this part.
   if (m_pedalDown && type == NoteEventType::noteOff &&
-      !GetNextNoteonTick(m_rightHand.voices) &&
-      !GetNextNoteonTick(m_leftHand.voices))
+      !GetCursorTick(m_rightHand.voices, NoteEventType::noteOff) &&
+      !GetCursorTick(m_leftHand.voices, NoteEventType::noteOff))
     PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
@@ -324,7 +328,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
     return;
 
   const auto cursorTick =
-      GetNextNoteonTick(hand.voices).value_or(GetFinalTick(m_allVoices));
+      GetCursorTick(hand.voices, type).value_or(m_finalTick);
 
   const auto &loopBoundaries =
       globalContext()->currentMasterNotation()->playback()->loopBoundaries();
@@ -337,8 +341,11 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   }
 
   const std::map<TrackIndex, ChordTransition> transitions =
-      PrepareStaffransitions(hand.voices, [&](VoiceSequencer &voice)
-                             { return voice.OnInputEvent(type, cursorTick); });
+      PrepareStaffransitions(hand.voices,
+                             [&](VoiceSequencer &voice)
+                             { //
+                               return voice.OnInputEvent(type, cursorTick);
+                             });
 
   Finally maybeRewind{[this, doRewind = transitions.empty()]
                       {

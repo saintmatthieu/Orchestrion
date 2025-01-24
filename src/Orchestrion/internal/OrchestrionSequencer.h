@@ -95,6 +95,7 @@ private:
   Hand m_rightHand;
   Hand m_leftHand;
   const std::vector<const VoiceSequencer *> m_allVoices;
+  const Tick m_finalTick;
   const PedalSequence m_pedalSequence;
   PedalSequence::const_iterator m_pedalSequenceIt;
 

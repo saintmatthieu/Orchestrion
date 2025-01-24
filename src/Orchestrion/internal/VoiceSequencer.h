@@ -18,16 +18,24 @@ public:
                                               const dgk::Tick &cursorTick);
   std::optional<ChordTransition> GoToTick(int tick);
 
-  std::optional<dgk::Tick> GetNextNoteonTick() const;
   dgk::Tick GetFinalTick() const;
   std::optional<dgk::Tick> GetTickForPedal() const;
-  const IChord *GetNextChord() const;
+  std::optional<dgk::Tick> GetNextMatchingTick(NoteEventType) const;
+
+  std::optional<dgk::Tick>
+  GetNextMatchingTick(NoteEventType,
+                      const std::optional<dgk::Tick> &upperLimit) const;
 
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                                   int index);
-  ChordTransitionType GetNextTransition(NoteEventType event) const;
-  const IChord *GetNextChord(int index) const;
+  ChordTransitionType GetNextTransition(NoteEventType event,
+                                        const Tick &cursorTick) const;
+  const IChord *GetFutureChord() const;
+  const IMelodySegment *GetPresentThing() const;
+  std::optional<dgk::Tick> GetNextMatchingTickForNoteoff() const;
+  std::optional<dgk::Tick>
+  GetNextMatchingTickForNoteon(bool skippingRests) const;
 
   const std::vector<ChordRestPtr> m_gestures;
   const int m_numGestures;
