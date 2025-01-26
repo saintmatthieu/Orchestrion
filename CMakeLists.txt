@@ -21,6 +21,7 @@ include(DSPFilters.cmake)
 
 add_subdirectory(src/MusescoreShell)
 add_subdirectory(src/Orchestrion)
+add_subdirectory(src/OrchestrionConfiguration)
 add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionOnboarding)
 add_subdirectory(src/OrchestrionShell)
@@ -83,6 +84,7 @@ target_link_libraries(OrchestrionApp PRIVATE
 
     MusescoreShell
     Orchestrion
+    OrchestrionConfiguration
     OrchestrionNotation
     OrchestrionOnboarding
     OrchestrionShell
@@ -113,6 +115,8 @@ add_subdirectory(MuseScore/share/sound) # installs soundfonts
 install(TARGETS OrchestrionApp RUNTIME DESTINATION bin)
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/" DESTINATION scores)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/" DESTINATION wallpapers)
+
 if (SNDFILE_DLL)
     install(FILES ${SNDFILE_DLL} DESTINATION bin)
 else()

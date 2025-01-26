@@ -21,36 +21,37 @@
 
 #include "MuseScoreShell/MusescoreShellModule.h"
 #include "Orchestrion/OrchestrionModule.h"
+#include "OrchestrionConfiguration/OrchestrionConfigurationModule.h"
 #include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
 #include "OrchestrionSynthesis/OrchestrionSynthesisModule.h"
 #include "ScoreAnimation/ScoreAnimationModule.h"
 
-#include "accessibility/accessibilitymodule.h"
-#include "actions/actionsmodule.h"
-#include "audio/audiomodule.h"
-#include "audioplugins/audiopluginsmodule.h"
-#include "braille/braillemodule.h"
-#include "commonscene/commonscenemodule.h"
-#include "context/contextmodule.h"
-#include "draw/drawmodule.h"
-#include "engraving/engravingmodule.h"
-#include "extensions/extensionsmodule.h"
-#include "global/globalmodule.h"
-#include "midi/midimodule.h"
-#include "mpe/mpemodule.h"
-#include "multiinstances/multiinstancesmodule.h"
-#include "network/networkmodule.h"
-#include "notation/notationmodule.h"
-#include "playback/playbackmodule.h"
-#include "project/projectmodule.h"
-#include "shortcuts/shortcutsmodule.h"
-#include "ui/uimodule.h"
-#include "uicomponents/uicomponentsmodule.h"
-#include "update/updatemodule.h"
-#include "vst/vstmodule.h"
-#include "workspace/workspacemodule.h"
+#include <accessibility/accessibilitymodule.h>
+#include <actions/actionsmodule.h>
+#include <audio/audiomodule.h>
+#include <audioplugins/audiopluginsmodule.h>
+#include <braille/braillemodule.h>
+#include <commonscene/commonscenemodule.h>
+#include <context/contextmodule.h>
+#include <draw/drawmodule.h>
+#include <engraving/engravingmodule.h>
+#include <extensions/extensionsmodule.h>
+#include <global/globalmodule.h>
+#include <midi/midimodule.h>
+#include <mpe/mpemodule.h>
+#include <multiinstances/multiinstancesmodule.h>
+#include <network/networkmodule.h>
+#include <notation/notationmodule.h>
+#include <playback/playbackmodule.h>
+#include <project/projectmodule.h>
+#include <shortcuts/shortcutsmodule.h>
+#include <ui/uimodule.h>
+#include <uicomponents/uicomponentsmodule.h>
+#include <update/updatemodule.h>
+#include <vst/vstmodule.h>
+#include <workspace/workspacemodule.h>
 
 namespace dgk
 {
@@ -81,6 +82,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new OrchestrionOnboardingModule());
   app->addModule(new OrchestrionModule());
   app->addModule(new ScoreAnimationModule());
+  app->addModule(new OrchestrionConfigurationModule());
 
   app->addModule(new muse::accessibility::AccessibilityModule());
   app->addModule(new muse::actions::ActionsModule());

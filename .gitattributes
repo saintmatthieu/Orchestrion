@@ -1,0 +1,2 @@
+# *.jpg files should be handled by Git LFS
+*.jpg filter=lfs diff=lfs merge=lfs -text
