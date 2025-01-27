@@ -63,7 +63,6 @@ target_link_libraries(OrchestrionApp PRIVATE
     braille
     commonscene
     context
-    muse_diagnostics
     muse_draw
     engraving
     muse_extensions
