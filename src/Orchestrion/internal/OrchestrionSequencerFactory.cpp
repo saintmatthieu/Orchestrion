@@ -103,15 +103,21 @@ auto GetChordSequence(mu::engraving::Score &score,
           else
             melodySeg = std::make_shared<MuseRest>(segment, track, measureTick);
 
-          segmentRegistry.RegisterSegment(melodySeg.get(), &segment);
           const auto chordEndTick = melodySeg->GetEndTick();
           if (endTick.withRepeats > 0 // we don't care if the voice doesn't
                                       // begin at the start.
               && endTick.withRepeats < melodySeg->GetBeginTick().withRepeats)
-            // There is a blank in this voice.
+          {
+            // There is a blank in this voice ...
+            if (melodySeg->AsRest())
+              // ... but we shall not insert a voice blank leading to a rest ;
+              // let the next iteration create a longer voice blank.
+              return;
             sequence.push_back(
                 std::make_shared<VoiceBlank>(endTick, chordEndTick));
+          }
           endTick = chordEndTick;
+          segmentRegistry.RegisterSegment(melodySeg.get(), &segment);
           sequence.push_back(std::move(melodySeg));
         }
       });

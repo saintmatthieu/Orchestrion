@@ -109,7 +109,7 @@ dgk::Tick MuseChord::GetEndTick() const
   auto endTick = GetBeginTick();
   while (chord)
   {
-    endTick += chord->actualTicks().ticks();
+    endTick += chord->ticks().ticks();
     chord = GetNextTiedChord(*chord);
   }
   return endTick;
