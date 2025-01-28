@@ -25,6 +25,8 @@ macro(do_build build_type build_dir)
 
     set(CONFIGURE_ARGS -GNinja
         -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+        -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF 
+        -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
     )
 
     message(STATUS "========= Begin configure =========")
