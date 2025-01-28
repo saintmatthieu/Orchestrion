@@ -22,9 +22,8 @@
 #include "OrchestrionWindowTitleProvider.h"
 #include "translation.h"
 
-using namespace mu::appshell;
-using namespace mu::notation;
-
+namespace dgk
+{
 OrchestrionWindowTitleProvider::OrchestrionWindowTitleProvider(QObject *parent)
     : QObject(parent)
 {
@@ -95,7 +94,7 @@ void OrchestrionWindowTitleProvider::setFileModified(bool fileModified)
 
 void OrchestrionWindowTitleProvider::update()
 {
-  project::INotationProjectPtr project = context()->currentProject();
+  mu::project::INotationProjectPtr project = context()->currentProject();
 
   if (!project)
   {
@@ -105,7 +104,7 @@ void OrchestrionWindowTitleProvider::update()
     return;
   }
 
-  INotationPtr notation = context()->currentNotation();
+  const auto notation = context()->currentNotation();
   setTitle(notation->projectNameAndPartName());
 
   setFilePath((project->isNewlyCreated() || project->isCloudProject())
@@ -113,3 +112,4 @@ void OrchestrionWindowTitleProvider::update()
                   : project->path().toQString());
   setFileModified(project->needSave().val);
 }
+} // namespace dgk

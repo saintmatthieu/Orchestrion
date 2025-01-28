@@ -19,20 +19,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#ifndef MU_APPSHELL_MAINWINDOWTITLEPROVIDER_H
-#define MU_APPSHELL_MAINWINDOWTITLEPROVIDER_H
+#pragma once
 
 #include "async/asyncable.h"
 #include "context/iglobalcontext.h"
 
-namespace mu::appshell
+namespace dgk
 {
 class OrchestrionWindowTitleProvider : public QObject,
                                        public muse::async::Asyncable
 {
   Q_OBJECT
 
-  INJECT(context::IGlobalContext, context)
+  INJECT(mu::context::IGlobalContext, context)
 
   Q_PROPERTY(QString title READ title NOTIFY titleChanged)
   Q_PROPERTY(QString filePath READ filePath NOTIFY filePathChanged)
@@ -63,6 +62,4 @@ private:
   QString m_filePath;
   bool m_fileModified;
 };
-} // namespace mu::appshell
-
-#endif // MU_APPSHELL_MAINWINDOWTITLEPROVIDER_H
+} // namespace dgk
