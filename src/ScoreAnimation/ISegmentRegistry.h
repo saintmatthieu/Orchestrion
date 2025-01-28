@@ -43,7 +43,8 @@ public:
   virtual ~ISegmentRegistry() = default;
 
   virtual void RegisterSegment(const IMelodySegment *,
-                             const mu::engraving::Segment *) = 0;
+                               const mu::engraving::Segment *) = 0;
+  virtual void UnregisterSegment(const IMelodySegment *) = 0;
   virtual const mu::engraving::Segment *
   GetSegment(const IMelodySegment *) const = 0;
 };

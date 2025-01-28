@@ -28,6 +28,7 @@ class SegmentRegistry : public ISegmentRegistry
 private:
   void RegisterSegment(const IMelodySegment *,
                        const mu::engraving::Segment *) override;
+  void UnregisterSegment(const IMelodySegment *) override;
   const mu::engraving::Segment *
   GetSegment(const IMelodySegment *) const override;
 

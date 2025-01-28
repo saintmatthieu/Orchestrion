@@ -111,8 +111,16 @@ auto GetChordSequence(mu::engraving::Score &score,
             // There is a blank in this voice ...
             if (melodySeg->AsRest())
               // ... but we shall not insert a voice blank leading to a rest ;
-              // let the next iteration create a longer voice blank.
+              // let the next iteration create a longer voice blank ...
               return;
+            else if (!sequence.empty() && sequence.back()->AsRest())
+            {
+              // ... neither should we have a rest leading to a blank.
+              const auto lastRest = sequence.back().get();
+              endTick = lastRest->GetBeginTick();
+              segmentRegistry.UnregisterSegment(lastRest);
+              sequence.pop_back();
+            }
             sequence.push_back(
                 std::make_shared<VoiceBlank>(endTick, chordEndTick));
           }

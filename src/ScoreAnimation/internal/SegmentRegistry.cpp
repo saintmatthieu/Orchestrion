@@ -8,6 +8,11 @@ void SegmentRegistry::RegisterSegment(const IMelodySegment *chord,
   m_chords[chord] = segment;
 }
 
+void SegmentRegistry::UnregisterSegment(const IMelodySegment *chord)
+{
+  m_chords.erase(chord);
+}
+
 const mu::engraving::Segment *
 SegmentRegistry::GetSegment(const IMelodySegment *chord) const
 {
