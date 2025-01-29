@@ -43,7 +43,7 @@ public:
 
   const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const override;
-
+  std::vector<TrackIndex> GetAllVoices() const override;
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;

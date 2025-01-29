@@ -28,8 +28,8 @@ namespace
 {
 constexpr auto channelCount = 2;
 
-Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int pitch,
-                                       float velocity)
+Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int channel,
+                                       int pitch, float velocity)
 {
   Steinberg::Vst::Event event;
   event.busIndex = 0;
@@ -39,7 +39,7 @@ Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int pitch,
   if (type == NoteEventType::noteOn)
   {
     event.type = Steinberg::Vst::Event::kNoteOnEvent;
-    event.noteOn.channel = 0; // TODO
+    event.noteOn.channel = channel;
     event.noteOn.pitch = pitch;
     event.noteOn.tuning = 0.f;
     event.noteOn.velocity = velocity;
@@ -49,7 +49,7 @@ Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int pitch,
   else
   {
     event.type = Steinberg::Vst::Event::kNoteOffEvent;
-    event.noteOff.channel = 0; // TODO
+    event.noteOff.channel = channel;
     event.noteOff.tuning = 0.f;
     event.noteOff.pitch = pitch;
     event.noteOff.velocity = velocity;
@@ -74,6 +74,8 @@ OrchestrionVstSynthesizer::OrchestrionVstSynthesizer(
   m_vstAudioClient->init(muse::audioplugins::AudioPluginType::Instrument,
                          std::move(loadedVstPlugin), channelCount);
   m_vstAudioClient->setSampleRate(sampleRate);
+
+  PolyphonicSynthesizerImpl::Initialize();
 }
 
 int OrchestrionVstSynthesizer::sampleRate() const { return m_sampleRate; }
@@ -85,26 +87,43 @@ size_t OrchestrionVstSynthesizer::process(float *buffer,
   return m_vstAudioClient->process(buffer, samplesPerChannel);
 }
 
-void OrchestrionVstSynthesizer::onNoteOns(size_t numNoteons, const int *pitches,
+void OrchestrionVstSynthesizer::onNoteOns(size_t numNoteons,
+                                          const TrackIndex *voices,
+                                          const int *pitches,
                                           const float *velocities)
 {
   for (size_t i = 0; i < numNoteons; ++i)
-    m_vstAudioClient->handleEvent(
-        toSteinbergEvent(NoteEventType::noteOn, pitches[i], velocities[i]));
+    m_vstAudioClient->handleEvent(toSteinbergEvent(NoteEventType::noteOn,
+                                                   GetChannel(voices[i]),
+                                                   pitches[i], velocities[i]));
 }
 
 void OrchestrionVstSynthesizer::onNoteOffs(size_t numNoteoffs,
+                                           const TrackIndex *voices,
                                            const int *pitches)
 {
   for (size_t i = 0; i < numNoteoffs; ++i)
-    m_vstAudioClient->handleEvent(
-        toSteinbergEvent(NoteEventType::noteOff, pitches[i], 0.f));
+    m_vstAudioClient->handleEvent(toSteinbergEvent(
+        NoteEventType::noteOff, GetChannel(voices[i]), pitches[i], 0.f));
 }
 
 void OrchestrionVstSynthesizer::onPedal(bool on)
 {
-  // TODO
-  assert(false);
+  // This doesn't work. Will have to tackle this with a fresh mind.
+  Steinberg::Vst::Event event;
+  event.busIndex = 0;
+  event.sampleOffset = 0;
+  event.ppqPosition = 0;
+  event.flags = Steinberg::Vst::Event::kIsLive;
+  event.type = Steinberg::Vst::Event::kLegacyMIDICCOutEvent;
+  event.midiCCOut.controlNumber = 0x40;
+  event.midiCCOut.channel = 0;
+  event.midiCCOut.value = on ? 127 : 0;
+  m_vstAudioClient->handleEvent(event);
 }
 
+void OrchestrionVstSynthesizer::allNotesOff()
+{
+  m_vstAudioClient->allNotesOff();
+}
 } // namespace dgk

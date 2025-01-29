@@ -60,27 +60,29 @@ size_t LowpassFilterBank::process(float *buffer, size_t samplesPerChannel)
   return samplesPerChannel;
 }
 
-void LowpassFilterBank::onNoteOns(size_t numNoteons, const int *pitches,
-                                  const float *velocities)
+void LowpassFilterBank::onNoteOns(size_t numNoteons, const TrackIndex* channels,
+                                  const int *pitches, const float *velocities)
 {
   for (auto i = 0u; i < numNoteons; ++i)
   {
     const auto velocity = velocities[i];
     const auto index = std::min<int>(velocity * (numVelocitySteps - 1) + .5,
                                      numVelocitySteps - 1);
-    m_synthesizers[index]->onNoteOns(1, pitches + i, velocities + i);
+    m_synthesizers[index]->onNoteOns(1, channels + i, pitches + i,
+                                     velocities + i);
     m_pitchesToSynthIndex[pitches[i]] = index;
   }
 }
 
-void LowpassFilterBank::onNoteOffs(size_t numNoteoffs, const int *pitches)
+void LowpassFilterBank::onNoteOffs(size_t numNoteoffs, const TrackIndex* channels,
+                                   const int *pitches)
 {
   for (auto i = 0u; i < numNoteoffs; ++i)
   {
     const auto it = m_pitchesToSynthIndex.find(pitches[i]);
     if (it == m_pitchesToSynthIndex.end())
       continue;
-    m_synthesizers[it->second]->onNoteOffs(1, pitches + i);
+    m_synthesizers[it->second]->onNoteOffs(1, channels + i, pitches + i);
     m_pitchesToSynthIndex.erase(it);
   }
 }

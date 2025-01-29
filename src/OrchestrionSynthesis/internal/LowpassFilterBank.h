@@ -12,14 +12,15 @@ using SynthFactory =
 class LowpassFilterBank : public IOrchestrionSynthesizer
 {
 public:
-  LowpassFilterBank(const SynthFactory&);
+  LowpassFilterBank(const SynthFactory &);
 
 private:
   int sampleRate() const override;
   size_t process(float *buffer, size_t samplesPerChannel) override;
-  void onNoteOns(size_t numNoteons, const int *pitches,
+  void onNoteOns(size_t numNoteons, const TrackIndex* channels, const int *pitches,
                  const float *velocities) override;
-  void onNoteOffs(size_t numNoteoffs, const int *pitches) override;
+  void onNoteOffs(size_t numNoteoffs, const TrackIndex* channels,
+                  const int *pitches) override;
   void onPedal(bool on) override;
 
   static const auto numVelocitySteps = 9;

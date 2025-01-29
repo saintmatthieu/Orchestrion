@@ -35,6 +35,7 @@ public:
   ChordTransitions() const = 0;
   virtual const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const = 0;
+  virtual std::vector<TrackIndex> GetAllVoices() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
   virtual muse::async::Notification AboutToJumpPosition() const = 0;
 };

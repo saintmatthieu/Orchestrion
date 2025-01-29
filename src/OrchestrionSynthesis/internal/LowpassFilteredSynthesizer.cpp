@@ -67,16 +67,18 @@ size_t LowpassFilteredSynthesizer::process(float *buffer,
 }
 
 void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
+                                           const TrackIndex* channels,
                                            const int *pitches,
                                            const float *velocities)
 {
-  m_synthesizer->onNoteOns(numNoteons, pitches, velocities);
+  m_synthesizer->onNoteOns(numNoteons, channels, pitches, velocities);
 }
 
 void LowpassFilteredSynthesizer::onNoteOffs(size_t numNoteoffs,
+                                            const TrackIndex* channels,
                                             const int *pitches)
 {
-  m_synthesizer->onNoteOffs(numNoteoffs, pitches);
+  m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);
 }
 
 void LowpassFilteredSynthesizer::onPedal(bool on)

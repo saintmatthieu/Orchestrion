@@ -21,7 +21,6 @@ constexpr unsigned int audioChannelPairs = 1;
 constexpr unsigned int audioChannelCount = audioChannelPairs * 2;
 static_assert(audioChannelCount == IOrchestrionSynthesizer::numChannels,
               "Assumption is made in other IOrchestrionSynthesizer impls.");
-constexpr int midiChannel = 0;
 } // namespace
 
 FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
@@ -56,24 +55,8 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
       { fluid_synth_sfload(m_fluidSynth, entry.first.c_str(), 0); });
 
   fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
-  fluid_synth_set_interp_method(m_fluidSynth, midiChannel,
-                                FLUID_INTERP_DEFAULT);
-  fluid_synth_pitch_wheel_sens(m_fluidSynth, midiChannel, 24);
 
-  // The following will become relevant when we allow the user to change the
-  // sound. At the moment we just use piano.
-  fluid_synth_bank_select(m_fluidSynth, midiChannel, 0);
-  fluid_synth_program_change(m_fluidSynth, midiChannel, 0);
-
-  fluid_synth_cc(m_fluidSynth, midiChannel, 7, defaultMidiVolume);
-  fluid_synth_cc(m_fluidSynth, midiChannel, 74, 0);
-  fluid_synth_set_portamento_mode(m_fluidSynth, midiChannel,
-                                  FLUID_CHANNEL_PORTAMENTO_MODE_EACH_NOTE);
-  fluid_synth_set_legato_mode(m_fluidSynth, midiChannel,
-                              FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
-  fluid_synth_activate_tuning(m_fluidSynth, midiChannel, 0, 0, 0);
-
-  // fluid_synth_reverb_on(m_fluidSynth, 0, 1);
+  PolyphonicSynthesizerImpl::Initialize();
 }
 
 FluidSynthesizer::~FluidSynthesizer()
@@ -82,31 +65,66 @@ FluidSynthesizer::~FluidSynthesizer()
   delete_fluid_settings(m_fluidSettings);
 }
 
+void FluidSynthesizer::onVoicesReset()
+{
+  for (const auto &voice : m_voices)
+  {
+    const int channel = GetChannel(voice);
+
+    fluid_synth_set_interp_method(m_fluidSynth, channel, FLUID_INTERP_DEFAULT);
+    fluid_synth_pitch_wheel_sens(m_fluidSynth, channel, 24);
+
+    // The following will become relevant when we allow the user to change
+    // the sound. At the moment we just use piano.
+    fluid_synth_bank_select(m_fluidSynth, channel, 0);
+    fluid_synth_program_change(m_fluidSynth, channel, 0);
+
+    fluid_synth_cc(m_fluidSynth, channel, 7, defaultMidiVolume);
+    fluid_synth_cc(m_fluidSynth, channel, 74, 0);
+    fluid_synth_set_portamento_mode(m_fluidSynth, channel,
+                                    FLUID_CHANNEL_PORTAMENTO_MODE_EACH_NOTE);
+    fluid_synth_set_legato_mode(m_fluidSynth, channel,
+                                FLUID_CHANNEL_LEGATO_MODE_RETRIGGER);
+    fluid_synth_activate_tuning(m_fluidSynth, channel, 0, 0, 0);
+  }
+  m_allSet = true;
+}
+
 int FluidSynthesizer::sampleRate() const { return m_sampleRate; }
 
 size_t FluidSynthesizer::process(float *buffer, size_t samplesPerChannel)
 {
+  if (!m_allSet)
+    return 0;
   fluid_synth_write_float(m_fluidSynth, (int)samplesPerChannel, buffer, 0,
                           audioChannelCount, buffer, 1, audioChannelCount);
   return samplesPerChannel;
 }
 
-void FluidSynthesizer::onNoteOns(size_t numNoteons, const int *pitches,
-                                 const float *velocities)
+void FluidSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex *channels,
+                                 const int *pitches, const float *velocities)
 {
   for (auto i = 0u; i < numNoteons; ++i)
-    fluid_synth_noteon(m_fluidSynth, midiChannel, pitches[i],
+    fluid_synth_noteon(m_fluidSynth, GetChannel(channels[i]), pitches[i],
                        velocities[i] * 127 + .5f);
 }
 
-void FluidSynthesizer::onNoteOffs(size_t numNoteoffs, const int *pitches)
+void FluidSynthesizer::onNoteOffs(size_t numNoteoffs,
+                                  const TrackIndex *channels,
+                                  const int *pitches)
 {
   for (auto i = 0u; i < numNoteoffs; ++i)
-    fluid_synth_noteoff(m_fluidSynth, midiChannel, pitches[i]);
+    fluid_synth_noteoff(m_fluidSynth, GetChannel(channels[i]), pitches[i]);
 }
 
 void FluidSynthesizer::onPedal(bool on)
 {
-  fluid_synth_cc(m_fluidSynth, midiChannel, 0x40, on ? 127 : 0);
+  for (const auto &voice : m_voices)
+    fluid_synth_cc(m_fluidSynth, GetChannel(voice), 0x40, on ? 127 : 0);
+}
+
+void FluidSynthesizer::allNotesOff()
+{
+  fluid_synth_all_notes_off(m_fluidSynth, -1);
 }
 } // namespace dgk

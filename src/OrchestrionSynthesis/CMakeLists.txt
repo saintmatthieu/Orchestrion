@@ -16,6 +16,8 @@ set(MODULE_SRC
     internal/OrchestrionSynthResolver.h
     internal/OrchestrionVstSynthesizer.cpp
     internal/OrchestrionVstSynthesizer.h
+    internal/PolyphonicSynthesizerImpl.cpp
+    internal/PolyphonicSynthesizerImpl.h
     internal/PromisedSynthesizer.cpp
     internal/PromisedSynthesizer.h
     internal/SynthesizerConnector.cpp

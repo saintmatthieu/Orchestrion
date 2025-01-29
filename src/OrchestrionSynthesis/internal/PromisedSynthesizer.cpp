@@ -20,17 +20,18 @@ size_t PromisedSynthesizer::process(float *buffer, size_t samplesPerChannel)
   return m_synthesizer ? m_synthesizer->process(buffer, samplesPerChannel) : 0;
 }
 
-void PromisedSynthesizer::onNoteOns(size_t numNoteons, const int *pitches,
-                                    const float *velocities)
+void PromisedSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex* channels,
+                                    const int *pitches, const float *velocities)
 {
   if (m_synthesizer)
-    m_synthesizer->onNoteOns(numNoteons, pitches, velocities);
+    m_synthesizer->onNoteOns(numNoteons, channels, pitches, velocities);
 }
 
-void PromisedSynthesizer::onNoteOffs(size_t numNoteoffs, const int *pitches)
+void PromisedSynthesizer::onNoteOffs(size_t numNoteoffs, const TrackIndex* channels,
+                                     const int *pitches)
 {
   if (m_synthesizer)
-    m_synthesizer->onNoteOffs(numNoteoffs, pitches);
+    m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);
 }
 
 void PromisedSynthesizer::onPedal(bool on)

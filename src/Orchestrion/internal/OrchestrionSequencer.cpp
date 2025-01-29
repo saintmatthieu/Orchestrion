@@ -226,6 +226,16 @@ muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
   return m_outputEvent;
 }
 
+std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
+{
+  std::vector<TrackIndex> result;
+  result.reserve(m_allVoices.size());
+  std::transform(m_allVoices.begin(), m_allVoices.end(),
+                 std::back_inserter(result),
+                 [](const VoiceSequencer *voice) { return voice->track; });
+  return result;
+}
+
 muse::async::Notification OrchestrionSequencer::AboutToJumpPosition() const
 {
   return m_aboutToJumpPosition;
@@ -350,7 +360,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   Finally maybeRewind{[this, doRewind = transitions.empty()]
                       {
                         if (doRewind)
-                          GoToTick(0);
+                          ; // GoToTick(0);
                       }};
 
   SendTransitions(transitions, velocity);

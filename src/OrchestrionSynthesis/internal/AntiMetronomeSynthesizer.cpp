@@ -65,18 +65,20 @@ size_t AntiMetronomeSynthesizer::process(float *buffer,
   return samplesPerChannel;
 }
 
-void AntiMetronomeSynthesizer::onNoteOns(size_t numNoteons, const int *pitches,
+void AntiMetronomeSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex* channels,
+                                         const int *pitches,
                                          const float *velocities)
 {
   if (m_synthesizer)
-    m_synthesizer->onNoteOns(numNoteons, pitches, velocities);
+    m_synthesizer->onNoteOns(numNoteons, channels, pitches, velocities);
 }
 
 void AntiMetronomeSynthesizer::onNoteOffs(size_t numNoteoffs,
+                                          const TrackIndex* channels,
                                           const int *pitches)
 {
   if (m_synthesizer)
-    m_synthesizer->onNoteOffs(numNoteoffs, pitches);
+    m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);
 }
 
 void AntiMetronomeSynthesizer::onPedal(bool on)
