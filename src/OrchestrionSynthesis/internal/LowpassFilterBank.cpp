@@ -60,7 +60,7 @@ size_t LowpassFilterBank::process(float *buffer, size_t samplesPerChannel)
   return samplesPerChannel;
 }
 
-void LowpassFilterBank::onNoteOns(size_t numNoteons, const TrackIndex* channels,
+void LowpassFilterBank::onNoteOns(size_t numNoteons, const TrackIndex *channels,
                                   const int *pitches, const float *velocities)
 {
   for (auto i = 0u; i < numNoteons; ++i)
@@ -68,22 +68,33 @@ void LowpassFilterBank::onNoteOns(size_t numNoteons, const TrackIndex* channels,
     const auto velocity = velocities[i];
     const auto index = std::min<int>(velocity * (numVelocitySteps - 1) + .5,
                                      numVelocitySteps - 1);
+
+    auto &map = m_pitchesToSynthIndex[channels[i]];
+    if (map.count(pitches[i]) && map.at(pitches[i]) != index)
+    {
+      // Another synth is already playing this note. Stop it.
+      const auto otherIndex = map.at(pitches[i]);
+      m_synthesizers[otherIndex]->onNoteOffs(1, channels + i, pitches + i);
+    }
+
     m_synthesizers[index]->onNoteOns(1, channels + i, pitches + i,
                                      velocities + i);
-    m_pitchesToSynthIndex[pitches[i]] = index;
+    map[pitches[i]] = index;
   }
 }
 
-void LowpassFilterBank::onNoteOffs(size_t numNoteoffs, const TrackIndex* channels,
+void LowpassFilterBank::onNoteOffs(size_t numNoteoffs,
+                                   const TrackIndex *channels,
                                    const int *pitches)
 {
   for (auto i = 0u; i < numNoteoffs; ++i)
   {
-    const auto it = m_pitchesToSynthIndex.find(pitches[i]);
-    if (it == m_pitchesToSynthIndex.end())
+    auto &map = m_pitchesToSynthIndex[channels[i]];
+    const auto it = map.find(pitches[i]);
+    if (it == map.end())
       continue;
     m_synthesizers[it->second]->onNoteOffs(1, channels + i, pitches + i);
-    m_pitchesToSynthIndex.erase(it);
+    map.erase(it);
   }
 }
 
