@@ -4,12 +4,15 @@ env:
   CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
   CI_DIR: buildscripts/ci
 
-on:
-  push:
-    branches: [master]
-    tags: ['v*']
-  pull_request:
-    branches: [master]
+# switching on manual
+on: workflow_dispatch
+
+# on:
+#   push:
+#     branches: [master]
+#     tags: ['v*']
+#   pull_request:
+#     branches: [master]
 
 jobs:
   build:
