@@ -12,11 +12,9 @@ VoiceSequencer::GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                               int index)
 {
   if (index < 0 || chords.size() <= index)
-    return VoiceEvent::none;
+    return VoiceEvent::finalRest;
   else if (chords[index]->AsChord())
     return VoiceEvent::chord;
-  else if (index + 1 == chords.size())
-    return VoiceEvent::finalRest;
   else
     return VoiceEvent::rest;
 }
@@ -104,8 +102,11 @@ VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
       return PastChord{past};
   }
   case ChordTransitionType::chordToRest:
-    return PastChordAndPresentRest{m_gestures[m_index - 1]->AsChord(),
-                                   m_gestures[m_index]->AsRest()};
+    if (m_index < m_numGestures)
+      return PastChordAndPresentRest{m_gestures[m_index - 1]->AsChord(),
+                                     m_gestures[m_index]->AsRest()};
+    else
+      return PastChord{m_gestures[m_index - 1]->AsChord()};
   case ChordTransitionType::restToChord:
   case ChordTransitionType::implicitRestToChord:
     return PresentChord{m_gestures[m_index]->AsChord()};

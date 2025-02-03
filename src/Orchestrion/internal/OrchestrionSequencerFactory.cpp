@@ -129,6 +129,10 @@ auto GetChordSequence(mu::engraving::Score &score,
           sequence.push_back(std::move(melodySeg));
         }
       });
+
+  if (!sequence.empty() && sequence.back()->AsRest())
+    sequence.pop_back();
+
   return sequence;
 }
 

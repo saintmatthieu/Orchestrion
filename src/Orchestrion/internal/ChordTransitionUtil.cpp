@@ -16,6 +16,7 @@ ChordTransitionType CTU::GetTransitionForNoteon(VoiceEvent prev,
     case VoiceEvent::rest:
       return ChordTransitionType::chordToChordOverSkippedRest;
     case VoiceEvent::finalRest:
+      return ChordTransitionType::chordToRest;
     case VoiceEvent::none:
       return ChordTransitionType::none;
     }
