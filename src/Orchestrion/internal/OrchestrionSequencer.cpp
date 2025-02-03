@@ -360,7 +360,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   Finally maybeRewind{[this, doRewind = transitions.empty()]
                       {
                         if (doRewind)
-                          ; // GoToTick(0);
+                          GoToTick(0);
                       }};
 
   SendTransitions(transitions, velocity);
