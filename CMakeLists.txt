@@ -68,6 +68,7 @@ target_link_libraries(OrchestrionApp PRIVATE
     muse_extensions
     muse_global
     iex_guitarpro
+    iex_midi
     iex_musicxml
     muse_midi
     muse_mpe
