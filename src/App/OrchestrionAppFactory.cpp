@@ -39,6 +39,7 @@
 #include <engraving/engravingmodule.h>
 #include <extensions/extensionsmodule.h>
 #include <global/globalmodule.h>
+#include <importexport/musicxml/musicxmlmodule.h>
 #include <midi/midimodule.h>
 #include <mpe/mpemodule.h>
 #include <multiinstances/multiinstancesmodule.h>
@@ -94,6 +95,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::draw::DrawModule());
   app->addModule(new mu::engraving::EngravingModule());
   app->addModule(new muse::extensions::ExtensionsModule());
+  app->addModule(new mu::iex::musicxml::MusicXmlModule());
   app->addModule(new muse::midi::MidiModule());
   app->addModule(new muse::mpe::MpeModule());
   app->addModule(new muse::mi::MultiInstancesModule());
