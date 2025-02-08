@@ -1,7 +1,20 @@
 {
   "configurations": [
     {
-      "name": "Debug Qt Application with Visual Studio Debugger",
+      "name": "Launch (MacOS)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/OrchestrionApp.app/Contents/MacOS/OrchestrionApp",
+      "preLaunchTask": "CMake: install",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${fileDirname}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb"
+    },
+    {
+      "name": "Launch (Windows)",
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/install/bin/OrchestrionApp.exe",

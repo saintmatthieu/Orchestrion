@@ -74,12 +74,6 @@ void OrchestrionShellModule::resolveImports()
     ar->reg(m_orchestrionUiActions);
 }
 
-void OrchestrionShellModule::registerResources()
-{
-  Q_INIT_RESOURCE(appshell);
-  Q_INIT_RESOURCE(OrchestrionShell);
-}
-
 void OrchestrionShellModule::registerUiTypes()
 {
   qmlRegisterType<NotationPaintViewLoaderModel>(

@@ -2,3 +2,5 @@ build
 builds
 CMakeLists.txt.user
 _deps
+.cache
+.DS_Store

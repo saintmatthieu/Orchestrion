@@ -24,15 +24,13 @@ namespace dgk
 void OrchestrionConfiguration::init()
 {
   const auto directory =
-      std::filesystem::path(
-          globalConfiguration()->appDataPath().toStdString()) /
+      std::string(globalConfiguration()->appDataPath().toStdString()) +
       "wallpapers";
   constexpr auto opacity = 0.8f;
-  const std::filesystem::path path =
-      ConfigurationUtils::GetPathToProcessedWallpaper(
-          directory, "32465347965_95e360edc6_o.jpg", opacity);
+  const std::string path = ConfigurationUtils::GetPathToProcessedWallpaper(
+      directory, "32465347965_95e360edc6_o.jpg", opacity);
 
-  notationConfiguration()->setBackgroundWallpaperPath(path.string());
+  notationConfiguration()->setBackgroundWallpaperPath(path);
   notationConfiguration()->setBackgroundUseColor(false);
   notationConfiguration()->setForegroundColor("transparent");
   notationConfiguration()->setForegroundUseColor(true);

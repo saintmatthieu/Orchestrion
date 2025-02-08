@@ -20,22 +20,24 @@
 #include <QPainter>
 #include <QPixmap>
 
-std::filesystem::path dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
-    const std::filesystem::path &directory, const std::string &original,
-    float opacity)
+std::string dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
+    std::string directory, const std::string &original, float opacity)
 {
+  // Append forward slash to directory if not present
+  if (directory.back() != '/')
+    directory += '/';
+
   // This is an image file. We want to add an effect to the wallpaper, save it
   // to a temporary file and set this as wallpaper path.
   // 1. Load the image file
-  const QPixmap originalWallpaper =
-      QPixmap((directory / original).string().c_str());
+  const QPixmap originalWallpaper = QPixmap((directory + original).c_str());
   // 2. add a layer of half-transparent white:
   QPixmap wallpaper = originalWallpaper;
   QPainter painter(&wallpaper);
   painter.fillRect(wallpaper.rect(), QColor(255, 255, 255, 255 * opacity));
   painter.end();
   // 3. Save the modified wallpaper to a temporary file
-  const std::filesystem::path path = directory / "processed_wallpaper.jpg";
-  wallpaper.save(path.string().c_str());
+  const std::string path = directory + "processed_wallpaper.jpg";
+  wallpaper.save(path.c_str());
   return path;
 }

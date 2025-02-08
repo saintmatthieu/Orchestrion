@@ -18,9 +18,18 @@
  */
 #include "OrchestrionOnboardingModel.h"
 #include <QUrl>
-#include <filesystem>
 #include <log.h>
+#include <sys/stat.h>
 #include <thread>
+
+namespace
+{
+bool fileExists(const std::string &path)
+{
+  struct stat buffer;
+  return (stat(path.c_str(), &buffer) == 0);
+}
+} // namespace
 
 namespace dgk
 {
@@ -36,9 +45,9 @@ OrchestrionOnboardingModel::getFileOpenArgs(
   if (projectFile.url.isEmpty())
   {
     const muse::io::path_t path =
-        globalConfiguration()->appDataPath() + "/scores/AVE_MARIA.mscz";
+        globalConfiguration()->appDataPath() + "scores/AVE_MARIA.mscz";
     // "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
-    IF_ASSERT_FAILED(std::filesystem::exists(path.toStdString()))
+    IF_ASSERT_FAILED(fileExists(path.toStdString()))
     {
       LOGE() << "File not found: " << path;
       return std::nullopt;

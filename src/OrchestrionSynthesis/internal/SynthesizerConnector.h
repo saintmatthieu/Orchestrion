@@ -11,6 +11,8 @@
 
 namespace dgk
 {
+class OrchestrionSynthResolver;
+
 class SynthesizerConnector : public ISynthesizerConnector,
                              public muse::async::Asyncable,
                              public muse::Injectable

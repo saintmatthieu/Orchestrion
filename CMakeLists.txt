@@ -28,8 +28,13 @@ add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
 
-# Add the executable
-qt_add_executable(OrchestrionApp WIN32
+if (OS_IS_MAC)
+    set(EXECUTABLE_NAME OrchestrionApp MACOSX_BUNDLE)
+else()
+    set(EXECUTABLE_NAME OrchestrionApp)
+endif()
+ 
+add_executable(${EXECUTABLE_NAME}
     src/main.cpp
     src/App/CommandLineParser.cpp
     src/App/CommandLineParser.h
@@ -107,19 +112,35 @@ target_sources(OrchestrionApp PRIVATE
     ${RESOURCES}
 )
 
-# Add a post-build step to copy SNDFILE_DLL to the output directory
-add_custom_command(TARGET OrchestrionApp POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>
-)
+if (OS_IS_MAC)
+    set(CMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR})
+else()
+    set(CMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install)
+endif()
 
-add_subdirectory(MuseScore/share/sound) # installs soundfonts
-install(TARGETS OrchestrionApp RUNTIME DESTINATION bin)
+# Install soundfonts
+if (OS_IS_MAC)
+    # Override this
+    # SET(Mscore_SHARE_NAME      "mscore.app/")
+    SET(Mscore_SHARE_NAME "OrchestrionApp.app/")
+endif()
+add_subdirectory(MuseScore/share/sound)
 
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/" DESTINATION scores)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/" DESTINATION wallpapers)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/" DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}scores)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/" DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}wallpapers)
 
+if (OS_IS_MAC)
+    set(CMAKE_INSTALL_RPATH ${QT_INSTALL_LIBS})
+endif()
+
+if (OS_IS_WIN)
+    install(TARGETS OrchestrionApp RUNTIME DESTINATION bin)
 if (SNDFILE_DLL)
     install(FILES ${SNDFILE_DLL} DESTINATION bin)
+        add_custom_command(TARGET OrchestrionApp POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>
+        )
 else()
     message(FATAL_ERROR "Could not find sndfile DLL")
+    endif()
 endif()

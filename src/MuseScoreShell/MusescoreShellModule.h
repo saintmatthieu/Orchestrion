@@ -29,7 +29,6 @@ class MusescoreShellModule : public muse::modularity::IModuleSetup
 public:
   std::string moduleName() const override;
   void resolveImports() override;
-  void registerResources() override;
   void registerUiTypes() override;
 };
 } // namespace dgk

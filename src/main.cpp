@@ -63,6 +63,8 @@ static void crashCallback(int signum)
 static void app_init_qrc()
 {
   Q_INIT_RESOURCE(OrchestrionApp);
+  Q_INIT_RESOURCE(OrchestrionShell);
+  Q_INIT_RESOURCE(appshell);
 
 #ifdef Q_OS_WIN
   // Q_INIT_RESOURCE(app_win);
@@ -206,8 +208,6 @@ int main(int argc, char **argv)
   // ====================================================
 
   app->finish();
-
-  delete qapp;
 
   LOGI() << "Goodbye!! code: " << code;
   return code;

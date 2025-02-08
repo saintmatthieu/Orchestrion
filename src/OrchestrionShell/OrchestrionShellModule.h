@@ -40,7 +40,6 @@ public:
   void registerExports() override;
   void resolveImports() override;
 
-  void registerResources() override;
   void registerUiTypes() override;
 
   void onPreInit(const muse::IApplication::RunMode &mode) override;

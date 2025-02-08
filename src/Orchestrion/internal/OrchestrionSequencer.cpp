@@ -212,7 +212,10 @@ void OrchestrionSequencer::SendTransitions(
       PostNoteEvents(voiceOutput);
   }
 
-  m_transitions.set(std::move(transitions));
+  m_transitions.val.clear();
+  for (const auto &[track, transition] : transitions)
+    m_transitions.val.emplace(track, transition);
+  m_transitions.ch.send(transitions);
 }
 
 muse::async::Channel<std::map<TrackIndex, ChordTransition>>

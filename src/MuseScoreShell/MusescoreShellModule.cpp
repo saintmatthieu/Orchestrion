@@ -51,8 +51,6 @@ void MusescoreShellModule::resolveImports()
   }
 }
 
-void MusescoreShellModule::registerResources() { Q_INIT_RESOURCE(appshell); }
-
 void MusescoreShellModule::registerUiTypes()
 {
   qmlRegisterType<mu::appshell::MainWindowTitleProvider>(

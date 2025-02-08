@@ -19,7 +19,6 @@
 #pragma once
 
 #include <QUrl>
-#include <filesystem>
 #include <modularity/imoduleinterface.h>
 #include <optional>
 

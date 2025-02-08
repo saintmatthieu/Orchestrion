@@ -18,11 +18,11 @@
  */
 #pragma once
 
-#include <filesystem>
+#include <string>
 
 namespace dgk::ConfigurationUtils
 {
-std::filesystem::path
-GetPathToProcessedWallpaper(const std::filesystem::path &directory,
-                            const std::string &original, float opacity);
+std::string GetPathToProcessedWallpaper(std::string directory,
+                                        const std::string &original,
+                                        float opacity);
 } // namespace dgk::ConfigurationUtils

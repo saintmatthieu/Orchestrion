@@ -7,7 +7,6 @@
 	"settings": {
 		"cmake.generator": "Ninja",
 		"cmake.configureArgs": [
-			"-DCMAKE_INSTALL_PREFIX=${workspaceFolder}/build/install",
 			// "-DAU_MODULE_EFFECTS_VST=ON"
 		],
 		"editor.guides.indentation": true,
