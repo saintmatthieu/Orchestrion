@@ -9,8 +9,17 @@
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "visualizerFile": "${workspaceFolder}/qt6.natvis",
+      "environment": [
+        {
+          "name": "QTDIR",
+          "value": "C:/Qt/6.2.4/msvc2019_64"
+        }
+      ],
       "sourceFileMap": {
-        "C:/Users/qt/work/qt": "${QTDIR}/../../Src"
+        "C;/work/build/qt5_workdir/w/s": "${QTDIR}/../Src",
+        "Q:/qt_workdir/w/s": "${QTDIR}/../Src",
+        "C:/Users/qt/worwk/install": "${QTDIR}/../Src",
+        "C:/Users/qt/work/qt": "${QTDIR}/../Src"
       },
       "args": [
         // "C:/Users/saint/Downloads/Bruder_Jakob.mscz"
