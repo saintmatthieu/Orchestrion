@@ -64,6 +64,8 @@ int GetIndexIncrement(ChordTransitionType transition)
   case ChordTransitionType::chordToChordOverSkippedRest:
     return 2;
   }
+  assert(false);
+  return 0;
 }
 } // namespace
 
