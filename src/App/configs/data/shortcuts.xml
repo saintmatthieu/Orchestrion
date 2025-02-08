@@ -6,6 +6,11 @@
     <autorepeat>0</autorepeat>
   </SC>
   <SC>
+    <key>file-close</key>
+    <std>4</std>
+    <autorepeat>0</autorepeat>
+    </SC>
+  <SC>
     <key>play</key>
     <seq>Space</seq>
     <autorepeat>0</autorepeat>

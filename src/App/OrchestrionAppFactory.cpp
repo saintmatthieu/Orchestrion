@@ -30,6 +30,7 @@
 
 #include <accessibility/accessibilitymodule.h>
 #include <actions/actionsmodule.h>
+#include <app/internal/consoleapp.h>
 #include <audio/audiomodule.h>
 #include <audioplugins/audiopluginsmodule.h>
 #include <braille/braillemodule.h>
@@ -39,8 +40,10 @@
 #include <engraving/engravingmodule.h>
 #include <extensions/extensionsmodule.h>
 #include <global/globalmodule.h>
-#include <importexport/musicxml/musicxmlmodule.h>
+#include <importexport/audioexport/audioexportmodule.h>
+#include <importexport/guitarpro/guitarpromodule.h>
 #include <importexport/midi/midimodule.h>
+#include <importexport/musicxml/musicxmlmodule.h>
 #include <midi/midimodule.h>
 #include <mpe/mpemodule.h>
 #include <multiinstances/multiinstancesmodule.h>
@@ -96,6 +99,8 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::draw::DrawModule());
   app->addModule(new mu::engraving::EngravingModule());
   app->addModule(new muse::extensions::ExtensionsModule());
+  app->addModule(new mu::iex::audioexport::AudioExportModule());
+  app->addModule(new mu::iex::guitarpro::GuitarProModule());
   app->addModule(new mu::iex::midi::MidiModule());
   app->addModule(new mu::iex::musicxml::MusicXmlModule());
   app->addModule(new muse::midi::MidiModule());
@@ -118,8 +123,26 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
 std::shared_ptr<muse::IApplication>
 OrchestrionAppFactory::newConsoleApp(const CommandOptions &options) const
 {
-  // For now
-  return nullptr;
+  const auto ctx = std::make_shared<muse::modularity::Context>();
+  ++m_lastID;
+  // ctx->id = m_lastID;
+  ctx->id = -1; //! NOTE At the moment global ioc
+
+  const auto app =
+      std::make_shared<mu::app::ConsoleApp>(mu::app::CmdOptions{}, ctx);
+
+  // app->addModule(new muse::ui::UiModule());
+  app->addModule(new mu::notation::NotationModule());
+  app->addModule(new mu::project::ProjectModule());
+  app->addModule(new mu::context::ContextModule());
+  // app->addModule(new muse::shortcuts::ShortcutsModule());
+  app->addModule(new mu::engraving::EngravingModule());
+  app->addModule(new mu::iex::audioexport::AudioExportModule());
+  app->addModule(new mu::iex::guitarpro::GuitarProModule());
+  app->addModule(new mu::iex::midi::MidiModule());
+  app->addModule(new mu::iex::musicxml::MusicXmlModule());
+
+  return app;
 }
 
 } // namespace dgk

@@ -130,7 +130,8 @@ void OrchestrionMenuModel::openMenu(const QString &menuId, bool byHover)
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
 {
-  muse::uicomponents::MenuItemList fileItems{makeMenuItem("file-open")};
+  muse::uicomponents::MenuItemList fileItems{makeMenuItem("file-open"),
+                                             makeMenuItem("file-close")};
   return makeMenu(muse::TranslatableString("appshell/menu/file", "&File"),
                   fileItems, "menu-file");
 }

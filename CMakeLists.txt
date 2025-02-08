@@ -38,6 +38,9 @@ qt_add_executable(OrchestrionApp WIN32
     src/App/OrchestrionApp.h
     src/App/OrchestrionAppFactory.cpp
     src/App/OrchestrionAppFactory.h
+
+    MuseScore/src/app/internal/consoleapp.cpp
+    MuseScore/src/app/internal/consoleapp.h
 )
 
 set_target_properties(OrchestrionApp PROPERTIES
@@ -61,12 +64,13 @@ target_link_libraries(OrchestrionApp PRIVATE
     muse_audio
     muse_audioplugins
     braille
-    commonscene
+    # commonscene
     context
     muse_draw
     engraving
     muse_extensions
     muse_global
+    iex_audioexport
     iex_guitarpro
     iex_midi
     iex_musicxml
