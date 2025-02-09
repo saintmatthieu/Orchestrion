@@ -43,6 +43,15 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target ${{env.TARGET}}
 
+    - name: Install NSIS
+      run: choco install nsis -y
+
+    - name: Add NSIS to PATH
+      run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+    - name: Build NSIS Installer
+      run: makensis installer.nsi
+
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
