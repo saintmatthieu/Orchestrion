@@ -10,7 +10,7 @@ on:
 env:
   BUILD_TYPE: Release
   BUILD_DIR: build
-  TARGET: OrchestrionApp
+  TARGET: install
 
 jobs:
   build:
@@ -37,14 +37,9 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target ${{env.TARGET}}
 
-    - name: Package
-      shell: pwsh
-      run: |
-        windeployqt ${{env.BUILD_DIR}}/${{env.BUILD_TYPE}}/${{env.TARGET}}.exe
-
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion
         path: |
-            ${{env.BUILD_DIR}}/${{env.BUILD_TYPE}}
+            ${{env.BUILD_DIR}}/${{env.BUILD_TYPE}}/install
