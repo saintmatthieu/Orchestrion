@@ -23,7 +23,7 @@ jobs:
         submodules: recursive
 
     - name: Cache Qt
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: C:\Qt
         key: ${{ runner.os }}-qt
@@ -39,7 +39,7 @@ jobs:
         cache: true
 
     - name: Cache Ninja
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: C:\ProgramData\chocolatey\bin\ninja.exe
         key: ${{ runner.os }}-ninja
@@ -48,7 +48,7 @@ jobs:
       run: choco install ninja -y
 
     - name: Cache NSIS
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: C:\Program Files (x86)\NSIS
         key: ${{ runner.os }}-nsis
