@@ -60,8 +60,19 @@ static void crashCallback(int signum)
 
 #endif
 
+#include <chrono>
+#include <fstream>
+
 static void app_init_qrc()
 {
+  while (true)
+  {
+    std::ifstream file{"C:/Users/saint/Downloads/continue.txt"};
+    if (file.good())
+      break;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
   Q_INIT_RESOURCE(OrchestrionApp);
   Q_INIT_RESOURCE(OrchestrionShell);
   Q_INIT_RESOURCE(appshell);
