@@ -24,4 +24,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion
-        path: ${{github.workspace}}\InstallOrchestrion.exe
+        path: ${{env.BUILD_DIR}}\InstallOrchestrion.exe
