@@ -8,7 +8,7 @@ on:
       branches: [master]
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
   BUILD_DIR: build
   TARGET: install
 
@@ -22,6 +22,12 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Cache Qt
+      uses: actions/cache@v2
+      with:
+        path: C:\Qt
+        key: ${{ runner.os }}-qt
+
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
@@ -29,11 +35,26 @@ jobs:
         host: 'windows'
         target: 'desktop'
         arch: 'win64_msvc2019_64'
-        modules: qtnetworkauth qt5compat qtscxml
-        cache: true
+          modules: qtnetworkauth qt5compat qtscxml
+          cache: true
+
+    - name: Cache Ninja
+      uses: actions/cache@v2
+      with:
+        path: C:\ProgramData\chocolatey\bin\ninja.exe
+        key: ${{ runner.os }}-ninja
 
     - name: Install Ninja
       run: choco install ninja -y
+
+    - name: Cache NSIS
+      uses: actions/cache@v2
+      with:
+        path: C:\Program Files (x86)\NSIS
+        key: ${{ runner.os }}-nsis
+
+    - name: Install NSIS
+      run: choco install nsis -y
 
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
@@ -43,9 +64,6 @@ jobs:
 
     - name: Build
       run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target ${{env.TARGET}}
-
-    - name: Install NSIS
-      run: choco install nsis -y
 
     - name: Add NSIS to PATH
       run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
