@@ -1,15 +1,12 @@
 !define APPNAME "MyApp"
 !define VERSION "1.0"
-Outfile "build\install\Install Orchestrion.exe"
+Outfile "build\Install Orchestrion.exe"
 InstallDir "$PROGRAMFILES64\saintmatthieu"
 
 Section "Install"
     SetOutPath $INSTDIR\bin
-    File /r "build\install\bin\*.*"
-    SetOutPath $INSTDIR\include
-    File /r "build\install\include\*.*"
-    SetOutPath $INSTDIR\lib
-    File /r "build\install\lib\*.*"
+    File "build\install\bin\OrchestrionApp.exe"
+    File "build\install\bin\libsndfile-1.dll"
     SetOutPath $INSTDIR\scores
     File /r "build\install\scores\*.*"
     SetOutPath $INSTDIR\sound
