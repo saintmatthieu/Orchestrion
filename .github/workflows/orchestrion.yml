@@ -57,4 +57,4 @@ jobs:
       with:
         name: Orchestrion
         path: |
-            "${{github.workspace}}/${{env.BUILD_DIR}}/install/Orchestrion Installer.exe"
+            "${{github.workspace}}/${{env.BUILD_DIR}}/Orchestrion Installer.exe"
