@@ -35,8 +35,8 @@ jobs:
         host: 'windows'
         target: 'desktop'
         arch: 'win64_msvc2019_64'
-          modules: qtnetworkauth qt5compat qtscxml
-          cache: true
+        modules: qtnetworkauth qt5compat qtscxml
+        cache: true
 
     - name: Cache Ninja
       uses: actions/cache@v2
