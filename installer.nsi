@@ -1,6 +1,6 @@
 !define APPNAME "MyApp"
 !define VERSION "1.0"
-Outfile "build\InstallOrchestrion.exe"
+Outfile "build\Install Orchestrion.exe"
 InstallDir "$PROGRAMFILES64\saintmatthieu"
 
 Section "Install"
