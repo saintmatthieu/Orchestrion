@@ -71,7 +71,6 @@ target_link_libraries(OrchestrionApp PRIVATE
     engraving
     muse_extensions
     muse_global
-    iex_guitarpro
     iex_midi
     iex_musicxml
     muse_midi
