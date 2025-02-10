@@ -32,7 +32,6 @@
 #include <actions/actionsmodule.h>
 #include <audio/audiomodule.h>
 #include <audioplugins/audiopluginsmodule.h>
-#include <braille/braillemodule.h>
 #include <commonscene/commonscenemodule.h>
 #include <context/contextmodule.h>
 #include <draw/drawmodule.h>
@@ -90,7 +89,6 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::actions::ActionsModule());
   app->addModule(new muse::audio::AudioModule());
   app->addModule(new muse::audioplugins::AudioPluginsModule());
-  app->addModule(new mu::braille::BrailleModule());
   app->addModule(new mu::commonscene::CommonSceneModule());
   app->addModule(new mu::context::ContextModule());
   app->addModule(new muse::draw::DrawModule());

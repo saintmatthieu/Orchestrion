@@ -14,8 +14,6 @@ Section "Install"
     File /r "build\install\scores\*.*"
     SetOutPath $INSTDIR\sound
     File /r "build\install\sound\*.*"
-    SetOutPath $INSTDIR\tables
-    File /r "build\install\tables\*.*"
     SetOutPath $INSTDIR\wallpapers
     File /r "build\install\wallpapers\*.*"
     CreateShortcut "$DESKTOP\Orchestrion.lnk" "$INSTDIR\bin\OrchestrionApp.exe"

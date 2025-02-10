@@ -65,7 +65,6 @@ target_link_libraries(OrchestrionApp PRIVATE
     muse_accessibility
     muse_audio
     muse_audioplugins
-    braille
     commonscene
     context
     muse_draw
@@ -111,12 +110,6 @@ qt_add_resources(RESOURCES src/App/OrchestrionApp.qrc)
 target_sources(OrchestrionApp PRIVATE
     ${RESOURCES}
 )
-
-if (OS_IS_MAC)
-    set(CMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR})
-else()
-    set(CMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/install)
-endif()
 
 # Install soundfonts
 if (OS_IS_MAC)

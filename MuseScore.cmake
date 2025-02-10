@@ -59,7 +59,7 @@ set(MUSESCORE_REVISION "" CACHE STRING "Build revision")
 # include(muse_framework/DeclareOptions)
 
 option(MUE_BUILD_APPSHELL_MODULE "Build appshell module" ON)
-option(MUE_BUILD_BRAILLE_MODULE "Build braille module" ON)
+option(MUE_BUILD_BRAILLE_MODULE "Build braille module" OFF)
 option(MUE_BUILD_CONVERTER_MODULE "Build converter module" OFF)
 option(MUE_BUILD_DIAGNOSTICS_MODULE "Build diagnostic code" OFF)
 option(MUE_BUILD_IMPORTEXPORT_MODULE "Build importexport module" ON)
@@ -176,7 +176,6 @@ endif(MUE_DOWNLOAD_SOUNDFONT)
 add_subdirectory(MuseScore/src/framework/global) # should be first to work pch
 
 add_subdirectory(MuseScore/src/appshell)
-add_subdirectory(MuseScore/src/braille)
 add_subdirectory(MuseScore/src/context)
 add_subdirectory(MuseScore/src/commonscene)
 add_subdirectory(MuseScore/src/engraving)
