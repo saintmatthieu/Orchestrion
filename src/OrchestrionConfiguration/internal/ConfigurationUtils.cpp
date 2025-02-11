@@ -19,6 +19,7 @@
 #include "ConfigurationUtils.h"
 #include <QPainter>
 #include <QPixmap>
+#include <log.h>
 
 std::string dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
     std::string directory, const std::string &userDataPath,
@@ -32,6 +33,7 @@ std::string dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
   // to a temporary file and set this as wallpaper path.
   // 1. Load the image file
   const QPixmap originalWallpaper = QPixmap((directory + original).c_str());
+  IF_ASSERT_FAILED(!originalWallpaper.isNull()) { return ""; }
   // 2. add a layer of half-transparent white:
   QPixmap wallpaper = originalWallpaper;
   QPainter painter(&wallpaper);
