@@ -14,7 +14,7 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2019
 
     steps:
     - name: Checkout
@@ -60,7 +60,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/${{env.BUILD_DIR}}/install -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/${{env.BUILD_DIR}}/install -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
 
     - name: Build
       run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target ${{env.TARGET}}
@@ -76,3 +76,9 @@ jobs:
       with:
         name: Orchestrion
         path: ${{env.BUILD_DIR}}\Install Orchestrion.exe
+
+    - name: Upload install dir
+      uses: actions/upload-artifact@v4
+      with:
+        name: OrchestrionInstall
+        path: ${{env.BUILD_DIR}}\install
