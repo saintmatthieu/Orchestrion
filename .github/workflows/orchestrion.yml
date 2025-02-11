@@ -8,7 +8,7 @@ on:
       branches: [master]
 
 env:
-  BUILD_TYPE: Debug
+  BUILD_TYPE: Release
   BUILD_DIR: build
   TARGET: install
 
@@ -82,9 +82,3 @@ jobs:
       with:
         name: Orchestrion
         path: ${{env.BUILD_DIR}}\Install Orchestrion.exe
-
-    - name: Upload debug symbols
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion-symbols
-        path: ${{env.BUILD_DIR}}\OrchestrionApp.pdb
