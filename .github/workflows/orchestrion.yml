@@ -16,10 +16,10 @@ jobs:
   build:
     runs-on: windows-2019
 
-  permissions:
-    contents: read
-    actions: read
-    checks: write
+    permissions:
+      contents: read
+      actions: read
+      checks: write
 
     steps:
     - name: Checkout
