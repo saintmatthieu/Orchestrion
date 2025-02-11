@@ -17,10 +17,19 @@ jobs:
     runs-on: windows-2019
 
     steps:
+    - name: Install Git LFS
+      run: choco install git-lfs -y
+
+    - name: Initialize Git LFS
+      run: git lfs install
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: recursive
+
+    - name: Pull LFS files
+      run: git lfs pull
 
     - name: Cache Qt
       uses: actions/cache@v4
