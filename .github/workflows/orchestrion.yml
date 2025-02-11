@@ -12,12 +12,12 @@ env:
   BUILD_DIR: build
   TARGET: install
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-2019
-
-    permissions:
-      contents: write
 
     steps:
     - name: Checkout
