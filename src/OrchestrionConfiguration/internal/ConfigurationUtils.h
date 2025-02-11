@@ -22,7 +22,8 @@
 
 namespace dgk::ConfigurationUtils
 {
-std::string GetPathToProcessedWallpaper(std::string directory,
+std::string GetPathToProcessedWallpaper(std::string wallpaperDir,
+                                        const std::string &userDatPath,
                                         const std::string &original,
                                         float opacity);
 } // namespace dgk::ConfigurationUtils

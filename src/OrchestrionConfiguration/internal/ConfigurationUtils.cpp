@@ -21,7 +21,8 @@
 #include <QPixmap>
 
 std::string dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
-    std::string directory, const std::string &original, float opacity)
+    std::string directory, const std::string &userDataPath,
+    const std::string &original, float opacity)
 {
   // Append forward slash to directory if not present
   if (directory.back() != '/')
@@ -37,7 +38,7 @@ std::string dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
   painter.fillRect(wallpaper.rect(), QColor(255, 255, 255, 255 * opacity));
   painter.end();
   // 3. Save the modified wallpaper to a temporary file
-  const std::string path = directory + "processed_wallpaper.jpg";
+  const std::string path = userDataPath + "/wallpaper.jpg";
   wallpaper.save(path.c_str());
   return path;
 }
