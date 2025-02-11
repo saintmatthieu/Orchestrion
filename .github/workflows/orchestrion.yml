@@ -60,7 +60,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/${{env.BUILD_DIR}}/install -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/${{env.BUILD_DIR}}/install -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
 
     - name: Build
       run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target ${{env.TARGET}}
@@ -77,8 +77,8 @@ jobs:
         name: Orchestrion
         path: ${{env.BUILD_DIR}}\Install Orchestrion.exe
 
-    - name: Upload install dir
+    - name: Upload debug symbols
       uses: actions/upload-artifact@v4
       with:
-        name: OrchestrionInstall
-        path: ${{env.BUILD_DIR}}\install
+        name: Orchestrion-symbols
+        path: ${{env.BUILD_DIR}}\OrchestrionApp.pdb
