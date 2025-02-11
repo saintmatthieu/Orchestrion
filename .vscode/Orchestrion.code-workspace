@@ -8,6 +8,10 @@
 		"cmake.generator": "Ninja",
 		"cmake.configureArgs": [
 			// "-DAU_MODULE_EFFECTS_VST=ON"
+			"-DCMAKE_INSTALL_PREFIX=${workspaceFolder}/build/install",
+			"-DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF",
+			"-DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF",
+			"-DSMTG_ENABLE_VSTGUI_SUPPORT=OFF",
 		],
 		"editor.guides.indentation": true,
 		"editor.detectIndentation": true,
@@ -27,6 +31,9 @@
 			"editor.defaultFormatter": "xaver.clang-format"
 		},
 		"[markdown]": {
+			"editor.defaultFormatter": "esbenp.prettier-vscode"
+		},
+		"[yaml]": {
 			"editor.defaultFormatter": "esbenp.prettier-vscode"
 		},
 	}
