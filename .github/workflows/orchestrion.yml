@@ -20,9 +20,6 @@ jobs:
     - name: Install Git LFS
       run: choco install git-lfs -y
 
-    - name: Initialize Git LFS
-      run: git lfs install
-
     - name: Checkout
       uses: actions/checkout@v4
       with:
