@@ -82,3 +82,10 @@ jobs:
       with:
         name: Orchestrion
         path: ${{env.BUILD_DIR}}\Install Orchestrion.exe
+
+    - name: Upload Debug Symbols
+      uses: actions/upload-artifact@v4
+      with:
+        name: Orchestrion
+        path: ${{env.BUILD_DIR}}\OrchestrionApp.pdb
+      if: false # Set to true (and BUILD_TYPE to Debug) if you need to locally debug a github build

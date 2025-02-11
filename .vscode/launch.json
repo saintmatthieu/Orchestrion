@@ -18,6 +18,8 @@
       "type": "cppvsdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/install/bin/OrchestrionApp.exe",
+      // path to executable PDB file, in case a Github build must be debugged locally.
+      // "symbolSearchPath": "...",
       "preLaunchTask": "CMake: install",
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
@@ -32,7 +34,8 @@
         "C;/work/build/qt5_workdir/w/s": "${QTDIR}/../Src",
         "Q:/qt_workdir/w/s": "${QTDIR}/../Src",
         "C:/Users/qt/worwk/install": "${QTDIR}/../Src",
-        "C:/Users/qt/work/qt": "${QTDIR}/../Src"
+        "C:/Users/qt/work/qt": "${QTDIR}/../Src",
+        "D:/a/Orchestrion/Orchestrion": "${workspaceFolder}"
       },
       "args": [
         // "C:/Users/saint/Downloads/Bruder_Jakob.mscz"
