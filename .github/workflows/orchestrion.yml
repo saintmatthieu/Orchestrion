@@ -13,7 +13,7 @@ env:
   TARGET: install
 
 jobs:
-  build:
+  build_win:
     runs-on: windows-2019
 
     steps:
@@ -89,3 +89,62 @@ jobs:
         name: Orchestrion
         path: ${{env.BUILD_DIR}}\OrchestrionApp.pdb
       if: false # Set to true (and BUILD_TYPE to Debug) if you need to locally debug a github build
+
+  build_mac:
+    runs-on: macos-latest
+
+    steps:
+    - name: Install Git LFS
+      run: brew install git-lfs
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Pull LFS files
+      run: git lfs pull
+
+    - name: Cache Qt
+      uses: actions/cache@v4
+      with:
+        path: "/usr/local/Qt"
+        key: ${{ runner.os }}-qt
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.2.4'
+        arch: 'clang_64'
+        target: 'desktop'
+        modules: qtnetworkauth qt5compat qtscxml
+        cache: true
+
+    - name: Cache Ninja
+      uses: actions/cache@v4
+      with:
+        path: "/usr/local/bin/ninja"
+        key: ${{ runner.os }}-ninja
+
+    - name: Install Ninja
+      run: brew install ninja
+
+    - name: Setup macOS
+      run: |
+        export PATH="/usr/local/opt/qt/bin:$PATH"
+        export PATH="/usr/local/opt/ninja/bin:$PATH"
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/${{env.BUILD_DIR}}/install -G Ninja -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF -DSNDFILE_INCDIR=dummy -Denable-libsndfile=OFF
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target ${{env.TARGET}}
+
+    - name: Run macdeployqt
+      run: macdeployqt ${{env.BUILD_DIR}}/OrchestrionApp.app
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Orchestrion
+        path: ${{env.BUILD_DIR}}/OrchestrionApp.app

@@ -127,12 +127,12 @@ endif()
 
 if (OS_IS_WIN)
     install(TARGETS OrchestrionApp RUNTIME DESTINATION bin)
-if (SNDFILE_DLL)
-    install(FILES ${SNDFILE_DLL} DESTINATION bin)
-        add_custom_command(TARGET OrchestrionApp POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>
-        )
-else()
-    message(FATAL_ERROR "Could not find sndfile DLL")
+    if (SNDFILE_DLL)
+        install(FILES ${SNDFILE_DLL} DESTINATION bin)
+            add_custom_command(TARGET OrchestrionApp POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>
+            )
+    else()
+        message(FATAL_ERROR "Could not find sndfile DLL")
     endif()
 endif()
