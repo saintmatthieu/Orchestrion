@@ -22,6 +22,8 @@
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
+#include <actions/iactionsdispatcher.h>
+#include <context/iglobalcontext.h>
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
 #include <unordered_map>
@@ -33,8 +35,10 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
   Q_OBJECT
   muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
   muse::Inject<mu::notation::INotationConfiguration> configuration;
+  muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<IOrchestrion> orchestrion;
   muse::Inject<ISegmentRegistry> chordRegistry;
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
@@ -52,6 +56,7 @@ private:
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
+  void updateNotation();
 
   struct Box
   {

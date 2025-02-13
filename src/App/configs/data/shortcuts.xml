@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Shortcuts>
   <SC>
-    <key>file-open</key>
+    <key>orchestrion-file-open</key>
     <std>3</std>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>orchestrion-file-close</key>
+    <std>4</std>
     <autorepeat>0</autorepeat>
   </SC>
   <SC>

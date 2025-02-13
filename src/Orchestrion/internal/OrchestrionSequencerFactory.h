@@ -1,5 +1,6 @@
 #pragma once
 
+#include "IOrchestrionSequencer.h"
 #include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include "OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
@@ -23,7 +24,7 @@ class OrchestrionSequencerFactory : public muse::Injectable
   muse::Inject<ITrackChannelMapper> mapper;
 
 public:
-  std::unique_ptr<IOrchestrionSequencer>
+  IOrchestrionSequencerPtr
   CreateSequencer(mu::notation::IMasterNotation &masterNotation);
 };
 } // namespace dgk

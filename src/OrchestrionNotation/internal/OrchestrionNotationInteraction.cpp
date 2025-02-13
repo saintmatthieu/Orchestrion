@@ -8,6 +8,8 @@ void OrchestrionNotationInteraction::onMousePressed(
     const muse::PointF &logicPos, float hitWidth)
 {
   const auto interaction = muInteraction();
+  if (!interaction)
+    return;
   mu::notation::EngravingItem *hitElement =
       interaction->hitElement(logicPos, hitWidth);
   const auto note = dynamic_cast<mu::engraving::Note *>(hitElement);
@@ -26,7 +28,8 @@ void OrchestrionNotationInteraction::onMousePressed(
 void OrchestrionNotationInteraction::onMouseMoved()
 {
   // This will prevent dragging from editing the score.
-  muInteraction()->clearSelection();
+  if (const auto interaction = muInteraction())
+    interaction->clearSelection();
 }
 
 muse::async::Channel<const mu::notation::Note *>
@@ -38,6 +41,7 @@ OrchestrionNotationInteraction::noteClicked() const
 mu::notation::INotationInteractionPtr
 OrchestrionNotationInteraction::muInteraction() const
 {
-  return globalContext()->currentNotation()->interaction();
+  const auto notation = globalContext()->currentNotation();
+  return notation ? notation->interaction() : nullptr;
 }
 } // namespace dgk

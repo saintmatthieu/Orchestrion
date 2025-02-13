@@ -30,7 +30,13 @@ muse::ui::UiActionList makeActions(
     const std::unordered_map<DeviceType, std::shared_ptr<DeviceMenuManager>>
         &managers)
 {
-  muse::ui::UiActionList actions;
+  muse::ui::UiActionList actions{
+      muse::ui::UiAction("orchestrion-file-open", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-file-close",
+                         mu::context::UiCtxNotationOpened,
+                         mu::context::CTX_NOTATION_OPENED)};
+
   for (const auto &[_, menuId] : actionIds::chooseDevicesSubmenu)
     actions.push_back(muse::ui::UiAction(menuId, mu::context::UiCtxAny,
                                          mu::context::CTX_ANY));

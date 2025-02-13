@@ -39,4 +39,6 @@ public:
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
   virtual muse::async::Notification AboutToJumpPosition() const = 0;
 };
+
+using IOrchestrionSequencerPtr = std::shared_ptr<IOrchestrionSequencer>;
 } // namespace dgk

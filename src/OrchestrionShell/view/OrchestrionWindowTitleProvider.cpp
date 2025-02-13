@@ -95,8 +95,9 @@ void OrchestrionWindowTitleProvider::setFileModified(bool fileModified)
 void OrchestrionWindowTitleProvider::update()
 {
   mu::project::INotationProjectPtr project = context()->currentProject();
+  const auto notation = context()->currentNotation();
 
-  if (!project)
+  if (!project || !notation)
   {
     setTitle(muse::qtrc("appshell", "Orchestrion"));
     setFilePath("");
@@ -104,7 +105,6 @@ void OrchestrionWindowTitleProvider::update()
     return;
   }
 
-  const auto notation = context()->currentNotation();
   setTitle(notation->projectNameAndPartName());
 
   setFilePath((project->isNewlyCreated() || project->isCloudProject())

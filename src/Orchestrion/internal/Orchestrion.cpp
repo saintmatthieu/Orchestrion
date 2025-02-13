@@ -32,7 +32,7 @@ void Orchestrion::init()
       });
 }
 
-void Orchestrion::setSequencer(std::unique_ptr<IOrchestrionSequencer> sequencer)
+void Orchestrion::setSequencer(IOrchestrionSequencerPtr sequencer)
 {
   if (sequencer == m_sequencer)
     return;
@@ -40,7 +40,7 @@ void Orchestrion::setSequencer(std::unique_ptr<IOrchestrionSequencer> sequencer)
   m_sequencerChanged.notify();
 }
 
-IOrchestrionSequencer *Orchestrion::sequencer() { return m_sequencer.get(); }
+IOrchestrionSequencerPtr Orchestrion::sequencer() { return m_sequencer; }
 
 muse::async::Notification Orchestrion::sequencerChanged() const
 {

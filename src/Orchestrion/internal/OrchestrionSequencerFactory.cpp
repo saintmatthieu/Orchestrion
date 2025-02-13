@@ -190,8 +190,7 @@ auto MakeHand(size_t staffIdx, const Staff &staff)
 }
 } // namespace
 
-std::unique_ptr<IOrchestrionSequencer>
-OrchestrionSequencerFactory::CreateSequencer(
+IOrchestrionSequencerPtr OrchestrionSequencerFactory::CreateSequencer(
     mu::notation::IMasterNotation &masterNotation)
 {
   auto &score = *masterNotation.masterScore();
@@ -217,7 +216,7 @@ OrchestrionSequencerFactory::CreateSequencer(
   }
   auto pedalSequence = GetPedalSequence(score, staff, staff + 2);
 
-  return std::make_unique<OrchestrionSequencer>(
+  return std::make_shared<OrchestrionSequencer>(
       mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
       MakeHand(staff + 1, leftHand), std::move(pedalSequence));
 }

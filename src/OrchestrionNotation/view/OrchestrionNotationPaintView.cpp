@@ -52,8 +52,6 @@ void OrchestrionNotationPaintView::subscribe(
                                              m_boxes.clear();
                                              update();
                                            });
-
-  update();
 }
 
 void OrchestrionNotationPaintView::OnTransitions(
@@ -176,15 +174,47 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   if (const auto sequencer = orchestrion()->sequencer())
     subscribe(*sequencer);
 
+  globalContext()->currentNotationChanged().onNotify(
+      this,
+      [this]
+      {
+        AbstractNotationPaintView::onNotationSetup();
+        updateNotation();
+      });
+
+  dispatcher()->reg(this, "orchestrion-file-open",
+                    [this]
+                    {
+                      if (globalContext()->currentProject())
+                        dispatcher()->dispatch("orchestrion-file-close");
+                      dispatcher()->dispatch("file-open");
+                    });
+
+  dispatcher()->reg(this, "orchestrion-file-close",
+                    [this] { dispatcher()->dispatch("file-close"); });
+
   load();
-  setViewMode(mu::notation::ViewMode::LINE);
-  alignVertically();
+  updateNotation();
+}
+
+void OrchestrionNotationPaintView::updateNotation()
+{
+  if (globalContext()->currentNotation())
+  {
+    setViewMode(mu::notation::ViewMode::LINE);
+    alignVertically();
+  }
+  m_boxes.clear();
+  update();
 }
 
 void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
 {
-  notation()->viewState()->setViewMode(mode);
-  notation()->painting()->setViewMode(mode);
+  const auto notation = this->notation();
+  if (!notation)
+    return;
+  notation->viewState()->setViewMode(mode);
+  notation->painting()->setViewMode(mode);
 }
 
 void OrchestrionNotationPaintView::alignVertically()
