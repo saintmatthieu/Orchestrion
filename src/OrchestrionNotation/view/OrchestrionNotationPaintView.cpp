@@ -22,6 +22,7 @@
 #include "Orchestrion/IRest.h"
 #include <QApplication>
 #include <QPainter>
+#include <engraving/dom/masterscore.h>
 #include <engraving/dom/tie.h>
 
 namespace dgk
@@ -191,7 +192,13 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
                     });
 
   dispatcher()->reg(this, "orchestrion-file-close",
-                    [this] { dispatcher()->dispatch("file-close"); });
+                    [this]
+                    {
+                      if (const auto notation =
+                              globalContext()->currentMasterNotation())
+                        notation->masterScore()->setSaved(true);
+                      dispatcher()->dispatch("file-close");
+                    });
 
   load();
   updateNotation();
