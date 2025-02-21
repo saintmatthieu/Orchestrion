@@ -8,7 +8,7 @@
 		"cmake.generator": "Ninja",
 		"cmake.configureArgs": [
 			// "-DAU_MODULE_EFFECTS_VST=ON"
-			"-DCMAKE_INSTALL_PREFIX=${workspaceFolder}/build/install",
+			"-DCMAKE_INSTALL_PREFIX=${workspaceFolder}/build",
 			"-DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF",
 			"-DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF",
 			"-DSMTG_ENABLE_VSTGUI_SUPPORT=OFF",
