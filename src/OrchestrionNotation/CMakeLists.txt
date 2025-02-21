@@ -1,4 +1,4 @@
-set(MODULE OrchestrionNotation)
+declare_module(OrchestrionNotation)
 
 set(MODULE_QRC ${CMAKE_CURRENT_LIST_DIR}/OrchestrionNotation.qrc)
 
