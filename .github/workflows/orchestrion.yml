@@ -142,11 +142,14 @@ jobs:
     - name: Run macdeployqt
       run: macdeployqt ${{env.BUILD_DIR}}/OrchestrionApp.app
 
-    - name: Zip OrchestrionApp.app
-      run: (cd ${{env.BUILD_DIR}} && zip -r OrchestrionApp.app.zip OrchestrionApp.app)
+    - name: Install create-dmg
+      run: brew install create-dmg
+
+    - name: Create DMG
+      run: create-dmg ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/OrchestrionApp.app
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion Mac
-        path: ${{env.BUILD_DIR}}/OrchestrionApp.app.zip
+        path: ${{env.BUILD_DIR}}/Orchestrion.dmg
