@@ -31,9 +31,9 @@ jobs:
 
     - name: Mount dmg
       run: |
-        hdiutil attach ./artifacts/OrchestrionApp.dmg
-        cp -R /Volumes/OrchestrionApp/OrchestrionApp.app ./artifacts/
-        hdiutil detach /Volumes/OrchestrionApp
+        hdiutil attach ./artifacts/Orchestrion.dmg
+        cp -R /Volumes/Orchestrion/OrchestrionApp.app ./artifacts/
+        hdiutil detach /Volumes/Orchestrion
 
     - name: Codesign executable
       env: 
