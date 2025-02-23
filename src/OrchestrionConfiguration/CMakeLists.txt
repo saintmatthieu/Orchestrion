@@ -1,4 +1,4 @@
-set(MODULE OrchestrionConfiguration)
+declare_module(OrchestrionConfiguration)
 
 set(MODULE_SRC
   internal/ConfigurationUtils.cpp

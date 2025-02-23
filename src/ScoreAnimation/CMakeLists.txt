@@ -1,4 +1,4 @@
-set(MODULE ScoreAnimation)
+declare_module(ScoreAnimation)
 
 set(MODULE_SRC
   internal/ScoreAnimator.cpp

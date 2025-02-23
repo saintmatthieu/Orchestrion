@@ -1,4 +1,4 @@
-set(MODULE OrchestrionOnboarding)
+declare_module(OrchestrionOnboarding)
 
 set(MODULE_SRC
   view/OrchestrionOnboardingModel.cpp

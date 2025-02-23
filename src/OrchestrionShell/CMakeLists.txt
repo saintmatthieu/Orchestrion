@@ -1,4 +1,4 @@
-set(MODULE OrchestrionShell)
+declare_module(OrchestrionShell)
 
 set(MODULE_QRC ${CMAKE_CURRENT_LIST_DIR}/OrchestrionShell.qrc)
 
