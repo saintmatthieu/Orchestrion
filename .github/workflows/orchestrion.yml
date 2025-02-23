@@ -12,83 +12,6 @@ env:
   BUILD_DIR: build
 
 jobs:
-  build_win:
-    runs-on: windows-2019
-
-    steps:
-    - name: Install Git LFS
-      run: choco install git-lfs -y
-
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Pull LFS files
-      run: git lfs pull
-
-    - name: Cache Qt
-      uses: actions/cache@v4
-      with:
-        path: C:\Qt
-        key: ${{ runner.os }}-qt
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: '6.2.4'
-        host: 'windows'
-        target: 'desktop'
-        arch: 'win64_msvc2019_64'
-        modules: qtnetworkauth qt5compat qtscxml
-        cache: true
-
-    - name: Cache Ninja
-      uses: actions/cache@v4
-      with:
-        path: C:\ProgramData\chocolatey\bin\ninja.exe
-        key: ${{ runner.os }}-ninja
-
-    - name: Install Ninja
-      run: choco install ninja -y
-
-    - name: Cache NSIS
-      uses: actions/cache@v4
-      with:
-        path: C:\Program Files (x86)\NSIS
-        key: ${{ runner.os }}-nsis
-
-    - name: Install NSIS
-      run: choco install nsis -y
-
-    - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
-
-    - name: Build
-      run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
-
-    - name: Add NSIS to PATH
-      run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-
-    - name: Build NSIS Installer
-      run: makensis installer.nsi
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion
-        path: ${{env.BUILD_DIR}}\Install Orchestrion.exe
-
-    - name: Upload Debug Symbols
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion Windows
-        path: ${{env.BUILD_DIR}}\OrchestrionApp.pdb
-      if: false # Set to true (and BUILD_TYPE to Debug) if you need to locally debug a github build
-
   build_mac:
     runs-on: macos-latest
 
@@ -142,6 +65,22 @@ jobs:
     - name: Run macdeployqt
       run: macdeployqt ${{env.BUILD_DIR}}/OrchestrionApp.app
 
+    - name: Codesign executable
+      # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
+      if: github.ref == 'refs/heads/master'
+      env: 
+        MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+        MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      run: |
+        echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+        security find-identity -v
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+        codesign --deep --force --verify --verbose --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
+
     - name: Install create-dmg
       run: brew install create-dmg
 
@@ -152,4 +91,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion Mac
-        path: ${{env.BUILD_DIR}}/Orchestrion.dmg
+        path: ${{env.BUILD_DIR}}/OrchestrionApp.dmg
