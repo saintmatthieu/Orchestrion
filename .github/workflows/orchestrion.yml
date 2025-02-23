@@ -12,7 +12,45 @@ env:
   BUILD_DIR: build
 
 jobs:
+  test_codesign:
+    runs-on: macos-latest
+    # https://github.com/saintmatthieu/Orchestrion/actions/runs/13467307513/artifacts/2633681874 has a previous successful build.
+    # Right now we only want to test the codesigning process, so let's reuse this artifact.
+    # beware: this URL has a zip that has a dmg that has the app, and it's the app we want to codesign.
+    steps:
+    - name: Download artifact
+      run: |
+        curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+             -H "Accept: application/vnd.github.v3+json" \
+             -o artifact.zip \
+             -L "https://api.github.com/repos/saintmatthieu/Orchestrion/actions/artifacts/2633681874/zip"
+
+    - name: Extract zip
+      run: |
+        unzip artifact.zip -d ./artifacts
+
+    - name: Mount dmg
+      run: |
+        hdiutil attach ./artifacts/OrchestrionApp.dmg
+        cp -R /Volumes/OrchestrionApp/OrchestrionApp.app ./artifacts/
+        hdiutil detach /Volumes/OrchestrionApp
+
+    - name: Codesign executable
+      env: 
+        MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+        MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      run: |
+        echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+        security find-identity -v
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+        codesign --deep --force --verify --verbose --sign $MACOS_CERTIFICATE ${{env.BUILD_DIR}}/OrchestrionApp.app
+
   build_mac:
+    if: false
     runs-on: macos-latest
 
     steps:
