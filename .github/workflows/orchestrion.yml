@@ -169,4 +169,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion Mac
-        path: ${{env.BUILD_DIR}}/OrchestrionApp.dmg
+        path: ${{env.BUILD_DIR}}/Orchestrion.dmg
