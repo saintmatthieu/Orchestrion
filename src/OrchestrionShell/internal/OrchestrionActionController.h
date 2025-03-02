@@ -21,7 +21,9 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
+#include <global/iinteractive.h>
 #include <modularity/ioc.h>
+#include <project/iprojectconfiguration.h>
 
 namespace dgk
 {
@@ -30,8 +32,11 @@ class OrchestrionActionController : public muse::actions::Actionable,
 {
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<mu::context::IGlobalContext> globalContext;
+  muse::Inject<mu::project::IProjectConfiguration> configuration;
+  muse::Inject<muse::IInteractive> interactive;
 
 public:
   void init();
+  void onFileOpen();
 };
 } // namespace dgk

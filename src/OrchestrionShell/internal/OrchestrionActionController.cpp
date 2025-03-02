@@ -24,21 +24,58 @@ namespace dgk
 {
 void OrchestrionActionController::init()
 {
-  dispatcher()->reg(this, "orchestrion-file-open",
-                    [this]
-                    {
-                      if (globalContext()->currentProject())
-                        dispatcher()->dispatch("orchestrion-file-close");
-                      dispatcher()->dispatch("file-open");
-                    });
+  dispatcher()->reg(this, "orchestrion-file-open", [this] { onFileOpen(); });
 
   dispatcher()->reg(this, "orchestrion-file-close",
                     [this]
                     {
                       if (const auto notation =
                               globalContext()->currentMasterNotation())
+                        // We don't want to get the "Would you like to save?"
+                        // dialog.
                         notation->masterScore()->setSaved(true);
                       dispatcher()->dispatch("file-close");
                     });
+}
+
+void OrchestrionActionController::onFileOpen()
+{
+  constexpr auto allExt = "*.mscz *.mxl *.musicxml *.xml";
+
+  std::vector<std::string> filter{
+      muse::trc("project", "All supported files") + " (" + allExt + ")",
+      muse::trc("project", "MuseScore files") + " (*.mscz)",
+      muse::trc("project", "MusicXML files") + " (*.mxl *.musicxml *.xml)"};
+
+  muse::io::path_t defaultDir = configuration()->lastOpenedProjectsPath();
+
+  if (defaultDir.empty())
+  {
+    defaultDir = configuration()->userProjectsPath();
+  }
+
+  if (defaultDir.empty())
+  {
+    defaultDir = configuration()->defaultUserProjectsPath();
+  }
+
+  const muse::io::path_t filePath = interactive()->selectOpeningFile(
+      muse::qtrc("project", "Open"), defaultDir, filter);
+
+  if (filePath.empty())
+  {
+    return;
+  }
+
+  if (globalContext()->currentProject())
+    dispatcher()->dispatch("orchestrion-file-close");
+
+  configuration()->setLastOpenedProjectsPath(muse::io::dirpath(filePath));
+
+  muse::actions::ActionData data;
+  QUrl url{filePath.toString()};
+  url.setScheme("file");
+  data.setArg(0, url);
+  dispatcher()->dispatch("file-open", data);
 }
 } // namespace dgk
