@@ -142,6 +142,22 @@ jobs:
     - name: Run macdeployqt
       run: macdeployqt ${{env.BUILD_DIR}}/OrchestrionApp.app
 
+    - name: Codesign executable
+      # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
+      if: github.ref == 'refs/heads/master'
+      env: 
+        MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+        MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      run: |
+        echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+        security find-identity -v
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+        codesign --deep --force --verify --verbose --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
+
     - name: Install create-dmg
       run: brew install create-dmg
 
