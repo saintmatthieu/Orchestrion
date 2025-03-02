@@ -183,23 +183,6 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         updateNotation();
       });
 
-  dispatcher()->reg(this, "orchestrion-file-open",
-                    [this]
-                    {
-                      if (globalContext()->currentProject())
-                        dispatcher()->dispatch("orchestrion-file-close");
-                      dispatcher()->dispatch("file-open");
-                    });
-
-  dispatcher()->reg(this, "orchestrion-file-close",
-                    [this]
-                    {
-                      if (const auto notation =
-                              globalContext()->currentMasterNotation())
-                        notation->masterScore()->setSaved(true);
-                      dispatcher()->dispatch("file-close");
-                    });
-
   load();
   updateNotation();
 }
