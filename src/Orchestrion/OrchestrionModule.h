@@ -27,6 +27,7 @@ class OrchestrionSequencerActionController;
 class OrchestrionSequencerUiActions;
 class ComputerKeyboard;
 class ComputerKeyboardMidiController;
+class WebcamBasedIntensityController;
 
 class OrchestrionModule : public muse::modularity::IModuleSetup
 {
@@ -46,6 +47,7 @@ private:
   const std::shared_ptr<OrchestrionSequencerUiActions> m_uiActions;
   const std::shared_ptr<ComputerKeyboard> m_keyboard;
   const std::shared_ptr<ComputerKeyboardMidiController> m_keyboardController;
+  const std::shared_ptr<WebcamBasedIntensityController> m_intensityController;
 };
 
 } // namespace dgk

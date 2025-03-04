@@ -18,6 +18,8 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 include(vst3sdk.cmake)
 include(MuseScore.cmake)
 include(DSPFilters.cmake)
+include(dlib.cmake)
+# include(opencv.cmake)
 
 # This statement must be after include(MuseScore.cmake), as it sets QT_INSTALL_LIBS
 set(CMAKE_INSTALL_RPATH "${QT_INSTALL_LIBS};@loader_path/../Frameworks")

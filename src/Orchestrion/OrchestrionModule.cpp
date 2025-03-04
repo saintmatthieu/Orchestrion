@@ -22,6 +22,7 @@
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerActionController.h"
 #include "internal/OrchestrionSequencerUiActions.h"
+#include "internal/WebcamBasedIntensityController.h"
 #include <ui/iuiactionsregister.h>
 
 namespace dgk
@@ -32,7 +33,8 @@ OrchestrionModule::OrchestrionModule()
           std::make_shared<OrchestrionSequencerActionController>()),
       m_uiActions(std::make_shared<OrchestrionSequencerUiActions>()),
       m_keyboard(std::make_shared<ComputerKeyboard>()),
-      m_keyboardController(std::make_shared<ComputerKeyboardMidiController>())
+      m_keyboardController(std::make_shared<ComputerKeyboardMidiController>()),
+      m_intensityController(std::make_shared<WebcamBasedIntensityController>())
 {
 }
 
@@ -53,6 +55,8 @@ void OrchestrionModule::registerExports()
   ioc()->registerExport<IComputerKeyboard>(moduleName(), m_keyboard);
   ioc()->registerExport<IOrchestrionSequencerUiActions>(moduleName(),
                                                         m_uiActions);
+  ioc()->registerExport<IIntensityController>(moduleName(),
+                                              m_intensityController);
 }
 
 void OrchestrionModule::onPreInit(const muse::IApplication::RunMode &)
@@ -65,5 +69,6 @@ void OrchestrionModule::onInit(const muse::IApplication::RunMode &)
   m_orchestrion->init();
   m_actionController->init();
   m_keyboardController->init();
+  m_intensityController->init();
 }
 } // namespace dgk
