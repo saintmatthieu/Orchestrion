@@ -165,6 +165,14 @@ jobs:
     - name: Create DMG
       run: create-dmg ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/OrchestrionApp.app
 
+    - name: Notarize
+      if: github.ref == 'refs/heads/master'
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      run: |
+        xcrun notarytool submit --keychain build.keychain --apple-id 7JHUJWK5GF --team-id 7JHUJWK5GF --file ${{env.BUILD_DIR}}/Orchestrion.dmg --wait
+
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
