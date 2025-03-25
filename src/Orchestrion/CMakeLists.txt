@@ -5,6 +5,10 @@ set(MODULE_SRC
     internal/ComputerKeyboard.h
     internal/ComputerKeyboardMidiController.cpp
     internal/ComputerKeyboardMidiController.h
+    internal/Gamepad.cpp
+    internal/Gamepad.h
+    internal/GamepadMidiController.cpp
+    internal/GamepadMidiController.h
     internal/MuseChord.cpp
     internal/MuseChord.h
     internal/ChordTransitionUtil.cpp
@@ -34,6 +38,8 @@ set(MODULE_SRC
     OrchestrionTypes.h
     IComputerKeyboard.h
     IComputerKeyboardMidiController.h
+    IGamepad.h
+    IGamepadMidiController.h
     IMelodySegment.h
     IOrchestrion.h
     IOrchestrionSequencer.h

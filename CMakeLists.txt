@@ -5,6 +5,7 @@ project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
 find_package(Qt6 6.2.4 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+find_package(SDL2 REQUIRED SDL2)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +15,7 @@ set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_BUILD_UNIT_TESTS OFF)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${SDL2_INCLUDE_DIRS})
 
 include(vst3sdk.cmake)
 include(MuseScore.cmake)
@@ -46,6 +48,8 @@ qt_add_executable(OrchestrionApp WIN32 MACOSX_BUNDLE
     src/App/OrchestrionAppFactory.cpp
     src/App/OrchestrionAppFactory.h
 )
+
+target_link_libraries(OrchestrionApp PRIVATE SDL2::SDL2)
 
 set_target_properties(OrchestrionApp PROPERTIES
     AUTOMOC ON

@@ -17,11 +17,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionModule.h"
+#include "IGamepad.h"
+#include "IGamepadMidiController.h"
 #include "internal/ComputerKeyboard.h"
 #include "internal/ComputerKeyboardMidiController.h"
+#include "internal/Gamepad.h"
+#include "internal/GamepadMidiController.h"
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerActionController.h"
 #include "internal/OrchestrionSequencerUiActions.h"
+#include <memory>
 #include <ui/iuiactionsregister.h>
 
 namespace dgk
@@ -32,7 +37,9 @@ OrchestrionModule::OrchestrionModule()
           std::make_shared<OrchestrionSequencerActionController>()),
       m_uiActions(std::make_shared<OrchestrionSequencerUiActions>()),
       m_keyboard(std::make_shared<ComputerKeyboard>()),
-      m_keyboardController(std::make_shared<ComputerKeyboardMidiController>())
+      m_keyboardController(std::make_shared<ComputerKeyboardMidiController>()),
+      m_gamepad(std::make_shared<Gamepad>()),
+      m_gamepadController(std::make_shared<GamepadMidiController>())
 {
 }
 
@@ -51,6 +58,8 @@ void OrchestrionModule::registerExports()
   ioc()->registerExport<IComputerKeyboardMidiController>(
       moduleName(), new ComputerKeyboardMidiController());
   ioc()->registerExport<IComputerKeyboard>(moduleName(), m_keyboard);
+  ioc()->registerExport<IGamepad>(moduleName(), m_gamepad);
+  ioc()->registerExport<IGamepadMidiController>(moduleName(), m_gamepadController);
   ioc()->registerExport<IOrchestrionSequencerUiActions>(moduleName(),
                                                         m_uiActions);
 }
@@ -65,5 +74,6 @@ void OrchestrionModule::onInit(const muse::IApplication::RunMode &)
   m_orchestrion->init();
   m_actionController->init();
   m_keyboardController->init();
+  m_gamepadController->init();
 }
 } // namespace dgk
