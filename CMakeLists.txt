@@ -13,6 +13,8 @@ set(MuseScore_ROOT_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_BUILD_UNIT_TESTS OFF)
 
+add_compile_definitions(LIBSNDFILE_SUPPORT)
+
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 include(vst3sdk.cmake)
