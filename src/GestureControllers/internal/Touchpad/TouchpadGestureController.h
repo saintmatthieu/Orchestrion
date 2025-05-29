@@ -18,41 +18,35 @@
  */
 #pragma once
 
-#include "IComputerKeyboard.h"
-#include "IComputerKeyboardMidiController.h"
-#include "IOrchestrion.h"
+#include "ITouchpad.h"
+#include "ITouchpadGestureController.h"
+
 #include <async/asyncable.h>
-#include <memory>
 #include <modularity/ioc.h>
-#include <unordered_map>
-#include <unordered_set>
+
+#include <memory>
 
 namespace dgk
 {
-class ComputerKeyboardMidiController : public IComputerKeyboardMidiController,
-                                       public muse::Injectable,
-                                       public muse::async::Asyncable
+class TouchpadGestureController : public ITouchpadGestureController,
+                                  public muse::Injectable,
+                                  public muse::async::Asyncable
 {
-  muse::Inject<IOrchestrion> orchestrion = {this};
-  muse::Inject<IComputerKeyboard> keyboard = {this};
-
 public:
-  void init();
+  TouchpadGestureController(const ITouchpad &touchpad);
+  ~TouchpadGestureController() override = default;
+
+  static bool isFunctional();
 
 private:
-  struct Note
-  {
-    const int pitch;
-    const float velocity;
-  };
+  muse::async::Channel<int, float> noteOn() const override;
+  muse::async::Channel<int> noteOff() const override;
 
-  void keyPressed(char) override;
-  void keyReleased(char) override;
-  void updateNoteMap();
+  muse::async::Channel<Contacts> contactChanged() const override;
 
-private:
-  std::unordered_set<char> m_pressedLetters;
-  std::unordered_map<char, Note> m_noteMap;
+  const ITouchpad &m_touchpad;
+  muse::async::Channel<int, float> m_noteOn;
+  muse::async::Channel<int> m_noteOff;
+  std::unordered_map<int, int> m_pressedKeys;
 };
-
 } // namespace dgk

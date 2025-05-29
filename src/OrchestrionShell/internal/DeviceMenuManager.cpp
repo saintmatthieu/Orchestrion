@@ -53,17 +53,6 @@ void DeviceMenuManager::init()
   fillDeviceCache();
 }
 
-void DeviceMenuManager::doTrySelectDefaultDevice()
-{
-  if (const auto value = settings()->value(defaultDeviceIdKey());
-      !value.isNull())
-  {
-    const auto deviceId = value.toString();
-    if (!deviceId.empty())
-      selectDevice(deviceId);
-  }
-}
-
 muse::Settings *DeviceMenuManager::settings()
 {
   return muse::Settings::instance();
@@ -71,35 +60,25 @@ muse::Settings *DeviceMenuManager::settings()
 
 std::vector<DeviceAction> DeviceMenuManager::settableDevices() const
 {
-  std::vector<DeviceAction> devices;
+  const std::vector<DeviceDesc> descs = availableDevices();
+  std::vector<DeviceAction> actions;
+  actions.reserve(descs.size());
   auto i = 0;
   std::for_each(m_deviceCache.begin(), m_deviceCache.end(),
-                [&](const DeviceItem &device)
+                [&](const MenuEntry &entry)
                 {
-                  if (device.available)
-                    devices.emplace_back(getMenuId(i), device.name, device.id);
+                  if (std::find_if(descs.begin(), descs.end(),
+                                   [&entry](const DeviceDesc &d)
+                                   { return d.id == entry.id; }) != descs.end())
+                    actions.emplace_back(getMenuId(entry.index), entry.name, entry.id);
                   ++i;
                 });
-  return devices;
+  return actions;
 }
 
 muse::async::Notification DeviceMenuManager::settableDevicesChanged() const
 {
   return m_settableDevicesChanged;
-}
-
-std::string DeviceMenuManager::lastSelectedDevice() const
-{
-  return m_lastSelectedDevice;
-}
-
-void DeviceMenuManager::onDeviceSuccessfullySet(const std::string &deviceId)
-{
-  assert(!deviceId.empty());
-  if (deviceId.empty())
-    return;
-  m_lastSelectedDevice = deviceId;
-  settings()->setSharedValue(defaultDeviceIdKey(), muse::Val{deviceId});
 }
 
 muse::async::Channel<std::string>
@@ -110,17 +89,15 @@ DeviceMenuManager::selectedPlaybackDeviceChanged() const
 
 void DeviceMenuManager::fillDeviceCache()
 {
-  std::for_each(m_deviceCache.begin(), m_deviceCache.end(),
-                [this](DeviceItem &device) { device.available = false; });
   for (const auto &device : availableDevices())
   {
     const auto it = std::find_if(m_deviceCache.begin(), m_deviceCache.end(),
-                                 [&device](const DeviceItem &item)
+                                 [&device](const DeviceDesc &item)
                                  { return item.id == device.id; });
     if (it == m_deviceCache.end())
     {
-      // New device
-      const auto menuId = getMenuId((int)m_deviceCache.size());
+      const auto index = static_cast<int>(m_deviceCache.size());
+      const auto menuId = getMenuId(index);
       dispatcher()->reg(this, menuId,
                         [this, wt = weak_from_this(), deviceId = device.id]()
                         {
@@ -130,12 +107,13 @@ void DeviceMenuManager::fillDeviceCache()
                           if (selectDevice(deviceId))
                             m_selectedPlaybackDeviceChanged.send(deviceId);
                         });
-      m_deviceCache.push_back({device.id, device.name, true});
+
+      // The no-device entry first.
+      if (device.id == "-1")
+        m_deviceCache.emplace(m_deviceCache.begin(), device.id, device.name, index);
+      else
+        m_deviceCache.emplace_back(device.id, device.name, index);
     }
-    else
-      // Device already known
-      it->available = true;
   }
 }
-
 } // namespace dgk

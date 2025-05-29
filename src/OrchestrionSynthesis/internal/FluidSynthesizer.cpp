@@ -96,8 +96,10 @@ size_t FluidSynthesizer::process(float *buffer, size_t samplesPerChannel)
 {
   if (!m_allSet)
     return 0;
-  fluid_synth_write_float(m_fluidSynth, (int)samplesPerChannel, buffer, 0,
-                          audioChannelCount, buffer, 1, audioChannelCount);
+  const auto result =
+      fluid_synth_write_float(m_fluidSynth, (int)samplesPerChannel, buffer, 0,
+                              audioChannelCount, buffer, 1, audioChannelCount);
+  assert(result == FLUID_OK);
   return samplesPerChannel;
 }
 
@@ -105,8 +107,12 @@ void FluidSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex *channels,
                                  const int *pitches, const float *velocities)
 {
   for (auto i = 0u; i < numNoteons; ++i)
-    fluid_synth_noteon(m_fluidSynth, GetChannel(channels[i]), pitches[i],
-                       velocities[i] * 127 + .5f);
+  {
+    const auto success =
+        fluid_synth_noteon(m_fluidSynth, GetChannel(channels[i]), pitches[i],
+                           velocities[i] * 127 + .5f) == FLUID_OK;
+    assert(success);
+  }
 }
 
 void FluidSynthesizer::onNoteOffs(size_t numNoteoffs,
@@ -114,17 +120,27 @@ void FluidSynthesizer::onNoteOffs(size_t numNoteoffs,
                                   const int *pitches)
 {
   for (auto i = 0u; i < numNoteoffs; ++i)
-    fluid_synth_noteoff(m_fluidSynth, GetChannel(channels[i]), pitches[i]);
+  {
+    const auto success =
+        fluid_synth_noteoff(m_fluidSynth, GetChannel(channels[i]),
+                            pitches[i]) == FLUID_OK;
+    assert(success);
+  }
 }
 
 void FluidSynthesizer::onPedal(bool on)
 {
   for (const auto &voice : m_voices)
-    fluid_synth_cc(m_fluidSynth, GetChannel(voice), 0x40, on ? 127 : 0);
+  {
+    const auto success = fluid_synth_cc(m_fluidSynth, GetChannel(voice), 0x40,
+                                        on ? 127 : 0) == FLUID_OK;
+    assert(success);
+  }
 }
 
 void FluidSynthesizer::allNotesOff()
 {
-  fluid_synth_all_notes_off(m_fluidSynth, -1);
+  const auto success = fluid_synth_all_notes_off(m_fluidSynth, -1) == FLUID_OK;
+  assert(success);
 }
 } // namespace dgk

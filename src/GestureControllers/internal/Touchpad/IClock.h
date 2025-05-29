@@ -18,26 +18,14 @@
  */
 #pragma once
 
-#include "OrchestrionTypes.h"
-#include <modularity/imoduleinterface.h>
+#include <chrono>
 
 namespace dgk
 {
-class IComputerKeyboardMidiController : MODULE_EXPORT_INTERFACE
+class IClock
 {
-  INTERFACE_ID(IComputerKeyboardMidiController);
-
 public:
-  enum class KeyboardLayout
-  {
-    German,
-    US
-  };
-
-
-  virtual ~IComputerKeyboardMidiController() = default;
-
-  virtual void keyPressed(char) = 0;
-  virtual void keyReleased(char) = 0;
+  virtual ~IClock() = default;
+  virtual std::chrono::time_point<std::chrono::steady_clock> now() const = 0;
 };
 } // namespace dgk

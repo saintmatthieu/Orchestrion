@@ -18,7 +18,7 @@ int TrackChannelMapper::channelForTrack(TrackIndex track, Policy policy) const
   return policy == Policy::oneChannelPerInstrument ? 0 : track.staffIndex();
 }
 
-InstrumentIndex TrackChannelMapper::instrumentForStaff(int staff) const
+InstrumentIndex TrackChannelMapper::instrumentForStaff(int) const
 {
   return InstrumentIndex{0};
 }

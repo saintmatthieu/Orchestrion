@@ -4,3 +4,5 @@ CMakeLists.txt.user
 _deps
 .cache
 .DS_Store
+*.pyc
+.vs

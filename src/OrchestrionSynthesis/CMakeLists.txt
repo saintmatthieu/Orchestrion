@@ -12,6 +12,8 @@ set(MODULE_SRC
     internal/LowpassFilteredSynthesizer.h
     internal/OrchestrionSynthesizerWrapper.cpp
     internal/OrchestrionSynthesizerWrapper.h
+    internal/OrchestrionSynthesisConfiguration.cpp
+    internal/OrchestrionSynthesisConfiguration.h
     internal/OrchestrionSynthResolver.cpp
     internal/OrchestrionSynthResolver.h
     internal/OrchestrionVstSynthesizer.cpp
@@ -22,10 +24,13 @@ set(MODULE_SRC
     internal/PromisedSynthesizer.h
     internal/SynthesizerConnector.cpp
     internal/SynthesizerConnector.h
+    internal/SynthesizerManager.cpp
+    internal/SynthesizerManager.h
     internal/TrackChannelMapper.cpp
     internal/TrackChannelMapper.h
-    ISynthesizerConnector.h
     ITrackChannelMapper.h
+    ISynthesizerConnector.h
+    ISynthesizerManager.h
     OrchestrionSynthesisModule.cpp
     OrchestrionSynthesisModule.h
 )

@@ -26,42 +26,22 @@ PlaybackDeviceMenuManager::PlaybackDeviceMenuManager()
 {
 }
 
-void PlaybackDeviceMenuManager::doInit()
-{
-  audioDriver()->availableOutputDevicesChanged().onNotify(
-      this, [this] { updateAudioDevices(); });
-  updateAudioDevices();
-}
-
-void PlaybackDeviceMenuManager::trySelectDefaultDevice()
-{
-  DeviceMenuManager::doTrySelectDefaultDevice();
-}
-
-void PlaybackDeviceMenuManager::updateAudioDevices()
-{
-  std::promise<muse::audio::AudioDeviceList> promise;
-  auto future = promise.get_future();
-  std::thread([&]
-              { promise.set_value(audioDriver()->availableOutputDevices()); })
-      .detach();
-  m_audioDevices = future.get();
-  m_availableDevicesChanged.notify();
-}
-
 muse::async::Notification
 PlaybackDeviceMenuManager::availableDevicesChanged() const
 {
-  return m_availableDevicesChanged;
+  return audioDeviceService()->availableDevicesChanged();
 }
 
 std::vector<DeviceDesc> PlaybackDeviceMenuManager::availableDevices() const
 {
+  const std::vector<ExternalDeviceId> ids =
+      audioDeviceService()->availableDevices();
   std::vector<DeviceDesc> descriptions;
-  descriptions.reserve(m_audioDevices.size());
-  std::transform(m_audioDevices.begin(), m_audioDevices.end(),
-                 std::back_inserter(descriptions), [](const auto &device)
-                 { return DeviceDesc{device.id, device.name}; });
+  descriptions.reserve(ids.size());
+  std::transform(
+      ids.begin(), ids.end(), std::back_inserter(descriptions),
+      [this](const ExternalDeviceId &id)
+      { return DeviceDesc{id.value, audioDeviceService()->deviceName(id)}; });
   return descriptions;
 }
 
@@ -72,16 +52,18 @@ std::string PlaybackDeviceMenuManager::getMenuId(int deviceIndex) const
 
 std::string PlaybackDeviceMenuManager::selectedDevice() const
 {
-  return audioDriver()->outputDevice();
+  return audioDeviceService()
+      ->selectedDevice()
+      .value_or(ExternalDeviceId{""})
+      .value;
 }
 
 bool PlaybackDeviceMenuManager::selectDevice(const std::string &deviceId)
 {
-  if (audioDriver()->selectOutputDevice(deviceId))
-  {
-    onDeviceSuccessfullySet(deviceId);
-    return true;
-  }
-  return false;
+  const ExternalDeviceId id{deviceId};
+  if (!audioDeviceService()->isAvailable(id))
+    return false;
+  audioDeviceService()->selectDevice(id);
+  return true;
 }
 } // namespace dgk

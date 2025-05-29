@@ -18,18 +18,20 @@
  */
 #pragma once
 
-#include <modularity/imoduleinterface.h>
+#include "ISynthesizerManager.h"
+#include <async/asyncable.h>
+#include <modularity/ioc.h>
 
 namespace dgk
 {
-class IControllerMenuManager : MODULE_EXPORT_INTERFACE
+class OrchestrionSynthesisConfiguration : public muse::async::Asyncable,
+                                          public muse::Injectable
 {
-  INTERFACE_ID(IControllerMenuManager);
-
 public:
-  virtual ~IControllerMenuManager() = default;
+  void init();
+  void postInit();
 
-  virtual void trySelectDefaultDevice() = 0;
-  virtual void onGainedFocus() = 0;
+private:
+  muse::Inject<ISynthesizerManager> synthManager;
 };
 } // namespace dgk

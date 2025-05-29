@@ -19,6 +19,8 @@
 #include "OrchestrionAppFactory.h"
 #include "OrchestrionApp.h"
 
+#include "ExternalDevices/ExternalDevicesModule.h"
+#include "GestureControllers/GestureControllersModule.h"
 #include "MuseScoreShell/MusescoreShellModule.h"
 #include "Orchestrion/OrchestrionModule.h"
 #include "OrchestrionConfiguration/OrchestrionConfigurationModule.h"
@@ -38,8 +40,8 @@
 #include <engraving/engravingmodule.h>
 #include <extensions/extensionsmodule.h>
 #include <global/globalmodule.h>
-#include <importexport/musicxml/musicxmlmodule.h>
 #include <importexport/midi/midimodule.h>
+#include <importexport/musicxml/musicxmlmodule.h>
 #include <midi/midimodule.h>
 #include <mpe/mpemodule.h>
 #include <multiinstances/multiinstancesmodule.h>
@@ -83,6 +85,8 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new OrchestrionOnboardingModule());
   app->addModule(new OrchestrionModule());
   app->addModule(new ScoreAnimationModule());
+  app->addModule(new ExternalDevicesModule());
+  app->addModule(new GestureControllersModule());
   app->addModule(new OrchestrionConfigurationModule());
 
   app->addModule(new muse::accessibility::AccessibilityModule());

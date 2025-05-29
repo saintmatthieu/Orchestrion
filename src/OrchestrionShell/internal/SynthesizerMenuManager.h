@@ -1,13 +1,11 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
-#include "ISynthesizerManager.h"
-#include "ISynthesizerMenuManager.h"
+#include "OrchestrionSynthesis/ISynthesizerManager.h"
 
 namespace dgk
 {
-class SynthesizerMenuManager : public ISynthesizerMenuManager,
-                               public DeviceMenuManager
+class SynthesizerMenuManager : public DeviceMenuManager
 {
 public:
   SynthesizerMenuManager();
@@ -16,10 +14,6 @@ public:
 
 private:
   muse::Inject<ISynthesizerManager> synthManager = {this};
-
-  // ISynthesizerMenuManager
-private:
-  void trySelectDefaultDevice() override;
 
   // DeviceMenuManager
 private:

@@ -27,7 +27,6 @@ namespace dgk
 class ControllerMenuManager;
 class OrchestrionUiActions;
 class PlaybackDeviceMenuManager;
-class SynthesizerManager;
 class SynthesizerMenuManager;
 class OrchestrionEventProcessor;
 class OrchestrionActionController;
@@ -53,7 +52,6 @@ private:
   const std::shared_ptr<PlaybackDeviceMenuManager> m_playbackDeviceMenuManager;
   const std::shared_ptr<OrchestrionEventProcessor> m_orchestrionEventProcessor;
   const std::shared_ptr<OrchestrionUiActions> m_orchestrionUiActions;
-  const std::shared_ptr<SynthesizerManager> m_synthesizerManager;
   const std::shared_ptr<OrchestrionActionController> m_orchestrionActionController;
 };
 } // namespace dgk

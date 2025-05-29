@@ -7,11 +7,6 @@ SynthesizerMenuManager::SynthesizerMenuManager()
 {
 }
 
-void SynthesizerMenuManager::trySelectDefaultDevice()
-{
-  DeviceMenuManager::doTrySelectDefaultDevice();
-}
-
 std::string SynthesizerMenuManager::getMenuId(int deviceIndex) const
 {
   return "chooseMidiSynth_" + std::to_string(deviceIndex);
@@ -35,12 +30,7 @@ std::vector<DeviceDesc> SynthesizerMenuManager::availableDevices() const
 
 bool SynthesizerMenuManager::selectDevice(const std::string &deviceId)
 {
-  if (synthManager()->selectSynth(deviceId))
-  {
-    onDeviceSuccessfullySet(deviceId);
-    return true;
-  }
-  return false;
+  return synthManager()->selectSynth(deviceId);
 }
 
 } // namespace dgk

@@ -1,5 +1,6 @@
 #include "SynthesizerManager.h"
 #include <audio/itracks.h>
+#include <global/defer.h>
 #include <log.h>
 
 namespace dgk
@@ -51,6 +52,8 @@ muse::async::Notification SynthesizerManager::availableSynthsChanged() const
 
 bool SynthesizerManager::selectSynth(const std::string &synthId)
 {
+  muse::Defer defer([this] { m_selectedSynthChanged.notify(); });
+
   const auto instruments = availableInstruments();
   if (const auto it = std::find_if(
           instruments.begin(), instruments.end(),
@@ -80,6 +83,11 @@ bool SynthesizerManager::selectSynth(const std::string &synthId)
   synthesizerConnector()->connectFluidSynth();
 
   return true;
+}
+
+muse::async::Notification SynthesizerManager::selectedSynthChanged() const
+{
+  return m_selectedSynthChanged;
 }
 
 std::string SynthesizerManager::selectedSynth() const

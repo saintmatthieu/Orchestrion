@@ -24,6 +24,8 @@
 namespace dgk
 {
 class SynthesizerConnector;
+class SynthesizerManager;
+class OrchestrionSynthesisConfiguration;
 
 class OrchestrionSynthesisModule : public muse::modularity::IModuleSetup
 {
@@ -33,9 +35,13 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
+  void onInit(const muse::IApplication::RunMode &mode) override;
   void onAllInited(const muse::IApplication::RunMode &mode) override;
+  void onDelayedInit() override;
 
   const std::shared_ptr<SynthesizerConnector> m_synthesizerConnector;
+  const std::shared_ptr<SynthesizerManager> m_synthesizerManager;
+  const std::unique_ptr<OrchestrionSynthesisConfiguration> m_configuration;
 };
 
 } // namespace dgk

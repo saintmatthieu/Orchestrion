@@ -1,3 +1,21 @@
+/*
+ * This file is part of Orchestrion.
+ *
+ * Copyright (C) 2024 Matthieu Hodgkinson
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 #pragma once
 
 #include "IOrchestrionSequencer.h"
@@ -12,7 +30,6 @@
 #include <context/iglobalcontext.h>
 #include <functional>
 #include <memory>
-#include <midi/imidiinport.h>
 #include <modularity/ioc.h>
 #include <mutex>
 #include <queue>
@@ -29,7 +46,6 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 {
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
-  muse::Inject<muse::midi::IMidiInPort> midiInPort;
   muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
 
 public:
@@ -84,7 +100,6 @@ private:
                                 ThreadMembers<EventType> &members,
                                 std::function<void(EventType)> cb);
 
-  void OnMidiEventReceived(const muse::midi::Event &event);
   void OnInputEventRecursive(NoteEventType, int pitch, float velocity,
                              bool loop);
   void PostPedalEvent(PedalEvent event);

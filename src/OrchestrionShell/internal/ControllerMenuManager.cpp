@@ -33,48 +33,29 @@ ControllerMenuManager::ControllerMenuManager()
 {
 }
 
-void ControllerMenuManager::doInit()
-{
-  multiInstances()->otherInstanceGainedFocus().onNotify(
-      this,
-      [this]
-      {
-        if (midiInPort()->isConnected())
-        {
-          const auto masterNotation = globalContext()->currentMasterNotation();
-          assert(masterNotation);
-          LOGI() << "Releasing control of MIDI device for "
-                 << (masterNotation ? masterNotation->notation()->name()
-                                    : "null");
-          midiInPort()->disconnect();
-          // multiInstances()->notifyAboutReleasingMidiController();
-        }
-      });
-}
-
 std::string ControllerMenuManager::selectedDevice() const
 {
-  return midiInPort()->deviceID();
-}
-
-void ControllerMenuManager::trySelectDefaultDevice()
-{
-  DeviceMenuManager::doTrySelectDefaultDevice();
+  if (const std::optional<ExternalDeviceId> id =
+          midiDeviceService()->selectedDevice())
+    return id->value;
+  return {};
 }
 
 muse::async::Notification ControllerMenuManager::availableDevicesChanged() const
 {
-  return midiInPort()->availableDevicesChanged();
+  return midiDeviceService()->availableDevicesChanged();
 }
 
 std::vector<DeviceDesc> ControllerMenuManager::availableDevices() const
 {
-  const auto midiDevices = midiInPort()->availableDevices();
+  const std::vector<ExternalDeviceId> ids =
+      midiDeviceService()->availableDevices();
   std::vector<DeviceDesc> descriptions;
-  descriptions.reserve(midiDevices.size());
-  std::transform(midiDevices.begin(), midiDevices.end(),
-                 std::back_inserter(descriptions), [](const auto &device)
-                 { return DeviceDesc{device.id, device.name}; });
+  descriptions.reserve(ids.size());
+  std::transform(
+      ids.begin(), ids.end(), std::back_inserter(descriptions),
+      [this](const ExternalDeviceId &id)
+      { return DeviceDesc{id.value, midiDeviceService()->deviceName(id)}; });
   return descriptions;
 }
 
@@ -85,9 +66,10 @@ std::string ControllerMenuManager::getMenuId(int deviceIndex) const
 
 bool ControllerMenuManager::selectDevice(const std::string &deviceId)
 {
-  if (midiInPort()->connect(deviceId))
+  const auto id = ExternalDeviceId{deviceId};
+  if (midiDeviceService()->isAvailable(id))
   {
-    onDeviceSuccessfullySet(deviceId);
+    midiDeviceService()->selectDevice(id);
     return true;
   }
 
@@ -103,7 +85,7 @@ bool ControllerMenuManager::selectDevice(const std::string &deviceId)
   // Orchestrion.exe!std::_Tree<std::_Tmap_traits<std::thread::id,std::queue<std::function<void __cdecl(void)>,std::deque<std::function<void __cdecl(void)>,std::allocator<std::function<void __cdecl(void)>>>>,std::less<std::thread::id>,std::allocator<std::pair<std::thread::id const ,std::queue<std::function<void __cdecl(void)>,std::deque<std::function<void __cdecl(void)>,std::allocator<std::function<void __cdecl(void)>>>>>>,0>>::extract(const std::thread::id & _Keyval) Line 1731 (c:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\xtree:1731)
   // Orchestrion.exe!kors::async::QueuedInvoker::processEvents() Line 51 (c:\git\saintmatthieu\Orchestrion\MuseScore\src\framework\global\thirdparty\kors_async\async\internal\queuedinvoker.cpp:51)
 
-  // The top of the call stack is doing
+  // The top of the call stack is doin4g
   // std::lock_guard<std::recursive_mutex> lock(m_mutex);
   //         auto n = m_queues.extract(std::this_thread::get_id());
 
@@ -137,10 +119,10 @@ bool ControllerMenuManager::maybePromptUser(const std::string &deviceId)
       !ignoreFailureSetting.isNull() && ignoreFailureSetting.toBool())
     return false;
 
-  const auto availableDevices = midiInPort()->availableDevices();
+  const auto availableDevices = midiDeviceService()->availableDevices();
   const auto it = std::find_if(availableDevices.begin(), availableDevices.end(),
                                [&deviceId](const auto &device)
-                               { return device.id == deviceId; });
+                               { return device.value == deviceId; });
   IF_ASSERT_FAILED(it != availableDevices.end())
   {
     LOGE() << "MIDI controller ID " + deviceId + " not found";
@@ -149,7 +131,8 @@ bool ControllerMenuManager::maybePromptUser(const std::string &deviceId)
 
   using namespace muse;
   const IInteractive::Result result = interactive()->warning(
-      muse::trc("midi", "Could not connect to MIDI controller ") + it->name,
+      muse::trc("midi", "Could not connect to MIDI controller ") +
+          midiDeviceService()->deviceName(*it),
       muse::trc("midi",
                 "You may check that it is not used by another application,\n"
                 "select another controller or use the computer keyboard."),
@@ -172,14 +155,5 @@ bool ControllerMenuManager::maybePromptUser(const std::string &deviceId)
     assert(false);
     return false;
   }
-}
-
-void ControllerMenuManager::onGainedFocus()
-{
-  if (midiInPort()->deviceID() == lastSelectedDevice() ||
-      lastSelectedDevice().empty())
-    return;
-  LOGI() << "Reconnecting previously selected device: "
-         << selectDevice(lastSelectedDevice());
 }
 } // namespace dgk

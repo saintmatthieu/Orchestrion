@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MuseScoreShell/MuseScoreShellTypes.h"
+#include "OrchestrionCommon/OrchestrionCommonTypes.h"
 #include "OrchestrionShellTypes.h"
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
@@ -50,19 +51,16 @@ public:
   muse::async::Channel<std::string> selectedPlaybackDeviceChanged() const;
 
 protected:
-  void doTrySelectDefaultDevice();
-  std::string lastSelectedDevice() const;
-  void onDeviceSuccessfullySet(const std::string &deviceId);
   muse::Settings *settings();
 
 private:
-  struct DeviceItem : DeviceDesc
+  struct MenuEntry : public DeviceDesc
   {
-    DeviceItem(std::string id, std::string name, bool available)
-        : DeviceDesc{id, name}, available{available}
+    MenuEntry(std::string id, std::string name, int index)
+        : DeviceDesc{std::move(id), std::move(name)}, index{index}
     {
     }
-    bool available;
+    int index;
   };
 
   virtual muse::async::Notification availableDevicesChanged() const = 0;
@@ -75,7 +73,6 @@ private:
   const DeviceType m_deviceType;
   muse::async::Notification m_settableDevicesChanged;
   muse::async::Channel<std::string> m_selectedPlaybackDeviceChanged;
-  std::vector<DeviceItem> m_deviceCache;
-  std::string m_lastSelectedDevice;
+  std::vector<MenuEntry> m_deviceCache;
 };
 } // namespace dgk

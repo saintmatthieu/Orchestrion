@@ -93,6 +93,9 @@ jobs:
     runs-on: macos-latest
 
     steps:
+    - name: Install libsndfile
+      run: brew install libsndfile
+
     - name: Install Git LFS
       run: brew install git-lfs
 
