@@ -9,6 +9,20 @@
 #include <WinUser.h>
 #include <hidusage.h>
 
+// For some reason, these usages are not defined in hidusage.h
+#ifndef HID_USAGE_DIGITIZER_CONTACT_IDENTIFIER
+#define HID_USAGE_DIGITIZER_CONTACT_IDENTIFIER ((USAGE)0x51)
+#endif
+#ifndef HID_USAGE_DIGITIZER_CONTACT_COUNT
+#define HID_USAGE_DIGITIZER_CONTACT_COUNT ((USAGE)0x54)
+#endif
+#ifndef HID_USAGE_DIGITIZER_SCAN_TIME
+#define HID_USAGE_DIGITIZER_SCAN_TIME ((USAGE)0x55)
+#endif
+#ifndef HID_USAGE_DIGITIZER_CONTACT_ID
+#define HID_USAGE_DIGITIZER_CONTACT_ID ((USAGE)0x51)
+#endif
+
 namespace dgk
 {
 WindowsTouchpad::HidDeviceInfo WindowsTouchpad::getDeviceInfo()
@@ -91,8 +105,6 @@ WindowsTouchpad::HidDeviceInfo WindowsTouchpad::getDeviceInfo()
           deviceInfo.linkColIDs.erase(it);
         }
 
-        // LOGI() << "Generic usage: " << cap.NotRange.Usage;
-
         if (cap.NotRange.Usage == HID_USAGE_GENERIC_X)
         {
           if (!linkColID.has_value())
@@ -115,7 +127,6 @@ WindowsTouchpad::HidDeviceInfo WindowsTouchpad::getDeviceInfo()
       }
       else
       {
-        // LOGI() << "Usage: " << cap.NotRange.Usage;
         switch (cap.NotRange.Usage)
         {
         case HID_USAGE_DIGITIZER_CONTACT_IDENTIFIER:
@@ -124,57 +135,6 @@ WindowsTouchpad::HidDeviceInfo WindowsTouchpad::getDeviceInfo()
         case HID_USAGE_DIGITIZER_CONTACT_COUNT:
           deviceInfo.contactCountLinkCollection = cap.LinkCollection;
           break;
-          // case HID_USAGE_DIGITIZER_SCAN_TIME:
-          //   LOGI() << "HID_USAGE_DIGITIZER_SCAN_TIME";
-          //   break;
-          // case HID_USAGE_DIGITIZER_X_TILT:
-          //   LOGI() << "HID_USAGE_DIGITIZER_X_TILT";
-          //   break;
-          // case HID_USAGE_DIGITIZER_Y_TILT:
-          //   LOGI() << "HID_USAGE_DIGITIZER_Y_TILT";
-          //   break;
-          // case HID_USAGE_DIGITIZER_AZIMUTH:
-          //   LOGI() << "HID_USAGE_DIGITIZER_AZIMUTH";
-          //   break;
-          // case HID_USAGE_DIGITIZER_ALTITUDE:
-          //   LOGI() << "HID_USAGE_DIGITIZER_ALTITUDE";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TWIST:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TWIST";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TIP_SWITCH:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TIP_SWITCH";
-          //   break;
-          // case HID_USAGE_DIGITIZER_SECONDARY_TIP_SWITCH:
-          //   LOGI() << "HID_USAGE_DIGITIZER_SECONDARY_TIP_SWITCH";
-          //   break;
-          // case HID_USAGE_DIGITIZER_BARREL_SWITCH:
-          //   LOGI() << "HID_USAGE_DIGITIZER_BARREL_SWITCH";
-          //   break;
-          // case HID_USAGE_DIGITIZER_ERASER:
-          //   LOGI() << "HID_USAGE_DIGITIZER_ERASER";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TABLET_PICK:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TABLET_PICK";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TRANSDUCER_SERIAL:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TRANSDUCER_SERIAL";
-          //   break;
-          // case HID_USAGE_DIGITIZER_HEAT_MAP_FRAME_DATA:
-          //   LOGI() << "HID_USAGE_DIGITIZER_HEAT_MAP_FRAME_DATA";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TRANSDUCER_VENDOR:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TRANSDUCER_VENDOR";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TRANSDUCER_PRODUCT:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TRANSDUCER_PRODUCT";
-          //   break;
-          // case HID_USAGE_DIGITIZER_TRANSDUCER_CONNECTED:
-          //   LOGI() << "HID_USAGE_DIGITIZER_TRANSDUCER_CONNECTED";
-          //   break;
-          // default:
-          //   LOGI() << "Unknown usage: " << cap.NotRange.Usage;
-          //   break;
         }
       }
 
@@ -194,8 +154,7 @@ WindowsTouchpad::HidDeviceInfo WindowsTouchpad::getDeviceInfo()
   return deviceInfo;
 }
 
-WindowsTouchpad::WindowsTouchpad(
-    std::function<void(const TouchpadScan &)> cb)
+WindowsTouchpad::WindowsTouchpad(std::function<void(const TouchpadScan &)> cb)
     : m_cb{std::move(cb)}, m_deviceInfo{getDeviceInfo()}
 {
   if (isAvailable())
@@ -214,7 +173,7 @@ bool WindowsTouchpad::isAvailable() const
 }
 
 bool WindowsTouchpad::nativeEventFilter(const QByteArray &eventType,
-                                           void *message, qintptr *)
+                                        void *message, qintptr *)
 {
   if (eventType != "windows_generic_MSG")
     return false;
@@ -260,31 +219,23 @@ bool Ok(int hidpReturnCode)
   // https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/hidpi/nf-hidpi-hidp_getusagevalue
   switch (hidpReturnCode)
   {
-  // case HIDP_INVALID_REPORT_LENGTH:
-  //   // The report length is not valid.
-  //   LOGE() << "HIDP_INVALID_REPORT_LENGTH";
-  //   break;
-  // case HIDP_INVALID_REPORT_TYPE:
-  //   // The specified report type is not valid.
-  //   LOGE() << "HIDP_INVALID_REPORT_TYPE";
-  //   break;
   case HIDP_STATUS_INCOMPATIBLE_REPORT_ID:
     // The collection contains a value on the specified usage page in a report
     // of the specified type, but there are no such usages in the specified
     // report.
-    LOGD() << "HIDP_STATUS_INCOMPATIBLE_REPORT_ID";
+    LOGE() << "HIDP_STATUS_INCOMPATIBLE_REPORT_ID";
     break;
   case HIDP_STATUS_INVALID_PREPARSED_DATA:
     // The preparsed data is not valid.
-    LOGD() << "HIDP_STATUS_INVALID_PREPARSED_DATA";
+    LOGE() << "HIDP_STATUS_INVALID_PREPARSED_DATA";
     break;
   case HIDP_STATUS_USAGE_NOT_FOUND:
     // The collection does not contain a value on the specified usage page in
     // any report of the specified report type.
-    LOGD() << "HIDP_STATUS_USAGE_NOT_FOUND";
+    LOGE() << "HIDP_STATUS_USAGE_NOT_FOUND";
     break;
   default:
-    LOGD() << "Unknown error";
+    LOGE() << "Unknown error";
   }
   return false;
 }
@@ -345,8 +296,7 @@ void WindowsTouchpad::onInput(LPARAM param)
   for (auto i = 0u; i < numContacts; ++i)
   {
     const auto id = m_deviceInfo.linkColIDs[i];
-    ULONG xPos = 0, yPos = 0, contactID = 0, tipSwitch = 0;
-    constexpr USAGE HID_USAGE_DIGITIZER_CONTACT_ID{0x51};
+    ULONG xPos = 0, yPos = 0, contactID = 0;
 
     if (!Ok(HidP_GetUsageValue(HidP_Input, HID_USAGE_PAGE_GENERIC, id,
                                HID_USAGE_GENERIC_X, &xPos,
