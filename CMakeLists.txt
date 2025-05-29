@@ -29,6 +29,8 @@ else()
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation prefix for other OS" FORCE)
 endif()
 
+add_subdirectory(src/ExternalDevices)
+add_subdirectory(src/GestureControllers)
 add_subdirectory(src/MusescoreShell)
 add_subdirectory(src/Orchestrion)
 add_subdirectory(src/OrchestrionConfiguration)
@@ -90,6 +92,8 @@ target_link_libraries(OrchestrionApp PRIVATE
     muse_vst
     muse_workspace
 
+    ExternalDevices
+    GestureControllers
     MusescoreShell
     Orchestrion
     OrchestrionConfiguration
@@ -109,6 +113,7 @@ qt_add_qml_module(OrchestrionApp
 
 qt_add_resources(RESOURCES resources.qrc)
 qt_add_resources(RESOURCES src/App/OrchestrionApp.qrc)
+qt_add_resources(RESOURCES src/Orchestrion/Orchestrion.qrc)
 
 target_sources(OrchestrionApp PRIVATE
     ${RESOURCES}
@@ -136,8 +141,13 @@ install(TARGETS OrchestrionApp
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .)
 
-if (OS_IS_WIN AND SNDFILE_DLL)
+if (OS_IS_WIN)
+    if (SNDFILE_DLL)
     install(FILES ${SNDFILE_DLL} DESTINATION bin)
+        # add the LIBSNDFILE_SUPPORT definition
         add_custom_command(TARGET OrchestrionApp POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>)
+    else()
+        message(FATAL_ERROR "libsndfile is needed by fluidsynth to load soundfonts")
+    endif()
 endif()

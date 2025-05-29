@@ -19,9 +19,7 @@
 #pragma once
 
 #include "IComputerKeyboard.h"
-#include "IComputerKeyboardMidiController.h"
 #include <QObject>
-#include <modularity/ioc.h>
 
 namespace dgk
 {
@@ -40,10 +38,8 @@ private:
   ComputerKeyboard &m_owner;
 };
 
-class ComputerKeyboard : public IComputerKeyboard, public muse::Injectable
+class ComputerKeyboard : public IComputerKeyboard
 {
-  muse::Inject<IComputerKeyboardMidiController> keyboardController;
-
 public:
   ComputerKeyboard();
   void preInit();

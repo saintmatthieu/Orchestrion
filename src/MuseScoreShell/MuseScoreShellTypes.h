@@ -18,9 +18,15 @@
  */
 #pragma once
 
+#include <array>
+
 enum class DeviceType
 {
   MidiController,
   MidiSynthesizer,
   PlaybackDevice,
 };
+
+constexpr std::array<DeviceType, 3> kDeviceTypes{DeviceType::MidiController,
+                                                 DeviceType::MidiSynthesizer,
+                                                 DeviceType::PlaybackDevice};

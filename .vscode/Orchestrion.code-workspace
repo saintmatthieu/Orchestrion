@@ -6,7 +6,10 @@
 	],
 	"settings": {
 		"cmake.generator": "Ninja",
+		"cmake.buildDirectory": "${workspaceFolder}/build/${buildType}",
+		"cmake.installPrefix": "${workspaceFolder}/build/${buildType}/install",
 		"cmake.configureArgs": [
+			// "-DDONOT_FETCH_MUSESCORE_DEPS=ON", // In case you are building without an internet connection...
 			// "-DAU_MODULE_EFFECTS_VST=ON"
 			"-DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF",
 			"-DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF",
@@ -16,7 +19,7 @@
 		"editor.detectIndentation": true,
 		"editor.guides.highlightActiveIndentation": true,
 		"editor.autoIndent": "full",
-		"editor.tabSize": 4,
+		"editor.tabSize": 2,
 		"explorer.excludeGitIgnore": false,
 		"search.useIgnoreFiles": false,
 		"files.exclude": {

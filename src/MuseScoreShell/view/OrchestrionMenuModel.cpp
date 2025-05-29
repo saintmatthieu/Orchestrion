@@ -23,6 +23,12 @@
 
 namespace dgk
 {
+namespace
+{
+constexpr auto audioMidiMenuId = "menu-audio-midi";
+constexpr auto keyboardMenuId = "menu-keyboard";
+} // namespace
+
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
     : AbstractMenuModel(parent)
 {
@@ -54,26 +60,43 @@ void OrchestrionMenuModel::load()
       this, [this] { updateSelectedKeyboardMenuItem(); });
   updateSelectedKeyboardMenuItem();
 
-  midiControllerManager()->trySelectDefaultDevice();
-  midiSynthesizerManager()->trySelectDefaultDevice();
-  playbackDeviceManager()->trySelectDefaultDevice();
-
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
         ->settableDevicesChanged(deviceType)
-        .onNotify(this,
-                  [this, deviceType, menuId]
-                  {
-                    updateMenuItems(
-                        orchestrionUiActions()->settableDevices(deviceType),
-                        menuId);
-                  });
+        .onNotify(
+            this,
+            [this, deviceType, menuId]
+            {
+              updateMenuItems(
+                  orchestrionUiActions()->settableDevices(deviceType), menuId);
+              selectMenuItem(
+                  menuId, orchestrionUiActions()->selectedDevice(deviceType));
+            });
 
     orchestrionUiActions()
         ->selectedDeviceChanged(deviceType)
         .onReceive(this, [this, deviceType, menuId](const std::string &deviceId)
                    { selectMenuItem(menuId, deviceId); });
+
+    switch (deviceType)
+    {
+    case DeviceType::MidiController:
+      midiDeviceService()->selectedDeviceChanged().onNotify(
+          this,
+          [this, deviceType, menuId]
+          {
+            const auto selectedDevice = midiDeviceService()->selectedDevice();
+            if (selectedDevice)
+              selectMenuItem(menuId, selectedDevice->value);
+            else
+              selectMenuItem(menuId, {});
+          });
+      break;
+    case DeviceType::MidiSynthesizer:
+    case DeviceType::PlaybackDevice:
+      break;
+    }
 
     if (const auto deviceId =
             orchestrionUiActions()->selectedDevice(deviceType);
@@ -91,7 +114,7 @@ void OrchestrionMenuModel::updateSelectedKeyboardMenuItem()
   IF_ASSERT_FAILED(ids.find(layout) != ids.end()) return;
   const std::string id = ids.at(layout);
   const QList<MenuItem *> subitems =
-      findItem(QString{"menu-keyboard"}).subitems();
+      findItem(QString{keyboardMenuId}).subitems();
   std::for_each(subitems.begin(), subitems.end(), [&](MenuItem *item)
                 { item->setSelected(item->id().toStdString() == id); });
 }
@@ -125,6 +148,15 @@ QString OrchestrionMenuModel::openedMenuId() const { return m_openedMenuId; }
 
 void OrchestrionMenuModel::openMenu(const QString &menuId, bool byHover)
 {
+  if (menuId == audioMidiMenuId)
+    for (auto deviceType : kDeviceTypes)
+    {
+      const auto menuId = actionIds::chooseDevicesSubmenu.at(deviceType);
+      updateMenuItems(orchestrionUiActions()->settableDevices(deviceType),
+                      menuId);
+      selectMenuItem(menuId,
+                     orchestrionUiActions()->selectedDevice(deviceType));
+    }
   emit openMenuRequested(menuId, byHover);
 }
 
@@ -171,7 +203,7 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeKeyboardMenu()
   }
   return makeMenu(
       muse::TranslatableString("appshell/menu/keyboard", "&Keyboard"), menu,
-      "menu-keyboard");
+      keyboardMenuId);
 }
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
@@ -182,7 +214,7 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
       {makeAudioMidiSubmenu(DeviceType::MidiController),
        makeAudioMidiSubmenu(DeviceType::MidiSynthesizer),
        makeAudioMidiSubmenu(DeviceType::PlaybackDevice)},
-      "menu-audio-midi");
+      audioMidiMenuId);
 }
 
 QList<muse::uicomponents::MenuItem *>

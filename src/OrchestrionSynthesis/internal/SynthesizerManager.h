@@ -30,11 +30,13 @@ private:
   std::vector<DeviceDesc> availableSynths() const override;
   muse::async::Notification availableSynthsChanged() const override;
   bool selectSynth(const std::string &synthId) override;
+  muse::async::Notification selectedSynthChanged() const override;
   std::string selectedSynth() const override;
 
   std::vector<muse::audioplugins::AudioPluginInfo> availableInstruments() const;
 
   muse::async::Notification m_availableSynthsChanged;
+  muse::async::Notification m_selectedSynthChanged;
   std::vector<muse::audioplugins::AudioPluginInfo> m_availableSynths;
   std::optional<std::string> m_selectedSynth;
 };

@@ -18,12 +18,13 @@
  */
 #pragma once
 
+#include <async/asyncable.h>
 #include <global/iglobalconfiguration.h>
 #include <notation/inotationconfiguration.h>
 
 namespace dgk
 {
-class OrchestrionConfiguration
+class OrchestrionConfiguration : public muse::async::Asyncable
 {
   muse::Inject<mu::notation::INotationConfiguration> notationConfiguration;
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;

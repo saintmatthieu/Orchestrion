@@ -29,42 +29,44 @@ muse::audio::synth::ISynthesizerPtr OrchestrionSynthResolver::resolveSynth(
     const muse::audio::TrackId trackId,
     const muse::audio::AudioInputParams &) const
 {
-  return std::make_shared<OrchestrionSynthesizerWrapper>(
+  OrchestrionSynthesizerWrapper::SynthFactory factory =
       [this, trackId, vstId = m_vstId](
           int sampleRate) -> std::unique_ptr<IOrchestrionSynthesizer>
-      {
-        if (vstId.has_value())
-        {
-          muse::async::Channel<std::shared_ptr<IOrchestrionSynthesizer>>
-              synthLoaded;
-          const auto pluginPtr = std::make_shared<muse::vst::VstPlugin>(*vstId);
-          pluginPtr->loadingCompleted().onNotify(
-              this,
-              [sampleRate, trackId, synthLoaded, pluginPtr]() mutable
-              {
-                synthLoaded.send(std::make_shared<AntiMetronomeSynthesizer>(
-                    sampleRate, trackId,
-                    [pluginPtr](int sampleRate)
-                    {
-                      return std::make_unique<OrchestrionVstSynthesizer>(
-                          pluginPtr, sampleRate);
-                    }));
-              });
-          pluginPtr->load();
-          return std::make_unique<PromisedSynthesizer>(synthLoaded);
-        }
-        else if (m_synthType == SynthType::Fluid)
-          return std::make_unique<AntiMetronomeSynthesizer>(
-              sampleRate, trackId,
-              [](int sampleRate)
-              {
-                return std::make_unique<LowpassFilterBank>(
-                    [sampleRate]
-                    { return std::make_unique<FluidSynthesizer>(sampleRate); });
-              });
-        else
-          return nullptr;
-      });
+  {
+    if (vstId.has_value())
+    {
+      muse::async::Channel<std::shared_ptr<IOrchestrionSynthesizer>>
+          synthLoaded;
+      const auto pluginPtr = std::make_shared<muse::vst::VstPlugin>(*vstId);
+      pluginPtr->loadingCompleted().onNotify(
+          this,
+          [sampleRate, trackId, synthLoaded, pluginPtr]() mutable
+          {
+            synthLoaded.send(std::make_shared<AntiMetronomeSynthesizer>(
+                sampleRate, trackId,
+                [pluginPtr](int sampleRate)
+                {
+                  return std::make_unique<OrchestrionVstSynthesizer>(
+                      pluginPtr, sampleRate);
+                }));
+          });
+      pluginPtr->load();
+      return std::make_unique<PromisedSynthesizer>(synthLoaded);
+    }
+    else if (m_synthType == SynthType::Fluid)
+      return std::make_unique<AntiMetronomeSynthesizer>(
+          sampleRate, trackId,
+          [](int sampleRate)
+          {
+            return std::make_unique<LowpassFilterBank>(
+                [sampleRate]
+                { return std::make_unique<FluidSynthesizer>(sampleRate); });
+          });
+    else
+      return nullptr;
+  };
+
+  return std::make_shared<OrchestrionSynthesizerWrapper>(std::move(factory));
 }
 
 bool OrchestrionSynthResolver::hasCompatibleResources(

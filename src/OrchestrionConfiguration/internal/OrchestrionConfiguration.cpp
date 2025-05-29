@@ -19,8 +19,15 @@
 #include "OrchestrionConfiguration.h"
 #include "ConfigurationUtils.h"
 
+#include "global/settings.h"
+
 namespace dgk
 {
+namespace
+{
+const std::string module_name("Orchestrion");
+} // namespace
+
 void OrchestrionConfiguration::init()
 {
   const auto config = globalConfiguration();

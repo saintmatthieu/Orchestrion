@@ -5,6 +5,11 @@
 #include <iterator>
 #include <notation/inotationmidiinput.h>
 #include <numeric>
+#include <optional>
+
+#ifdef OS_IS_WIN
+#include <windows.h>
+#endif
 
 namespace dgk
 {
@@ -22,29 +27,6 @@ auto MakeAllVoices(const OrchestrionSequencer::HandVoices &rightHand,
                  std::back_inserter(allVoices),
                  [](const auto &voice) { return voice.get(); });
   return allVoices;
-}
-
-NoteEventType GetNoteEventType(const muse::midi::Event &event)
-{
-  return event.opcode() == muse::midi::Event::Opcode::NoteOn
-             ? dgk::NoteEventType::noteOn
-             : dgk::NoteEventType::noteOff;
-}
-
-int GetPitch(const muse::midi::Event &event) { return event.note(); }
-
-float CompressVelocity(float velocity)
-{
-  // It's a little hard to play piano at a constant level. For now we hard-code
-  // a compression. Making it parametric would be helpful, especially to use
-  // harder compression for kids.
-  constexpr auto minVelocity = 0.2f;
-  return minVelocity + (1 - minVelocity) * velocity;
-}
-
-float GetVelocity(const muse::midi::Event &event)
-{
-  return event.velocity() / 128.0f;
 }
 
 auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
@@ -96,8 +78,9 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
                                            HandVoices rightHand,
                                            HandVoices leftHand,
                                            PedalSequence pedalSequence)
-    : m_instrument{std::move(instrument)}, m_rightHand{std::move(rightHand)},
-      m_leftHand{std::move(leftHand)},
+    : m_instrument{std::move(instrument)},
+      m_rightHand{std::move(rightHand), std::nullopt},
+      m_leftHand{std::move(leftHand), std::nullopt},
       m_allVoices{MakeAllVoices(m_rightHand.voices, m_leftHand.voices)},
       m_finalTick{GetFinalTick(m_allVoices)},
       m_pedalSequence{std::move(pedalSequence)},
@@ -109,10 +92,11 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
           *this, m_noteThreadMembers,
           [this](NoteEvent event) { m_outputEvent.send(NoteEvents{event}); })}
 {
+#ifdef OS_IS_WIN
+  SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+#endif
+
   dispatcher()->reg(this, "nav-first-control", [this] { GoToTick(0); });
-  midiInPort()->eventReceived().onReceive(
-      this, [this](const muse::midi::tick_t, const muse::midi::Event &event)
-      { OnMidiEventReceived(event); });
   orchestrionNotationInteraction()->noteClicked().onReceive(
       this, [this](const mu::engraving::Note *note)
       { GoToTick(note->tick().ticks()); });
@@ -130,8 +114,9 @@ void AppendNoteoffs(dgk::NoteEvents &output, const std::vector<int> &noteoffs,
     output.reserve(output.size() + noteoffs.size());
     std::transform(
         noteoffs.begin(), noteoffs.end(), std::back_inserter(output),
-        [&](int note)
-        { return NoteEvent{NoteEventType::noteOff, track, note, velocity}; });
+        [&](int note) {
+          return NoteEvent{NoteEventType::noteOff, track, note, velocity};
+        });
   }
   else
     // Only append noteoffs that aren't in `noteons`.
@@ -146,8 +131,10 @@ void AppendNoteons(dgk::NoteEvents &output, const std::vector<int> &noteons,
 {
   output.reserve(output.size() + noteons.size());
   std::transform(
-      noteons.begin(), noteons.end(), std::back_inserter(output), [&](int note)
-      { return NoteEvent{NoteEventType::noteOn, track, note, velocity}; });
+      noteons.begin(), noteons.end(), std::back_inserter(output),
+      [&](int note) {
+        return NoteEvent{NoteEventType::noteOn, track, note, velocity};
+      });
 }
 
 void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
@@ -244,24 +231,6 @@ muse::async::Notification OrchestrionSequencer::AboutToJumpPosition() const
   return m_aboutToJumpPosition;
 }
 
-void OrchestrionSequencer::OnMidiEventReceived(const muse::midi::Event &event)
-{
-  if (event.isChannelVoice20())
-  {
-    auto events = event.toMIDI10();
-    for (auto &midi10event : events)
-      OnMidiEventReceived(midi10event);
-    return;
-  }
-
-  if (event.opcode() != muse::midi::Event::Opcode::NoteOn &&
-      event.opcode() != muse::midi::Event::Opcode::NoteOff)
-    return;
-
-  OnInputEvent(GetNoteEventType(event), GetPitch(event),
-               CompressVelocity(GetVelocity(event)));
-}
-
 OrchestrionSequencer::~OrchestrionSequencer()
 {
   if (m_pedalDown)
@@ -355,8 +324,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
   const std::map<TrackIndex, ChordTransition> transitions =
       PrepareStaffransitions(hand.voices,
-                             [&](VoiceSequencer &voice)
-                             { //
+                             [&](VoiceSequencer &voice) { //
                                return voice.OnInputEvent(type, cursorTick);
                              });
 
@@ -380,7 +348,6 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                    : acc;
       });
 
-  const auto prevPedalSequenceIt = m_pedalSequenceIt;
   const auto newPedalSequenceIt =
       leastPedalTick.has_value()
           ? std::find_if(m_pedalSequenceIt, m_pedalSequence.end(),
@@ -456,9 +423,9 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
 
   using namespace std::chrono;
 
-  const auto numNoteons =
-      std::count_if(events.begin(), events.end(), [](const auto &event)
-                    { return event.type == NoteEventType::noteOn; });
+  const auto numNoteons = std::count_if(
+      events.begin(), events.end(),
+      [](const auto &event) { return event.type == NoteEventType::noteOn; });
   if (numNoteons < 2)
   {
     m_outputEvent.send(std::move(events));

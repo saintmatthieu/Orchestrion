@@ -18,17 +18,26 @@
  */
 #pragma once
 
-#include <modularity/imoduleinterface.h>
+#include "GestureControllers/IGestureControllerSelector.h"
+#include "ExternalDevices/IMidiDeviceService.h"
+
+#include <async/asyncable.h>
 
 namespace dgk
 {
-class IPlaybackDeviceManager : MODULE_EXPORT_INTERFACE
+class GestureControllerConfiguration : public muse::async::Asyncable
 {
-  INTERFACE_ID(IPlaybackDeviceManager);
+  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
+  muse::Inject<IMidiDeviceService> midiDeviceService;
 
 public:
-  virtual ~IPlaybackDeviceManager() = default;
+  void init();
+  void postInit();
 
-  virtual void trySelectDefaultDevice() = 0;
+private:
+  GestureControllerTypeSet readSelectedControllers() const;
+  void writeSelectedControllers(const GestureControllerTypeSet &types);
+  std::optional<ExternalDeviceId> readSelectedDevice() const;
+  void writeSelectedDevice(const std::optional<ExternalDeviceId> &deviceId);
 };
 } // namespace dgk

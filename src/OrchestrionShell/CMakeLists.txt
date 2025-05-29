@@ -17,20 +17,14 @@ set(MODULE_SRC
   internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
-  internal/SynthesizerManager.cpp
-  internal/SynthesizerManager.h
   internal/SynthesizerMenuManager.cpp
   internal/SynthesizerMenuManager.h
   view/NotationPaintViewLoaderModel.cpp
   view/NotationPaintViewLoaderModel.h
   view/OrchestrionWindowTitleProvider.cpp
   view/OrchestrionWindowTitleProvider.h
-  IControllerMenuManager.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
-  IPlaybackDeviceManager.h
-  ISynthesizerManager.h
-  ISynthesizerMenuManager.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
   OrchestrionShellTypes.h

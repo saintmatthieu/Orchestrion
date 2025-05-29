@@ -69,11 +69,4 @@ void OrchestrionOnboardingModel::startOnboarding()
       args)
     dispatcher()->dispatch("file-open", *args);
 }
-
-void OrchestrionOnboardingModel::onGainedFocus()
-{
-  multiInstances()->notifyAboutGainedFocus();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  midiControllerManager()->onGainedFocus();
-}
 } // namespace dgk

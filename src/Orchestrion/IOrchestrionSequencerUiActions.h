@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IComputerKeyboard.h"
+#include "GestureControllers/IComputerKeyboard.h"
 #include <modularity/imoduleinterface.h>
 #include <unordered_map>
 

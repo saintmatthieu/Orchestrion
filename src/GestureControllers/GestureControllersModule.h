@@ -18,18 +18,31 @@
  */
 #pragma once
 
-#include <async/notification.h>
-#include <modularity/imoduleinterface.h>
+#include "modularity/imodulesetup.h"
+#include <QAbstractNativeEventFilter>
 
 namespace dgk
 {
-class ISynthesizerMenuManager : MODULE_EXPORT_INTERFACE
+class GestureControllerConfiguration;
+class GestureControllerSelector;
+class ComputerKeyboard;
+
+class GestureControllersModule : public muse::modularity::IModuleSetup
 {
-  INTERFACE_ID(ISynthesizerMenuManager);
-
 public:
-  virtual ~ISynthesizerMenuManager() = default;
+  GestureControllersModule();
 
-  virtual void trySelectDefaultDevice() = 0;
+private:
+  std::string moduleName() const override;
+  void registerExports() override;
+  void onPreInit(const muse::IApplication::RunMode &mode) override;
+  void onInit(const muse::IApplication::RunMode &mode) override;
+  void onAllInited(const muse::IApplication::RunMode &mode) override;
+
+  const std::unique_ptr<GestureControllerConfiguration>
+      m_gestureControllerConfiguration;
+  const std::shared_ptr<GestureControllerSelector> m_swipeMidiController;
+  const std::shared_ptr<ComputerKeyboard> m_keyboard;
 };
+
 } // namespace dgk

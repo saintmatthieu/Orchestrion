@@ -19,20 +19,18 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
-#include "IPlaybackDeviceManager.h"
+#include "ExternalDevices/IAudioDeviceService.h"
 #include <async/asyncable.h>
-#include <audio/iaudiodriver.h>
 
 namespace dgk
 {
-class PlaybackDeviceMenuManager : public IPlaybackDeviceManager,
-                                  public DeviceMenuManager
+class PlaybackDeviceMenuManager : public DeviceMenuManager
 {
 public:
   PlaybackDeviceMenuManager();
 
 private:
-  muse::Inject<muse::audio::IAudioDriver> audioDriver = {this};
+  muse::Inject<IAudioDeviceService> audioDeviceService;
 
   // DeviceMenuManager
 private:
@@ -41,16 +39,8 @@ private:
   std::string getMenuId(int deviceIndex) const override;
   std::string selectedDevice() const override;
   bool selectDevice(const std::string &deviceId) override;
-  void doInit() override;
-
-  // IPlaybackDeviceManager
-private:
-  void trySelectDefaultDevice() override;
 
 private:
-  void updateAudioDevices();
-
   muse::async::Notification m_availableDevicesChanged;
-  muse::audio::AudioDeviceList m_audioDevices;
 };
 } // namespace dgk

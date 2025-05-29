@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "IComputerKeyboard.h"
+#include "GestureControllers/IComputerKeyboard.h"
 #include "IOrchestrionSequencerUiActions.h"
 #include <ui/iuiactionsmodule.h>
 #include <ui/uiaction.h>

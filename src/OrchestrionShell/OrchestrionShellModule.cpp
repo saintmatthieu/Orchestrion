@@ -23,7 +23,6 @@
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
-#include "internal/SynthesizerManager.h"
 #include "internal/SynthesizerMenuManager.h"
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
@@ -43,7 +42,6 @@ OrchestrionShellModule::OrchestrionShellModule()
       m_orchestrionUiActions{std::make_shared<OrchestrionUiActions>(
           m_midiControllerMenuManager, m_midiSynthesizerMenuManager,
           m_playbackDeviceMenuManager)},
-      m_synthesizerManager{std::make_shared<SynthesizerManager>()},
       m_orchestrionActionController{
           std::make_shared<OrchestrionActionController>()}
 {
@@ -60,14 +58,6 @@ void OrchestrionShellModule::registerExports()
                                                m_orchestrionUiActions);
   ioc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), std::make_shared<OrchestrionStartupScenario>());
-  ioc()->registerExport<IControllerMenuManager>(moduleName(),
-                                                m_midiControllerMenuManager);
-  ioc()->registerExport<ISynthesizerMenuManager>(moduleName(),
-                                                 m_midiSynthesizerMenuManager);
-  ioc()->registerExport<IPlaybackDeviceManager>(moduleName(),
-                                                m_playbackDeviceMenuManager);
-  ioc()->registerExport<ISynthesizerManager>(moduleName(),
-                                             m_synthesizerManager);
 }
 
 void OrchestrionShellModule::resolveImports()
@@ -85,24 +75,19 @@ void OrchestrionShellModule::registerUiTypes()
       "Orchestrion.OrchestrionShell", 1, 0, "OrchestrionWindowTitleProvider");
 }
 
-void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &)
-{
-  m_playbackDeviceMenuManager->init();
-}
+void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &) {}
 
 void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
 {
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
 
+  m_playbackDeviceMenuManager->init();
   m_orchestrionEventProcessor->init();
   m_orchestrionUiActions->init();
-  m_synthesizerManager->init();
   m_orchestrionActionController->init();
+  m_midiControllerMenuManager->init();
 }
 
-void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &)
-{
-  m_synthesizerManager->onAllInited();
-}
+void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &) {}
 } // namespace dgk

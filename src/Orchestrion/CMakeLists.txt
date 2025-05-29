@@ -1,10 +1,9 @@
 declare_module(Orchestrion)
 
 set(MODULE_SRC
-    internal/ComputerKeyboard.cpp
-    internal/ComputerKeyboard.h
-    internal/ComputerKeyboardMidiController.cpp
-    internal/ComputerKeyboardMidiController.h
+    internal/GestureControllerConfigurator.cpp
+    internal/GestureControllerConfigurator.h
+    internal/IGestureControllerConfigurator.h
     internal/MuseChord.cpp
     internal/MuseChord.h
     internal/ChordTransitionUtil.cpp
@@ -30,10 +29,12 @@ set(MODULE_SRC
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp
     internal/VoiceSequencer.h
+
+    view/GestureControllerSelectionModel.cpp
+    view/GestureControllerSelectionModel.h
+
     IChord.h
     OrchestrionTypes.h
-    IComputerKeyboard.h
-    IComputerKeyboardMidiController.h
     IMelodySegment.h
     IOrchestrion.h
     IOrchestrionSequencer.h
@@ -47,5 +48,7 @@ set(MODULE_NOT_LINK_GLOBAL ON)
 set(MODULE_USE_PCH_NONE ON)
 set(MODULE_USE_UNITY_NONE ON)
 set(MODULE_LINK muse_audio)
+set(MODULE_QRC Orchestrion.qrc)
+set(MODULE_QML_IMPORT ${CMAKE_CURRENT_LIST_DIR}/qml)
 
 setup_module()

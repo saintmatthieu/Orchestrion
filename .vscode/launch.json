@@ -1,10 +1,35 @@
 {
   "configurations": [
     {
+      "name": "Touchpad test app",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Debug/src/MidiController/testapp/touchpad_testapp.exe",
+      "preLaunchTask": "CMake: build",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "externalConsole": false,
+      "visualizerFile": "${workspaceFolder}/qt6.natvis",
+      "environment": [
+        {
+          "name": "QTDIR",
+          "value": "C:/Qt/6.2.4/msvc2019_64"
+        }
+      ],
+      "sourceFileMap": {
+        "C;/work/build/qt5_workdir/w/s": "${QTDIR}/../Src",
+        "Q:/qt_workdir/w/s": "${QTDIR}/../Src",
+        "C:/Users/qt/worwk/install": "${QTDIR}/../Src",
+        "C:/Users/qt/work/qt": "${QTDIR}/../Src",
+        "D:/a/Orchestrion/Orchestrion": "${workspaceFolder}"
+      },
+    },
+    {
       "name": "Launch (MacOS)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/OrchestrionApp.app/Contents/MacOS/OrchestrionApp",
+      "program": "${workspaceFolder}/build/Debug/OrchestrionApp.app/Contents/MacOS/OrchestrionApp",
       "preLaunchTask": "CMake: install",
       "args": [],
       "stopAtEntry": false,
@@ -17,7 +42,7 @@
       "name": "Launch (Windows)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/install/bin/OrchestrionApp.exe",
+      "program": "${workspaceFolder}/build/Debug/install/bin/OrchestrionApp.exe",
       // path to executable PDB file, in case a Github build must be debugged locally.
       // "symbolSearchPath": "...",
       "preLaunchTask": "CMake: install",

@@ -19,6 +19,7 @@
 #pragma once
 
 #include "IOrchestrionNotationInteraction.h"
+#include "GestureControllers/IGestureControllerSelector.h"
 #include "Orchestrion/IOrchestrion.h"
 #include "Orchestrion/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
@@ -37,6 +38,7 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
   muse::Inject<mu::notation::INotationConfiguration> configuration;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<IOrchestrion> orchestrion;
+  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<ISegmentRegistry> chordRegistry;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
 
@@ -57,6 +59,8 @@ private:
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   void updateNotation();
+  void wheelEvent(QWheelEvent *) override {}
+  void initTouchpadMidiController();
 
   struct Box
   {
@@ -66,5 +70,14 @@ private:
     bool active = false;
   };
   std::unordered_map<int, Box> m_boxes;
+
+  struct Contact
+  {
+    const bool isLeft;
+    double x = 0.;
+    double y = 0.;
+  };
+
+  std::unordered_map<int, Contact> m_contacts;
 };
 } // namespace dgk

@@ -25,6 +25,7 @@ import MuseScore.Playback 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
 import Muse.Shortcuts 1.0
+import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 import Orchestrion.OrchestrionNotation 1.0
 import Orchestrion.OrchestrionOnboarding 1.0
@@ -37,12 +38,6 @@ ApplicationWindow {
     height: 350
     title: titleProvider.title
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
-
-    onActiveChanged: {
-        console.log("Active changed: " + active)
-        if (active)
-            onboardingModel.onGainedFocus()
-    }
 
     Component.onCompleted: {
         onboardingModel.startOnboarding()
@@ -128,9 +123,9 @@ ApplicationWindow {
             }
         }
 
-        PlaybackToolBar {
-            floating: false
-        }
+        // PlaybackToolBar {
+        //     floating: false
+        // }
 
         NotationScrollAndZoomArea {
             Layout.fillWidth: true
@@ -139,6 +134,8 @@ ApplicationWindow {
             OrchestrionNotationPaintView {
                 id: notationPaintView
                 anchors.fill: parent
+
+                MidiControllerSelectionPopup {}
             }
         }
     }

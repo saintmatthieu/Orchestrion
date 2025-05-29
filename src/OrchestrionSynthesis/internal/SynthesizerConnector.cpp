@@ -57,7 +57,10 @@ void SynthesizerConnector::onAllInited()
       [this]
       {
         if (playbackController()->isPlayAllowed())
+        {
+          setInputParams();
           setOutputParams();
+        }
       });
 }
 

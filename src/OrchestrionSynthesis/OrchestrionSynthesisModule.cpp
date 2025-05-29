@@ -17,13 +17,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSynthesisModule.h"
+#include "internal/OrchestrionSynthesisConfiguration.h"
 #include "internal/SynthesizerConnector.h"
+#include "internal/SynthesizerManager.h"
 #include "internal/TrackChannelMapper.h"
 
 namespace dgk
 {
 OrchestrionSynthesisModule::OrchestrionSynthesisModule()
-    : m_synthesizerConnector{std::make_shared<SynthesizerConnector>()}
+    : m_synthesizerConnector{std::make_shared<SynthesizerConnector>()},
+      m_synthesizerManager{std::make_shared<SynthesizerManager>()},
+      m_configuration{std::make_unique<OrchestrionSynthesisConfiguration>()}
 {
 }
 
@@ -38,11 +42,25 @@ void OrchestrionSynthesisModule::registerExports()
                                                m_synthesizerConnector);
   ioc()->registerExport<ITrackChannelMapper>(moduleName(),
                                              new TrackChannelMapper);
+  ioc()->registerExport<ISynthesizerManager>(moduleName(),
+                                             m_synthesizerManager);
+}
+
+void OrchestrionSynthesisModule::onInit(const muse::IApplication::RunMode &)
+{
+  m_configuration->init();
+  m_synthesizerManager->init();
 }
 
 void OrchestrionSynthesisModule::onAllInited(
-    const muse::IApplication::RunMode &mode)
+    const muse::IApplication::RunMode &)
 {
+  m_synthesizerManager->onAllInited();
   m_synthesizerConnector->onAllInited();
+}
+
+void OrchestrionSynthesisModule::onDelayedInit()
+{
+  m_configuration->postInit();
 }
 } // namespace dgk

@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "ComputerKeyboardMidiController.h"
-#include "IOrchestrionSequencer.h"
+#include "ComputerKeyboardGestureController.h"
 
 namespace dgk
 {
-void ComputerKeyboardMidiController::init()
+ComputerKeyboardGestureController::ComputerKeyboardGestureController()
 {
   keyboard()->keyPressed().onReceive(this, [this](char letter)
                                      { keyPressed(letter); });
@@ -31,7 +30,7 @@ void ComputerKeyboardMidiController::init()
   keyboard()->layoutChanged().onNotify(this, [this] { updateNoteMap(); });
 }
 
-void ComputerKeyboardMidiController::updateNoteMap()
+void ComputerKeyboardGestureController::updateNoteMap()
 {
   std::unordered_map<char, Note> usLayout{
       // row 1
@@ -90,7 +89,7 @@ void ComputerKeyboardMidiController::updateNoteMap()
   }
 }
 
-void ComputerKeyboardMidiController::keyPressed(char letter)
+void ComputerKeyboardGestureController::keyPressed(char letter)
 {
   letter = std::tolower(letter);
 
@@ -104,16 +103,11 @@ void ComputerKeyboardMidiController::keyPressed(char letter)
     // a key.
     return;
 
-  const auto sequencer = orchestrion()->sequencer();
-  if (!sequencer)
-    return;
-
   m_pressedLetters.insert(letter);
-  sequencer->OnInputEvent(NoteEventType::noteOn, m_noteMap.at(letter).pitch,
-                          m_noteMap.at(letter).velocity);
+  m_noteOn.send(m_noteMap.at(letter).pitch, m_noteMap.at(letter).velocity);
 }
 
-void ComputerKeyboardMidiController::keyReleased(char letter)
+void ComputerKeyboardGestureController::keyReleased(char letter)
 {
   letter = std::tolower(letter);
 
@@ -122,12 +116,17 @@ void ComputerKeyboardMidiController::keyReleased(char letter)
                    { return note.first == letter; }) == m_noteMap.end())
     return;
 
-  const auto sequencer = orchestrion()->sequencer();
-  if (!sequencer)
-    return;
-
   m_pressedLetters.erase(letter);
-  sequencer->OnInputEvent(NoteEventType::noteOff, m_noteMap.at(letter).pitch,
-                          0.f);
+  m_noteOff.send(m_noteMap.at(letter).pitch);
+}
+
+muse::async::Channel<int, float> ComputerKeyboardGestureController::noteOn() const
+{
+  return m_noteOn;
+}
+
+muse::async::Channel<int> ComputerKeyboardGestureController::noteOff() const
+{
+  return m_noteOff;
 }
 } // namespace dgk

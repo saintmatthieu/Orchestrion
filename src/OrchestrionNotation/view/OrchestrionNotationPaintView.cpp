@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationPaintView.h"
+#include "GestureControllers/ITouchpadGestureController.h"
 #include "Orchestrion/IChord.h"
 #include "Orchestrion/IOrchestrionSequencer.h"
 #include "Orchestrion/IRest.h"
@@ -183,8 +184,55 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         updateNotation();
       });
 
+  gestureControllerSelector()->touchpadControllerChanged().onNotify(
+      this, [this] { initTouchpadMidiController(); });
+  initTouchpadMidiController();
+
   load();
   updateNotation();
+}
+
+void OrchestrionNotationPaintView::initTouchpadMidiController()
+{
+  const auto touchpad = gestureControllerSelector()->getTouchpadController();
+
+  // set cursor to invisible if touchpad is not null:
+  if (touchpad)
+    setCursor(Qt::BlankCursor);
+  else
+    setCursor(Qt::ArrowCursor);
+
+  if (!touchpad)
+    return;
+  touchpad->contactChanged().onReceive(
+      this,
+      [this](const Contacts &contacts)
+      {
+        // Delete contacts that are no longer active:
+        for (auto it = m_contacts.begin(); it != m_contacts.end();)
+        {
+          if (std::find_if(
+                  contacts.begin(), contacts.end(), [&](const auto &entry)
+                  { return entry.uid == it->first; }) == contacts.end())
+            it = m_contacts.erase(it);
+          else
+            ++it;
+        }
+
+        for (const auto &contact : contacts)
+        {
+          if (m_contacts.find(contact.uid) == m_contacts.end())
+            m_contacts.emplace(contact.uid,
+                               Contact{contact.x < 0.5, contact.x, contact.y});
+          else
+          {
+            m_contacts.at(contact.uid).x = contact.x;
+            m_contacts.at(contact.uid).y = contact.y;
+          }
+        }
+
+        update();
+      });
 }
 
 void OrchestrionNotationPaintView::updateNotation()
@@ -232,6 +280,32 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
                   painter->setOpacity(box.opacity);
                   painter->drawRoundedRect(rect, rect.width() * .45,
                                            rect.height() * .45);
+                });
+
+  const auto view = viewport();
+
+  const auto radius = 30. / currentScaling();
+
+  // Draw a rectangle of the viewport with a vertical line in its middle:
+  painter->setPen(Qt::black);
+  painter->drawRect(view.toQRectF());
+  painter->drawLine(view.left() + view.width() / 2, view.top(),
+                    view.left() + view.width() / 2, view.bottom());
+
+  painter->setPen(Qt::NoPen);
+  painter->setOpacity(0.1);
+
+  std::for_each(m_contacts.begin(), m_contacts.end(),
+                [&](const std::pair<int, Contact> &entry)
+                {
+                  const Contact &contact = entry.second;
+                  painter->setBrush(contact.isLeft ? Qt::red : Qt::blue);
+                  // Opacity 0.5
+                  // Draw a circle, mapping normalized x and y to the viewport
+                  // (physical coordinates)
+                  const auto x = view.left() + contact.x * view.width();
+                  const auto y = view.top() + contact.y * view.height();
+                  painter->drawEllipse(QPointF{x, y}, radius, radius);
                 });
 }
 } // namespace dgk

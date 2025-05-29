@@ -31,13 +31,3 @@ struct DeviceAction
   const std::string deviceName;
   const std::string deviceId;
 };
-
-struct DeviceDesc
-{
-  DeviceDesc(std::string id, std::string name)
-      : id{std::move(id)}, name{std::move(name)}
-  {
-  }
-  const std::string id;
-  const std::string name;
-};

@@ -18,12 +18,10 @@
  */
 #pragma once
 
+#include "GestureControllers/IComputerKeyboard.h"
+#include "ExternalDevices/IMidiDeviceService.h"
 #include "Orchestrion/IOrchestrionSequencerUiActions.h"
-#include "OrchestrionShell/IControllerMenuManager.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
-#include "OrchestrionShell/IPlaybackDeviceManager.h"
-#include "OrchestrionShell/ISynthesizerMenuManager.h"
-#include "Orchestrion/IComputerKeyboard.h"
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
@@ -46,10 +44,8 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
 
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions = {this};
-  muse::Inject<IControllerMenuManager> midiControllerManager = {this};
-  muse::Inject<ISynthesizerMenuManager> midiSynthesizerManager = {this};
-  muse::Inject<IPlaybackDeviceManager> playbackDeviceManager = {this};
   muse::Inject<dgk::IComputerKeyboard> computerKeyboard = {this};
+  muse::Inject<IMidiDeviceService> midiDeviceService = {this};
   muse::Inject<IOrchestrionSequencerUiActions> uiActions = {this};
 
 public:
