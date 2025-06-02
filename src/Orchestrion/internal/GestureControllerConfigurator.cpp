@@ -29,7 +29,9 @@ void GestureControllerConfigurator::init()
 void GestureControllerConfigurator::onNoteOn(int pitch, float velocity)
 {
   const auto sequencer = orchestrion()->sequencer();
-  IF_ASSERT_FAILED(sequencer) return;
+  if (!sequencer)
+    // Things don't look ready yet
+    return;
   sequencer->OnInputEvent(NoteEventType::noteOn, pitch, velocity);
 }
 
