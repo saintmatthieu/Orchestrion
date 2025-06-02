@@ -43,7 +43,6 @@ void GestureControllerConfiguration::postInit()
 {
   gestureControllerSelector()->setSelectedControllers(
       readSelectedControllers());
-  midiDeviceService()->selectDevice(readSelectedDevice());
   gestureControllerSelector()->selectedControllersChanged().onNotify(
       this,
       [this]

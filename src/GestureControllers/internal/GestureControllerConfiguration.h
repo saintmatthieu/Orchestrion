@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "GestureControllers/IGestureControllerSelector.h"
-#include "ExternalDevices/IMidiDeviceService.h"
+#include "ExternalDevices/ExternalDevicesTypes.h"
+#include "IGestureControllerSelector.h"
 
 #include <async/asyncable.h>
 
@@ -28,7 +28,6 @@ namespace dgk
 class GestureControllerConfiguration : public muse::async::Asyncable
 {
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
-  muse::Inject<IMidiDeviceService> midiDeviceService;
 
 public:
   void init();
