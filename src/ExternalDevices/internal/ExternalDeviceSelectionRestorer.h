@@ -21,5 +21,6 @@ public:
 
 private:
   std::optional<ExternalDeviceId> m_lastSelectedDevice;
+  bool m_allowLastSelectedDeviceUpdate = true;
 };
 } // namespace dgk

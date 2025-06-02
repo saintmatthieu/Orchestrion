@@ -27,6 +27,8 @@ public:
   muse::async::Notification selectedDeviceChanged() const override;
   std::optional<ExternalDeviceId> selectedDevice() const override;
 
+  void selectDefaultDevice() override;
+
   std::string deviceName(const ExternalDeviceId &) const override;
 
 private:
@@ -35,5 +37,6 @@ private:
   muse::Inject<muse::audio::IAudioDriver> audioDriver;
   muse::async::Notification m_selectedDeviceChanged;
   bool m_deviceChangeExpected = false;
+  bool m_postInitCalled = false;
 };
 } // namespace dgk

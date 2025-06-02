@@ -11,6 +11,9 @@ void AudioDeviceService::init()
       this,
       [this]
       {
+        if (!m_postInitCalled)
+          return;
+
         if (m_deviceChangeExpected)
         {
           m_deviceChangeExpected = false;
@@ -20,11 +23,22 @@ void AudioDeviceService::init()
         else
           selectDevice(configuration()->readSelectedAudioDevice());
       });
+  audioDriver()->availableOutputDevicesChanged().onNotify(this, [this] {
+
+  });
 }
 
 void AudioDeviceService::postInit()
 {
-  selectDevice(configuration()->readSelectedAudioDevice());
+  m_postInitCalled = true;
+  const std::optional<ExternalDeviceId> configDevice =
+      configuration()->readSelectedAudioDevice();
+  selectDevice(configDevice.value_or(ExternalDeviceId{"default"}));
+}
+
+void AudioDeviceService::selectDefaultDevice()
+{
+  selectDevice(ExternalDeviceId{"default"});
 }
 
 void AudioDeviceService::selectDevice(const std::optional<ExternalDeviceId> &id)

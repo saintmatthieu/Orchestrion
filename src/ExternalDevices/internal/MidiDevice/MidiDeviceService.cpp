@@ -10,6 +10,9 @@ void MidiDeviceService::init()
       this,
       [this]
       {
+        if (!m_postInitCalled)
+          return;
+
         const auto configDevice = configuration()->readSelectedMidiDevice();
         const auto selectedDevice = this->selectedDevice();
         if (configDevice == selectedDevice)
@@ -32,7 +35,24 @@ void MidiDeviceService::init()
 
 void MidiDeviceService::postInit()
 {
-  selectDevice(configuration()->readSelectedMidiDevice());
+  if (const auto configDevice = configuration()->readSelectedMidiDevice())
+    selectDevice(configDevice);
+  else
+  {
+    const auto available = availableDevices();
+    const auto it = std::find_if(
+        available.begin(), available.end(), [](const ExternalDeviceId &id)
+        { return id.value != muse::midi::NONE_DEVICE_ID; });
+    if (it != available.end())
+      selectDeviceWhileExpecting(*it);
+    else
+      selectDefaultDevice();
+  }
+
+  // We don't want this post-init, start-up selection to trigger configuration
+  // writing. Since device selection implementation for MIDI is synchronous, we
+  // can do this.
+  m_postInitCalled = true;
 }
 
 std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const
@@ -48,8 +68,6 @@ std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const
 
 bool MidiDeviceService::isAvailable(const ExternalDeviceId &id) const
 {
-  if (id == "-1")
-    return false;
   const muse::midi::MidiDeviceList midiDevices =
       midiInPort()->availableDevices();
   return std::any_of(midiDevices.begin(), midiDevices.end(),
@@ -72,6 +90,13 @@ std::optional<ExternalDeviceId> MidiDeviceService::selectedDevice() const
     return {};
 
   return ExternalDeviceId{id};
+}
+
+void MidiDeviceService::selectDefaultDevice()
+{
+  ScopedTrue scope{m_deviceChangeExpected};
+  // Doesn't have a default device as such.
+  selectDeviceWhileExpecting(ExternalDeviceId{muse::midi::NONE_DEVICE_ID});
 }
 
 void MidiDeviceService::selectDevice(const std::optional<ExternalDeviceId> &id)

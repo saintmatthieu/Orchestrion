@@ -23,6 +23,8 @@ public:
   virtual muse::async::Notification selectedDeviceChanged() const = 0;
   virtual std::optional<ExternalDeviceId> selectedDevice() const = 0;
 
+  virtual void selectDefaultDevice() = 0;
+
   bool selectedDeviceIsAvailable() const
   {
     return selectedDevice() && isAvailable(*selectedDevice());
