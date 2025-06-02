@@ -39,10 +39,9 @@ void ScoreAnimator::OnChordTransitions(
   IF_ASSERT_FAILED(interaction) { return; }
   for (const auto &[track, transition] : transitions)
   {
-    const auto chord =
-        Get<PresentChord>(transition)  ? Get<PresentChord>(transition)->present
-        : Get<FutureChord>(transition) ? Get<FutureChord>(transition)->future
-                                       : nullptr;
+    const auto chord = GetPresentChord(transition) ? GetPresentChord(transition)
+                       : GetFutureChord(transition) ? GetFutureChord(transition)
+                                                    : nullptr;
     if (chord)
     {
       const auto segment = melodySegRegistry()->GetSegment(chord);

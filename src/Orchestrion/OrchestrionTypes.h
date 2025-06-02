@@ -30,65 +30,59 @@ using Staff = std::map<int /*voice*/, std::vector<ChordRestPtr>>;
 
 struct PastChord
 {
-  explicit PastChord(const IChord *past) : past{past} { assert(past); }
-  const IChord *const past;
-  const IChord *operator->() const { return past; }
+  explicit PastChord(const IChord *chord) : chord{chord} { assert(chord); }
+  const IChord *const chord;
+  const IChord *operator->() const { return chord; }
 };
 
 struct PresentChord
 {
-  explicit PresentChord(const IChord *present) : present{present}
-  {
-    assert(present);
-  }
-  const IChord *const present;
-  const IChord *operator->() const { return present; }
+  explicit PresentChord(const IChord *chord) : chord{chord} { assert(chord); }
+  const IChord *const chord;
+  const IChord *operator->() const { return chord; }
 };
 
 struct FutureChord
 {
-  explicit FutureChord(const IChord *future) : future{future}
-  {
-    assert(future);
-  }
-  const IChord *const future;
-  const IChord *operator->() const { return future; }
+  explicit FutureChord(const IChord *chord) : chord{chord} { assert(chord); }
+  const IChord *const chord;
+  const IChord *operator->() const { return chord; }
 };
 
 struct PastChordAndPresentChord
 {
-  PastChordAndPresentChord(const IChord *past, const IChord *present)
-      : past{past}, present{present}
+  PastChordAndPresentChord(const IChord *pastChord, const IChord *presentChord)
+      : pastChord{pastChord}, presentChord{presentChord}
   {
-    assert(past);
-    assert(present);
+    assert(pastChord);
+    assert(presentChord);
   }
-  const IChord *const past;
-  const IChord *const present;
+  const IChord *const pastChord;
+  const IChord *const presentChord;
 };
 
 struct PastChordAndPresentRest
 {
-  PastChordAndPresentRest(const IChord *past, const IRest *present)
-      : past{past}, present{present}
+  PastChordAndPresentRest(const IChord *pastChord, const IRest *presentRest)
+      : pastChord{pastChord}, presentRest{presentRest}
   {
-    assert(past);
-    assert(present);
+    assert(pastChord);
+    assert(presentRest);
   }
-  const IChord *const past;
-  const IRest *const present;
+  const IChord *const pastChord;
+  const IRest *const presentRest;
 };
 
 struct PastChordAndFutureChord
 {
-  PastChordAndFutureChord(const IChord *past, const IChord *future)
-      : past{past}, future{future}
+  PastChordAndFutureChord(const IChord *pastChord, const IChord *futureChord)
+      : pastChord{pastChord}, futureChord{futureChord}
   {
-    assert(past);
-    assert(future);
+    assert(pastChord);
+    assert(futureChord);
   }
-  const IChord *const past;
-  const IChord *const future;
+  const IChord *const pastChord;
+  const IChord *const futureChord;
 };
 
 using ChordTransition = std::variant<PastChord,                //

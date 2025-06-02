@@ -170,7 +170,7 @@ void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
       transitions.erase(track);
     else
       transitions.emplace(
-          track, PastChord{Get<PastChordAndFutureChord>(transition)->past});
+          track, PastChord{Get<PastChordAndFutureChord>(transition)->pastChord});
   }
 }
 } // namespace
