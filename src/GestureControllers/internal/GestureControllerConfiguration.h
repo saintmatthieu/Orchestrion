@@ -30,13 +30,10 @@ class GestureControllerConfiguration : public muse::async::Asyncable
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
 
 public:
-  void init();
   void postInit();
 
 private:
   GestureControllerTypeSet readSelectedControllers() const;
   void writeSelectedControllers(const GestureControllerTypeSet &types);
-  std::optional<ExternalDeviceId> readSelectedDevice() const;
-  void writeSelectedDevice(const std::optional<ExternalDeviceId> &deviceId);
 };
 } // namespace dgk

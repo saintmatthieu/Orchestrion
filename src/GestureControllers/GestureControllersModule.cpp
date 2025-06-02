@@ -48,11 +48,6 @@ void GestureControllersModule::onPreInit(const muse::IApplication::RunMode &)
   m_keyboard->preInit();
 }
 
-void GestureControllersModule::onInit(const muse::IApplication::RunMode &)
-{
-  m_gestureControllerConfiguration->init();
-}
-
 void GestureControllersModule::onAllInited(const muse::IApplication::RunMode &)
 {
   m_gestureControllerConfiguration->postInit();

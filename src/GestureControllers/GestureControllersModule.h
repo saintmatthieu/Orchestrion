@@ -36,7 +36,6 @@ private:
   std::string moduleName() const override;
   void registerExports() override;
   void onPreInit(const muse::IApplication::RunMode &mode) override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
   void onAllInited(const muse::IApplication::RunMode &mode) override;
 
   const std::unique_ptr<GestureControllerConfiguration>

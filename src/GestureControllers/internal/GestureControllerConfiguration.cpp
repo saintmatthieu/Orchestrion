@@ -27,17 +27,7 @@ namespace
 const std::string module_name("GestureControllers");
 const muse::Settings::Key GESTURE_CONTROLLERS(module_name,
                                               "GESTURE_CONTROLLERS");
-const muse::Settings::Key MIDI_DEVICE(module_name, "MIDI_DEVICE");
 } // namespace
-
-void GestureControllerConfiguration::init()
-{
-  muse::settings()->setDefaultValue(
-      GESTURE_CONTROLLERS, muse::Val{muse::ValList{muse::Val(
-                               GestureControllerType::ComputerKeyboard)}});
-
-  muse::settings()->setDefaultValue(MIDI_DEVICE, muse::Val{""});
-}
 
 void GestureControllerConfiguration::postInit()
 {
@@ -69,21 +59,5 @@ void GestureControllerConfiguration::writeSelectedControllers(
   for (const auto &type : types)
     list.push_back(muse::Val(static_cast<int>(type)));
   muse::settings()->setLocalValue(GESTURE_CONTROLLERS, muse::Val{list});
-}
-
-std::optional<ExternalDeviceId>
-GestureControllerConfiguration::readSelectedDevice() const
-{
-  const std::string value = muse::settings()->value(MIDI_DEVICE).toString();
-  if (value.empty())
-    return std::nullopt;
-  return ExternalDeviceId{value};
-}
-
-void GestureControllerConfiguration::writeSelectedDevice(
-    const std::optional<ExternalDeviceId> &deviceId)
-{
-  const muse::Val value{deviceId.value_or(ExternalDeviceId{""}).value};
-  muse::settings()->setLocalValue(MIDI_DEVICE, value);
 }
 } // namespace dgk
