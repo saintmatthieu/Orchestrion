@@ -148,7 +148,7 @@ jobs:
 
     - name: Codesign executable
       # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
-      if: github.ref == 'refs/heads/master'
+      # if: github.ref == 'refs/heads/master'
       env: 
         MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
         MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
