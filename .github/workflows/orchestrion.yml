@@ -13,6 +13,7 @@ env:
 
 jobs:
   build_win:
+    if: false
     runs-on: windows-2019
 
     steps:
@@ -159,7 +160,7 @@ jobs:
         security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
         security find-identity -v
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-        codesign --deep --force --verify --verbose --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
+        codesign --timestamp --deep --force --verify --verbose --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
 
     - name: Install create-dmg
       run: brew install create-dmg
