@@ -86,11 +86,7 @@ TouchpadGestureController::TouchpadGestureController(const ITouchpad &touchpad)
 
 bool TouchpadGestureController::isFunctional()
 {
-#ifdef Q_OS_WIN
   return true;
-#else
-  return false;
-#endif
 }
 
 muse::async::Channel<Contacts> TouchpadGestureController::contactChanged() const

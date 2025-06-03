@@ -4,6 +4,10 @@ set(TOUCHPAD_SRC
     internal/Touchpad/IClock.h
     internal/Touchpad/IOperatingSystemTouchpad.h
     internal/Touchpad/ITouchpad.h
+    internal/Touchpad/MacosTouchpad.h
+    internal/Touchpad/MacosTouchpad.mm
+    internal/Touchpad/MacosTouchpadNative.h
+    internal/Touchpad/MacosTouchpadNative.m
     internal/Touchpad/OperatingSystemTouchpadFactory.cpp
     internal/Touchpad/OperatingSystemTouchpadFactory.h
     internal/Touchpad/DummyOperatingSystemTouchpad.h
