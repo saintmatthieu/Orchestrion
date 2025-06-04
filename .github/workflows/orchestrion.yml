@@ -147,7 +147,6 @@ jobs:
 
     - name: Codesign executable
       # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
-      if: github.ref == 'refs/heads/master'
       env: 
         MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
         MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -159,13 +158,20 @@ jobs:
         security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
         security find-identity -v
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-        codesign --deep --force --verify --verbose --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
+        find ${{env.BUILD_DIR}}/OrchestrionApp.app -name "*.dylib" -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
+        codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
 
     - name: Install create-dmg
       run: brew install create-dmg
 
     - name: Create DMG
-      run: create-dmg ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/OrchestrionApp.app
+      run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon OrchestrionApp.app 200 190 --app-drop-link 600 185 ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/OrchestrionApp.app
+
+    - name: Notarize
+      if: github.ref == 'refs/heads/master'
+      run: |
+        xcrun notarytool submit ${{env.BUILD_DIR}}/Orchestrion.dmg --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
+        xcrun stapler staple ${{env.BUILD_DIR}}/Orchestrion.dmg
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
