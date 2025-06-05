@@ -26,10 +26,8 @@
 namespace dgk
 {
 ExternalDevicesModule::ExternalDevicesModule()
-    : m_audioDeviceSelectionRestorer{std::make_unique<
+    : m_midiDeviceSelectionRestorer{std::make_unique<
           ExternalDeviceSelectionRestorer>()},
-      m_midiDeviceSelectionRestorer{
-          std::make_unique<ExternalDeviceSelectionRestorer>()},
       m_audioDeviceService{std::make_shared<AudioDeviceService>()},
       m_midiDeviceService{std::make_shared<MidiDeviceService>()},
       m_configuration{std::make_shared<ExternalDevicesConfiguration>()}
@@ -50,7 +48,6 @@ void ExternalDevicesModule::registerExports()
 void ExternalDevicesModule::onInit(const muse::IApplication::RunMode &)
 {
   m_audioDeviceService->init();
-  m_audioDeviceSelectionRestorer->init(*m_audioDeviceService);
   m_midiDeviceService->init();
   m_midiDeviceSelectionRestorer->init(*m_midiDeviceService);
   m_configuration->init();

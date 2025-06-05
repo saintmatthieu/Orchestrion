@@ -5,27 +5,65 @@
 
 namespace dgk
 {
+namespace
+{
+const ExternalDeviceId defaultDevice{"default"};
+}
+
 void AudioDeviceService::init()
 {
+  audioDriver()->availableOutputDevicesChanged().onNotify(
+      this,
+      [this]
+      {
+        const auto configDevice = configuration()->readSelectedAudioDevice();
+        if (!configDevice)
+        {
+          if (!selectedDevice())
+          {
+            m_deviceChangeExpected = true;
+            doSelectDevice(defaultDevice);
+          }
+          return;
+        }
+
+        const auto available = isAvailable(*configDevice);
+        if (available && selectedDevice() == configDevice)
+          return;
+
+        m_deviceChangeExpected = true;
+        doSelectDevice(available ? *configDevice : defaultDevice);
+      });
+
   audioDriver()->outputDeviceChanged().onNotify(
       this,
       [this]
       {
         if (!m_postInitCalled)
+        {
+          // We haven't done the post-init automatic selection yet, still, for
+          // reliability, we should notify the change.
+          m_selectedDeviceChanged.notify();
           return;
+        }
 
         if (m_deviceChangeExpected)
         {
           m_deviceChangeExpected = false;
-          configuration()->writeSelectedAudioDevice(selectedDevice());
           m_selectedDeviceChanged.notify();
         }
         else
-          selectDevice(configuration()->readSelectedAudioDevice());
+          // Undo what something unkown did.
+          if (const auto configDevice =
+                  configuration()->readSelectedAudioDevice())
+          {
+            m_deviceChangeExpected = true;
+            doSelectDevice(*configDevice);
+          }
+          else
+            // Oh well ... we still have to notify.
+            m_selectedDeviceChanged.notify();
       });
-  audioDriver()->availableOutputDevicesChanged().onNotify(this, [this] {
-
-  });
 }
 
 void AudioDeviceService::postInit()
@@ -33,23 +71,29 @@ void AudioDeviceService::postInit()
   m_postInitCalled = true;
   const std::optional<ExternalDeviceId> configDevice =
       configuration()->readSelectedAudioDevice();
-  selectDevice(configDevice.value_or(ExternalDeviceId{"default"}));
+  m_deviceChangeExpected = true;
+  if (configDevice && isAvailable(*configDevice))
+    doSelectDevice(*configDevice);
+  else
+    doSelectDevice(defaultDevice);
 }
 
-void AudioDeviceService::selectDefaultDevice()
-{
-  selectDevice(ExternalDeviceId{"default"});
-}
+void AudioDeviceService::selectDefaultDevice() { selectDevice(defaultDevice); }
 
 void AudioDeviceService::selectDevice(const std::optional<ExternalDeviceId> &id)
 {
   m_deviceChangeExpected = true;
+  configuration()->writeSelectedAudioDevice(id);
+  doSelectDevice(id.value_or(ExternalDeviceId{""}));
+}
+
+void AudioDeviceService::doSelectDevice(const ExternalDeviceId &id)
+{
   std::promise<void> p;
   auto f = p.get_future();
   std::thread t{[&]
                 {
-                  audioDriver()->selectOutputDevice(
-                      id.value_or(ExternalDeviceId{""}).value);
+                  audioDriver()->selectOutputDevice(id.value);
                   p.set_value();
                 }};
   f.get();

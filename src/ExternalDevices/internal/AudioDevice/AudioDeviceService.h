@@ -33,6 +33,7 @@ public:
 
 private:
   std::vector<muse::audio::AudioDevice> museAvailableDevices() const;
+  void doSelectDevice(const ExternalDeviceId &id);
   muse::Inject<IExternalDevicesConfiguration> configuration;
   muse::Inject<muse::audio::IAudioDriver> audioDriver;
   muse::async::Notification m_selectedDeviceChanged;

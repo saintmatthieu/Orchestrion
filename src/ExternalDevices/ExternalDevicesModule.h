@@ -39,8 +39,6 @@ private:
   void onDelayedInit() override;
 
   const std::unique_ptr<ExternalDeviceSelectionRestorer>
-      m_audioDeviceSelectionRestorer;
-  const std::unique_ptr<ExternalDeviceSelectionRestorer>
       m_midiDeviceSelectionRestorer;
   const std::shared_ptr<AudioDeviceService> m_audioDeviceService;
   const std::shared_ptr<MidiDeviceService> m_midiDeviceService;
