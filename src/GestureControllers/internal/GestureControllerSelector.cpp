@@ -39,7 +39,8 @@ void GestureControllerSelector::setSelectedControllers(
       m_touchpadController.reset();
       m_touchpadControllerChanged.notify();
     }
-    else if (!m_touchpadController && needsTouchpad)
+    else if (!m_touchpadController && needsTouchpad &&
+             TouchpadGestureController::isFunctional())
     {
       changed = true;
       m_touchpad = std::make_unique<Touchpad>();
@@ -58,7 +59,8 @@ void GestureControllerSelector::setSelectedControllers(
       changed = true;
       m_computerKeyboardController.reset();
     }
-    else if (!m_computerKeyboardController && needsComputerKeyboard)
+    else if (!m_computerKeyboardController && needsComputerKeyboard &&
+             ComputerKeyboardGestureController::isFunctional())
     {
       changed = true;
       m_computerKeyboardController =
@@ -75,7 +77,8 @@ void GestureControllerSelector::setSelectedControllers(
       changed = true;
       m_midiDeviceController.reset();
     }
-    else if (!m_midiDeviceController && needsMidiDevice)
+    else if (!m_midiDeviceController && needsMidiDevice &&
+             MidiDeviceGestureController::isFunctional())
     {
       m_midiDeviceController = std::make_unique<MidiDeviceGestureController>();
       changed = true;
