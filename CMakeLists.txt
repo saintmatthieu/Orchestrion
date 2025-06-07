@@ -133,9 +133,10 @@ if (OS_IS_MAC)
 else()
     set(resource_install_dir ${CMAKE_INSTALL_PREFIX})
 endif()
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"         DESTINATION ${resource_install_dir}/scores)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"     DESTINATION ${resource_install_dir}/wallpapers)
-install(DIRECTORY ${QT_INSTALL_QML}                     DESTINATION ${resource_install_dir})
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resource_install_dir}/wallpapers)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons/controllers"   DESTINATION ${resource_install_dir}/icons)
+install(DIRECTORY ${QT_INSTALL_QML}                         DESTINATION ${resource_install_dir})
 
 install(TARGETS OrchestrionApp
         RUNTIME DESTINATION bin

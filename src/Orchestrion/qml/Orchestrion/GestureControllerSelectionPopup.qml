@@ -4,7 +4,7 @@ import Orchestrion
 
 Item {
     Component.onCompleted: {
-        midiControllerSelectionModel.init()
+        gestureControllerSelectionModel.init()
     }
 
     Row {
@@ -45,11 +45,11 @@ Item {
                         text: controllerName
                         checked: controllerIsSelected
                         onCheckedChanged: {
-                            midiControllerSelectionModel.updateControllerIsSelected(index, checked)
+                            gestureControllerSelectionModel.updateControllerIsSelected(index, checked)
                         }
                     }
                     model: GestureControllerSelectionModel {
-                        id: midiControllerSelectionModel
+                        id: gestureControllerSelectionModel
                     }
                 }
             }
@@ -57,20 +57,12 @@ Item {
 
         Repeater {
             id: repeater
-            model: midiControllerSelectionModel.selectedControllersInfo
-            delegate: Rectangle {
-                height: button.height
+            model: gestureControllerSelectionModel.selectedControllersInfo
+            delegate: Image {
+                source: modelData.icon
                 width: button.height
-                color: modelData.isAvailable ? "green" : "grey"
-                radius: width / 2
-                border.color: "white"
-                border.width: 2
-                Text {
-                    anchors.centerIn: parent
-                    text: modelData.shortName
-                    font.pixelSize: button.height / 2
-                    color: "white"
-                }
+                height: button.height
+                opacity: modelData.isAvailable ? 0.7 : 0.2
             }
         }
     }

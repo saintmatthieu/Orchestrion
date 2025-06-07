@@ -4,8 +4,8 @@
 
 namespace dgk
 {
-ControllerInfo::ControllerInfo(bool available, QString name)
-    : isAvailable(available), shortName(std::move(name))
+ControllerInfo::ControllerInfo(bool available, QString icon)
+    : isAvailable(available), icon(std::move(icon))
 {
 }
 
@@ -54,20 +54,23 @@ QString GestureControllerSelectionModel::itemName(int index) const
 }
 
 QString
-GestureControllerSelectionModel::itemShortName(GestureControllerType type) const
+GestureControllerSelectionModel::itemIcon(GestureControllerType type) const
 {
+  const auto dir = QString{"file:///"} +
+                   globalConfiguration()->appDataPath().toQString() +
+                   "icons/controllers/";
   switch (type)
   {
   case GestureControllerType::MidiDevice:
-    return tr("M");
+    return dir + "piano_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   case GestureControllerType::Touchpad:
-    return tr("T");
+    return dir + "trackpad_input_3_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   case GestureControllerType::Swipe:
-    return tr("S");
+    return dir + "swipe_vertical_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   case GestureControllerType::ComputerKeyboard:
-    return tr("C");
+    return dir + "keyboard_alt_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   default:
-    return QString();
+    return {};
   }
 }
 
@@ -79,7 +82,7 @@ GestureControllerSelectionModel::selectedControllersInfo() const
   {
     const auto isAvailable = type != GestureControllerType::MidiDevice ||
                              midiDeviceService()->selectedDeviceIsAvailable();
-    selectedControllers.append({isAvailable, itemShortName(type)});
+    selectedControllers.append({isAvailable, itemIcon(type)});
   }
   return selectedControllers;
 }

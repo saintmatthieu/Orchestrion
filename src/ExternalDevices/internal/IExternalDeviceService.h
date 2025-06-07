@@ -27,7 +27,8 @@ public:
 
   bool selectedDeviceIsAvailable() const
   {
-    return selectedDevice() && isAvailable(*selectedDevice());
+    const auto device = selectedDevice();
+    return device && isAvailable(*device);
   }
 
   virtual std::string deviceName(const ExternalDeviceId &) const = 0;
