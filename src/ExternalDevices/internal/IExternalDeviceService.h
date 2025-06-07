@@ -17,6 +17,7 @@ public:
   virtual std::vector<ExternalDeviceId> availableDevices() const = 0;
   virtual muse::async::Notification availableDevicesChanged() const = 0;
   virtual bool isAvailable(const ExternalDeviceId &) const = 0;
+  virtual bool isNoDevice(const ExternalDeviceId &id) const = 0;
 
   // Does not have to be available.
   virtual void selectDevice(const std::optional<ExternalDeviceId> &) = 0;
@@ -24,11 +25,6 @@ public:
   virtual std::optional<ExternalDeviceId> selectedDevice() const = 0;
 
   virtual void selectDefaultDevice() = 0;
-
-  bool selectedDeviceIsAvailable() const
-  {
-    return selectedDevice() && isAvailable(*selectedDevice());
-  }
 
   virtual std::string deviceName(const ExternalDeviceId &) const = 0;
 };

@@ -4,6 +4,7 @@
 #include "GestureControllers/IGestureControllerSelector.h"
 
 #include "async/asyncable.h"
+#include "global/iglobalconfiguration.h"
 #include "modularity/ioc.h"
 #include <QAbstractListModel>
 
@@ -12,15 +13,15 @@ namespace dgk
 class ControllerInfo
 {
   Q_GADGET;
-  Q_PROPERTY(bool isAvailable MEMBER isAvailable);
-  Q_PROPERTY(QString shortName MEMBER shortName);
+  Q_PROPERTY(bool isWorking MEMBER isWorking);
+  Q_PROPERTY(QString icon MEMBER icon);
 
 public:
   ControllerInfo() = default;
-  ControllerInfo(bool available, QString name);
+  ControllerInfo(bool isWorking, QString icon);
 
-  bool isAvailable = false;
-  QString shortName;
+  bool isWorking = false;
+  QString icon;
 };
 
 class GestureControllerSelectionModel : public QAbstractListModel,
@@ -34,6 +35,7 @@ class GestureControllerSelectionModel : public QAbstractListModel,
 
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<IMidiDeviceService> midiDeviceService;
+  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
 
 public:
   explicit GestureControllerSelectionModel(QObject *parent = nullptr);
@@ -50,7 +52,7 @@ private:
   enum RoleNames
   {
     rControllerIsSelected = Qt::UserRole + 1,
-    rControllerIsAvailable = Qt::UserRole + 2,
+    rControllerIsWorking = Qt::UserRole + 2,
     rControllerName = Qt::UserRole + 3,
   };
 
@@ -63,7 +65,7 @@ private:
   bool eventFilter(QObject *watched, QEvent *event) override;
 
   QString itemName(int index) const;
-  QString itemShortName(GestureControllerType) const;
+  QString itemIcon(GestureControllerType) const;
 
   std::vector<GestureControllerType> m_selectedControllerQueue;
 };
