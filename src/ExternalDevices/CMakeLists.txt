@@ -9,8 +9,6 @@ set(MODULE_SRC
 
     internal/ExternalDevicesConfiguration.cpp
     internal/ExternalDevicesConfiguration.h
-    internal/ExternalDeviceSelectionRestorer.cpp
-    internal/ExternalDeviceSelectionRestorer.h
     internal/ExternalDevicesTypes.cpp
 
     ExternalDevicesModule.cpp

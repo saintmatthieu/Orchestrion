@@ -32,7 +32,9 @@ public:
   std::string deviceName(const ExternalDeviceId &) const override;
 
 private:
-  void selectDeviceWhileExpecting(const std::optional<ExternalDeviceId> &);
+  void doSelectDevice(const ExternalDeviceId &);
+  std::vector<ExternalDeviceId> availableDevicesWithoutNoDevice() const;
+  std::optional<ExternalDeviceId> selectedDeviceWithoutNoDevice() const;
 
   muse::Inject<muse::midi::IMidiInPort> midiInPort;
   muse::Inject<IExternalDevicesConfiguration> configuration;

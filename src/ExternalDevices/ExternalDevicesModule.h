@@ -22,7 +22,6 @@
 
 namespace dgk
 {
-class ExternalDeviceSelectionRestorer;
 class ExternalDevicesConfiguration;
 class AudioDeviceService;
 class MidiDeviceService;
@@ -38,8 +37,6 @@ private:
   void onInit(const muse::IApplication::RunMode &mode) override;
   void onDelayedInit() override;
 
-  const std::unique_ptr<ExternalDeviceSelectionRestorer>
-      m_midiDeviceSelectionRestorer;
   const std::shared_ptr<AudioDeviceService> m_audioDeviceService;
   const std::shared_ptr<MidiDeviceService> m_midiDeviceService;
   const std::shared_ptr<ExternalDevicesConfiguration> m_configuration;
