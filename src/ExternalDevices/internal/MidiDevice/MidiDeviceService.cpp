@@ -109,13 +109,16 @@ MidiDeviceService::availableDevicesWithoutNoDevice() const
 
 bool MidiDeviceService::isAvailable(const ExternalDeviceId &id) const
 {
-  if (id == noDevice)
-    return false;
   const muse::midi::MidiDeviceList midiDevices =
       midiInPort()->availableDevices();
   return std::any_of(midiDevices.begin(), midiDevices.end(),
                      [&id](const auto &device)
                      { return device.id == id.value; });
+}
+
+bool MidiDeviceService::isNoDevice(const ExternalDeviceId &id) const
+{
+  return id == noDevice;
 }
 
 muse::async::Notification MidiDeviceService::availableDevicesChanged() const

@@ -4,8 +4,8 @@
 
 namespace dgk
 {
-ControllerInfo::ControllerInfo(bool available, QString icon)
-    : isAvailable(available), icon(std::move(icon))
+ControllerInfo::ControllerInfo(bool isWorking, QString icon)
+    : isWorking(isWorking), icon(std::move(icon))
 {
 }
 
@@ -80,9 +80,12 @@ GestureControllerSelectionModel::selectedControllersInfo() const
   QList<ControllerInfo> selectedControllers;
   for (GestureControllerType type : m_selectedControllerQueue)
   {
-    const auto isAvailable = type != GestureControllerType::MidiDevice ||
-                             midiDeviceService()->selectedDeviceIsAvailable();
-    selectedControllers.append({isAvailable, itemIcon(type)});
+    auto isWorking = type != GestureControllerType::MidiDevice;
+    if (!isWorking)
+      if (const auto midiDevice = midiDeviceService()->selectedDevice())
+        isWorking = midiDeviceService()->isAvailable(*midiDevice) &&
+                    !midiDeviceService()->isNoDevice(*midiDevice);
+    selectedControllers.append({isWorking, itemIcon(type)});
   }
   return selectedControllers;
 }
@@ -143,7 +146,7 @@ QHash<int, QByteArray> GestureControllerSelectionModel::roleNames() const
 {
   QHash<int, QByteArray> roles;
   roles[rControllerIsSelected] = "controllerIsSelected";
-  roles[rControllerIsAvailable] = "controllerIsAvailable";
+  roles[rControllerIsWorking] = "controllerIsWorking";
   roles[rControllerName] = "controllerName";
   return roles;
 }

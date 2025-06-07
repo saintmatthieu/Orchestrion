@@ -130,6 +130,11 @@ bool AudioDeviceService::isAvailable(const ExternalDeviceId &query) const
                      { return device == query; });
 }
 
+bool AudioDeviceService::isNoDevice(const ExternalDeviceId &) const
+{
+  return false;
+}
+
 muse::async::Notification AudioDeviceService::availableDevicesChanged() const
 {
   return audioDriver()->availableOutputDevicesChanged();

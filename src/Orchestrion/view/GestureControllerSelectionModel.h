@@ -13,14 +13,14 @@ namespace dgk
 class ControllerInfo
 {
   Q_GADGET;
-  Q_PROPERTY(bool isAvailable MEMBER isAvailable);
+  Q_PROPERTY(bool isWorking MEMBER isWorking);
   Q_PROPERTY(QString icon MEMBER icon);
 
 public:
   ControllerInfo() = default;
-  ControllerInfo(bool available, QString icon);
+  ControllerInfo(bool isWorking, QString icon);
 
-  bool isAvailable = false;
+  bool isWorking = false;
   QString icon;
 };
 
@@ -52,7 +52,7 @@ private:
   enum RoleNames
   {
     rControllerIsSelected = Qt::UserRole + 1,
-    rControllerIsAvailable = Qt::UserRole + 2,
+    rControllerIsWorking = Qt::UserRole + 2,
     rControllerName = Qt::UserRole + 3,
   };
 

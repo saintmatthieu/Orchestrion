@@ -62,7 +62,7 @@ Item {
                 source: modelData.icon
                 width: button.height
                 height: button.height
-                opacity: modelData.isAvailable ? 0.7 : 0.2
+                opacity: modelData.isWorking ? 0.7 : 0.2
             }
         }
     }

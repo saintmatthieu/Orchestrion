@@ -22,6 +22,7 @@ public:
   std::vector<ExternalDeviceId> availableDevices() const override;
   muse::async::Notification availableDevicesChanged() const override;
   bool isAvailable(const ExternalDeviceId &) const override;
+  bool isNoDevice(const ExternalDeviceId &id) const override;
 
   void selectDevice(const std::optional<ExternalDeviceId> &) override;
   muse::async::Notification selectedDeviceChanged() const override;
