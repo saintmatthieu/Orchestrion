@@ -1,2 +1,2 @@
 module Orchestrion
-MidiControllerSelectionPopup 1.0 MidiControllerSelectionPopup.qml
+GestureControllerSelectionPopup 1.0 GestureControllerSelectionPopup.qml

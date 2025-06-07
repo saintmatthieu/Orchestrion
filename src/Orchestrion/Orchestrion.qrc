@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>qml/Orchestrion/qmldir</file>
-        <file>qml/Orchestrion/MidiControllerSelectionPopup.qml</file>
+        <file>qml/Orchestrion/GestureControllerSelectionPopup.qml</file>
     </qresource>
 </RCC>

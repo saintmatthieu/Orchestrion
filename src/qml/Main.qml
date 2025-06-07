@@ -135,7 +135,7 @@ ApplicationWindow {
                 id: notationPaintView
                 anchors.fill: parent
 
-                MidiControllerSelectionPopup {}
+                GestureControllerSelectionPopup {}
             }
         }
     }
