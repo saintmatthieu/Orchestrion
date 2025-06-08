@@ -32,6 +32,8 @@ class GestureControllerSelectionModel : public QAbstractListModel,
 
   Q_PROPERTY(QList<ControllerInfo> selectedControllersInfo READ
                  selectedControllersInfo NOTIFY selectedControllersInfoChanged);
+  Q_PROPERTY(QString warningIcon READ warningIcon CONSTANT);
+  Q_PROPERTY(bool hasWarning READ hasWarning NOTIFY selectedControllersInfoChanged);
 
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<IMidiDeviceService> midiDeviceService;
@@ -44,9 +46,12 @@ public:
   Q_INVOKABLE void updateControllerIsSelected(int index, bool checked);
 
   QList<ControllerInfo> selectedControllersInfo() const;
+  QString warningIcon() const;
+  bool hasWarning() const;
 
 signals:
   void selectedControllersInfoChanged();
+  void hasWarningChanged();
 
 private:
   enum RoleNames
@@ -66,6 +71,8 @@ private:
 
   QString itemName(int index) const;
   QString itemIcon(GestureControllerType) const;
+  QString iconDir() const;
+  void emitSignals();
 
   std::vector<GestureControllerType> m_selectedControllerQueue;
 };

@@ -24,10 +24,12 @@ void GestureControllerSelectionModel::init()
                   m_selectedControllerQueue.end(),
                   type) == m_selectedControllerQueue.end())
       m_selectedControllerQueue.push_back(type);
-  emit selectedControllersInfoChanged();
+  emitSignals();
 
-  midiDeviceService()->availableDevicesChanged().onNotify(
-      this, [this] { emit selectedControllersInfoChanged(); });
+  midiDeviceService()->availableDevicesChanged().onNotify(this, [this]
+                                                          { emitSignals(); });
+  midiDeviceService()->selectedDeviceChanged().onNotify(this, [this]
+                                                        { emitSignals(); });
 
   gestureControllerSelector()->selectedControllersChanged().onNotify(
       this,
@@ -51,8 +53,14 @@ void GestureControllerSelectionModel::init()
                         type) == m_selectedControllerQueue.end())
             m_selectedControllerQueue.push_back(type);
 
-        emit selectedControllersInfoChanged();
+        emitSignals();
       });
+}
+
+void GestureControllerSelectionModel::emitSignals()
+{
+  emit selectedControllersInfoChanged();
+  emit hasWarningChanged();
 }
 
 QString GestureControllerSelectionModel::itemName(int index) const
@@ -76,25 +84,45 @@ QString GestureControllerSelectionModel::itemName(int index) const
   }
 }
 
+QString GestureControllerSelectionModel::iconDir() const
+{
+  return QString{"file:///"} +
+         globalConfiguration()->appDataPath().toQString() +
+         "icons/controllers/";
+}
+
 QString
 GestureControllerSelectionModel::itemIcon(GestureControllerType type) const
 {
-  const auto dir = QString{"file:///"} +
-                   globalConfiguration()->appDataPath().toQString() +
-                   "icons/controllers/";
   switch (type)
   {
   case GestureControllerType::MidiDevice:
-    return dir + "piano_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
+    return iconDir() + "piano_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   case GestureControllerType::Touchpad:
-    return dir + "trackpad_input_3_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
+    return iconDir() +
+           "trackpad_input_3_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   case GestureControllerType::Swipe:
-    return dir + "swipe_vertical_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
+    return iconDir() +
+           "swipe_vertical_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   case GestureControllerType::ComputerKeyboard:
-    return dir + "keyboard_alt_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
+    return iconDir() +
+           "keyboard_alt_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
   default:
     return {};
   }
+}
+
+QString GestureControllerSelectionModel::warningIcon() const
+{
+  return iconDir() + "warning_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
+}
+
+bool GestureControllerSelectionModel::hasWarning() const
+{
+  const auto info = selectedControllersInfo();
+  return !std::any_of(info.begin(), info.end(),
+                      [](const ControllerInfo &controller)
+                      { return controller.isWorking; });
 }
 
 QList<ControllerInfo>
@@ -162,7 +190,7 @@ void GestureControllerSelectionModel::updateControllerIsSelected(int index,
 
   const QModelIndex modelIndex = this->index(index);
   emit dataChanged(modelIndex, modelIndex, {rControllerIsSelected});
-  emit selectedControllersInfoChanged();
+  emitSignals();
 }
 
 QHash<int, QByteArray> GestureControllerSelectionModel::roleNames() const

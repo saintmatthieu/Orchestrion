@@ -65,5 +65,13 @@ Item {
                 opacity: modelData.isWorking ? 0.7 : 0.2
             }
         }
+
+        Image {
+            source: gestureControllerSelectionModel.warningIcon
+            width: button.height
+            height: button.height
+            opacity: 0.7
+            visible: gestureControllerSelectionModel.hasWarning
+        }
     }
 }
