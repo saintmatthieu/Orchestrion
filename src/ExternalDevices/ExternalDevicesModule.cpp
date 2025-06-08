@@ -49,9 +49,9 @@ void ExternalDevicesModule::onInit(const muse::IApplication::RunMode &)
   m_configuration->init();
 }
 
-void ExternalDevicesModule::onDelayedInit()
+void ExternalDevicesModule::onAllInited(const muse::IApplication::RunMode &)
 {
-  m_midiDeviceService->postInit();
-  m_audioDeviceService->postInit();
+  m_midiDeviceService->onAllInited();
+  m_audioDeviceService->onAllInited();
 }
 } // namespace dgk

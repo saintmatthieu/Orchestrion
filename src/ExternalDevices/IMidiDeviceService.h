@@ -15,5 +15,6 @@ class IMidiDeviceService : public IExternalDeviceService,
 
 public:
   virtual ~IMidiDeviceService() = default;
+  virtual muse::async::Notification startupSelectionFinished() const = 0;
 };
 } // namespace dgk

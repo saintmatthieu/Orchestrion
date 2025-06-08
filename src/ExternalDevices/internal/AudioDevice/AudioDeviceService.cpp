@@ -66,7 +66,7 @@ void AudioDeviceService::init()
       });
 }
 
-void AudioDeviceService::postInit()
+void AudioDeviceService::onAllInited()
 {
   m_postInitCalled = true;
   const std::optional<ExternalDeviceId> configDevice =

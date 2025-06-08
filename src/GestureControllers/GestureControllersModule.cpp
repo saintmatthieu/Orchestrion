@@ -25,8 +25,8 @@
 namespace dgk
 {
 GestureControllersModule::GestureControllersModule()
-    : m_gestureControllerConfiguration{std::make_unique<
-          GestureControllerConfiguration>()},
+    : m_configuration{std::make_shared<GestureControllerConfiguration>()},
+      m_selector{std::make_shared<GestureControllerSelector>()},
       m_keyboard{std::make_shared<ComputerKeyboard>()}
 {
 }
@@ -38,18 +38,19 @@ std::string GestureControllersModule::moduleName() const
 
 void GestureControllersModule::registerExports()
 {
-  ioc()->registerExport<IGestureControllerSelector>(
-      moduleName(), new GestureControllerSelector());
+  ioc()->registerExport<IGestureControllerSelector>(moduleName(), m_selector);
   ioc()->registerExport<IComputerKeyboard>(moduleName(), m_keyboard);
+  ioc()->registerExport<IGestureControllerConfiguration>(moduleName(),
+                                                         m_configuration);
+}
+
+void GestureControllersModule::onInit(const muse::IApplication::RunMode &)
+{
+  m_selector->init();
 }
 
 void GestureControllersModule::onPreInit(const muse::IApplication::RunMode &)
 {
   m_keyboard->preInit();
-}
-
-void GestureControllersModule::onAllInited(const muse::IApplication::RunMode &)
-{
-  m_gestureControllerConfiguration->postInit();
 }
 } // namespace dgk

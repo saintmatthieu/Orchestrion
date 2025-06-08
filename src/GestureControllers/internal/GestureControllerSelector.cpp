@@ -8,6 +8,47 @@
 
 namespace dgk
 {
+void GestureControllerSelector::init()
+{
+  midiDeviceService()->selectedDeviceChanged().onNotify(
+      this, [this] { doFallbackSelection(); });
+
+  midiDeviceService()->startupSelectionFinished().onNotify(
+      this, [this] { doStartupSelection(); });
+}
+
+void GestureControllerSelector::doStartupSelection()
+{
+  const auto configControllers = configuration()->readSelectedControllers();
+  if (!configControllers)
+  {
+    const auto midiDevice = midiDeviceService()->selectedDevice();
+    if (!midiDevice || !midiDeviceService()->isAvailable(*midiDevice) ||
+        midiDeviceService()->isNoDevice(*midiDevice))
+      doSetSelectedControllers({GestureControllerType::ComputerKeyboard});
+    else
+      doSetSelectedControllers({GestureControllerType::MidiDevice});
+    return;
+  }
+  else
+    doSetSelectedControllers(*configControllers);
+}
+
+void GestureControllerSelector::doFallbackSelection()
+{
+  if (configuration()->readSelectedControllers())
+    return;
+  const auto midiDevice = midiDeviceService()->selectedDevice();
+  if (!midiDevice)
+    doSetSelectedControllers({GestureControllerType::ComputerKeyboard});
+  else if (!midiDeviceService()->isAvailable(*midiDevice) ||
+           midiDeviceService()->isNoDevice(*midiDevice))
+    doSetSelectedControllers({GestureControllerType::ComputerKeyboard,
+                              GestureControllerType::MidiDevice});
+  else
+    doSetSelectedControllers({GestureControllerType::MidiDevice});
+}
+
 GestureControllerTypeSet
 GestureControllerSelector::functionalControllers() const
 {
@@ -24,6 +65,13 @@ GestureControllerSelector::functionalControllers() const
 }
 
 void GestureControllerSelector::setSelectedControllers(
+    GestureControllerTypeSet types)
+{
+  if (doSetSelectedControllers(types))
+    configuration()->writeSelectedControllers(selectedControllers());
+}
+
+bool GestureControllerSelector::doSetSelectedControllers(
     GestureControllerTypeSet types)
 {
   bool changed = false;
@@ -87,6 +135,8 @@ void GestureControllerSelector::setSelectedControllers(
 
   if (changed)
     m_selectedControllersChanged.notify();
+
+  return changed;
 }
 
 muse::async::Notification

@@ -17,7 +17,9 @@ class MidiDeviceService : public IMidiDeviceService,
 {
 public:
   void init();
-  void postInit();
+  void onAllInited();
+
+  muse::async::Notification startupSelectionFinished() const override;
 
   std::vector<ExternalDeviceId> availableDevices() const override;
   muse::async::Notification availableDevicesChanged() const override;
@@ -40,6 +42,7 @@ private:
   muse::Inject<muse::midi::IMidiInPort> midiInPort;
   muse::Inject<IExternalDevicesConfiguration> configuration;
   muse::async::Notification m_selectedDeviceChanged;
+  muse::async::Notification m_startupSelectionFinished;
   bool m_deviceChangeExpected = false;
   bool m_postInitCalled = false;
 };

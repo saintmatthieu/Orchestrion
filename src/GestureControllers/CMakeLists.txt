@@ -42,6 +42,7 @@ set(MODULE_SRC
     internal/GestureControllerInternalTypes.h
     internal/GestureControllerSelector.cpp
     internal/GestureControllerSelector.h
+    internal/IGestureControllerConfiguration.h
 
     GestureControllersModule.cpp
     GestureControllersModule.h

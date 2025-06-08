@@ -27,37 +27,36 @@ namespace
 const std::string module_name("GestureControllers");
 const muse::Settings::Key GESTURE_CONTROLLERS(module_name,
                                               "GESTURE_CONTROLLERS");
-} // namespace
 
-void GestureControllerConfiguration::postInit()
+muse::Val toMuseVal(const GestureControllerTypeSet &types)
 {
-  gestureControllerSelector()->setSelectedControllers(
-      readSelectedControllers());
-  gestureControllerSelector()->selectedControllersChanged().onNotify(
-      this,
-      [this]
-      {
-        writeSelectedControllers(
-            gestureControllerSelector()->selectedControllers());
-      });
+  muse::ValList list;
+  for (const auto &type : types)
+    list.push_back(muse::Val(static_cast<int>(type)));
+  return muse::Val{list};
 }
 
-GestureControllerTypeSet
-GestureControllerConfiguration::readSelectedControllers() const
+GestureControllerTypeSet fromMuseVal(const muse::Val &value)
 {
-  const muse::Val value = muse::settings()->value(GESTURE_CONTROLLERS);
   GestureControllerTypeSet types;
   for (const auto &v : value.toList())
     types.insert(static_cast<GestureControllerType>(v.toInt()));
   return types;
 }
+} // namespace
+
+std::optional<GestureControllerTypeSet>
+GestureControllerConfiguration::readSelectedControllers() const
+{
+  const muse::Val value = muse::settings()->value(GESTURE_CONTROLLERS);
+  if (value.isNull() || value.type() != muse::Val::Type::List)
+    return std::nullopt;
+  return fromMuseVal(value);
+}
 
 void GestureControllerConfiguration::writeSelectedControllers(
     const GestureControllerTypeSet &types)
 {
-  muse::ValList list;
-  for (const auto &type : types)
-    list.push_back(muse::Val(static_cast<int>(type)));
-  muse::settings()->setLocalValue(GESTURE_CONTROLLERS, muse::Val{list});
+  muse::settings()->setLocalValue(GESTURE_CONTROLLERS, toMuseVal(types));
 }
 } // namespace dgk

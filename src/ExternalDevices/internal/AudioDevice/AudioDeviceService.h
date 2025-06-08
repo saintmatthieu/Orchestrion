@@ -17,7 +17,7 @@ class AudioDeviceService : public IAudioDeviceService,
 {
 public:
   void init();
-  void postInit();
+  void onAllInited();
 
   std::vector<ExternalDeviceId> availableDevices() const override;
   muse::async::Notification availableDevicesChanged() const override;

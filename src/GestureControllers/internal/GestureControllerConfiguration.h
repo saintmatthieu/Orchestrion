@@ -19,21 +19,21 @@
 #pragma once
 
 #include "ExternalDevices/ExternalDevicesTypes.h"
+#include "IGestureControllerConfiguration.h"
 #include "IGestureControllerSelector.h"
 
 #include <async/asyncable.h>
 
 namespace dgk
 {
-class GestureControllerConfiguration : public muse::async::Asyncable
+class GestureControllerConfiguration : public IGestureControllerConfiguration,
+                                       public muse::async::Asyncable
 {
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
 
-public:
-  void postInit();
-
 private:
-  GestureControllerTypeSet readSelectedControllers() const;
-  void writeSelectedControllers(const GestureControllerTypeSet &types);
+  std::optional<GestureControllerTypeSet>
+  readSelectedControllers() const override;
+  void writeSelectedControllers(const GestureControllerTypeSet &types) override;
 };
 } // namespace dgk

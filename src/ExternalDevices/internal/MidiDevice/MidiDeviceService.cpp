@@ -68,7 +68,7 @@ void MidiDeviceService::init()
       });
 }
 
-void MidiDeviceService::postInit()
+void MidiDeviceService::onAllInited()
 {
   if (const auto configDevice = configuration()->readSelectedMidiDevice())
   {
@@ -85,6 +85,12 @@ void MidiDeviceService::postInit()
   // writing. Since device selection implementation for MIDI is synchronous, we
   // can do this.
   m_postInitCalled = true;
+  m_startupSelectionFinished.notify();
+}
+
+muse::async::Notification MidiDeviceService::startupSelectionFinished() const
+{
+  return m_startupSelectionFinished;
 }
 
 std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const

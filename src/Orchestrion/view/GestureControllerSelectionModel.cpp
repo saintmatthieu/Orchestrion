@@ -28,8 +28,31 @@ void GestureControllerSelectionModel::init()
 
   midiDeviceService()->availableDevicesChanged().onNotify(
       this, [this] { emit selectedControllersInfoChanged(); });
-  midiDeviceService()->selectedDeviceChanged().onNotify(
-      this, [this] { emit selectedControllersInfoChanged(); });
+
+  gestureControllerSelector()->selectedControllersChanged().onNotify(
+      this,
+      [this]
+      {
+        const auto types = gestureControllerSelector()->selectedControllers();
+
+        // Remove controllers that are not in the current selection
+        m_selectedControllerQueue.erase(
+            std::remove_if(m_selectedControllerQueue.begin(),
+                           m_selectedControllerQueue.end(),
+                           [&types](GestureControllerType type)
+                           { return !types.count(type); }),
+            m_selectedControllerQueue.end());
+
+        // Add controllers that are in the current selection but not in the
+        // queue
+        for (GestureControllerType type : types)
+          if (std::find(m_selectedControllerQueue.begin(),
+                        m_selectedControllerQueue.end(),
+                        type) == m_selectedControllerQueue.end())
+            m_selectedControllerQueue.push_back(type);
+
+        emit selectedControllersInfoChanged();
+      });
 }
 
 QString GestureControllerSelectionModel::itemName(int index) const

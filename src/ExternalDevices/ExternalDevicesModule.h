@@ -34,8 +34,8 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
-  void onDelayedInit() override;
+  void onInit(const muse::IApplication::RunMode &) override;
+  void onAllInited(const muse::IApplication::RunMode &) override;
 
   const std::shared_ptr<AudioDeviceService> m_audioDeviceService;
   const std::shared_ptr<MidiDeviceService> m_midiDeviceService;

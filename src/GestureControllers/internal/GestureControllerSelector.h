@@ -3,6 +3,7 @@
 #include "ComputerKeyboard/ComputerKeyboardGestureController.h"
 #include "ExternalDevices/IMidiDeviceService.h"
 #include "IGestureController.h"
+#include "IGestureControllerConfiguration.h"
 #include "IGestureControllerSelector.h"
 #include "MidiDevice/MidiDeviceGestureController.h"
 #include "Touchpad/ITouchpad.h"
@@ -18,6 +19,9 @@ class GestureControllerSelector : public IGestureControllerSelector,
                                   public muse::Injectable
 {
 public:
+  void init();
+
+public:
   GestureControllerTypeSet functionalControllers() const override;
 
   void setSelectedControllers(GestureControllerTypeSet) override;
@@ -31,9 +35,13 @@ public:
   const ITouchpadGestureController *getTouchpadController() const override;
 
 private:
+  void doStartupSelection();
+  void doFallbackSelection();
   std::vector<const IGestureController *> allControllers() const;
+  bool doSetSelectedControllers(GestureControllerTypeSet types);
 
   muse::Inject<IMidiDeviceService> midiDeviceService;
+  muse::Inject<IGestureControllerConfiguration> configuration;
 
   std::unique_ptr<ITouchpad> m_touchpad;
   std::unique_ptr<TouchpadGestureController> m_touchpadController;
