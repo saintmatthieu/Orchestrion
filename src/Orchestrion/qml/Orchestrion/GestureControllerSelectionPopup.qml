@@ -4,7 +4,7 @@ import Orchestrion
 
 Item {
     Component.onCompleted: {
-        gestureControllerSelectionModel.init()
+        selectionModel.init()
     }
 
     Row {
@@ -15,6 +15,35 @@ Item {
         Button {
             id: button
             text: "Controllers"
+
+            Rectangle {
+                id: warningIndicator
+                anchors.fill: parent
+                radius: 5
+                color: "orange"
+                opacity: selectionModel.hasWarning ? 0 : 0
+                SequentialAnimation on opacity {
+                    running: selectionModel.hasWarning
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0; duration: 1000 }
+                    NumberAnimation { to: 0.2; duration: 1000 }
+                }
+
+                ToolTip {
+                    id: toolTip
+                    visible: selectionModel.hasWarning && button.hovered
+                    delay: 1000
+                    x: parent.width
+                    y: parent.height / 2 - height / 2
+                    background: null
+                    contentItem: Text {
+                        text: qsTr("No active controller, click to select")
+                        color: "black"
+                        font.pointSize: 10
+                        verticalAlignment: Text.AlignTop
+                    }
+                }
+            }
 
             onReleased: {
                 if (dropdown.visible) {
@@ -44,12 +73,13 @@ Item {
                         id: checkBox
                         text: controllerName
                         checked: controllerIsSelected
+                        opacity: controllerIsWorking ? 1 : 0.5
                         onCheckedChanged: {
-                            gestureControllerSelectionModel.updateControllerIsSelected(index, checked)
+                            selectionModel.updateControllerIsSelected(index, checked)
                         }
                     }
                     model: GestureControllerSelectionModel {
-                        id: gestureControllerSelectionModel
+                        id: selectionModel
                     }
                 }
             }
@@ -57,21 +87,14 @@ Item {
 
         Repeater {
             id: repeater
-            model: gestureControllerSelectionModel.selectedControllersInfo
+            model: selectionModel.selectedControllersInfo
             delegate: Image {
+                visible: !toolTip.visible
                 source: modelData.icon
                 width: button.height
                 height: button.height
                 opacity: modelData.isWorking ? 0.7 : 0.2
             }
-        }
-
-        Image {
-            source: gestureControllerSelectionModel.warningIcon
-            width: button.height
-            height: button.height
-            opacity: 0.7
-            visible: gestureControllerSelectionModel.hasWarning
         }
     }
 }

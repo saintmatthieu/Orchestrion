@@ -4,8 +4,9 @@
 
 namespace dgk
 {
-ControllerInfo::ControllerInfo(bool isWorking, QString icon)
-    : isWorking(isWorking), icon(std::move(icon))
+ControllerInfo::ControllerInfo(bool isWorking, QString icon,
+                               GestureControllerType type)
+    : isWorking(isWorking), icon(std::move(icon)), type(type)
 {
 }
 
@@ -59,6 +60,11 @@ void GestureControllerSelectionModel::init()
 
 void GestureControllerSelectionModel::emitSignals()
 {
+  for (auto i = 0; i < rowCount(); ++i)
+  {
+    const QModelIndex modelIndex = index(i);
+    emit dataChanged(modelIndex, modelIndex, {rControllerIsWorking});
+  }
   emit selectedControllersInfoChanged();
   emit hasWarningChanged();
 }
@@ -130,15 +136,20 @@ GestureControllerSelectionModel::selectedControllersInfo() const
 {
   QList<ControllerInfo> selectedControllers;
   for (GestureControllerType type : m_selectedControllerQueue)
-  {
-    auto isWorking = type != GestureControllerType::MidiDevice;
-    if (!isWorking)
-      if (const auto midiDevice = midiDeviceService()->selectedDevice())
-        isWorking = midiDeviceService()->isAvailable(*midiDevice) &&
-                    !midiDeviceService()->isNoDevice(*midiDevice);
-    selectedControllers.append({isWorking, itemIcon(type)});
-  }
+    selectedControllers.append(
+        {isControllerWorking(type), itemIcon(type), type});
   return selectedControllers;
+}
+
+bool GestureControllerSelectionModel::isControllerWorking(
+    GestureControllerType type) const
+{
+  if (type != GestureControllerType::MidiDevice)
+    return true;
+  if (const auto midiDevice = midiDeviceService()->selectedDevice())
+    return midiDeviceService()->isAvailable(*midiDevice) &&
+           !midiDeviceService()->isNoDevice(*midiDevice);
+  return false;
 }
 
 bool GestureControllerSelectionModel::eventFilter(QObject *watched,
@@ -217,9 +228,22 @@ QVariant GestureControllerSelectionModel::data(const QModelIndex &index,
   }
   case rControllerName:
     return itemName(index.row());
+  case rControllerIsWorking:
+    return isControllerWorking(index.row());
   default:
     return QVariant();
   }
+}
+
+bool GestureControllerSelectionModel::isControllerWorking(int index) const
+{
+  const auto types = sortedControllers();
+  if (index < 0 || index >= types.size())
+  {
+    assert(false);
+    return false;
+  }
+  return isControllerWorking(types.at(index));
 }
 
 std::vector<GestureControllerType>

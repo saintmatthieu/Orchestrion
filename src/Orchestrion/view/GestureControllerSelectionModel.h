@@ -18,10 +18,11 @@ class ControllerInfo
 
 public:
   ControllerInfo() = default;
-  ControllerInfo(bool isWorking, QString icon);
+  ControllerInfo(bool isWorking, QString icon, GestureControllerType type);
 
   bool isWorking = false;
   QString icon;
+  GestureControllerType type;
 };
 
 class GestureControllerSelectionModel : public QAbstractListModel,
@@ -72,6 +73,8 @@ private:
   QString itemName(int index) const;
   QString itemIcon(GestureControllerType) const;
   QString iconDir() const;
+  bool isControllerWorking(int index) const;
+  bool isControllerWorking(GestureControllerType) const;
   void emitSignals();
 
   std::vector<GestureControllerType> m_selectedControllerQueue;
