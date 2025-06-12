@@ -44,14 +44,6 @@ ApplicationWindow {
         titleProvider.load()
     }
 
-    onVisibilityChanged: {
-        // Disallow fullscreen for now. Would have to be done properly,
-        // probably replicating what's done in `void ApplicationActionController::init()`.
-        if (root.visibility === Window.FullScreen) {
-            root.visibility = Window.Maximized
-        }
-    }
-
     // provide a rectangle for the title bar to move the window
     Rectangle {
         id: titleMoveArea
