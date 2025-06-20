@@ -187,8 +187,11 @@ int main(int argc, char **argv)
 
   if (runMode == muse::IApplication::RunMode::AudioPluginRegistration)
     qapp = new QCoreApplication(argc, argv);
-  else
-    qapp = new QApplication(argc, argv);
+  else {
+    auto app = new QApplication(argc, argv);
+    app->setWindowIcon(QIcon(":/icons/music-box.ico"));
+    qapp = app;
+  }
 
   commandLineParser.processBuiltinArgs(*qapp);
 

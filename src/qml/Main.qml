@@ -98,28 +98,43 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        AppTitleBar {
-            id: appTitleBar
+        RowLayout {
 
+            id: titleBar
+
+            spacing: 0
             Layout.fillWidth: true
             Layout.preferredHeight: 30
 
-            title: root.title
-
-            windowVisibility: root.visibility
-
-            appWindow: root
-
-            onShowWindowMinimizedRequested: {
-                bridge.showMinimizedWithSavePreviousState()
+            OrchestrionIcon {
+                id: orchestrionIcon
+                Layout.preferredWidth: 30 + orchestrionIcon.leftPadding
+                Layout.preferredHeight: 30
             }
 
-            onToggleWindowMaximizedRequested: {
-                root.toggleMaximized()
-            }
+            AppTitleBar {
+                id: appTitleBar
 
-            onCloseWindowRequested: {
-                root.close()
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+
+                title: root.title
+
+                windowVisibility: root.visibility
+
+                appWindow: root
+
+                onShowWindowMinimizedRequested: {
+                    bridge.showMinimizedWithSavePreviousState()
+                }
+
+                onToggleWindowMaximizedRequested: {
+                    root.toggleMaximized()
+                }
+
+                onCloseWindowRequested: {
+                    root.close()
+                }
             }
         }
 

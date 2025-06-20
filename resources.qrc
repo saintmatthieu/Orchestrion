@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="/">
     <file>src/qml/Main.qml</file>
+    <file>src/qml/OrchestrionIcon.qml</file>
+    <file>icons/music-box.ico</file>
   </qresource>
 </RCC>
