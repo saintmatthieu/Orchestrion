@@ -40,6 +40,8 @@ add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
 
+set(MACOSX_BUNDLE_ICON_FILE icons/music-box.icns)
+
 qt_add_executable(OrchestrionApp WIN32 MACOSX_BUNDLE
     src/main.cpp
     src/App/CommandLineParser.cpp
@@ -135,7 +137,7 @@ else()
 endif()
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resource_install_dir}/wallpapers)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons/controllers"   DESTINATION ${resource_install_dir}/icons)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"               DESTINATION ${resource_install_dir})
 install(DIRECTORY ${QT_INSTALL_QML}                         DESTINATION ${resource_install_dir})
 
 install(TARGETS OrchestrionApp
