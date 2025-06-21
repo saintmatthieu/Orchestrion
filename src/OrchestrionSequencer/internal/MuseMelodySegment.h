@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Orchestrion/IMelodySegment.h"
+#include "OrchestrionSequencer/IMelodySegment.h"
 
 namespace mu::engraving
 {

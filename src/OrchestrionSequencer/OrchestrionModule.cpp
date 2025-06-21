@@ -58,8 +58,9 @@ void OrchestrionModule::registerExports()
 
 void OrchestrionModule::registerUiTypes()
 {
-  qmlRegisterType<GestureControllerSelectionModel>("Orchestrion", 1, 0,
-                                                "GestureControllerSelectionModel");
+  qmlRegisterType<GestureControllerSelectionModel>(
+      "Orchestrion.OrchestrionSequencer", 1, 0,
+      "GestureControllerSelectionModel");
 }
 
 void OrchestrionModule::onInit(const muse::IApplication::RunMode &)

@@ -25,7 +25,7 @@ import MuseScore.Playback 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
 import Muse.Shortcuts 1.0
-import Orchestrion 1.0
+import Orchestrion.OrchestrionSequencer 1.0
 import Orchestrion.OrchestrionShell 1.0
 import Orchestrion.OrchestrionNotation 1.0
 import Orchestrion.OrchestrionOnboarding 1.0

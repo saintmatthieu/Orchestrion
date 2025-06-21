@@ -86,7 +86,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion Windows
-        path: ${{env.BUILD_DIR}}\OrchestrionApp.pdb
+        path: ${{env.BUILD_DIR}}\Orchestrion.pdb
       if: false # Set to true (and BUILD_TYPE to Debug) if you need to locally debug a github build
 
   build_mac:
@@ -143,7 +143,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
     - name: Run macdeployqt
-      run: macdeployqt ${{env.BUILD_DIR}}/OrchestrionApp.app
+      run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app
 
     - name: Codesign executable
       # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
@@ -158,14 +158,14 @@ jobs:
         security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
         security find-identity -v
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-        find ${{env.BUILD_DIR}}/OrchestrionApp.app -name "*.dylib" -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
-        codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/OrchestrionApp.app
+        find ${{env.BUILD_DIR}}/Orchestrion.app -name "*.dylib" -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
+        codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/Orchestrion.app
 
     - name: Install create-dmg
       run: brew install create-dmg
 
     - name: Create DMG
-      run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon OrchestrionApp.app 200 190 --app-drop-link 600 185 ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/OrchestrionApp.app
+      run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/Orchestrion.app
 
     - name: Notarize
       if: github.ref == 'refs/heads/master'

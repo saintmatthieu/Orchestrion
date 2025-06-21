@@ -1,5 +1,5 @@
 #include "OrchestrionEventProcessor.h"
-#include "Orchestrion/IOrchestrionSequencer.h"
+#include "OrchestrionSequencer/IOrchestrionSequencer.h"
 
 namespace dgk
 {

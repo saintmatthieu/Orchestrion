@@ -18,7 +18,7 @@
  */
 #include "OrchestrionSynthesizerWrapper.h"
 #include "LowpassFilterBank.h"
-#include "Orchestrion/IOrchestrionSequencer.h"
+#include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include <log.h>
 
 namespace dgk

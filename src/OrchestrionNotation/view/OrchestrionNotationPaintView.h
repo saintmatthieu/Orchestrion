@@ -20,8 +20,8 @@
 
 #include "IOrchestrionNotationInteraction.h"
 #include "GestureControllers/IGestureControllerSelector.h"
-#include "Orchestrion/IOrchestrion.h"
-#include "Orchestrion/OrchestrionTypes.h"
+#include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>

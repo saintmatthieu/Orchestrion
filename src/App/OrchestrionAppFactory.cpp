@@ -22,7 +22,7 @@
 #include "ExternalDevices/ExternalDevicesModule.h"
 #include "GestureControllers/GestureControllersModule.h"
 #include "MuseScoreShell/MusescoreShellModule.h"
-#include "Orchestrion/OrchestrionModule.h"
+#include "OrchestrionSequencer/OrchestrionModule.h"
 #include "OrchestrionConfiguration/OrchestrionConfigurationModule.h"
 #include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"

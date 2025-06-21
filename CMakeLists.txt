@@ -32,17 +32,17 @@ endif()
 add_subdirectory(src/ExternalDevices)
 add_subdirectory(src/GestureControllers)
 add_subdirectory(src/MusescoreShell)
-add_subdirectory(src/Orchestrion)
 add_subdirectory(src/OrchestrionConfiguration)
 add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionOnboarding)
+add_subdirectory(src/OrchestrionSequencer)
 add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
 
 set(MACOSX_BUNDLE_ICON_FILE icons/music-box.icns)
 
-qt_add_executable(OrchestrionApp WIN32 MACOSX_BUNDLE
+qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/main.cpp
     src/App/CommandLineParser.cpp
     src/App/CommandLineParser.h
@@ -53,13 +53,13 @@ qt_add_executable(OrchestrionApp WIN32 MACOSX_BUNDLE
     src/App/OrchestrionAppFactory.h
 )
 
-set_target_properties(OrchestrionApp PROPERTIES
+set_target_properties(Orchestrion PROPERTIES
     AUTOMOC ON
     AUTORCC ON
     AUTOUIC ON
 )
 
-target_link_libraries(OrchestrionApp PRIVATE
+target_link_libraries(Orchestrion PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
@@ -97,27 +97,27 @@ target_link_libraries(OrchestrionApp PRIVATE
     ExternalDevices
     GestureControllers
     MusescoreShell
-    Orchestrion
     OrchestrionConfiguration
     OrchestrionNotation
     OrchestrionOnboarding
+    OrchestrionSequencer
     OrchestrionShell
     OrchestrionSynthesis
     ScoreAnimation
 )
 
 # Add QML files to the project (for IDEs and resource system)
-qt_add_qml_module(OrchestrionApp
-    URI OrchestrionApp
+qt_add_qml_module(Orchestrion
+    URI Orchestrion
     VERSION 1.0
     QML_FILES "src/qml/Main.qml"
 )
 
 qt_add_resources(RESOURCES resources.qrc)
 qt_add_resources(RESOURCES src/App/OrchestrionApp.qrc)
-qt_add_resources(RESOURCES src/Orchestrion/Orchestrion.qrc)
+qt_add_resources(RESOURCES src/OrchestrionSequencer/OrchestrionSequencer.qrc)
 
-target_sources(OrchestrionApp PRIVATE
+target_sources(Orchestrion PRIVATE
     ${RESOURCES}
 )
 
@@ -125,13 +125,13 @@ target_sources(OrchestrionApp PRIVATE
 if (OS_IS_MAC)
     # Override this
     # SET(Mscore_SHARE_NAME      "mscore.app/")
-    SET(Mscore_SHARE_NAME "OrchestrionApp.app/")
+    SET(Mscore_SHARE_NAME "Orchestrion.app/")
     SET(Mscore_INSTALL_NAME "Contents/Resources/")
 endif()
 add_subdirectory(MuseScore/share/sound)
 
 if (OS_IS_MAC)
-    set(resource_install_dir "OrchestrionApp.app/Contents/Resources")
+    set(resource_install_dir "Orchestrion.app/Contents/Resources")
 else()
     set(resource_install_dir ${CMAKE_INSTALL_PREFIX})
 endif()
@@ -140,7 +140,7 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resour
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"               DESTINATION ${resource_install_dir})
 install(DIRECTORY ${QT_INSTALL_QML}                         DESTINATION ${resource_install_dir})
 
-install(TARGETS OrchestrionApp
+install(TARGETS Orchestrion
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .)
 
@@ -148,8 +148,8 @@ if (OS_IS_WIN)
     if (SNDFILE_DLL)
     install(FILES ${SNDFILE_DLL} DESTINATION bin)
         # add the LIBSNDFILE_SUPPORT definition
-        add_custom_command(TARGET OrchestrionApp POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:OrchestrionApp>)
+        add_custom_command(TARGET Orchestrion POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:Orchestrion>)
     else()
         message(FATAL_ERROR "libsndfile is needed by fluidsynth to load soundfonts")
     endif()

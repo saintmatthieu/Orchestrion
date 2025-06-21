@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Orchestrion/IOrchestrion.h"
-#include "Orchestrion/OrchestrionTypes.h"
+#include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include <async/asyncable.h>
 #include <midi/imidioutport.h>

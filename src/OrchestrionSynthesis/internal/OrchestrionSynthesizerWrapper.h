@@ -19,8 +19,8 @@
 #pragma once
 
 #include "IOrchestrionSynthesizer.h"
-#include "Orchestrion/IOrchestrion.h"
-#include "Orchestrion/OrchestrionTypes.h"
+#include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/OrchestrionTypes.h"
 #include <async/asyncable.h>
 #include <audio/isynthesizer.h>
 #include <modularity/ioc.h>

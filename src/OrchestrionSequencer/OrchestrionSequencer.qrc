@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Orchestrion/OrchestrionSequencer/qmldir</file>
+        <file>qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml</file>
+    </qresource>
+</RCC>

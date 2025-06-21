@@ -20,7 +20,7 @@
 
 #include "GestureControllers/IComputerKeyboard.h"
 #include "ExternalDevices/IMidiDeviceService.h"
-#include "Orchestrion/IOrchestrionSequencerUiActions.h"
+#include "OrchestrionSequencer/IOrchestrionSequencerUiActions.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include <QWindow>
 #include <actions/actionable.h>

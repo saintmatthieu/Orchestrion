@@ -18,9 +18,9 @@
  */
 #include "OrchestrionNotationPaintView.h"
 #include "GestureControllers/ITouchpadGestureController.h"
-#include "Orchestrion/IChord.h"
-#include "Orchestrion/IOrchestrionSequencer.h"
-#include "Orchestrion/IRest.h"
+#include "OrchestrionSequencer/IChord.h"
+#include "OrchestrionSequencer/IOrchestrionSequencer.h"
+#include "OrchestrionSequencer/IRest.h"
 #include <QApplication>
 #include <QPainter>
 #include <engraving/dom/masterscore.h>

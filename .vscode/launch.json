@@ -29,7 +29,7 @@
       "name": "Launch (MacOS)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/Debug/OrchestrionApp.app/Contents/MacOS/OrchestrionApp",
+      "program": "${workspaceFolder}/build/Debug/Orchestrion.app/Contents/MacOS/Orchestrion",
       "preLaunchTask": "CMake: install",
       "args": [],
       "stopAtEntry": false,
@@ -42,7 +42,7 @@
       "name": "Launch (Windows)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/Debug/install/bin/OrchestrionApp.exe",
+      "program": "${workspaceFolder}/build/Debug/install/bin/Orchestrion.exe",
       // path to executable PDB file, in case a Github build must be debugged locally.
       // "symbolSearchPath": "...",
       "preLaunchTask": "CMake: install",

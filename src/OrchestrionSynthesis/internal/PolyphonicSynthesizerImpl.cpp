@@ -1,5 +1,5 @@
 #include "PolyphonicSynthesizerImpl.h"
-#include "Orchestrion/IOrchestrionSequencer.h"
+#include "OrchestrionSequencer/IOrchestrionSequencer.h"
 
 namespace dgk
 {
