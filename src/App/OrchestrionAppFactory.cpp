@@ -22,10 +22,10 @@
 #include "ExternalDevices/ExternalDevicesModule.h"
 #include "GestureControllers/GestureControllersModule.h"
 #include "MuseScoreShell/MusescoreShellModule.h"
-#include "OrchestrionSequencer/OrchestrionModule.h"
 #include "OrchestrionConfiguration/OrchestrionConfigurationModule.h"
 #include "OrchestrionNotation/OrchestrionNotationModule.h"
 #include "OrchestrionOnboarding/OrchestrionOnboardingModule.h"
+#include "OrchestrionSequencer/OrchestrionModule.h"
 #include "OrchestrionShell/OrchestrionShellModule.h"
 #include "OrchestrionSynthesis/OrchestrionSynthesisModule.h"
 #include "ScoreAnimation/ScoreAnimationModule.h"
@@ -52,9 +52,14 @@
 #include <shortcuts/shortcutsmodule.h>
 #include <ui/uimodule.h>
 #include <uicomponents/uicomponentsmodule.h>
-#include <update/updatemodule.h>
 #include <vst/vstmodule.h>
 #include <workspace/workspacemodule.h>
+
+#ifdef MUSE_MODULE_UPDATE
+#include <update/updatemodule.h>
+#else
+#include <stubs/update/updatestubmodule.h>
+#endif
 
 namespace dgk
 {
@@ -118,7 +123,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
 }
 
 std::shared_ptr<muse::IApplication>
-OrchestrionAppFactory::newConsoleApp(const CommandOptions &options) const
+OrchestrionAppFactory::newConsoleApp(const CommandOptions &) const
 {
   // For now
   return nullptr;

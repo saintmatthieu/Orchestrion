@@ -72,6 +72,7 @@ option(MUE_BUILD_PLAYBACK_MODULE "Build playback module" ON)
 option(MUE_BUILD_PROJECT_MODULE "Build project module" ON)
 option(MUE_BUILD_VIDEOEXPORT_MODULE "Build videoexport module" OFF)
 option(MUE_BUILD_IMAGESEXPORT_MODULE "Build imagesexport module" OFF)
+option(MUSE_MODULE_UPDATE "Enable update module" OFF)
 option(MUSE_ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 
 # Function to configure the target-specific setting for playback module
@@ -204,9 +205,14 @@ add_subdirectory(MuseScore/src/framework/network)
 add_subdirectory(MuseScore/src/framework/shortcuts)
 add_subdirectory(MuseScore/src/framework/ui)
 add_subdirectory(MuseScore/src/framework/uicomponents)
-add_subdirectory(MuseScore/src/framework/update)
 add_subdirectory(MuseScore/src/framework/vst)
 add_subdirectory(MuseScore/src/framework/workspace)
+
+IF (MUSE_MODULE_UPDATE)
+    add_subdirectory(MuseScore/src/framework/update)
+else()
+    add_subdirectory(MuseScore/src/framework/stubs/update)
+endif(MUSE_MODULE_UPDATE)
 # add_subdirectory(src)
 
 ###########################################
