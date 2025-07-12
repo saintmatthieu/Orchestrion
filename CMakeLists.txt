@@ -106,6 +106,10 @@ target_link_libraries(Orchestrion PRIVATE
     ScoreAnimation
 )
 
+if (OS_IS_WIN)
+    target_link_libraries(Orchestrion PRIVATE runtimeobject)
+endif()
+
 # Add QML files to the project (for IDEs and resource system)
 qt_add_qml_module(Orchestrion
     URI Orchestrion

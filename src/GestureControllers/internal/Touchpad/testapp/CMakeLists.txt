@@ -27,6 +27,11 @@ target_link_libraries(touchpad_testapp
         GestureControllers
 )
 
+if (OS_IS_WIN)
+    target_link_libraries(touchpad_testapp PRIVATE runtimeobject)
+endif()
+
+
 # target_compile_definitions(touchpad_testapp PRIVATE QT_QML_DEBUG)
 
 # if (MSVC)
