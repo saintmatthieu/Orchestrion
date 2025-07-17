@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    # branches: [master]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Specify the ID of the workflow run that produced the artifacts
+          run-id: 16242979408
+          # Looks for "Artifact ID" in the "Upload Artifacts" step of the win and mac build jobs
+          artifact-ids: 3519888341,3519863505
+          path: ./artifacts
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
