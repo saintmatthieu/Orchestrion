@@ -156,7 +156,7 @@ if (OS_IS_WIN)
     include(FetchContent)
 
     if (DONOT_FETCH_MUSESCORE_DEPS)
-        set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/out/build/debug/_deps/musescore_prebuild_win_deps-src)
+        set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/build/Debug/_deps/musescore_prebuild_win_deps-src)
     else()
         FetchContent_Declare(
           musescore_prebuild_win_deps
