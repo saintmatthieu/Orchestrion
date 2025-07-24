@@ -33,7 +33,7 @@
 #include <accessibility/accessibilitymodule.h>
 #include <actions/actionsmodule.h>
 #include <audio/audiomodule.h>
-#include <audioplugins/audiopluginsmodule.h>
+#include <stubs/audioplugins/audiopluginsstubmodule.h>
 #include <commonscene/commonscenemodule.h>
 #include <context/contextmodule.h>
 #include <draw/drawmodule.h>

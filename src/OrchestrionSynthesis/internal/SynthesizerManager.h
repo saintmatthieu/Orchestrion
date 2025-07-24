@@ -32,11 +32,10 @@ class SynthesizerManager : public ISynthesizerManager,
                            public muse::Injectable,
                            public muse::async::Asyncable
 {
-  muse::Inject<muse::midi::IMidiOutPort> midiOutPort = {this};
-  muse::Inject<muse::audioplugins::IKnownAudioPluginsRegister> knownPlugins = {
-      this};
-  muse::Inject<muse::audio::IPlayback> playback = {this};
-  muse::Inject<ISynthesizerConnector> synthesizerConnector = {this};
+  muse::Inject<muse::midi::IMidiOutPort> midiOutPort;
+  muse::Inject<muse::audioplugins::IKnownAudioPluginsRegister> knownPlugins;
+  muse::Inject<muse::audio::IPlayback> playback;
+  muse::Inject<ISynthesizerConnector> synthesizerConnector;
 
 public:
   SynthesizerManager() = default;

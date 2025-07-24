@@ -39,6 +39,7 @@ add_subdirectory(src/OrchestrionSequencer)
 add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
+add_subdirectory(src/stubs/audioplugins)
 
 set(MACOSX_BUNDLE_ICON_FILE icons/music-box.icns)
 
