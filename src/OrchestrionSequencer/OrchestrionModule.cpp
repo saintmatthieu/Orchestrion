@@ -22,6 +22,7 @@
 #include "internal/OrchestrionSequencerActionController.h"
 #include "internal/OrchestrionSequencerUiActions.h"
 #include "view/GestureControllerSelectionModel.h"
+#include "view/MidiDeviceActivityPopupModel.h"
 
 #include "ui/iuiactionsregister.h"
 #include <QQmlEngine>
@@ -61,6 +62,8 @@ void OrchestrionModule::registerUiTypes()
   qmlRegisterType<GestureControllerSelectionModel>(
       "Orchestrion.OrchestrionSequencer", 1, 0,
       "GestureControllerSelectionModel");
+  qmlRegisterType<MidiDeviceActivityPopupModel>(
+      "Orchestrion.OrchestrionSequencer", 1, 0, "MidiDeviceActivityPopupModel");
 }
 
 void OrchestrionModule::onInit(const muse::IApplication::RunMode &)

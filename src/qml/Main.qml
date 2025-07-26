@@ -150,7 +150,15 @@ ApplicationWindow {
                 id: notationPaintView
                 anchors.fill: parent
 
-                GestureControllerSelectionPopup {}
+                GestureControllerSelectionPopup {
+                    x: 10
+                    y: 10
+                    id: selectionPopup
+                }
+                MidiDeviceActivityPopup {
+                    x: selectionPopup.x + selectionPopup.width + 10
+                    y: selectionPopup.y
+                }
             }
         }
     }
@@ -158,11 +166,7 @@ ApplicationWindow {
     NotationPaintViewLoaderModel {
         id: notationPaintViewLoaderModel
         Component.onCompleted: {
-            console.log("Yo: NotationPaintViewLoaderModel completed")
             notationPaintViewLoaderModel.init()
-        }
-        onNotationPaintViewReady: {
-            console.log("Yo: NotationPaintViewLoaderModel NotationPaintViewReady")
         }
     }
 }

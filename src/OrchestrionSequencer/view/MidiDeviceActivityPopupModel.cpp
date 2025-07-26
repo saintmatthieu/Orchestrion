@@ -16,24 +16,38 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#pragma once
-
-#include "internal/IExternalDeviceService.h"
-
-#include "async/notification.h"
-#include "modularity/ioc.h"
-#include <optional>
+#include "MidiDeviceActivityPopupModel.h"
 
 namespace dgk
 {
-class IMidiDeviceService : public IExternalDeviceService,
-                           MODULE_EXPORT_INTERFACE
+MidiDeviceActivityPopupModel::MidiDeviceActivityPopupModel(QObject *parent)
+    : QObject(parent)
 {
-  INTERFACE_ID(IMidiDeviceService);
+}
 
-public:
-  virtual ~IMidiDeviceService() = default;
-  virtual muse::async::Notification startupSelectionFinished() const = 0;
-  virtual muse::async::Notification activityDetected() const = 0;
-};
+void MidiDeviceActivityPopupModel::init()
+{
+  gestureControllerSelector()
+      ->activityDetectedOnMidiControllerWhileDeselected()
+      .onNotify(this, [this] { emit showPopup(); });
+}
+
+void MidiDeviceActivityPopupModel::accept()
+{
+  gestureControllerSelector()->addSelectedController(
+      GestureControllerType::MidiDevice);
+  deactivate();
+}
+
+void MidiDeviceActivityPopupModel::reject()
+{
+  deactivate();
+}
+
+void MidiDeviceActivityPopupModel::deactivate()
+{
+  gestureControllerSelector()
+      ->activityDetectedOnMidiControllerWhileDeselected()
+      .resetOnNotify(this);
+}
 } // namespace dgk

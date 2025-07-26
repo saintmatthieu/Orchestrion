@@ -29,6 +29,10 @@ const ExternalDeviceId noDevice{muse::midi::NONE_DEVICE_ID};
 
 void MidiDeviceService::init()
 {
+  midiInPort()->eventReceived().onReceive(
+      this, [this](const muse::midi::tick_t, const muse::midi::Event &event)
+      { m_activityDetected.notify(); });
+
   midiInPort()->availableDevicesChanged().onNotify(
       this,
       [this]
@@ -109,6 +113,11 @@ void MidiDeviceService::onAllInited()
 muse::async::Notification MidiDeviceService::startupSelectionFinished() const
 {
   return m_startupSelectionFinished;
+}
+
+muse::async::Notification MidiDeviceService::activityDetected() const
+{
+  return m_activityDetected;
 }
 
 std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const

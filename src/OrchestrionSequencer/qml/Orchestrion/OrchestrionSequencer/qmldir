@@ -1,2 +1,3 @@
 module Orchestrion.OrchestrionSequencer
 GestureControllerSelectionPopup 1.0 GestureControllerSelectionPopup.qml
+MidiDeviceActivityPopup 1.0 MidiDeviceActivityPopup.qml

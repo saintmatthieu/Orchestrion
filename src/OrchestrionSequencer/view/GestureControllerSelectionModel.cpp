@@ -81,7 +81,8 @@ void GestureControllerSelectionModel::emitSignals()
   for (auto i = 0; i < rowCount(); ++i)
   {
     const QModelIndex modelIndex = index(i);
-    emit dataChanged(modelIndex, modelIndex, {rControllerIsWorking});
+    emit dataChanged(modelIndex, modelIndex,
+                     {rControllerIsWorking, rControllerIsSelected});
   }
   emit selectedControllersInfoChanged();
   emit hasWarningChanged();

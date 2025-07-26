@@ -38,6 +38,7 @@ public:
   void onAllInited();
 
   muse::async::Notification startupSelectionFinished() const override;
+  muse::async::Notification activityDetected() const override;
 
   std::vector<ExternalDeviceId> availableDevices() const override;
   muse::async::Notification availableDevicesChanged() const override;
@@ -59,6 +60,7 @@ private:
 
   muse::Inject<muse::midi::IMidiInPort> midiInPort;
   muse::Inject<IExternalDevicesConfiguration> configuration;
+  muse::async::Notification m_activityDetected;
   muse::async::Notification m_selectedDeviceChanged;
   muse::async::Notification m_startupSelectionFinished;
   bool m_deviceChangeExpected = false;

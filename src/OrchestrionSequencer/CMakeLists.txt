@@ -32,6 +32,8 @@ set(MODULE_SRC
 
     view/GestureControllerSelectionModel.cpp
     view/GestureControllerSelectionModel.h
+    view/MidiDeviceActivityPopupModel.cpp
+    view/MidiDeviceActivityPopupModel.h
 
     IChord.h
     OrchestrionTypes.h

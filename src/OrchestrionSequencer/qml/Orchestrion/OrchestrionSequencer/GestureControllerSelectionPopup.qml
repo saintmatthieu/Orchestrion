@@ -7,9 +7,11 @@ Item {
         selectionModel.init()
     }
 
+    width: dropdown.visible ? Math.max(selectedControllerRow.width, dropdown.width) : selectedControllerRow.width
+    height: selectedControllerRow.height + (dropdown.visible ? dropdown.height : 0) + 10
+
     Row {
-        x: 10
-        y: 10
+        id: selectedControllerRow
         spacing: 10
 
         Button {
@@ -52,37 +54,6 @@ Item {
                     dropdown.open()
                 }
             }
-
-            Popup {
-                id: dropdown
-                focus: true
-                y: button.height + 5
-                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
-                padding: 0
-                background: Rectangle {
-                    id: popupBackground
-                    implicitWidth: 200
-                    color: Qt.rgba(1, 1, 1, 0.95)
-                    implicitHeight: listView.currentItem.height * listView.count + dropdown.padding * 2
-                }
-                contentItem: ListView {
-                    id: listView
-                    width: parent.width
-                    height: parent.height
-                    delegate: CheckBox {
-                        id: checkBox
-                        text: controllerName
-                        checked: controllerIsSelected
-                        opacity: controllerIsWorking ? 1 : 0.5
-                        onCheckedChanged: {
-                            selectionModel.updateControllerIsSelected(index, checked)
-                        }
-                    }
-                    model: GestureControllerSelectionModel {
-                        id: selectionModel
-                    }
-                }
-            }
         }
 
         Repeater {
@@ -94,6 +65,37 @@ Item {
                 width: button.height
                 height: button.height
                 opacity: modelData.isWorking ? 0.7 : 0.2
+            }
+        }
+    }
+
+    Popup {
+        id: dropdown
+        y: selectedControllerRow.y + selectedControllerRow.height + 10
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+        padding: 0
+        background: Rectangle {
+            id: popupBackground
+            implicitWidth: 200
+            color: Qt.rgba(1, 1, 1, 0.95)
+            implicitHeight: listView.currentItem.height * listView.count + dropdown.padding * 2
+        }
+        contentItem: ListView {
+            id: listView
+            width: parent.width
+            height: parent.height
+            delegate: CheckBox {
+                id: checkBox
+                text: controllerName
+                checked: controllerIsSelected
+                opacity: controllerIsWorking ? 1 : 0.5
+                onCheckedChanged: {
+                    selectionModel.updateControllerIsSelected(index, checked)
+                }
+            }
+            model: GestureControllerSelectionModel {
+                id: selectionModel
             }
         }
     }

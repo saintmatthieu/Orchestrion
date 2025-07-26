@@ -18,22 +18,32 @@
  */
 #pragma once
 
-#include "internal/IExternalDeviceService.h"
+#include "GestureControllers/IGestureControllerSelector.h"
 
-#include "async/notification.h"
+#include "async/asyncable.h"
 #include "modularity/ioc.h"
-#include <optional>
 
 namespace dgk
 {
-class IMidiDeviceService : public IExternalDeviceService,
-                           MODULE_EXPORT_INTERFACE
+class MidiDeviceActivityPopupModel : public QObject,
+                                     public muse::async::Asyncable,
+                                     public muse::Injectable
 {
-  INTERFACE_ID(IMidiDeviceService);
+  Q_OBJECT;
+
+  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
 
 public:
-  virtual ~IMidiDeviceService() = default;
-  virtual muse::async::Notification startupSelectionFinished() const = 0;
-  virtual muse::async::Notification activityDetected() const = 0;
+  MidiDeviceActivityPopupModel(QObject *parent = nullptr);
+
+  Q_INVOKABLE void init();
+  Q_INVOKABLE void accept();
+  Q_INVOKABLE void reject();
+
+signals:
+  void showPopup();
+
+private:
+  void deactivate();
 };
 } // namespace dgk

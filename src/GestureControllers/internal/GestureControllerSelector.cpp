@@ -33,6 +33,14 @@ void GestureControllerSelector::init()
 
   midiDeviceService()->startupSelectionFinished().onNotify(
       this, [this] { doStartupSelection(); });
+
+  midiDeviceService()->activityDetected().onNotify(
+      this,
+      [this]
+      {
+        if (!getSelectedController(GestureControllerType::MidiDevice))
+          m_activityDetectedOnMidiControllerWhileDeselected.notify();
+      });
 }
 
 void GestureControllerSelector::doStartupSelection()
@@ -87,6 +95,14 @@ void GestureControllerSelector::setSelectedControllers(
 {
   if (doSetSelectedControllers(types))
     configuration()->writeSelectedControllers(selectedControllers());
+}
+
+void GestureControllerSelector::addSelectedController(
+    GestureControllerType type)
+{
+  auto types = selectedControllers();
+  types.insert(type);
+  setSelectedControllers(types);
 }
 
 bool GestureControllerSelector::doSetSelectedControllers(
@@ -204,5 +220,12 @@ const ITouchpadGestureController *
 GestureControllerSelector::getTouchpadController() const
 {
   return m_touchpadController.get();
+}
+
+muse::async::Notification
+GestureControllerSelector::activityDetectedOnMidiControllerWhileDeselected()
+    const
+{
+  return m_activityDetectedOnMidiControllerWhileDeselected;
 }
 } // namespace dgk

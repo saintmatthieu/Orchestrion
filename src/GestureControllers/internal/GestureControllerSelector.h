@@ -43,6 +43,7 @@ public:
   GestureControllerTypeSet functionalControllers() const override;
 
   void setSelectedControllers(GestureControllerTypeSet) override;
+  void addSelectedController(GestureControllerType) override;
   muse::async::Notification selectedControllersChanged() const override;
   GestureControllerTypeSet selectedControllers() const override;
 
@@ -51,6 +52,8 @@ public:
 
   muse::async::Notification touchpadControllerChanged() const override;
   const ITouchpadGestureController *getTouchpadController() const override;
+
+  muse::async::Notification activityDetectedOnMidiControllerWhileDeselected() const override;
 
 private:
   void doStartupSelection();
@@ -68,5 +71,6 @@ private:
   std::unique_ptr<MidiDeviceGestureController> m_midiDeviceController;
   muse::async::Notification m_touchpadControllerChanged;
   muse::async::Notification m_selectedControllersChanged;
+  muse::async::Notification m_activityDetectedOnMidiControllerWhileDeselected;
 };
 } // namespace dgk
