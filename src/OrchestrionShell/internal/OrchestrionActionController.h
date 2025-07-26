@@ -21,6 +21,7 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
+#include <global/iglobalconfiguration.h>
 #include <global/iinteractive.h>
 #include <modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
@@ -32,11 +33,14 @@ class OrchestrionActionController : public muse::actions::Actionable,
 {
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<mu::context::IGlobalContext> globalContext;
+  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
   muse::Inject<mu::project::IProjectConfiguration> configuration;
   muse::Inject<muse::IInteractive> interactive;
 
 public:
   void init();
-  void onFileOpen();
+  void onFileOpen() const;
+  void openFromDir(const muse::io::path_t &dir) const;
+  void closeCurrent() const;
 };
 } // namespace dgk

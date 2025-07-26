@@ -33,9 +33,12 @@ muse::ui::UiActionList makeActions(
   muse::ui::UiActionList actions{
       muse::ui::UiAction("orchestrion-file-open", mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
-      muse::ui::UiAction("orchestrion-file-close",
-                         mu::context::UiCtxNotationOpened,
-                         mu::context::CTX_NOTATION_OPENED)};
+      muse::ui::UiAction("orchestrion-file-open-example", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-search-musescore", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-file-help", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY)};
 
   for (const auto &[_, menuId] : actionIds::chooseDevicesSubmenu)
     actions.push_back(muse::ui::UiAction(menuId, mu::context::UiCtxAny,
