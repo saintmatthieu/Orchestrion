@@ -36,7 +36,7 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, "orchestrion-search-musescore",
                     [this]
                     {
-                      const auto url = QUrl("https://musescore.com");
+                      const auto url = QUrl("https://musescore.com/sheetmusic/non-official");
                       interactive()->openUrl(url);
                     });
 
