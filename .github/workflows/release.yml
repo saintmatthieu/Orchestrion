@@ -14,9 +14,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           # Specify the ID of the workflow run that produced the artifacts
-          run-id: 16242979408
+          run-id: 16560293145
           # Looks for "Artifact ID" in the "Upload Artifacts" step of the win and mac build jobs
-          artifact-ids: 3519888341,3519863505
+          artifact-ids: 3626306527,3626273226
           path: ./artifacts
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
