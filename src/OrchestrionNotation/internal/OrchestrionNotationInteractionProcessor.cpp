@@ -30,17 +30,8 @@ void OrchestrionNotationInteractionProcessor::onMousePressed(
     return;
   mu::notation::EngravingItem *hitElement =
       interaction->hitElement(logicPos, hitWidth);
-  const auto note = dynamic_cast<mu::engraving::Note *>(hitElement);
-  if (!note)
-    // interaction->clearSelection(); using this might be needed.
-    return;
-
-  const auto hitStaff = interaction->hitStaff(logicPos);
-  const auto hitStaffIndex = hitStaff ? hitStaff->idx() : muse::nidx;
-  interaction->select({note}, mu::engraving::SelectType::REPLACE,
-                      hitStaffIndex);
-
-  m_noteClicked.send(note);
+  if (hitElement)
+    m_itemClicked.send(hitElement);
 }
 
 void OrchestrionNotationInteractionProcessor::onMouseMoved()
@@ -50,10 +41,10 @@ void OrchestrionNotationInteractionProcessor::onMouseMoved()
     interaction->clearSelection();
 }
 
-muse::async::Channel<const mu::notation::Note *>
-OrchestrionNotationInteractionProcessor::noteClicked() const
+muse::async::Channel<const mu::notation::EngravingItem *>
+OrchestrionNotationInteractionProcessor::itemClicked() const
 {
-  return m_noteClicked;
+  return m_itemClicked;
 }
 
 mu::notation::INotationInteractionPtr

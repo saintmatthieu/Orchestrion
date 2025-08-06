@@ -115,9 +115,9 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
 #endif
 
   dispatcher()->reg(this, "nav-first-control", [this] { GoToTick(0); });
-  interactionProcessor()->noteClicked().onReceive(
-      this, [this](const mu::engraving::Note *note)
-      { GoToTick(note->tick().ticks()); });
+  interactionProcessor()->itemClicked().onReceive(
+      this, [this](const mu::engraving::EngravingItem *item)
+      { GoToTick(item->tick().ticks()); });
   GoToTick(0);
 }
 

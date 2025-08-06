@@ -34,10 +34,11 @@ public:
   void onMousePressed(const muse::PointF &logicalPosition,
                       float hitWidth) override;
   void onMouseMoved() override;
-  muse::async::Channel<const mu::notation::Note *> noteClicked() const override;
+  muse::async::Channel<const mu::notation::EngravingItem *>
+  itemClicked() const override;
 
 private:
   mu::notation::INotationInteractionPtr muInteraction() const;
-  muse::async::Channel<const mu::notation::Note *> m_noteClicked;
+  muse::async::Channel<const mu::notation::EngravingItem *> m_itemClicked;
 };
 } // namespace dgk
