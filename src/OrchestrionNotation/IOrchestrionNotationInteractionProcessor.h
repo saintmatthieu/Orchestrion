@@ -25,12 +25,12 @@
 
 namespace dgk
 {
-class IOrchestrionNotationInteraction : MODULE_EXPORT_INTERFACE
+class IOrchestrionNotationInteractionProcessor : MODULE_EXPORT_INTERFACE
 {
-  INTERFACE_ID(IOrchestrionNotationInteraction);
+  INTERFACE_ID(IOrchestrionNotationInteractionProcessor);
 
 public:
-  virtual ~IOrchestrionNotationInteraction() = default;
+  virtual ~IOrchestrionNotationInteractionProcessor() = default;
 
   virtual void onMousePressed(const muse::PointF &logicalPosition,
                               float hitWidth) = 0;

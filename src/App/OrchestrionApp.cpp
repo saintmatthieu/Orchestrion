@@ -183,7 +183,7 @@ void OrchestrionApp::perform()
 
   engine->load(url);
 
-  const auto retCode = qApp->exec();
+  qApp->exec();
 
   QThreadPool *globalThreadPool = QThreadPool::globalInstance();
   if (globalThreadPool)

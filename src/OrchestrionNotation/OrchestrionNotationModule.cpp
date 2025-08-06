@@ -17,7 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationModule.h"
-#include "internal/OrchestrionNotationInteraction.h"
+#include "internal/OrchestrionNotationInteractionProcessor.h"
 #include "view/OrchestrionNotationPaintView.h"
 
 namespace dgk
@@ -35,7 +35,8 @@ void OrchestrionNotationModule::registerUiTypes()
 
 void OrchestrionNotationModule::registerExports()
 {
-  ioc()->registerExport<IOrchestrionNotationInteraction>(
-      moduleName(), std::make_shared<OrchestrionNotationInteraction>());
+  ioc()->registerExport<IOrchestrionNotationInteractionProcessor>(
+      moduleName(),
+      std::make_shared<OrchestrionNotationInteractionProcessor>());
 }
 } // namespace dgk

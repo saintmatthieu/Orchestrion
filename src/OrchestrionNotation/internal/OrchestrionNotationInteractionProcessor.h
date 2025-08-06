@@ -18,14 +18,15 @@
  */
 #pragma once
 
-#include "IOrchestrionNotationINteraction.h"
+#include "IOrchestrionNotationInteractionProcessor.h"
 #include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
 
 namespace dgk
 {
-class OrchestrionNotationInteraction : public IOrchestrionNotationInteraction,
-                                       public muse::Injectable
+class OrchestrionNotationInteractionProcessor
+    : public IOrchestrionNotationInteractionProcessor,
+      public muse::Injectable
 {
   muse::Inject<mu::context::IGlobalContext> globalContext = {this};
 

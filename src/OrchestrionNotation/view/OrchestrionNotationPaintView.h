@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "IOrchestrionNotationInteraction.h"
 #include "GestureControllers/IGestureControllerSelector.h"
+#include "IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
@@ -34,7 +34,7 @@ namespace dgk
 class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
   Q_OBJECT
-  muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
+  muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<mu::notation::INotationConfiguration> configuration;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<IOrchestrion> orchestrion;

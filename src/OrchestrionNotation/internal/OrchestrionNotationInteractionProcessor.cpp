@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "OrchestrionNotationInteraction.h"
+#include "OrchestrionNotationInteractionProcessor.h"
 #include <engraving/dom/mscore.h>
 #include <notation/notationtypes.h>
 
 namespace dgk
 {
-void OrchestrionNotationInteraction::onMousePressed(
+void OrchestrionNotationInteractionProcessor::onMousePressed(
     const muse::PointF &logicPos, float hitWidth)
 {
   const auto interaction = muInteraction();
@@ -43,7 +43,7 @@ void OrchestrionNotationInteraction::onMousePressed(
   m_noteClicked.send(note);
 }
 
-void OrchestrionNotationInteraction::onMouseMoved()
+void OrchestrionNotationInteractionProcessor::onMouseMoved()
 {
   // This will prevent dragging from editing the score.
   if (const auto interaction = muInteraction())
@@ -51,13 +51,13 @@ void OrchestrionNotationInteraction::onMouseMoved()
 }
 
 muse::async::Channel<const mu::notation::Note *>
-OrchestrionNotationInteraction::noteClicked() const
+OrchestrionNotationInteractionProcessor::noteClicked() const
 {
   return m_noteClicked;
 }
 
 mu::notation::INotationInteractionPtr
-OrchestrionNotationInteraction::muInteraction() const
+OrchestrionNotationInteractionProcessor::muInteraction() const
 {
   const auto notation = globalContext()->currentNotation();
   return notation ? notation->interaction() : nullptr;

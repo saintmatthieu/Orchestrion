@@ -147,7 +147,7 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
     onMousePressed(mouseEvent->position());
   }
   else if (event->type() == QEvent::MouseMove)
-    orchestrionNotationInteraction()->onMouseMoved();
+    interactionProcessor()->onMouseMoved();
 
   return mu::notation::NotationPaintView::eventFilter(watched, event);
 }
@@ -157,7 +157,7 @@ void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
   const muse::PointF logicPos = toLogical(pos);
   const float hitWidth =
       configuration()->selectionProximity() * 0.5f / currentScaling();
-  orchestrionNotationInteraction()->onMousePressed(logicPos, hitWidth);
+  interactionProcessor()->onMousePressed(logicPos, hitWidth);
 }
 
 void OrchestrionNotationPaintView::loadOrchestrionNotation()

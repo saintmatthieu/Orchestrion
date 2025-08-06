@@ -19,7 +19,7 @@
 #pragma once
 
 #include "IOrchestrionSequencer.h"
-#include "OrchestrionNotation/IOrchestrionNotationInteraction.h"
+#include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "internal/VoiceSequencer.h"
 #include <actions/actionable.h>
@@ -46,7 +46,7 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 {
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
-  muse::Inject<IOrchestrionNotationInteraction> orchestrionNotationInteraction;
+  muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
 
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;

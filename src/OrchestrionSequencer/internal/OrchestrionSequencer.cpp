@@ -115,7 +115,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
 #endif
 
   dispatcher()->reg(this, "nav-first-control", [this] { GoToTick(0); });
-  orchestrionNotationInteraction()->noteClicked().onReceive(
+  interactionProcessor()->noteClicked().onReceive(
       this, [this](const mu::engraving::Note *note)
       { GoToTick(note->tick().ticks()); });
   GoToTick(0);
@@ -132,9 +132,8 @@ void AppendNoteoffs(dgk::NoteEvents &output, const std::vector<int> &noteoffs,
     output.reserve(output.size() + noteoffs.size());
     std::transform(
         noteoffs.begin(), noteoffs.end(), std::back_inserter(output),
-        [&](int note) {
-          return NoteEvent{NoteEventType::noteOff, track, note, velocity};
-        });
+        [&](int note)
+        { return NoteEvent{NoteEventType::noteOff, track, note, velocity}; });
   }
   else
     // Only append noteoffs that aren't in `noteons`.
@@ -149,10 +148,8 @@ void AppendNoteons(dgk::NoteEvents &output, const std::vector<int> &noteons,
 {
   output.reserve(output.size() + noteons.size());
   std::transform(
-      noteons.begin(), noteons.end(), std::back_inserter(output),
-      [&](int note) {
-        return NoteEvent{NoteEventType::noteOn, track, note, velocity};
-      });
+      noteons.begin(), noteons.end(), std::back_inserter(output), [&](int note)
+      { return NoteEvent{NoteEventType::noteOn, track, note, velocity}; });
 }
 
 void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
@@ -188,7 +185,8 @@ void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
       transitions.erase(track);
     else
       transitions.emplace(
-          track, PastChord{Get<PastChordAndFutureChord>(transition)->pastChord});
+          track,
+          PastChord{Get<PastChordAndFutureChord>(transition)->pastChord});
   }
 }
 } // namespace
@@ -441,9 +439,9 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
 
   using namespace std::chrono;
 
-  const auto numNoteons = std::count_if(
-      events.begin(), events.end(),
-      [](const auto &event) { return event.type == NoteEventType::noteOn; });
+  const auto numNoteons =
+      std::count_if(events.begin(), events.end(), [](const auto &event)
+                    { return event.type == NoteEventType::noteOn; });
   if (numNoteons < 2)
   {
     m_outputEvent.send(std::move(events));
