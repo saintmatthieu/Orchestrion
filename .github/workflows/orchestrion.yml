@@ -80,7 +80,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion
-        path: ${{env.BUILD_DIR}}\Install Orchestrion.exe
+        path: "${{env.BUILD_DIR}}/Orchestrion installer for Windows.exe"
 
     - name: Upload Debug Symbols
       uses: actions/upload-artifact@v4
@@ -165,16 +165,16 @@ jobs:
       run: brew install create-dmg
 
     - name: Create DMG
-      run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 ${{env.BUILD_DIR}}/Orchestrion.dmg ${{env.BUILD_DIR}}/Orchestrion.app
+      run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" ${{env.BUILD_DIR}}/Orchestrion.app
 
     - name: Notarize
       if: github.ref == 'refs/heads/master'
       run: |
-        xcrun notarytool submit ${{env.BUILD_DIR}}/Orchestrion.dmg --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
-        xcrun stapler staple ${{env.BUILD_DIR}}/Orchestrion.dmg
+        xcrun notarytool submit "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
+        xcrun stapler staple "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Orchestrion Mac
-        path: ${{env.BUILD_DIR}}/Orchestrion.dmg
+        path: "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"

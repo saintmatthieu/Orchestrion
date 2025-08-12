@@ -1,6 +1,6 @@
 !define APPNAME "MyApp"
 !define VERSION "1.0"
-Outfile "build\Install Orchestrion.exe"
+Outfile "build\Orchestrion installer for Windows.exe"
 InstallDir "$PROGRAMFILES64\saintmatthieu\Orchestrion"
 
 ; Define the icon for the installer and shortcut
