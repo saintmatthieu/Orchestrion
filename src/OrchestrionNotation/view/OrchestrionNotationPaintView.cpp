@@ -139,15 +139,32 @@ OrchestrionNotationPaintView::getRelevantItems(
   return items;
 }
 
+void OrchestrionNotationPaintView::onLoadNotation(
+    mu::notation::INotationPtr notation)
+{
+  mu::notation::NotationPaintView::onLoadNotation(std::move(notation));
+  // We want hover events, which NotationPaintView::onLoadNotation may have set
+  // to false.
+  setAcceptHoverEvents(true);
+}
+
 bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 {
-  if (event->type() == QEvent::MouseButtonPress)
+  const auto ans = acceptHoverEvents();
+
+  if (watched == this)
   {
-    const auto mouseEvent = static_cast<QMouseEvent *>(event);
-    onMousePressed(mouseEvent->position());
+    if (event->type() == QEvent::MouseButtonPress)
+    {
+      const auto mouseEvent = static_cast<QMouseEvent *>(event);
+      onMousePressed(mouseEvent->position());
+    }
+    else if (event->type() == QEvent::HoverMove)
+    {
+      const auto mouseEvent = static_cast<QMouseEvent *>(event);
+      onMouseMoved(mouseEvent->position());
+    }
   }
-  else if (event->type() == QEvent::MouseMove)
-    interactionProcessor()->onMouseMoved();
 
   return mu::notation::NotationPaintView::eventFilter(watched, event);
 }
@@ -155,9 +172,18 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
 {
   const muse::PointF logicPos = toLogical(pos);
-  const float hitWidth =
-      configuration()->selectionProximity() * 0.5f / currentScaling();
-  interactionProcessor()->onMousePressed(logicPos, hitWidth);
+  interactionProcessor()->onMousePressed(logicPos, hitWidth());
+}
+
+void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
+{
+  const muse::PointF logicPos = toLogical(pos);
+  interactionProcessor()->onMouseMoved(logicPos, hitWidth());
+}
+
+float OrchestrionNotationPaintView::hitWidth() const
+{
+  return configuration()->selectionProximity() * 0.5f / currentScaling();
 }
 
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
@@ -190,6 +216,22 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
 
   load();
   updateNotation();
+
+  const auto interaction = notationInteraction();
+  IF_ASSERT_FAILED(interaction) { return; }
+  interaction->noteInput()->stateChanged().onNotify(
+      this,
+      [this]
+      {
+        QTimer::singleShot(0, this,
+                           [this]
+                           {
+                             // Same as above: restore this to `true` in case
+                             // the base class has set it to `false`.
+                             setAcceptHoverEvents(true);
+                           });
+      },
+      AsyncMode::AsyncSetRepeat);
 }
 
 void OrchestrionNotationPaintView::initTouchpadMidiController()

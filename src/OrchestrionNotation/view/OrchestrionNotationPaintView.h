@@ -48,12 +48,14 @@ public:
   Q_INVOKABLE void loadOrchestrionNotation();
 
 private:
+  void onLoadNotation(mu::notation::INotationPtr notation) override;
   void subscribe(const IOrchestrionSequencer &sequencer);
   void alignVertically();
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
   void onMousePressed(const QPointF &pos);
+  void onMouseMoved(const QPointF &pos);
   std::vector<mu::engraving::EngravingItem *>
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
@@ -61,6 +63,7 @@ private:
   void updateNotation();
   void wheelEvent(QWheelEvent *) override {}
   void initTouchpadMidiController();
+  float hitWidth() const;
 
   struct Box
   {

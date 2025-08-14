@@ -20,6 +20,8 @@
 #include <engraving/dom/mscore.h>
 #include <notation/notationtypes.h>
 
+#include <QApplication>
+
 namespace dgk
 {
 void OrchestrionNotationInteractionProcessor::onMousePressed(
@@ -28,17 +30,36 @@ void OrchestrionNotationInteractionProcessor::onMousePressed(
   const auto interaction = muInteraction();
   if (!interaction)
     return;
-  mu::notation::EngravingItem *hitElement =
+  const mu::notation::EngravingItem *const hitElement =
       interaction->hitElement(logicPos, hitWidth);
   if (hitElement)
     m_itemClicked.send(hitElement);
 }
 
-void OrchestrionNotationInteractionProcessor::onMouseMoved()
+void OrchestrionNotationInteractionProcessor::onMouseMoved(
+    const muse::PointF &logicPos, float hitWidth)
 {
-  // This will prevent dragging from editing the score.
-  if (const auto interaction = muInteraction())
-    interaction->clearSelection();
+  const auto interaction = muInteraction();
+  if (!interaction)
+    return;
+
+  const mu::notation::EngravingItem *const hitElement =
+      interaction->hitElement(logicPos, hitWidth);
+  if (hitElement)
+  {
+    if (!m_pointingHandCursor)
+    {
+      QApplication::setOverrideCursor(Qt::PointingHandCursor);
+      m_pointingHandCursor = true;
+    }
+  }
+  else if (m_pointingHandCursor)
+  {
+    QApplication::restoreOverrideCursor();
+    m_pointingHandCursor = false;
+  }
+
+  interaction->clearSelection();
 }
 
 muse::async::Channel<const mu::notation::EngravingItem *>

@@ -33,12 +33,14 @@ class OrchestrionNotationInteractionProcessor
 public:
   void onMousePressed(const muse::PointF &logicalPosition,
                       float hitWidth) override;
-  void onMouseMoved() override;
+  void onMouseMoved(const muse::PointF &logicalPosition,
+                    float hitWidth) override;
   muse::async::Channel<const mu::notation::EngravingItem *>
   itemClicked() const override;
 
 private:
   mu::notation::INotationInteractionPtr muInteraction() const;
   muse::async::Channel<const mu::notation::EngravingItem *> m_itemClicked;
+  bool m_pointingHandCursor = false;
 };
 } // namespace dgk

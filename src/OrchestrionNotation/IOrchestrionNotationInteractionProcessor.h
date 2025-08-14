@@ -34,7 +34,8 @@ public:
 
   virtual void onMousePressed(const muse::PointF &logicalPosition,
                               float hitWidth) = 0;
-  virtual void onMouseMoved() = 0;
+  virtual void onMouseMoved(const muse::PointF &logicalPosition,
+                            float hitWidth) = 0;
   virtual muse::async::Channel<const mu::notation::EngravingItem *>
   itemClicked() const = 0;
 };
