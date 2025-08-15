@@ -6,3 +6,4 @@ _deps
 .DS_Store
 *.pyc
 .vs
+*.qm

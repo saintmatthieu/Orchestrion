@@ -33,7 +33,6 @@
 #include <accessibility/accessibilitymodule.h>
 #include <actions/actionsmodule.h>
 #include <audio/audiomodule.h>
-#include <stubs/audioplugins/audiopluginsstubmodule.h>
 #include <commonscene/commonscenemodule.h>
 #include <context/contextmodule.h>
 #include <draw/drawmodule.h>
@@ -42,6 +41,7 @@
 #include <global/globalmodule.h>
 #include <importexport/midi/midimodule.h>
 #include <importexport/musicxml/musicxmlmodule.h>
+#include <languages/languagesmodule.h>
 #include <midi/midimodule.h>
 #include <mpe/mpemodule.h>
 #include <multiinstances/multiinstancesmodule.h>
@@ -50,6 +50,7 @@
 #include <playback/playbackmodule.h>
 #include <project/projectmodule.h>
 #include <shortcuts/shortcutsmodule.h>
+#include <stubs/audioplugins/audiopluginsstubmodule.h>
 #include <ui/uimodule.h>
 #include <uicomponents/uicomponentsmodule.h>
 #include <vst/vstmodule.h>
@@ -103,6 +104,7 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::draw::DrawModule());
   app->addModule(new mu::engraving::EngravingModule());
   app->addModule(new muse::extensions::ExtensionsModule());
+  app->addModule(new muse::languages::LanguagesModule());
   app->addModule(new mu::iex::midi::MidiModule());
   app->addModule(new mu::iex::musicxml::MusicXmlModule());
   app->addModule(new muse::midi::MidiModule());
