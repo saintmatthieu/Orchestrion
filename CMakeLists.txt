@@ -82,6 +82,7 @@ target_link_libraries(Orchestrion PRIVATE
     muse_global
     iex_midi
     iex_musicxml
+    muse_languages
     muse_midi
     muse_mpe
     muse_multiinstances
@@ -140,18 +141,47 @@ if (OS_IS_MAC)
 else()
     set(resource_install_dir ${CMAKE_INSTALL_PREFIX})
 endif()
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resource_install_dir}/wallpapers)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"               DESTINATION ${resource_install_dir})
-install(DIRECTORY ${QT_INSTALL_QML}                         DESTINATION ${resource_install_dir})
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"     DESTINATION ${resource_install_dir}/scores)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/" DESTINATION ${resource_install_dir}/wallpapers)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"       DESTINATION ${resource_install_dir})
+install(DIRECTORY ${QT_INSTALL_QML}                 DESTINATION ${resource_install_dir})
 
 install(TARGETS Orchestrion
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .)
 
+### TRANSLATIONS ###
+
+# Define the script and stamp file
+set(LRELEASE_SCRIPT ${CMAKE_SOURCE_DIR}/tools/translations/run_lrelease.py)
+set(LRELEASE_STAMP ${CMAKE_BINARY_DIR}/lrelease.stamp)
+
+# Create a custom target to run the script and generate the stamp
+add_custom_target(run_lrelease ALL
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR}/tools/translations python3 ${LRELEASE_SCRIPT}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    BYPRODUCTS ${LRELEASE_STAMP}
+    COMMAND ${CMAKE_COMMAND} -E touch ${LRELEASE_STAMP}
+    COMMENT "Running lrelease to compile translations"
+    VERBATIM
+)
+
+# Make the install target depend on the stamp file
+install(CODE "include(\"${LRELEASE_STAMP}\")")
+
+set(TRANSLATION_FILES
+    ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_de.qm
+    ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_en_US.qm
+    ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_fr.qm
+)
+install(FILES ${TRANSLATION_FILES} DESTINATION ${resource_install_dir}/locale)
+install(FILES "${CMAKE_SOURCE_DIR}/share/locale/languages.json" DESTINATION ${resource_install_dir}/locale)
+
+### TRANSLATIONS ###
+
 if (OS_IS_WIN)
     if (SNDFILE_DLL)
-    install(FILES ${SNDFILE_DLL} DESTINATION bin)
+        install(FILES ${SNDFILE_DLL} DESTINATION bin)
         # add the LIBSNDFILE_SUPPORT definition
         add_custom_command(TARGET Orchestrion POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:Orchestrion>)

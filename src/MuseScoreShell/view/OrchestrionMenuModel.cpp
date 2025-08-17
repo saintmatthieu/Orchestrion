@@ -165,17 +165,17 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
   const QList<muse::uicomponents::MenuItem *> menu{
       makeMenuItem(
           "orchestrion-file-open",
-          muse::TranslatableString("appshell/menu/file", "&From computer...")),
+          muse::TranslatableString("appshell/menu/file", "&From computer…")),
       makeMenuItem(
           "orchestrion-file-open-example",
-          muse::TranslatableString("appshell/menu/file", "&Example file...")),
+          muse::TranslatableString("appshell/menu/file", "&Example file…")),
       makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
                    muse::TranslatableString("appshell/menu/file",
                                             "Search on &Musescore.com")),
       makeSeparator(),
       makeMenuItem("orchestrion-file-help",
-                   muse::TranslatableString("appshell/menu/file", "&Help..."))};
+                   muse::TranslatableString("appshell/menu/file", "&Help…"))};
   return makeMenu(muse::TranslatableString("appshell/menu/file", "&Open"), menu,
                   "menu-orchestrion-file");
 }
@@ -186,11 +186,14 @@ OrchestrionMenuModel::makeAudioMidiSubmenu(DeviceType deviceType)
   auto subenu = makeMenuItem(actionIds::chooseDevicesSubmenu.at(deviceType));
   if (subenu)
   {
-    subenu->setTitle(muse::TranslatableString(
-        "appshell/menu/audio-midi",
-        deviceType == DeviceType::MidiController    ? "&MIDI controller"
-        : deviceType == DeviceType::MidiSynthesizer ? "MIDI &synthesizer"
-                                                    : "&Playback device"));
+    subenu->setTitle(deviceType == DeviceType::MidiController
+                         ? muse::TranslatableString("appshell/menu/audio-midi",
+                                                    "&MIDI controller")
+                     : deviceType == DeviceType::MidiSynthesizer
+                         ? muse::TranslatableString("appshell/menu/audio-midi",
+                                                    "MIDI &synthesizer")
+                         : muse::TranslatableString("appshell/menu/audio-midi",
+                                                    "&Playback device"));
     subenu->setSubitems(
         getMenuItems(orchestrionUiActions()->settableDevices(deviceType)));
   }
