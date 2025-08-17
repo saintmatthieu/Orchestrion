@@ -151,24 +151,15 @@ install(TARGETS Orchestrion
         BUNDLE DESTINATION .)
 
 ### TRANSLATIONS ###
-
-# Define the script and stamp file
-set(LRELEASE_SCRIPT ${CMAKE_SOURCE_DIR}/tools/translations/run_lrelease.py)
-set(LRELEASE_STAMP ${CMAKE_BINARY_DIR}/lrelease.stamp)
-
-# Create a custom target to run the script and generate the stamp
-add_custom_target(run_lrelease ALL
-    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR}/tools/translations python3 ${LRELEASE_SCRIPT}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    BYPRODUCTS ${LRELEASE_STAMP}
-    COMMAND ${CMAKE_COMMAND} -E touch ${LRELEASE_STAMP}
-    COMMENT "Running lrelease to compile translations"
-    VERBATIM
-)
-
-# Make the install target depend on the stamp file
-install(CODE "include(\"${LRELEASE_STAMP}\")")
-
+if (RUN_LUPDATE)
+    # Create a custom target to run the script and generate the stamp
+    add_custom_target(run_lrelease ALL
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR}/tools/translations python3 ${CMAKE_SOURCE_DIR}/tools/translations/run_lrelease.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running lrelease to compile translations"
+        VERBATIM
+    )
+endif()
 set(TRANSLATION_FILES
     ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_de.qm
     ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_en_US.qm
@@ -176,7 +167,6 @@ set(TRANSLATION_FILES
 )
 install(FILES ${TRANSLATION_FILES} DESTINATION ${resource_install_dir}/locale)
 install(FILES "${CMAKE_SOURCE_DIR}/share/locale/languages.json" DESTINATION ${resource_install_dir}/locale)
-
 ### TRANSLATIONS ###
 
 if (OS_IS_WIN)
