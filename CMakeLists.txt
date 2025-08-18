@@ -165,7 +165,15 @@ set(TRANSLATION_FILES
     ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_en_US.qm
     ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_fr.qm
 )
-install(FILES ${TRANSLATION_FILES} DESTINATION ${resource_install_dir}/locale)
+set(TRANSLATION_FILES_TXT)
+foreach(file ${TRANSLATION_FILES})
+    get_filename_component(fname ${file} NAME)
+    set(txt_file "${file}.txt")
+    configure_file(${file} ${txt_file} COPYONLY)
+    list(APPEND TRANSLATION_FILES_TXT ${txt_file})
+endforeach()
+install(FILES ${TRANSLATION_FILES_TXT} DESTINATION ${resource_install_dir}/locale)
+# install(FILES ${TRANSLATION_FILES} DESTINATION ${resource_install_dir}/locale)
 install(FILES "${CMAKE_SOURCE_DIR}/share/locale/languages.json" DESTINATION ${resource_install_dir}/locale)
 ### TRANSLATIONS ###
 

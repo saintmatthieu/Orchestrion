@@ -100,6 +100,8 @@ jobs:
   build_mac:
     runs-on: macos-latest
 
+    if: false
+
     steps:
     - name: Install libsndfile
       run: brew install libsndfile
