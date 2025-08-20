@@ -151,30 +151,23 @@ install(TARGETS Orchestrion
         BUNDLE DESTINATION .)
 
 ### TRANSLATIONS ###
-if (RUN_LUPDATE)
-    # Create a custom target to run the script and generate the stamp
-    add_custom_target(run_lrelease ALL
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_SOURCE_DIR}/tools/translations python3 ${CMAKE_SOURCE_DIR}/tools/translations/run_lrelease.py
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running lrelease to compile translations"
-        VERBATIM
-    )
-endif()
-set(TRANSLATION_FILES
-    ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_de.qm
-    ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_en_US.qm
-    ${CMAKE_SOURCE_DIR}/share/locale/orchestrion_fr.qm
+file(GLOB TS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/share/locale/*.ts)
+
+add_custom_target(translations ALL COMMENT "Generating .qm files" VERBATIM)
+qt_add_lrelease(translations TS_FILES ${TS_FILES} NO_GLOBAL_TARGET QM_FILES_OUTPUT_VARIABLE QM_FILES)
+
+install(
+    FILES ${CMAKE_SOURCE_DIR}/share/locale/languages.json ${QM_FILES}
+    DESTINATION ${resource_install_dir}/locale
 )
-set(TRANSLATION_FILES_TXT)
-foreach(file ${TRANSLATION_FILES})
-    get_filename_component(fname ${file} NAME)
-    set(txt_file "${file}.txt")
-    configure_file(${file} ${txt_file} COPYONLY)
-    list(APPEND TRANSLATION_FILES_TXT ${txt_file})
-endforeach()
-install(FILES ${TRANSLATION_FILES_TXT} DESTINATION ${resource_install_dir}/locale)
-# install(FILES ${TRANSLATION_FILES} DESTINATION ${resource_install_dir}/locale)
-install(FILES "${CMAKE_SOURCE_DIR}/share/locale/languages.json" DESTINATION ${resource_install_dir}/locale)
+
+install(DIRECTORY ${QT_INSTALL_PREFIX}/translations/
+    DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}locale
+    FILES_MATCHING
+    REGEX "qt_.*\\.qm"
+    REGEX "qt_help_.*\\.qm" EXCLUDE
+    REGEX "qtbase_.*\\.qm"
+    REGEX "qt*_en\\.qm" EXCLUDE)
 ### TRANSLATIONS ###
 
 if (OS_IS_WIN)
