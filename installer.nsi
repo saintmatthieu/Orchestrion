@@ -60,6 +60,9 @@ Section "Install"
     SetOutPath $INSTDIR\icons\controllers
     File /r "build\install\icons\controllers\*.*"
 
+    SetOutPath $INSTDIR\locale
+    File /r "build\install\locale\*.*"
+
     ; Create a shortcut with the specified icon
     CreateShortcut "$DESKTOP\Orchestrion.lnk" "$INSTDIR\bin\Orchestrion.exe" "" "$INSTDIR\icons\music-box.ico"
 SectionEnd
