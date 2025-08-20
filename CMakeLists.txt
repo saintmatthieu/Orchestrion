@@ -82,6 +82,7 @@ target_link_libraries(Orchestrion PRIVATE
     muse_global
     iex_midi
     iex_musicxml
+    muse_languages
     muse_midi
     muse_mpe
     muse_multiinstances
@@ -140,18 +141,38 @@ if (OS_IS_MAC)
 else()
     set(resource_install_dir ${CMAKE_INSTALL_PREFIX})
 endif()
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resource_install_dir}/wallpapers)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"               DESTINATION ${resource_install_dir})
-install(DIRECTORY ${QT_INSTALL_QML}                         DESTINATION ${resource_install_dir})
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"     DESTINATION ${resource_install_dir}/scores)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/" DESTINATION ${resource_install_dir}/wallpapers)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"       DESTINATION ${resource_install_dir})
+install(DIRECTORY ${QT_INSTALL_QML}                 DESTINATION ${resource_install_dir})
 
 install(TARGETS Orchestrion
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .)
 
+### TRANSLATIONS ###
+file(GLOB TS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/share/locale/*.ts)
+
+add_custom_target(translations ALL COMMENT "Generating .qm files" VERBATIM)
+qt_add_lrelease(translations TS_FILES ${TS_FILES} NO_GLOBAL_TARGET QM_FILES_OUTPUT_VARIABLE QM_FILES)
+
+install(
+    FILES ${CMAKE_SOURCE_DIR}/share/locale/languages.json ${QM_FILES}
+    DESTINATION ${resource_install_dir}/locale
+)
+
+install(DIRECTORY ${QT_INSTALL_PREFIX}/translations/
+    DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}locale
+    FILES_MATCHING
+    REGEX "qt_.*\\.qm"
+    REGEX "qt_help_.*\\.qm" EXCLUDE
+    REGEX "qtbase_.*\\.qm"
+    REGEX "qt*_en\\.qm" EXCLUDE)
+### TRANSLATIONS ###
+
 if (OS_IS_WIN)
     if (SNDFILE_DLL)
-    install(FILES ${SNDFILE_DLL} DESTINATION bin)
+        install(FILES ${SNDFILE_DLL} DESTINATION bin)
         # add the LIBSNDFILE_SUPPORT definition
         add_custom_command(TARGET Orchestrion POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:Orchestrion>)
