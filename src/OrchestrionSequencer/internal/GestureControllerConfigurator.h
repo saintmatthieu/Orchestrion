@@ -22,7 +22,6 @@
 #include "IGestureControllerConfigurator.h"
 #include "IOrchestrion.h"
 
-
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
 
@@ -41,7 +40,7 @@ public:
 private:
   void setSelectedControllers(const GestureControllerTypeSet &) override;
 
-  void onNoteOn(int, float);
+  void onNoteOn(int pitch, std::optional<float> velocity);
   void onNoteOff(int);
 };
 } // namespace dgk

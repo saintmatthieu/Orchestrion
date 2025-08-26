@@ -26,67 +26,6 @@ ComputerKeyboardGestureController::ComputerKeyboardGestureController()
                                      { keyPressed(letter); });
   keyboard()->keyReleased().onReceive(this, [this](char letter)
                                       { keyReleased(letter); });
-  updateNoteMap();
-  keyboard()->layoutChanged().onNotify(this, [this] { updateNoteMap(); });
-}
-
-void ComputerKeyboardGestureController::updateNoteMap()
-{
-  std::unordered_map<char, Note> usLayout{
-      // row 1
-      {'1', {0, 1.0f}},
-      {'2', {1, 1.0f}},
-      {'3', {3, 1.0f}},
-      {'4', {4, 1.0f}},
-      {'5', {5, 1.0f}},
-      {'6', {60, 1.0f}},
-      {'7', {61, 1.0f}},
-      {'8', {62, 1.0f}},
-      {'9', {63, 1.0f}},
-      {'0', {64, 1.0f}},
-      // row 2
-      {'q', {6, .75f}},
-      {'w', {7, .75f}},
-      {'e', {8, .75f}},
-      {'r', {9, .75f}},
-      {'y', {65, .75f}},
-      {'u', {66, .75f}},
-      {'i', {67, .75f}},
-      {'o', {68, .75f}},
-      // row 3
-      {'a', {11, .50f}},
-      {'s', {12, .50f}},
-      {'d', {13, .50f}},
-      {'f', {14, .50f}},
-      {'g', {69, .50f}},
-      {'h', {70, .50f}},
-      {'j', {71, .50f}},
-      {'k', {72, .50f}},
-      // row 4
-      {'z', {15, .25f}},
-      {'x', {16, .25f}},
-      {'c', {17, .25f}},
-      {'b', {73, .25f}},
-      {'n', {74, .25f}},
-      {'m', {75, .25f}},
-  };
-
-  switch (keyboard()->layout())
-  {
-  case IComputerKeyboard::Layout::US:
-    m_noteMap = std::move(usLayout);
-    break;
-  case IComputerKeyboard::Layout::German:
-  default:
-    m_noteMap = std::move(usLayout);
-    // Same as US, just swap y and z.
-    const auto tmp = m_noteMap.at('y');
-    m_noteMap.erase('y');
-    m_noteMap.emplace('y', m_noteMap.at('z'));
-    m_noteMap.erase('z');
-    m_noteMap.emplace('z', tmp);
-    break;
-  }
 }
 
 void ComputerKeyboardGestureController::keyPressed(char letter)
@@ -104,7 +43,7 @@ void ComputerKeyboardGestureController::keyPressed(char letter)
     return;
 
   m_pressedLetters.insert(letter);
-  m_noteOn.send(m_noteMap.at(letter).pitch, m_noteMap.at(letter).velocity);
+  m_noteOn.send(m_noteMap.at(letter), std::optional<float>{});
 }
 
 void ComputerKeyboardGestureController::keyReleased(char letter)
@@ -117,10 +56,11 @@ void ComputerKeyboardGestureController::keyReleased(char letter)
     return;
 
   m_pressedLetters.erase(letter);
-  m_noteOff.send(m_noteMap.at(letter).pitch);
+  m_noteOff.send(m_noteMap.at(letter));
 }
 
-muse::async::Channel<int, float> ComputerKeyboardGestureController::noteOn() const
+muse::async::Channel<int, std::optional<float>>
+ComputerKeyboardGestureController::noteOn() const
 {
   return m_noteOn;
 }

@@ -84,17 +84,15 @@ TouchpadGestureController::TouchpadGestureController(const ITouchpad &touchpad)
       });
 }
 
-bool TouchpadGestureController::isFunctional()
-{
-  return false;
-}
+bool TouchpadGestureController::isFunctional() { return false; }
 
 muse::async::Channel<Contacts> TouchpadGestureController::contactChanged() const
 {
   return m_touchpad.contactChanged();
 }
 
-muse::async::Channel<int, float> TouchpadGestureController::noteOn() const
+muse::async::Channel<int, std::optional<float>>
+TouchpadGestureController::noteOn() const
 {
   return m_noteOn;
 }

@@ -122,6 +122,7 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 const IChord *GetPastChord(const ChordTransition &);
 const IChord *GetPresentChord(const ChordTransition &);
+IChord *GetPresentChord(ChordTransition &);
 const IMelodySegment *GetPresentThing(const ChordTransition &);
 const IChord *GetFutureChord(const ChordTransition &);
 

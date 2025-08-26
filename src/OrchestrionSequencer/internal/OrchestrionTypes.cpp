@@ -44,6 +44,12 @@ const dgk::IChord *dgk::GetPresentChord(const ChordTransition &transition)
     return nullptr;
 }
 
+dgk::IChord *dgk::GetPresentChord(ChordTransition &transition)
+{
+  return const_cast<IChord *>(
+      GetPresentChord(static_cast<const ChordTransition &>(transition)));
+}
+
 const dgk::IMelodySegment *
 dgk::GetPresentThing(const ChordTransition &transition)
 {

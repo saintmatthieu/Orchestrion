@@ -36,21 +36,23 @@ void GestureControllerConfigurator::init()
               gestureControllerSelector()->getSelectedController(type);
           if (!controller)
             continue;
-          controller->noteOn().onReceive(this, [this](int pitch, float velocity)
-                                         { onNoteOn(pitch, velocity); });
+          controller->noteOn().onReceive(
+              this, [this](int pitch, std::optional<float> velocity)
+              { onNoteOn(pitch, std::move(velocity)); });
           controller->noteOff().onReceive(this, [this](int pitch)
                                           { onNoteOff(pitch); });
         }
       });
 }
 
-void GestureControllerConfigurator::onNoteOn(int pitch, float velocity)
+void GestureControllerConfigurator::onNoteOn(int pitch,
+                                             std::optional<float> velocity)
 {
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     // Things don't look ready yet
     return;
-  sequencer->OnInputEvent(NoteEventType::noteOn, pitch, velocity);
+  sequencer->OnInputEvent(NoteEventType::noteOn, pitch, std::move(velocity));
 }
 
 void GestureControllerConfigurator::onNoteOff(int pitch)

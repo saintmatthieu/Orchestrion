@@ -26,13 +26,17 @@
 
 namespace dgk
 {
-
 namespace me = mu::engraving;
 
 MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
     : MuseMelodySegment(segment, track, measurePlaybackTick)
 {
+  const auto notes = GetNotes();
+  if (!notes.empty())
+  {
+    const auto velocity = notes.front()->userVelocity();
+  }
 }
 
 std::vector<me::Note *> MuseChord::GetNotes() const
@@ -131,5 +135,17 @@ dgk::Tick MuseChord::GetEndTick() const
     chord = GetNextTiedChord(*chord);
   }
   return endTick;
+}
+
+float MuseChord::GetVelocity() const { return m_velocity; }
+
+void MuseChord::SetVelocity(float velocity)
+{
+  m_velocity = velocity;
+  const auto notes = GetNotes();
+  const auto midiVelocity =
+      std::clamp(static_cast<int>(m_velocity * 128), 0, 127);
+  for (const auto note : notes)
+    note->setUserVelocity(midiVelocity);
 }
 } // namespace dgk

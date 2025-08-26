@@ -47,5 +47,10 @@ public:
 private:
   std::vector<int> GetPitches() const override;
   std::vector<mu::engraving::Note *> GetNotes() const;
+
+  float GetVelocity() const override;
+  void SetVelocity(float) override;
+
+  float m_velocity = 0.f;
 };
 } // namespace dgk

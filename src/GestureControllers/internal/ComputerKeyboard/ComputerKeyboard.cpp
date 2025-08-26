@@ -25,28 +25,6 @@
 
 namespace dgk
 {
-namespace
-{
-IComputerKeyboard::Layout getDefaultLayout()
-{
-  if (const auto layout = IComputerKeyboard::layoutFromString(
-          muse::Settings::instance()
-              ->value({"orchestrion", "keyboard layout"})
-              .toString()))
-    return *layout;
-
-  switch (qApp->inputMethod()->locale().language())
-  {
-  case QLocale::Language::German:
-    return IComputerKeyboard::Layout::German;
-  case QLocale::Language::English:
-    return IComputerKeyboard::Layout::US;
-  }
-
-  return IComputerKeyboard::Layout::US;
-}
-} // namespace
-
 ComputerKeyboardImpl::ComputerKeyboardImpl(ComputerKeyboard &owner)
     : QObject{nullptr}, m_owner(owner)
 {
@@ -89,23 +67,6 @@ ComputerKeyboard::ComputerKeyboard()
 void ComputerKeyboard::preInit()
 {
   m_impl->init();
-  m_layout = getDefaultLayout();
-}
-
-IComputerKeyboard::Layout ComputerKeyboard::layout() const { return m_layout; }
-
-void ComputerKeyboard::setLayout(Layout layout)
-{
-  m_layout = layout;
-  muse::Settings::instance()->setSharedValue(
-      {"orchestrion", "keyboard layout"},
-      muse::Val{IComputerKeyboard::layoutToString(layout)});
-  m_layoutChanged.notify();
-}
-
-muse::async::Notification ComputerKeyboard::layoutChanged() const
-{
-  return m_layoutChanged;
 }
 
 void ComputerKeyboard::onKeyPressed(char letter) { m_keyPressed.send(letter); }

@@ -41,11 +41,11 @@ public:
 
 private:
   void onMidiEventReceived(const muse::midi::Event &event);
-  muse::async::Channel<int, float> noteOn() const override;
+  muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
   muse::Inject<muse::midi::IMidiInPort> midiInPort;
-  muse::async::Channel<int, float> m_noteOn;
+  muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
 };
 

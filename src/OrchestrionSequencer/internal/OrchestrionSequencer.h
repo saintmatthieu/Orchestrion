@@ -55,7 +55,8 @@ public:
                        HandVoices leftHand, PedalSequence);
   ~OrchestrionSequencer();
 
-  void OnInputEvent(NoteEventType, int pitch, float velocity) override;
+  void OnInputEvent(NoteEventType, int pitch,
+                    std::optional<float> velocity) override;
 
   const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const override;
@@ -73,7 +74,7 @@ private:
   };
 
   void SendTransitions(std::map<TrackIndex, ChordTransition>,
-                       float velocity = 0.f);
+                       std::optional<float> velocity = std::nullopt);
   void GoToTick(int tick);
   std::map<TrackIndex, ChordTransition> PrepareStaffransitions(
       const HandVoices &,
@@ -100,8 +101,8 @@ private:
                                 ThreadMembers<EventType> &members,
                                 std::function<void(EventType)> cb);
 
-  void OnInputEventRecursive(NoteEventType, int pitch, float velocity,
-                             bool loop);
+  void OnInputEventRecursive(NoteEventType, int pitch,
+                             std::optional<float> velocity, bool loop);
   void PostPedalEvent(PedalEvent event);
   void PostNoteEvents(NoteEvents events);
 

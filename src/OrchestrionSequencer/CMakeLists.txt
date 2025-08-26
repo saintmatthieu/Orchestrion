@@ -18,12 +18,8 @@ set(MODULE_SRC
     internal/OrchestrionSequencer.h
     internal/OrchestrionSequencer.cpp
     internal/OrchestrionSequencer.h
-    internal/OrchestrionSequencerActionController.cpp
-    internal/OrchestrionSequencerActionController.h
     internal/OrchestrionSequencerFactory.cpp
     internal/OrchestrionSequencerFactory.h
-    internal/OrchestrionSequencerUiActions.cpp
-    internal/OrchestrionSequencerUiActions.h
     internal/OrchestrionTypes.cpp
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
@@ -40,7 +36,6 @@ set(MODULE_SRC
     IMelodySegment.h
     IOrchestrion.h
     IOrchestrionSequencer.h
-    IOrchestrionSequencerUiActions.h
     IRest.h
     OrchestrionModule.cpp
     OrchestrionModule.h

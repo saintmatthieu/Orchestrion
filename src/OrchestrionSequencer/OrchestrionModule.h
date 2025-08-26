@@ -23,8 +23,6 @@
 namespace dgk
 {
 class Orchestrion;
-class OrchestrionSequencerActionController;
-class OrchestrionSequencerUiActions;
 class GestureControllerConfigurator;
 
 class OrchestrionModule : public muse::modularity::IModuleSetup
@@ -34,15 +32,11 @@ public:
 
 private:
   std::string moduleName() const override;
-  void resolveImports() override;
   void registerExports() override;
   void onInit(const muse::IApplication::RunMode &mode) override;
   void registerUiTypes() override;
 
   const std::shared_ptr<Orchestrion> m_orchestrion;
-  const std::shared_ptr<OrchestrionSequencerActionController>
-      m_actionController;
-  const std::shared_ptr<OrchestrionSequencerUiActions> m_uiActions;
   const std::shared_ptr<GestureControllerConfigurator>
       m_midiControllerConfigurator;
 };
