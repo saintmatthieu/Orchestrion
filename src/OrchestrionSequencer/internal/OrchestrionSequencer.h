@@ -74,7 +74,8 @@ private:
   };
 
   void SendTransitions(std::map<TrackIndex, ChordTransition>,
-                       std::optional<float> velocity = std::nullopt);
+                       std::optional<float> velocity = std::nullopt,
+                       bool isLeftHand = false);
   void GoToTick(int tick);
   std::map<TrackIndex, ChordTransition> PrepareStaffransitions(
       const HandVoices &,

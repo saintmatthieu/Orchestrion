@@ -192,7 +192,7 @@ void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
 
 void OrchestrionSequencer::SendTransitions(
     std::map<TrackIndex, ChordTransition> transitions,
-    std::optional<float> velocity)
+    std::optional<float> velocity, bool isLeftHand)
 {
   if (transitions.empty())
     return;
@@ -210,7 +210,7 @@ void OrchestrionSequencer::SendTransitions(
         if (present->GetVelocity() > 0.f)
           velocity = present->GetVelocity();
         else
-          velocity = 0.5f;
+          velocity = isLeftHand ? 0.3f : 0.5f;
       }
       else
         present->SetVelocity(*velocity);
@@ -329,8 +329,8 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                                                  bool loop)
 {
 
-  auto &hand =
-      pitch < 60 && !m_leftHand.voices.empty() ? m_leftHand : m_rightHand;
+  const bool isLeftHand = pitch < 60 && !m_leftHand.voices.empty();
+  auto &hand = isLeftHand ? m_leftHand : m_rightHand;
   if (type == NoteEventType::noteOn)
     hand.pressedKey = pitch;
   else if (hand.pressedKey == pitch)
@@ -363,7 +363,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                           GoToTick(0);
                       }};
 
-  SendTransitions(transitions, std::move(velocity));
+  SendTransitions(transitions, std::move(velocity), isLeftHand);
 
   // For the pedal we wait on the slowest of both hands.
   const auto leastPedalTick = std::accumulate(
