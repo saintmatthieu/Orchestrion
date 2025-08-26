@@ -59,7 +59,8 @@ void MidiDeviceGestureController::onMidiEventReceived(
     m_noteOff.send(event.note());
 }
 
-muse::async::Channel<int, float> MidiDeviceGestureController::noteOn() const
+muse::async::Channel<int, std::optional<float>>
+MidiDeviceGestureController::noteOn() const
 {
   return m_noteOn;
 }

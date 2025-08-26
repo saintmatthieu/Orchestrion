@@ -124,8 +124,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
 namespace
 {
 void AppendNoteoffs(dgk::NoteEvents &output, const std::vector<int> &noteoffs,
-                    TrackIndex track, float velocity,
-                    const std::vector<int> &noteons)
+                    TrackIndex track, const std::vector<int> &noteons)
 {
   if (noteons.empty())
   {
@@ -133,14 +132,14 @@ void AppendNoteoffs(dgk::NoteEvents &output, const std::vector<int> &noteoffs,
     std::transform(
         noteoffs.begin(), noteoffs.end(), std::back_inserter(output),
         [&](int note)
-        { return NoteEvent{NoteEventType::noteOff, track, note, velocity}; });
+        { return NoteEvent{NoteEventType::noteOff, track, note, 0.f}; });
   }
   else
     // Only append noteoffs that aren't in `noteons`.
     for (const auto noteoff : noteoffs)
       if (std::find(noteons.begin(), noteons.end(), noteoff) == noteons.end())
         output.push_back(
-            NoteEvent{NoteEventType::noteOff, track, noteoff, velocity});
+            NoteEvent{NoteEventType::noteOff, track, noteoff, 0.f});
 }
 
 void AppendNoteons(dgk::NoteEvents &output, const std::vector<int> &noteons,
@@ -192,24 +191,37 @@ void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
 } // namespace
 
 void OrchestrionSequencer::SendTransitions(
-    std::map<TrackIndex, ChordTransition> transitions, float velocity)
+    std::map<TrackIndex, ChordTransition> transitions,
+    std::optional<float> velocity)
 {
   if (transitions.empty())
     return;
 
-  for (const auto &[track, transition] : transitions)
+  for (auto &[track, transition] : transitions)
   {
     std::vector<NoteEvent> voiceOutput;
     const auto past = GetPastChord(transition);
     const auto present = GetPresentChord(transition);
     std::vector<int> noteons;
     if (present)
+    {
+      if (!velocity.has_value())
+      {
+        if (present->GetVelocity() > 0.f)
+          velocity = present->GetVelocity();
+        else
+          velocity = 0.5f;
+      }
+      else
+        present->SetVelocity(*velocity);
+
       noteons = present->GetPitches();
+    }
 
     if (past)
-      AppendNoteoffs(voiceOutput, past->GetPitches(), track, velocity, noteons);
+      AppendNoteoffs(voiceOutput, past->GetPitches(), track, noteons);
     if (present)
-      AppendNoteons(voiceOutput, present->GetPitches(), track, velocity);
+      AppendNoteons(voiceOutput, present->GetPitches(), track, *velocity);
 
     if (!voiceOutput.empty())
       PostNoteEvents(voiceOutput);
@@ -283,14 +295,14 @@ auto GetCursorTick(const OrchestrionSequencer::HandVoices &hand,
 } // namespace
 
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
-                                        float velocity)
+                                        std::optional<float> velocity)
 {
   const auto loopEnabled = globalContext()
                                ->currentMasterNotation()
                                ->playback()
                                ->loopBoundaries()
                                .enabled;
-  OnInputEventRecursive(type, pitch, velocity, loopEnabled);
+  OnInputEventRecursive(type, pitch, std::move(velocity), loopEnabled);
 
   // Make sure to release the pedal if we've reached the end of this part.
   if (m_pedalDown && type == NoteEventType::noteOff &&
@@ -313,7 +325,8 @@ OrchestrionSequencer::PrepareStaffransitions(
 }
 
 void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
-                                                 float velocity, bool loop)
+                                                 std::optional<float> velocity,
+                                                 bool loop)
 {
 
   auto &hand =
@@ -335,7 +348,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
       cursorTick.withoutRepeats >= loopBoundaries.loopOutTick)
   {
     GoToTick(loopBoundaries.loopInTick);
-    return OnInputEventRecursive(type, pitch, velocity, false);
+    return OnInputEventRecursive(type, pitch, std::move(velocity), false);
   }
 
   const std::map<TrackIndex, ChordTransition> transitions =
@@ -350,7 +363,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                           GoToTick(0);
                       }};
 
-  SendTransitions(transitions, velocity);
+  SendTransitions(transitions, std::move(velocity));
 
   // For the pedal we wait on the slowest of both hands.
   const auto leastPedalTick = std::accumulate(

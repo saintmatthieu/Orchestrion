@@ -38,25 +38,21 @@ public:
   static bool isFunctional() { return true; }
 
 private:
-  struct Note
-  {
-    const int pitch;
-    const float velocity;
-  };
-
   void keyPressed(char);
   void keyReleased(char);
-  void updateNoteMap();
 
-  muse::async::Channel<int, float> noteOn() const override;
+  muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
   muse::Inject<IComputerKeyboard> keyboard;
 
   std::unordered_set<char> m_pressedLetters;
-  std::unordered_map<char, Note> m_noteMap;
+  const std::unordered_map<char, int> m_noteMap{
+      {'1', 0},  {'2', 1},  {'3', 3},  {'4', 4},  {'5', 5},
+      {'6', 60}, {'7', 61}, {'8', 62}, {'9', 63}, {'0', 64},
+  };
 
-  muse::async::Channel<int, float> m_noteOn;
+  muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
 };
 

@@ -54,11 +54,7 @@ void OrchestrionMenuModel::load()
 {
   AbstractMenuModel::load();
 
-  setItems({makeFileMenu(), makeAudioMidiMenu(), makeKeyboardMenu()});
-
-  computerKeyboard()->layoutChanged().onNotify(
-      this, [this] { updateSelectedKeyboardMenuItem(); });
-  updateSelectedKeyboardMenuItem();
+  setItems({makeFileMenu(), makeAudioMidiMenu()});
 
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
@@ -103,20 +99,6 @@ void OrchestrionMenuModel::load()
         !deviceId.empty())
       selectMenuItem(menuId, deviceId);
   }
-}
-
-void OrchestrionMenuModel::updateSelectedKeyboardMenuItem()
-{
-  using namespace muse::uicomponents;
-  const auto layout = computerKeyboard()->layout();
-  const std::unordered_map<IComputerKeyboard::Layout, std::string> ids =
-      uiActions()->computerKeyboardSetterActionIds();
-  IF_ASSERT_FAILED(ids.find(layout) != ids.end()) return;
-  const std::string id = ids.at(layout);
-  const QList<MenuItem *> subitems =
-      findItem(QString{keyboardMenuId}).subitems();
-  std::for_each(subitems.begin(), subitems.end(), [&](MenuItem *item)
-                { item->setSelected(item->id().toStdString() == id); });
 }
 
 void OrchestrionMenuModel::selectMenuItem(const char *submenuId,
@@ -198,24 +180,6 @@ OrchestrionMenuModel::makeAudioMidiSubmenu(DeviceType deviceType)
         getMenuItems(orchestrionUiActions()->settableDevices(deviceType)));
   }
   return subenu;
-}
-
-muse::uicomponents::MenuItem *OrchestrionMenuModel::makeKeyboardMenu()
-{
-  QList<muse::uicomponents::MenuItem *> menu;
-  for (const auto [layout, id] : uiActions()->computerKeyboardSetterActionIds())
-  {
-    auto item = makeMenuItem(id);
-    IF_ASSERT_FAILED(item) return nullptr;
-    item->setTitle(
-        muse::TranslatableString::untranslatable(muse::String::fromStdString(
-            IComputerKeyboard::layoutToString(layout))));
-    item->setSelectable(true);
-    menu.append(item);
-  }
-  return makeMenu(
-      muse::TranslatableString("appshell/menu/keyboard", "&Keyboard"), menu,
-      keyboardMenuId);
 }
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()

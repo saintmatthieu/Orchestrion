@@ -18,9 +18,7 @@
  */
 #pragma once
 
-#include "GestureControllers/IComputerKeyboard.h"
 #include "ExternalDevices/IMidiDeviceService.h"
-#include "OrchestrionSequencer/IOrchestrionSequencerUiActions.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include <QWindow>
 #include <actions/actionable.h>
@@ -44,9 +42,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
 
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions = {this};
-  muse::Inject<dgk::IComputerKeyboard> computerKeyboard = {this};
   muse::Inject<IMidiDeviceService> midiDeviceService = {this};
-  muse::Inject<IOrchestrionSequencerUiActions> uiActions = {this};
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);
@@ -79,7 +75,6 @@ private:
   muse::uicomponents::MenuItem *makeFileMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
-  muse::uicomponents::MenuItem *makeKeyboardMenu();
 
   QList<muse::uicomponents::MenuItem *>
   getMenuItems(const std::vector<DeviceAction> &devices);
@@ -87,7 +82,6 @@ private:
   void updateMenuItems(const std::vector<DeviceAction> &devices,
                        const std::string &menuId);
   void selectMenuItem(const char *submenuId, const std::string &deviceId);
-  void updateSelectedKeyboardMenuItem();
 
   QWindow *m_appWindow = nullptr;
   QRect m_appMenuAreaRect;

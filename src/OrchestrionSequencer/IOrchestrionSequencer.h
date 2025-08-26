@@ -22,6 +22,7 @@
 #include <async/channel.h>
 #include <async/notification.h>
 #include <map>
+#include <optional>
 
 namespace dgk
 {
@@ -30,7 +31,10 @@ class IOrchestrionSequencer
 public:
   virtual ~IOrchestrionSequencer() = default;
 
-  virtual void OnInputEvent(NoteEventType, int pitch, float velocity) = 0;
+  //! If a note-on comes from a controller that doesn't carry velocity, such as
+  //! a computer keyboard, set velocity to std::nullopt.
+  virtual void OnInputEvent(NoteEventType, int pitch,
+                            std::optional<float> velocity) = 0;
   virtual muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const = 0;
   virtual const std::map<TrackIndex, ChordTransition> &

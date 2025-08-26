@@ -48,15 +48,10 @@ public:
   void onKeyReleased(char letter);
 
 private:
-  Layout layout() const override;
-  void setLayout(Layout) override;
-  muse::async::Notification layoutChanged() const override;
   muse::async::Channel<char> keyPressed() const override;
   muse::async::Channel<char> keyReleased() const override;
 
   const std::unique_ptr<ComputerKeyboardImpl> m_impl;
-  Layout m_layout;
-  muse::async::Notification m_layoutChanged;
   muse::async::Channel<char> m_keyPressed;
   muse::async::Channel<char> m_keyReleased;
 };

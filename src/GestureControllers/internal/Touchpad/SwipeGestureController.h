@@ -39,10 +39,10 @@ public:
   static bool isFunctional() { return false; }
 
 private:
-  muse::async::Channel<int, float> noteOn() const override;
+  muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
-  muse::async::Channel<int, float> m_noteOn;
+  muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
 
   enum class Direction

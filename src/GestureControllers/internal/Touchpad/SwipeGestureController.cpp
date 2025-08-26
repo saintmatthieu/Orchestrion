@@ -125,7 +125,8 @@ SwipeGestureController::SwipeGestureController(const ITouchpad &touchpad)
       });
 }
 
-muse::async::Channel<int, float> SwipeGestureController::noteOn() const
+muse::async::Channel<int, std::optional<float>>
+SwipeGestureController::noteOn() const
 {
   return m_noteOn;
 }

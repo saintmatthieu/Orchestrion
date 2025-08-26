@@ -27,5 +27,7 @@ class IChord : public IMelodySegment
 public:
   virtual ~IChord() = default;
   virtual std::vector<int> GetPitches() const = 0;
+  virtual float GetVelocity() const = 0;
+  virtual void SetVelocity(float) = 0;
 };
 } // namespace dgk

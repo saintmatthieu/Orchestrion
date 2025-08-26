@@ -39,13 +39,13 @@ public:
   static bool isFunctional();
 
 private:
-  muse::async::Channel<int, float> noteOn() const override;
+  muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
   muse::async::Channel<Contacts> contactChanged() const override;
 
   const ITouchpad &m_touchpad;
-  muse::async::Channel<int, float> m_noteOn;
+  muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
   std::unordered_map<int, int> m_pressedKeys;
 };
