@@ -22,7 +22,7 @@
 #include "IGestureController.h"
 #include <async/asyncable.h>
 #include <memory>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <unordered_map>
 #include <unordered_set>
 

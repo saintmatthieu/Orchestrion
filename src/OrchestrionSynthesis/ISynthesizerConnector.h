@@ -19,7 +19,7 @@
 #pragma once
 
 #include <audio/audiotypes.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 
 namespace dgk
 {

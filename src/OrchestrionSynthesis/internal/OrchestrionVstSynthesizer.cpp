@@ -65,7 +65,8 @@ Steinberg::Vst::Event toSteinbergEvent(const PedalEvent &pedalEvent)
 } // namespace
 
 OrchestrionVstSynthesizer::OrchestrionVstSynthesizer(
-    muse::vst::VstPluginPtr loadedVstPlugin, int sampleRate)
+    std::shared_ptr<muse::vst::VstPluginInstance> loadedVstPlugin,
+    int sampleRate)
     : m_sampleRate{sampleRate}
 {
   assert(loadedVstPlugin && loadedVstPlugin->isLoaded());

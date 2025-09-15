@@ -19,7 +19,7 @@
 #pragma once
 
 #include "ScoreAnimationModule.h"
-#include "modularity/imodulesetup.h"
+#include "global/modularity/imodulesetup.h"
 
 namespace dgk
 {

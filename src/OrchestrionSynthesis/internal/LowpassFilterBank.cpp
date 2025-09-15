@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "LowpassFilterBank.h"
+#include "global/log.h"
 #include <array>
 
 namespace dgk

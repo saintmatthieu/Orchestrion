@@ -20,11 +20,11 @@
 
 #include "ISynthesizerConnector.h"
 #include <async/asyncable.h>
-#include <audio/internal/worker/iaudioengine.h>
-#include <audio/iplayback.h>
-#include <audio/isynthresolver.h>
+#include <audio/worker/iaudioengine.h>
+#include <audio/main/iplayback.h>
+#include <audio/worker/isynthresolver.h>
 #include <context/iglobalcontext.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <playback/iplaybackcontroller.h>
 
 namespace dgk
@@ -35,7 +35,7 @@ class SynthesizerConnector : public ISynthesizerConnector,
                              public muse::async::Asyncable,
                              public muse::Injectable
 {
-  muse::Inject<muse::audio::IAudioEngine> audioEngine;
+  muse::Inject<muse::audio::worker::IAudioEngine> audioEngine;
   muse::Inject<muse::audio::synth::ISynthResolver> synthResolver;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::audio::IPlayback> playback;

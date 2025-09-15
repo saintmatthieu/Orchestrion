@@ -22,10 +22,10 @@
 #include "IExternalDevicesConfiguration.h"
 #include "IMidiDeviceService.h"
 
-#include "async/asyncable.h"
-#include "async/notification.h"
+#include "global/async/asyncable.h"
+#include "global/async/notification.h"
 #include "midi/imidiinport.h"
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 
 namespace dgk
 {

@@ -21,7 +21,7 @@
  */
 #pragma once
 
-#include "modularity/imodulesetup.h"
+#include "global/modularity/imodulesetup.h"
 
 namespace muse::audioplugins
 {

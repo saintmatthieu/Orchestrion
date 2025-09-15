@@ -20,7 +20,7 @@
 
 #include "OrchestrionCommon/OrchestrionCommonTypes.h"
 #include <async/notification.h>
-#include <modularity/imoduleinterface.h>
+#include <global/modularity/imoduleinterface.h>
 #include <vector>
 
 namespace dgk

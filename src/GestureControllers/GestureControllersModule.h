@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "modularity/imodulesetup.h"
+#include "global/modularity/imodulesetup.h"
 #include <QAbstractNativeEventFilter>
 
 namespace dgk

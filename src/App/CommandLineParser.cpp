@@ -23,7 +23,7 @@
 #include "global/internal/baseapplication.h"
 #include "global/io/dir.h"
 
-#include "log.h"
+#include "global/log.h"
 
 namespace dgk
 {

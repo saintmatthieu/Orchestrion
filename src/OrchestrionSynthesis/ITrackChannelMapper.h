@@ -19,7 +19,7 @@
 #pragma once
 
 #include "OrchestrionSequencer/OrchestrionTypes.h"
-#include <modularity/imoduleinterface.h>
+#include <global/modularity/imoduleinterface.h>
 
 namespace dgk
 {

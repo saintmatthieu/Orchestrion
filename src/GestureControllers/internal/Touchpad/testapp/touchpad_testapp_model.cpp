@@ -18,7 +18,7 @@
  */
 #include "touchpad_testapp_model.h"
 
-#include "log.h"
+#include "global/log.h"
 
 namespace dgk
 {

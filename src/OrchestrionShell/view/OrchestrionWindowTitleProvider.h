@@ -21,7 +21,7 @@
  */
 #pragma once
 
-#include "async/asyncable.h"
+#include "global/async/asyncable.h"
 #include "context/iglobalcontext.h"
 
 namespace dgk

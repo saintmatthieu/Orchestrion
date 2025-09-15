@@ -52,7 +52,7 @@ void MidiDeviceGestureController::onMidiEventReceived(
 
   if (event.opcode() == muse::midi::Event::Opcode::NoteOn)
   {
-    const auto velocity = event.velocity() / 128.0f;
+    const auto velocity = event.velocity7() / 128.0f;
     m_noteOn.send(event.note(), compressVelocity(velocity));
   }
   else if (event.opcode() == muse::midi::Event::Opcode::NoteOff)

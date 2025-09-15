@@ -21,8 +21,8 @@
 #include "IOrchestrionSynthesizer.h"
 #include "PolyphonicSynthesizerImpl.h"
 #include <audio/audiotypes.h>
-#include <audio/isynthesizer.h>
-#include <vst/internal/vstaudioclient.h>
+#include <audio/worker/isynthesizer.h>
+#include <vst/internal/vstplugininstance.h>
 
 namespace muse::vst
 {
@@ -34,8 +34,9 @@ class OrchestrionVstSynthesizer : public IOrchestrionSynthesizer,
                                   private PolyphonicSynthesizerImpl
 {
 public:
-  OrchestrionVstSynthesizer(muse::vst::VstPluginPtr loadedVstPlugin,
-                            int sampleRate);
+  OrchestrionVstSynthesizer(
+      std::shared_ptr<muse::vst::VstPluginInstance> loadedVstPlugin,
+      int sampleRate);
 
 private:
   int sampleRate() const override;

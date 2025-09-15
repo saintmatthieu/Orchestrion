@@ -28,7 +28,7 @@
 #include <async/notification.h>
 #include <global/settings.h>
 #include <memory>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 
 namespace dgk
 {

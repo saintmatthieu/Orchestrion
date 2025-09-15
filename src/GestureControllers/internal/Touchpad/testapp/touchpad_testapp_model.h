@@ -20,7 +20,7 @@
 
 #include "../Touchpad.h"
 
-#include <async/asyncable.h>
+#include <global/async/asyncable.h>
 
 #include <QList>
 #include <QObject>

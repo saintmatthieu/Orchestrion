@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "GestureControllerTypes.h"
+#include "GestureControllers/GestureControllerTypes.h"
 
 #include <chrono>
 #include <unordered_map>

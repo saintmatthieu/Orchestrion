@@ -20,7 +20,7 @@
 
 #include <async/channel.h>
 #include <async/notification.h>
-#include <modularity/imoduleinterface.h>
+#include <global/modularity/imoduleinterface.h>
 #include <optional>
 
 namespace dgk

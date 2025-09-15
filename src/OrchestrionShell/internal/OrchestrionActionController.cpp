@@ -36,16 +36,19 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, "orchestrion-search-musescore",
                     [this]
                     {
-                      const auto url = QUrl("https://musescore.com/sheetmusic/non-official");
+                      const auto url =
+                          QUrl("https://musescore.com/sheetmusic/non-official");
                       interactive()->openUrl(url);
                     });
 
-  dispatcher()->reg(this, "orchestrion-file-help",
-                    [this]
-                    {
-                      const auto url = QUrl("https://github.com/saintmatthieu/Orchestrion/wiki/Find-scores");
-                      interactive()->openUrl(url);
-                    });
+  dispatcher()->reg(
+      this, "orchestrion-file-help",
+      [this]
+      {
+        const auto url = QUrl(
+            "https://github.com/saintmatthieu/Orchestrion/wiki/Find-scores");
+        interactive()->openUrl(url);
+      });
 }
 
 void OrchestrionActionController::onFileOpen() const
@@ -70,8 +73,9 @@ void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const
       muse::trc("project", "MuseScore files") + " (*.mscz)",
       muse::trc("project", "MusicXML files") + " (*.mxl *.musicxml *.xml)"};
 
-  const muse::io::path_t filePath = interactive()->selectOpeningFile(
-      muse::qtrc("project", "Open"), dir, filter);
+  const muse::io::path_t filePath = interactive()->selectOpeningFileSync(
+      muse::TranslatableString("project", "Open").translated().toStdString(),
+      dir, filter);
 
   if (filePath.empty())
     return;

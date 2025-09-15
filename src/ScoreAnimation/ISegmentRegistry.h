@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include <modularity/imoduleinterface.h>
+#include <global/modularity/imoduleinterface.h>
 
 namespace mu
 {

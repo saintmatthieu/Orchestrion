@@ -20,7 +20,7 @@
 #include "OrchestrionApp.h"
 
 #include <global/globalmodule.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <ui/iuiengine.h>
 
 #include <QApplication>

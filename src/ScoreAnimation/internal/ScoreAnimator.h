@@ -24,7 +24,7 @@
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include <async/asyncable.h>
 #include <context/iglobalcontext.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <notation/inotationinteraction.h>
 
 namespace mu::engraving

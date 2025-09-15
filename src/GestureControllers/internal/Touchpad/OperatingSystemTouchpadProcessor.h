@@ -21,7 +21,7 @@
 #include "../GestureControllerInternalTypes.h"
 #include "IClock.h"
 
-#include <async/channel.h>
+#include <global/async/channel.h>
 
 #include <optional>
 #include <queue>

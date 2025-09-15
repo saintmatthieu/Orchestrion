@@ -20,8 +20,8 @@
 
 #include "internal/IExternalDeviceService.h"
 
-#include "async/notification.h"
-#include "modularity/ioc.h"
+#include "global/async/notification.h"
+#include "global/modularity/ioc.h"
 #include <optional>
 
 namespace dgk

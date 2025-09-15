@@ -21,11 +21,11 @@
 #include "IAudioDeviceService.h"
 #include "IExternalDevicesConfiguration.h"
 
-#include "async/async.h"
-#include "async/asyncable.h"
-#include "async/notification.h"
+#include "global/async/async.h"
+#include "global/async/asyncable.h"
+#include "global/async/notification.h"
 #include "audio/iaudiodriver.h"
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 
 namespace dgk
 {

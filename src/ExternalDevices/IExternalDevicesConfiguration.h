@@ -18,7 +18,9 @@
  */
 #pragma once
 
-#include "modularity/ioc.h"
+#include "ExternalDevicesTypes.h"
+
+#include "global/modularity/ioc.h"
 
 namespace dgk
 {
@@ -32,7 +34,9 @@ public:
   virtual std::optional<ExternalDeviceId> readSelectedMidiDevice() const = 0;
   virtual std::optional<ExternalDeviceId> readSelectedAudioDevice() const = 0;
 
-  virtual void writeSelectedMidiDevice(const std::optional<ExternalDeviceId> &) = 0;
-  virtual void writeSelectedAudioDevice(const std::optional<ExternalDeviceId> &) = 0;
+  virtual void
+  writeSelectedMidiDevice(const std::optional<ExternalDeviceId> &) = 0;
+  virtual void
+  writeSelectedAudioDevice(const std::optional<ExternalDeviceId> &) = 0;
 };
 } // namespace dgk

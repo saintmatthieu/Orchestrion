@@ -20,9 +20,9 @@
 
 #include "IGestureController.h"
 
-#include "async/asyncable.h"
+#include "global/async/asyncable.h"
 #include "midi/imidiinport.h"
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 
 #include <memory>
 #include <unordered_map>

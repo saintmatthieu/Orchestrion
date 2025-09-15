@@ -17,7 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OperatingSystemTouchpadProcessor.h"
-#include "log.h"
+#include "global/log.h"
 #include <QCoreApplication>
 
 #ifdef OS_IS_WIN

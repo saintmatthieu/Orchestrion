@@ -21,7 +21,7 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include <async/asyncable.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 
 namespace dgk
 {

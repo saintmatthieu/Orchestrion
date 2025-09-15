@@ -21,8 +21,8 @@
 #include "CommandOptions.h"
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
 #include <global/iapplication.h>
-#include <modularity/imodulesetup.h>
-#include <modularity/ioc.h>
+#include <global/modularity/imodulesetup.h>
+#include <global/modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
 
 namespace dgk

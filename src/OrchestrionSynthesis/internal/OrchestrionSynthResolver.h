@@ -20,8 +20,8 @@
 
 #include <ISynthesizerConnector.h>
 #include <async/asyncable.h>
-#include <audio/isynthresolver.h>
-#include <modularity/ioc.h>
+#include <audio/worker/isynthresolver.h>
+#include <global/modularity/ioc.h>
 #include <optional>
 
 namespace dgk

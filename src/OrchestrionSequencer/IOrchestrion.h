@@ -20,7 +20,7 @@
 
 #include "IOrchestrionSequencer.h"
 #include <async/notification.h>
-#include <modularity/imoduleinterface.h>
+#include <global/modularity/imoduleinterface.h>
 
 namespace dgk
 {

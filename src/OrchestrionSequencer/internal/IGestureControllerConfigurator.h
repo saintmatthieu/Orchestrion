@@ -20,7 +20,7 @@
 
 #include "GestureControllers/GestureControllerTypes.h"
 
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 
 #include <unordered_set>
 

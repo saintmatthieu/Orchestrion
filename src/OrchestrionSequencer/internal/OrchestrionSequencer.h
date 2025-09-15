@@ -30,7 +30,7 @@
 #include <context/iglobalcontext.h>
 #include <functional>
 #include <memory>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <mutex>
 #include <queue>
 #include <random>

@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "SynthesizerManager.h"
-#include <audio/itracks.h>
 #include <global/defer.h>
 #include <log.h>
 

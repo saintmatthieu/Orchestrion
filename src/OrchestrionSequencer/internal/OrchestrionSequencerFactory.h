@@ -24,7 +24,7 @@
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <memory>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <vector>
 
 namespace mu::notation

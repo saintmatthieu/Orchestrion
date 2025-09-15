@@ -21,10 +21,10 @@
 #include "ISynthesizerManager.h"
 #include "OrchestrionSynthesis/ISynthesizerConnector.h"
 #include <async/asyncable.h>
-#include <audio/iplayback.h>
+#include <audio/main/iplayback.h>
 #include <audioplugins/iknownaudiopluginsregister.h>
 #include <midi/imidioutport.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 
 namespace dgk
 {

@@ -18,6 +18,8 @@
  */
 #include "OrchestrionSynthResolver.h"
 #include "AntiMetronomeSynthesizer.h"
+#include "FluidSynthesizer.h"
+#include "LowpassFilterBank.h"
 #include "OrchestrionSynthesizerWrapper.h"
 #include "OrchestrionVstSynthesizer.h"
 #include "PromisedSynthesizer.h"
@@ -55,7 +57,8 @@ muse::audio::synth::ISynthesizerPtr OrchestrionSynthResolver::resolveSynth(
     {
       muse::async::Channel<std::shared_ptr<IOrchestrionSynthesizer>>
           synthLoaded;
-      const auto pluginPtr = std::make_shared<muse::vst::VstPlugin>(*vstId);
+      const auto pluginPtr =
+          std::make_shared<muse::vst::VstPluginInstance>(*vstId);
       pluginPtr->loadingCompleted().onNotify(
           this,
           [sampleRate, trackId, synthLoaded, pluginPtr]() mutable

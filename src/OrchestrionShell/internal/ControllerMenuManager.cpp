@@ -130,7 +130,7 @@ bool ControllerMenuManager::maybePromptUser(const std::string &deviceId)
   }
 
   using namespace muse;
-  const IInteractive::Result result = interactive()->warning(
+  const IInteractive::Result result = interactive()->warningSync(
       muse::trc("midi", "Could not connect to MIDI controller ") +
           midiDeviceService()->deviceName(*it),
       muse::trc("midi",

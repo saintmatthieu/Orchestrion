@@ -20,9 +20,9 @@
 
 #include "MuseScoreShell/MuseScoreShellTypes.h"
 #include "OrchestrionShellTypes.h"
-#include "async/channel.h"
-#include "async/notification.h"
-#include "modularity/imoduleinterface.h"
+#include "global/async/channel.h"
+#include "global/async/notification.h"
+#include "global/modularity/imoduleinterface.h"
 
 namespace dgk
 {

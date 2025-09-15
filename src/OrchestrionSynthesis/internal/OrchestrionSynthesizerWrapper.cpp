@@ -203,4 +203,21 @@ OrchestrionSynthesizerWrapper::audioChannelsCountChanged() const
 {
   return m_audioChannelsCountChanged;
 }
+
+void OrchestrionSynthesizerWrapper::prepareToPlay() {}
+
+bool OrchestrionSynthesizerWrapper::readyToPlay() const { return true; }
+
+muse::async::Notification
+OrchestrionSynthesizerWrapper::readyToPlayChanged() const
+{
+  static muse::async::Notification null;
+  return null;
+}
+
+muse::audio::InputProcessingProgress
+OrchestrionSynthesizerWrapper::inputProcessingProgress() const
+{
+  return {};
+}
 } // namespace dgk

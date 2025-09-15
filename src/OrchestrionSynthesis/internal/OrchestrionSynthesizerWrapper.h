@@ -22,8 +22,8 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include <async/asyncable.h>
-#include <audio/isynthesizer.h>
-#include <modularity/ioc.h>
+#include <audio/worker/isynthesizer.h>
+#include <global/modularity/ioc.h>
 
 namespace dgk
 {
@@ -54,6 +54,12 @@ private:
 
   muse::audio::msecs_t playbackPosition() const override;
   void setPlaybackPosition(const muse::audio::msecs_t newPosition) override;
+
+  void prepareToPlay() override;
+  bool readyToPlay() const override;
+  muse::async::Notification readyToPlayChanged() const override;
+
+  muse::audio::InputProcessingProgress inputProcessingProgress() const override;
 
   void revokePlayingNotes() override;
   void flushSound() override;

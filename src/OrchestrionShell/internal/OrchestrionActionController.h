@@ -23,7 +23,7 @@
 #include <context/iglobalcontext.h>
 #include <global/iglobalconfiguration.h>
 #include <global/iinteractive.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
 
 namespace dgk

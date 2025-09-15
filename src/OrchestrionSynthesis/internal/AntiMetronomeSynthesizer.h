@@ -21,7 +21,7 @@
 #include "IOrchestrionSynthesizer.h"
 #include <async/asyncable.h>
 #include <functional>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <playback/iplaybackcontroller.h>
 
 namespace dgk

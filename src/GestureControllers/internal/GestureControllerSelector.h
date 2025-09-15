@@ -27,8 +27,8 @@
 #include "Touchpad/ITouchpad.h"
 #include "Touchpad/TouchpadGestureController.h"
 
-#include "async/asyncable.h"
-#include "modularity/ioc.h"
+#include "global/async/asyncable.h"
+#include "global/modularity/ioc.h"
 
 namespace dgk
 {

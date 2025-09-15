@@ -18,7 +18,7 @@
  */
 #include "OrchestrionMenuModel.h"
 #include "OrchestrionActionIds.h"
-#include "log.h"
+#include "global/log.h"
 #include "types/translatablestring.h"
 
 namespace dgk

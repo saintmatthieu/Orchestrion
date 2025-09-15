@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "GestureControllerTypes.h"
-#include <async/channel.h>
+#include "GestureControllers/GestureControllerTypes.h"
+#include "global/async/channel.h"
 
 namespace dgk
 {

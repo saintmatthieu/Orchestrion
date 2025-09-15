@@ -19,9 +19,7 @@
 #include "SynthesizerConnector.h"
 #include "OrchestrionSynthResolver.h"
 #include <async/async.h>
-#include <audio/iaudiooutput.h>
-#include <audio/internal/audiothread.h>
-#include <audio/itracks.h>
+#include <audio/worker/internal/audiothread.h>
 
 namespace dgk
 {
@@ -32,12 +30,11 @@ SynthesizerConnector::SynthesizerConnector()
 
 void SynthesizerConnector::onAllInited()
 {
-  const auto tracks = playback()->tracks();
-  tracks->trackAdded().onReceive(
+  playback()->trackAdded().onReceive(
       this, [this](muse::audio::TrackSequenceId sequenceId,
                    muse::audio::TrackId trackId)
       { m_tracks.emplace_back(std::move(sequenceId), std::move(trackId)); });
-  tracks->trackRemoved().onReceive(
+  playback()->trackRemoved().onReceive(
       this,
       [this](muse::audio::TrackSequenceId sequenceId,
              muse::audio::TrackId trackId)
@@ -68,7 +65,7 @@ void SynthesizerConnector::onAllInited()
         synthResolver()->registerResolver(muse::audio::AudioSourceType::Fluid,
                                           m_orchestrionSynthResolver);
       },
-      muse::audio::AudioThread::ID);
+      muse::audio::worker::AudioThread::ID);
 
   playbackController()->isPlayAllowedChanged().onNotify(
       this,
@@ -108,11 +105,10 @@ void SynthesizerConnector::setInputParams()
       [this]
       {
         const auto params = synthResolver()->resolveDefaultInputParams();
-        const auto tracks = playback()->tracks();
         for (const auto &[sequenceId, trackId] : m_tracks)
-          tracks->setInputParams(sequenceId, trackId, params);
+          playback()->setInputParams(sequenceId, trackId, params);
       },
-      muse::audio::AudioThread::ID);
+      muse::audio::worker::AudioThread::ID);
 }
 
 void SynthesizerConnector::setOutputParams()
@@ -121,13 +117,11 @@ void SynthesizerConnector::setOutputParams()
       this,
       [this]
       {
-        const auto tracks = playback()->tracks();
-        const muse::audio::IAudioOutputPtr output = playback()->audioOutput();
         // Keep things under control, disabling reverb and other effects.
         const muse::audio::AudioOutputParams outParams{};
         for (const auto &[sequenceId, trackId] : m_tracks)
-          output->setOutputParams(sequenceId, trackId, outParams);
+          playback()->setOutputParams(sequenceId, trackId, outParams);
       },
-      muse::audio::AudioThread::ID);
+      muse::audio::worker::AudioThread::ID);
 }
 } // namespace dgk

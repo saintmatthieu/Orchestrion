@@ -4,10 +4,15 @@ cmake_minimum_required(VERSION 3.16)
 project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
-find_package(Qt6 6.2.4 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick Widgets LinguistTools StateMachine Svg Core5Compat QuickControls2)
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0003 NEW)
+qt_policy(SET QTP0004 NEW)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOUIC ON)
 
 set(MuseScore_ROOT_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
@@ -16,6 +21,9 @@ set(MUSE_BUILD_UNIT_TESTS OFF)
 add_compile_definitions(LIBSNDFILE_SUPPORT)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${MuseScore_ROOT_DIR}/src)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/global)
+include_directories(${MuseScore_ROOT_DIR}/thirdparty)
 
 include(vst3sdk.cmake)
 include(MuseScore.cmake)
@@ -57,7 +65,7 @@ qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
 set_target_properties(Orchestrion PROPERTIES
     AUTOMOC ON
     AUTORCC ON
-    AUTOUIC ON
+    AUTOUIC OFF
 )
 
 target_link_libraries(Orchestrion PRIVATE

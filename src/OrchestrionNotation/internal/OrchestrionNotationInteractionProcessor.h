@@ -20,7 +20,7 @@
 
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include <context/iglobalcontext.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 
 namespace dgk
 {

@@ -2,6 +2,12 @@ qt_add_executable(touchpad_testapp
     touchpad_testapp_main.cpp
 )
 
+set_target_properties(touchpad_testapp PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC OFF
+)
+
 qt_add_qml_module(touchpad_testapp
     URI touchpad_testapp
     VERSION 1.0
@@ -20,8 +26,11 @@ target_sources(touchpad_testapp
 
 target_link_libraries(touchpad_testapp
     PRIVATE
+        Qt6::Core
         Qt6::Quick
         Qt6::Widgets
+
+        muse::global
 
     PUBLIC
         GestureControllers

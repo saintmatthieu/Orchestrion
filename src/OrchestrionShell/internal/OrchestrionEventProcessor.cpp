@@ -33,7 +33,7 @@ OrchestrionEventProcessor::ToMuseMidiEvent(const NoteEvent &dgkEvent) const
       dgkEvent.track, ITrackChannelMapper::Policy::oneChannelPerInstrument);
   museEvent.setChannel(channel);
   museEvent.setNote(dgkEvent.pitch);
-  museEvent.setVelocity(std::clamp<uint16_t>(dgkEvent.velocity * 128, 0, 127));
+  museEvent.setVelocity7(std::clamp<uint8_t>(dgkEvent.velocity * 128, 0, 127));
   return museEvent;
 }
 

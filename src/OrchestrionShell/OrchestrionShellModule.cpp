@@ -24,7 +24,7 @@
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
 #include "internal/SynthesizerMenuManager.h"
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
 #include "view/NotationPaintViewLoaderModel.h"
 #include "view/OrchestrionWindowTitleProvider.h"

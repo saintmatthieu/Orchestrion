@@ -18,6 +18,9 @@
  */
 #include "LowpassFilteredSynthesizer.h"
 
+#include "global/log.h"
+#include "audio/common/audiotypes.h"
+
 namespace dgk
 {
 namespace

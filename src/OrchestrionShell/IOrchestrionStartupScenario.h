@@ -18,8 +18,8 @@
  */
 #pragma once
 
+#include "global/modularity/imoduleinterface.h"
 #include <QUrl>
-#include <modularity/imoduleinterface.h>
 #include <optional>
 
 namespace dgk

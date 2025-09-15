@@ -21,9 +21,9 @@
 #include "ExternalDevices/IMidiDeviceService.h"
 #include "GestureControllers/IGestureControllerSelector.h"
 
-#include "async/asyncable.h"
+#include "global/async/asyncable.h"
 #include "global/iglobalconfiguration.h"
-#include "modularity/ioc.h"
+#include "global/modularity/ioc.h"
 #include <QAbstractListModel>
 
 namespace dgk

@@ -56,7 +56,8 @@ set(MODULE_SRC
 set(MODULE_NOT_LINK_GLOBAL ON)
 set(MODULE_USE_PCH_NONE ON)
 set(MODULE_USE_UNITY_NONE ON)
-set(MODULE_LINK muse_audio)
+set(MODULE_INCLUDE ${MUSE_FRAMEWORK_PATH}/src/framework)
+set(MODULE_LINK muse_audio muse_global)
 set(MODULE_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 # If on Windows, add core library dependencies
@@ -70,5 +71,8 @@ if (OS_IS_WIN)
     # Don't know why I'm getting a
     # `[build] ld: open() failed, errno=21 for 'src/GestureControllers/internal/Touchpad/testapp/touchpad_testapp'`
     # error when building on Mac. Will have to be fixed when we support touchpad controller on mac.
-    add_subdirectory(internal/Touchpad/testapp)
+
+    # Update to Qt 6.9.1: commenting out, getting linkage error I haven't figured out:
+    # [build] touchpad_testapp_main.cpp.obj : error LNK2001: unresolved external symbol "public: virtual struct QMetaObject const * __cdecl muse::Invoker::metaObject(void)const " (?metaObject@Invoker@muse@@UEBAPEBUQMetaObject@@XZ)
+    # add_subdirectory(internal/Touchpad/testapp)
 endif()

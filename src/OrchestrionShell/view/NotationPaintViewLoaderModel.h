@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "async/asyncable.h"
-#include "modularity/ioc.h"
+#include "global/async/asyncable.h"
+#include "global/modularity/ioc.h"
 #include "playback/iplaybackcontroller.h"
 #include <QObject>
 

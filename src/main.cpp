@@ -20,7 +20,7 @@
 #include "App/OrchestrionAppFactory.h"
 
 #include "global/iapplication.h"
-#include "log.h"
+#include "global/log.h"
 #include "muse_framework_config.h"
 
 #include <csignal>
@@ -35,7 +35,7 @@
 #include <QApplication>
 #include <QQuickWindow>
 #include <QStyleHints>
-#include <QTextCodec>
+// #include <QTextCodec>
 
 #ifndef MUSE_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT
 static void crashCallback(int signum)
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
   // supported platforms except for MSVC under Windows, which would otherwise
   // default to the local ANSI code page and cause corruption of any non-ANSI
   // Unicode characters in command-line arguments.
-  QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+  // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
 
   app_init_qrc();
 

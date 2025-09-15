@@ -22,7 +22,7 @@
 #include <QQuickItem>
 #include <actions/iactionsdispatcher.h>
 #include <global/iglobalconfiguration.h>
-#include <modularity/ioc.h>
+#include <global/modularity/ioc.h>
 #include <multiinstances/imultiinstancesprovider.h>
 #include <optional>
 

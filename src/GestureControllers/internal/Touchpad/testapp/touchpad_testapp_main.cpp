@@ -18,7 +18,7 @@
  */
 #include "touchpad_testapp_model.h"
 
-#include <async/processevents.h>
+#include <global/async/processevents.h>
 #include <global/internal/invoker.h>
 
 #include <QApplication>
