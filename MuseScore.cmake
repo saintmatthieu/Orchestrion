@@ -38,6 +38,7 @@ set(CMAKE_MODULE_PATH
 # Setup option and build settings
 ###########################################
 include(GetPaths)
+include(SetupQt6)
 
 set(MUSE_MODULE_UI ON CACHE BOOL "Enable UI module")
 
@@ -178,30 +179,84 @@ endif(MUE_DOWNLOAD_SOUNDFONT)
 add_subdirectory(MuseScore/src/framework/global) # should be first to work pch
 
 add_subdirectory(MuseScore/src/appshell)
+include_directories(${MuseScore_ROOT_DIR}/src/appshell)
+
 add_subdirectory(MuseScore/src/context)
+include_directories(${MuseScore_ROOT_DIR}/src/context)
+
 add_subdirectory(MuseScore/src/commonscene)
+include_directories(${MuseScore_ROOT_DIR}/src/commonscene)
+
 add_subdirectory(MuseScore/src/engraving)
+include_directories(${MuseScore_ROOT_DIR}/src/engraving)
+
 add_subdirectory(MuseScore/src/importexport/midi)
+include_directories(${MuseScore_ROOT_DIR}/src/importexport/midi)
+
 add_subdirectory(MuseScore/src/importexport/musicxml)
+include_directories(${MuseScore_ROOT_DIR}/src/importexport/musicxml)
+
 add_subdirectory(MuseScore/src/notation)
+include_directories(${MuseScore_ROOT_DIR}/src/notation)
+
 add_subdirectory(MuseScore/src/playback)
+include_directories(${MuseScore_ROOT_DIR}/src/playback)
+
 add_subdirectory(MuseScore/src/project)
+include_directories(${MuseScore_ROOT_DIR}/src/project)
+
 add_subdirectory(MuseScore/src/framework/accessibility)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/accessibility)
+
 add_subdirectory(MuseScore/src/framework/actions)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/actions)
+
 add_subdirectory(MuseScore/src/framework/audio)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/audio)
+
 add_subdirectory(MuseScore/src/framework/dockwindow)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/dockwindow)
+
 add_subdirectory(MuseScore/src/framework/draw)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/draw)
+
 add_subdirectory(MuseScore/src/framework/extensions)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/extensions)
+
 add_subdirectory(MuseScore/src/framework/languages)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/languages)
+
 add_subdirectory(MuseScore/src/framework/midi)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/midi)
+
 add_subdirectory(MuseScore/src/framework/mpe)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/mpe)
+
 add_subdirectory(MuseScore/src/framework/multiinstances)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/multiinstances)
+
 add_subdirectory(MuseScore/src/framework/network)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/network)
+
 add_subdirectory(MuseScore/src/framework/shortcuts)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/shortcuts)
+
 add_subdirectory(MuseScore/src/framework/ui)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/ui)
+
 add_subdirectory(MuseScore/src/framework/uicomponents)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/uicomponents)
+
 add_subdirectory(MuseScore/src/framework/vst)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/vst)
+
 add_subdirectory(MuseScore/src/framework/workspace)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/workspace)
+
+add_subdirectory(MuseScore/src/framework/tours)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/tours)
+
+add_subdirectory(MuseScore/src/stubs/musesounds)
 
 IF (MUSE_MODULE_UPDATE)
     add_subdirectory(MuseScore/src/framework/update)

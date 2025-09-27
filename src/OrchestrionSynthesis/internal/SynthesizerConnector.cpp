@@ -20,6 +20,7 @@
 #include "OrchestrionSynthResolver.h"
 #include <async/async.h>
 #include <audio/worker/internal/audiothread.h>
+#include <future>
 
 namespace dgk
 {
@@ -100,28 +101,25 @@ void SynthesizerConnector::disconnect()
 
 void SynthesizerConnector::setInputParams()
 {
+  std::promise<muse::audio::AudioSourceParams> promise;
   muse::async::Async::call(
       this,
-      [this]
+      [this, &promise]
       {
         const auto params = synthResolver()->resolveDefaultInputParams();
-        for (const auto &[sequenceId, trackId] : m_tracks)
-          playback()->setInputParams(sequenceId, trackId, params);
+        promise.set_value(params);
       },
       muse::audio::worker::AudioThread::ID);
+
+  const auto params = promise.get_future().get();
+  for (const auto &[sequenceId, trackId] : m_tracks)
+    playback()->setInputParams(sequenceId, trackId, params);
 }
 
 void SynthesizerConnector::setOutputParams()
 {
-  muse::async::Async::call(
-      this,
-      [this]
-      {
-        // Keep things under control, disabling reverb and other effects.
-        const muse::audio::AudioOutputParams outParams{};
-        for (const auto &[sequenceId, trackId] : m_tracks)
-          playback()->setOutputParams(sequenceId, trackId, outParams);
-      },
-      muse::audio::worker::AudioThread::ID);
+  const muse::audio::AudioOutputParams outParams{};
+  for (const auto &[sequenceId, trackId] : m_tracks)
+    playback()->setOutputParams(sequenceId, trackId, outParams);
 }
 } // namespace dgk

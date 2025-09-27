@@ -227,4 +227,9 @@ QWindow *OrchestrionApp::focusWindow() const { return nullptr; }
 
 bool OrchestrionApp::notify(QObject *, QEvent *) { return false; }
 
+Qt::KeyboardModifiers OrchestrionApp::keyboardModifiers() const
+{
+  return QApplication::keyboardModifiers();
+}
+
 } // namespace dgk

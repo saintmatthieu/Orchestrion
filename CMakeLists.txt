@@ -21,8 +21,11 @@ set(MUSE_BUILD_UNIT_TESTS OFF)
 add_compile_definitions(LIBSNDFILE_SUPPORT)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
+include_directories(${MuseScore_ROOT_DIR})
 include_directories(${MuseScore_ROOT_DIR}/src)
 include_directories(${MuseScore_ROOT_DIR}/src/framework/global)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/vst)
+include_directories(${MuseScore_ROOT_DIR}/src/framework/audio/common)
 include_directories(${MuseScore_ROOT_DIR}/thirdparty)
 
 include(vst3sdk.cmake)
@@ -82,6 +85,8 @@ target_link_libraries(Orchestrion PRIVATE
     muse_accessibility
     muse_audio
     muse_audioplugins
+    muse_tours
+    musesounds
     commonscene
     context
     muse_draw

@@ -54,6 +54,7 @@ public:
   const muse::modularity::ContextPtr iocContext() const override;
   QWindow *focusWindow() const override;
   bool notify(QObject *, QEvent *) override;
+  Qt::KeyboardModifiers keyboardModifiers() const override;
 
 private:
   const CommandOptions m_opts;

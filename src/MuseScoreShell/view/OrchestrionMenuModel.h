@@ -55,6 +55,8 @@ public:
 
   Q_INVOKABLE void load() override;
   Q_INVOKABLE void openMenu(const QString &menuId, bool byHover);
+  Q_INVOKABLE void openPrevMenu();
+  Q_INVOKABLE void openNextMenu();
 
 public slots:
   void setAppWindow(QWindow *appWindow);
@@ -68,6 +70,7 @@ signals:
   void openedMenuIdChanged(QString openedMenuId);
   void appMenuAreaRectChanged(QRect appMenuAreaRect);
   void openedMenuAreaRectChanged(QRect openedMenuAreaRect);
+  void navigateWithSymbolRequested(const QChar &symbol);
 
 private:
   using muse::uicomponents::AbstractMenuModel::makeMenuItem;

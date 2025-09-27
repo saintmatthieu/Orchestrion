@@ -21,6 +21,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 
 import Muse.Ui 1.0
+import Muse.UiComponents 1.0
 import MuseScore.Playback 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
@@ -142,9 +143,14 @@ ApplicationWindow {
         //     floating: false
         // }
 
-        NotationScrollAndZoomArea {
+        StyledViewScrollAndZoomArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            horizontalScrollbarSize: notationPaintView.horizontalScrollbarSize
+            startHorizontalScrollPosition: notationPaintView.startHorizontalScrollPosition
+            verticalScrollbarSize: notationPaintView.verticalScrollbarSize
+            startVerticalScrollPosition: notationPaintView.startVerticalScrollPosition
 
             OrchestrionNotationPaintView {
                 id: notationPaintView

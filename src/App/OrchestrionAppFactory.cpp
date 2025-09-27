@@ -32,7 +32,7 @@
 
 #include <accessibility/accessibilitymodule.h>
 #include <actions/actionsmodule.h>
-#include <audio/audiomodule.h>
+#include <audio/main/audiomodule.h>
 #include <commonscene/commonscenemodule.h>
 #include <context/contextmodule.h>
 #include <draw/drawmodule.h>
@@ -51,6 +51,8 @@
 #include <project/projectmodule.h>
 #include <shortcuts/shortcutsmodule.h>
 #include <stubs/audioplugins/audiopluginsstubmodule.h>
+#include <stubs/musesounds/musesoundsstubmodule.h>
+#include <tours/toursmodule.h>
 #include <ui/uimodule.h>
 #include <uicomponents/uicomponentsmodule.h>
 #include <vst/vstmodule.h>
@@ -99,8 +101,10 @@ OrchestrionAppFactory::newGuiApp(const CommandOptions &options) const
   app->addModule(new muse::actions::ActionsModule());
   app->addModule(new muse::audio::AudioModule());
   app->addModule(new muse::audioplugins::AudioPluginsModule());
+  app->addModule(new mu::musesounds::MuseSoundsModule());
   app->addModule(new mu::commonscene::CommonSceneModule());
   app->addModule(new mu::context::ContextModule());
+  app->addModule(new muse::tours::ToursModule());
   app->addModule(new muse::draw::DrawModule());
   app->addModule(new mu::engraving::EngravingModule());
   app->addModule(new muse::extensions::ExtensionsModule());
