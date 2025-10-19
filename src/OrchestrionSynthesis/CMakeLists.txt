@@ -59,7 +59,7 @@ set(MODULE_LINK
     muse_vst
     vst3sdk::sdk
     fluidsynth
-    DSPFilters::DSPFilters
+    DSPFilters
 )
 
 setup_module()

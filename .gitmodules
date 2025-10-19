@@ -1,3 +1,6 @@
 [submodule "MuseScore"]
 	path = MuseScore
 	url = https://github.com/saintmatthieu/MuseScore.git
+[submodule "DSPFilters"]
+	path = DSPFilters
+	url = https://github.com/saintmatthieu/DSPFilters.git
