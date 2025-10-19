@@ -149,7 +149,7 @@ endif(MUE_COMPILE_USE_CCACHE)
 ###########################################
 # Setup external dependencies
 ###########################################
-set(QT_MIN_VERSION "6.2.4")
+set(QT_MIN_VERSION "6.9.1")
 include(FindQt6)
 
 if (OS_IS_WIN)

@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 4.0)
 project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
-find_package(Qt6 6.2.4 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

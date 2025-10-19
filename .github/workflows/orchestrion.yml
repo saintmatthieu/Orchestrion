@@ -36,10 +36,10 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.2.4'
+        version: '6.9.1'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'
+        arch: 'win64_msvc2022_64'
         modules: qtnetworkauth qt5compat qtscxml
         cache: true
 
@@ -123,7 +123,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.2.4'
+        version: '6.9.1'
         arch: 'clang_64'
         target: 'desktop'
         modules: qtnetworkauth qt5compat qtscxml
