@@ -78,7 +78,7 @@ Item {
         background: Rectangle {
             id: popupBackground
             implicitWidth: 200
-            color: Qt.rgba(1, 1, 1, 0.95)
+            color: Qt.rgba(1, 1, 1, 0.8)
             implicitHeight: listView.currentItem.height * listView.count + dropdown.padding * 2
         }
         contentItem: ListView {
@@ -92,6 +92,12 @@ Item {
                 opacity: controllerIsWorking ? 1 : 0.5
                 onCheckedChanged: {
                     selectionModel.updateControllerIsSelected(index, checked)
+                }
+                contentItem: Text {
+                    leftPadding: 20
+                    text: checkBox.text
+                    color: "black"
+                    font: checkBox.font
                 }
             }
             model: GestureControllerSelectionModel {
