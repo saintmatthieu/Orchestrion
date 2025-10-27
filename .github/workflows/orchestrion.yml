@@ -64,6 +64,11 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4'
+
     - name: Configure CMake
       run: >
         cmake -B ${{github.workspace}}/build -G Ninja
@@ -142,6 +147,11 @@ jobs:
       run: |
         export PATH="/usr/local/opt/qt/bin:$PATH"
         export PATH="/usr/local/opt/ninja/bin:$PATH"
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4'
 
     - name: Configure CMake
       run: >
