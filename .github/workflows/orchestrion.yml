@@ -36,10 +36,10 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.2.4'
+        version: '6.9.1'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'
+        arch: 'win64_msvc2022_64'
         modules: qtnetworkauth qt5compat qtscxml
         cache: true
 
@@ -63,6 +63,11 @@ jobs:
 
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4'
 
     - name: Configure CMake
       run: >
@@ -123,7 +128,7 @@ jobs:
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.2.4'
+        version: '6.9.1'
         arch: 'clang_64'
         target: 'desktop'
         modules: qtnetworkauth qt5compat qtscxml
@@ -142,6 +147,11 @@ jobs:
       run: |
         export PATH="/usr/local/opt/qt/bin:$PATH"
         export PATH="/usr/local/opt/ninja/bin:$PATH"
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '4'
 
     - name: Configure CMake
       run: >

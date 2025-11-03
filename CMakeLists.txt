@@ -1,10 +1,14 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 4.0)
+cmake_policy(SET CMP0000 NEW)
 
 # Set the project name and version
 project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
-find_package(Qt6 6.2.4 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,7 +23,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 include(vst3sdk.cmake)
 include(MuseScore.cmake)
-include(DSPFilters.cmake)
 
 # This statement must be after include(MuseScore.cmake), as it sets QT_INSTALL_LIBS
 set(CMAKE_INSTALL_RPATH "${QT_INSTALL_LIBS};@loader_path/../Frameworks")
@@ -135,6 +138,8 @@ if (OS_IS_MAC)
     SET(Mscore_INSTALL_NAME "Contents/Resources/")
 endif()
 add_subdirectory(MuseScore/share/sound)
+
+add_subdirectory(DSPFilters/shared/DSPFilters)
 
 if (OS_IS_MAC)
     set(resource_install_dir "Orchestrion.app/Contents/Resources")
