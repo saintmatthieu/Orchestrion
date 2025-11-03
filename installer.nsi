@@ -32,6 +32,7 @@ Section "Install"
     SetOutPath $INSTDIR\bin\imageformats
     File "${QtInstallDir}\plugins\imageformats\qsvg.dll"
     File "${QtInstallDir}\plugins\imageformats\qjpeg.dll"
+    File "${QtInstallDir}\plugins\imageformats\qico.dll"
 
     SetOutPath $INSTDIR\bin\platforms
     File "${QtInstallDir}\plugins\platforms\qwindows.dll"
