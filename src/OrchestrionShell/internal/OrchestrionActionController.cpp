@@ -24,7 +24,9 @@ namespace dgk
 {
 void OrchestrionActionController::init()
 {
-  dispatcher()->reg(this, "orchestrion-file-open", [this] { onFileOpen(); });
+  dispatcher()->reg(this, "orchestrion-file-open",
+                    [this](const muse::actions::ActionData &args)
+                    { onFileOpen(args); });
   dispatcher()->reg(this, "orchestrion-file-open-example",
                     [this]
                     {
@@ -33,67 +35,131 @@ void OrchestrionActionController::init()
                       openFromDir(scoreDir);
                     });
 
+  dispatcher()->reg(this, "orchestrion-file-save", [this] { onFileSave(); });
+  dispatcher()->reg(this, "orchestrion-file-save-as",
+                    [this] { onFileSaveAs(); });
+
   dispatcher()->reg(this, "orchestrion-search-musescore",
                     [this]
                     {
-                      const auto url = QUrl("https://musescore.com/sheetmusic/non-official");
+                      const auto url =
+                          QUrl("https://musescore.com/sheetmusic/non-official");
                       interactive()->openUrl(url);
                     });
 
-  dispatcher()->reg(this, "orchestrion-file-help",
-                    [this]
-                    {
-                      const auto url = QUrl("https://github.com/saintmatthieu/Orchestrion/wiki/Find-scores");
-                      interactive()->openUrl(url);
-                    });
+  dispatcher()->reg(
+      this, "orchestrion-file-help",
+      [this]
+      {
+        const auto url = QUrl(
+            "https://github.com/saintmatthieu/Orchestrion/wiki/Find-scores");
+        interactive()->openUrl(url);
+      });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
+                    [this] { toggleRecording(); });
 }
 
-void OrchestrionActionController::onFileOpen() const
+muse::io::path_t OrchestrionActionController::fallbackPath() const
 {
-  muse::io::path_t defaultDir = configuration()->lastOpenedProjectsPath();
+  auto dir = projectConfiguration()->userProjectsPath();
+  if (dir.empty())
+    dir = projectConfiguration()->defaultUserProjectsPath();
+  return dir;
+}
 
+void OrchestrionActionController::onFileOpen(
+    const muse::actions::ActionData &args) const
+{
+  {
+    QUrl url = !args.empty() ? args.arg<QUrl>(0) : QUrl();
+    QString displayNameOverride =
+        args.count() >= 2 ? args.arg<QString>(1) : QString();
+    const mu::project::ProjectFile projectFile(url, displayNameOverride);
+    if (projectFile.isValid())
+    {
+      openProject(mu::project::ProjectFile(url, displayNameOverride));
+      return;
+    }
+  }
+
+  muse::io::path_t defaultDir =
+      projectConfiguration()->lastOpenedProjectsPath();
   if (defaultDir.empty())
-    defaultDir = configuration()->userProjectsPath();
-
-  if (defaultDir.empty())
-    defaultDir = configuration()->defaultUserProjectsPath();
-
+    defaultDir = fallbackPath();
   openFromDir(defaultDir);
+}
+
+void OrchestrionActionController::onFileSave() const
+{
+  if (const auto registry = orchestrion()->modifiableItemRegistry())
+    registry->Save();
+
+  projectFilesController()->saveProjectLocally(
+      projectConfiguration()->lastSavedProjectsPath(),
+      mu::project::SaveMode::Save);
+}
+
+namespace
+{
+constexpr auto allExt = "*.mscz *.mxl *.musicxml *.xml";
+static const std::vector<std::string> filter{
+    muse::trc("project", "All supported files") + " (" + allExt + ")",
+    muse::trc("project", "MuseScore files") + " (*.mscz)",
+    muse::trc("project", "MusicXML files") + " (*.mxl *.musicxml *.xml)"};
+} // namespace
+
+void OrchestrionActionController::onFileSaveAs() const
+{
+  if (const auto registry = orchestrion()->modifiableItemRegistry())
+    registry->Save();
+
+  muse::io::path_t defaultDir = projectConfiguration()->lastSavedProjectsPath();
+  if (defaultDir.empty())
+    defaultDir = fallbackPath();
+  const muse::io::path_t filePath = interactive()->selectSavingFile(
+      muse::qtrc("project", "Save as"), defaultDir, filter);
+  projectFilesController()->saveProjectLocally(filePath,
+                                               mu::project::SaveMode::SaveAs);
 }
 
 void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const
 {
-  constexpr auto allExt = "*.mscz *.mxl *.musicxml *.xml";
-
-  std::vector<std::string> filter{
-      muse::trc("project", "All supported files") + " (" + allExt + ")",
-      muse::trc("project", "MuseScore files") + " (*.mscz)",
-      muse::trc("project", "MusicXML files") + " (*.mxl *.musicxml *.xml)"};
-
   const muse::io::path_t filePath = interactive()->selectOpeningFile(
       muse::qtrc("project", "Open"), dir, filter);
 
   if (filePath.empty())
     return;
 
-  if (globalContext()->currentProject())
-    closeCurrent();
-
-  configuration()->setLastOpenedProjectsPath(muse::io::dirpath(filePath));
-
-  muse::actions::ActionData data;
-  QUrl url{filePath.toString()};
-  url.setScheme("file");
-  data.setArg(0, url);
-  dispatcher()->dispatch("file-open", data);
+  const mu::project::ProjectFile projectFile{filePath};
+  openProject(projectFile);
 }
 
-void OrchestrionActionController::closeCurrent() const
+void OrchestrionActionController::openProject(
+    const mu::project::ProjectFile &projectFile) const
 {
+  const IModifiableItemRegistryPtr registry =
+      orchestrion()->modifiableItemRegistry();
   if (const auto notation = globalContext()->currentMasterNotation())
-    // We don't want to get the "Would you like to save?"
-    // dialog.
-    notation->masterScore()->setSaved(true);
-  dispatcher()->dispatch("file-close");
+    if (!registry->Unsaved())
+    {
+      registry->RevertToLastSaved();
+      // We don't want to get the "Would you like to save?"
+      // dialog.
+      notation->masterScore()->setSaved(true);
+    }
+
+  constexpr auto closeApp = false;
+  projectFilesController()->closeOpenedProject(closeApp);
+
+  projectConfiguration()->setLastOpenedProjectsPath(
+      muse::io::dirpath(projectFile.path()));
+
+  projectFilesController()->openProject(projectFile);
+}
+
+void OrchestrionActionController::toggleRecording() const
+{
+  sequencerConfig()->setVelocityRecordingEnabled(
+      !sequencerConfig()->velocityRecordingEnabled());
 }
 } // namespace dgk

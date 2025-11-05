@@ -20,20 +20,46 @@
 
 namespace dgk
 {
-void SegmentRegistry::RegisterSegment(const IMelodySegment *chord,
+void SegmentRegistry::RegisterSegment(IMelodySegmentWPtr chord,
                                       const mu::engraving::Segment *segment)
 {
-  m_chords[chord] = segment;
+  m_chords.emplace_back(std::move(chord), segment);
 }
 
 void SegmentRegistry::UnregisterSegment(const IMelodySegment *chord)
 {
-  m_chords.erase(chord);
+  m_chords.erase(std::remove_if(m_chords.begin(), m_chords.end(),
+                                [&chord](const Entry &entry)
+                                { return entry.first.lock().get() == chord; }),
+                 m_chords.end());
 }
 
 const mu::engraving::Segment *
 SegmentRegistry::GetSegment(const IMelodySegment *chord) const
 {
-  return m_chords.count(chord) ? m_chords.at(chord) : nullptr;
+  const auto it = std::find_if(m_chords.begin(), m_chords.end(),
+                               [&chord](const Entry &entry)
+                               { return entry.first.lock().get() == chord; });
+  return it != m_chords.end() ? it->second : nullptr;
 }
+
+std::vector<IMelodySegment *> SegmentRegistry::GetMelodySegments()
+{
+  std::vector<IMelodySegment *> segments;
+  auto it = m_chords.begin();
+  ;
+  while (it != m_chords.end())
+  {
+    const auto chordPtr = it->first.lock();
+    if (chordPtr)
+    {
+      segments.push_back(chordPtr.get());
+      ++it;
+    }
+    else
+      it = m_chords.erase(it);
+  }
+  return segments;
+}
+
 } // namespace dgk

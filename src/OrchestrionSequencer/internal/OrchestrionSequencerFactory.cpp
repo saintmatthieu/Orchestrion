@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSequencerFactory.h"
+#include "ModifiableItemRegistry.h"
 #include "MuseChord.h"
 #include "MuseRest.h"
 #include "OrchestrionSequencer.h"
@@ -100,7 +101,9 @@ void ForAllSegments(
 }
 
 auto GetChordSequence(mu::engraving::Score &score,
-                      ISegmentRegistry &segmentRegistry, TrackIndex track)
+                      ISegmentRegistry &segmentRegistry,
+                      IModifiableItemRegistry &modifiableItemRegistry,
+                      TrackIndex track)
 {
   std::vector<ChordRestPtr> sequence;
   auto prevWasRest = true;
@@ -116,8 +119,12 @@ auto GetChordSequence(mu::engraving::Score &score,
 
           std::shared_ptr<IMelodySegment> melodySeg;
           if (isChord)
-            melodySeg =
+          {
+            auto chord =
                 std::make_shared<MuseChord>(segment, track, measureTick);
+            modifiableItemRegistry.RegisterItem(chord);
+            melodySeg = chord;
+          }
           else
             melodySeg = std::make_shared<MuseRest>(segment, track, measureTick);
 
@@ -143,7 +150,7 @@ auto GetChordSequence(mu::engraving::Score &score,
                 std::make_shared<VoiceBlank>(endTick, chordEndTick));
           }
           endTick = chordEndTick;
-          segmentRegistry.RegisterSegment(melodySeg.get(), &segment);
+          segmentRegistry.RegisterSegment(melodySeg, &segment);
           sequence.push_back(std::move(melodySeg));
         }
       });
@@ -208,7 +215,7 @@ auto MakeHand(size_t staffIdx, const Staff &staff)
 }
 } // namespace
 
-IOrchestrionSequencerPtr OrchestrionSequencerFactory::CreateSequencer(
+NotationProducts OrchestrionSequencerFactory::CreateSequencer(
     mu::notation::IMasterNotation &masterNotation)
 {
   auto &score = *masterNotation.masterScore();
@@ -217,26 +224,30 @@ IOrchestrionSequencerPtr OrchestrionSequencerFactory::CreateSequencer(
       nStaves == 1 ? std::make_optional<int>(0)
                    : GetRightHandStaffIndex(score.repeatList(), nStaves);
   if (!rightHandStaff.has_value())
-    return nullptr;
+    return {};
+
+  auto modifiableItems = std::make_shared<ModifiableItemRegistry>();
   Staff rightHand;
   Staff leftHand;
   const auto staff = *rightHandStaff;
   for (auto v = 0; v < numVoices; ++v)
   {
-    if (auto sequence =
-            GetChordSequence(score, *segmentRegistry(), TrackIndex{staff, v});
+    if (auto sequence = GetChordSequence(
+            score, *segmentRegistry(), *modifiableItems, TrackIndex{staff, v});
         !sequence.empty())
       rightHand.emplace(v, std::move(sequence));
-    if (auto sequence = GetChordSequence(score, *segmentRegistry(),
-                                         TrackIndex{staff + 1, v});
+    if (auto sequence =
+            GetChordSequence(score, *segmentRegistry(), *modifiableItems,
+                             TrackIndex{staff + 1, v});
         !sequence.empty())
       leftHand.emplace(v, std::move(sequence));
   }
   auto pedalSequence = GetPedalSequence(score, staff, staff + 2);
 
-  return std::make_shared<OrchestrionSequencer>(
+  auto sequencer = std::make_shared<OrchestrionSequencer>(
       mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
       MakeHand(staff + 1, leftHand), std::move(pedalSequence));
-}
 
+  return {sequencer, modifiableItems};
+}
 } // namespace dgk

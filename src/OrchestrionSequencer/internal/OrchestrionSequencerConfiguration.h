@@ -18,36 +18,27 @@
  */
 #pragma once
 
-#include "IModifiableItemRegistry.h"
-#include "IOrchestrionSequencer.h"
-#include "OrchestrionSynthesis/ITrackChannelMapper.h"
-#include "OrchestrionTypes.h"
-#include "ScoreAnimation/ISegmentRegistry.h"
-#include "playback/iplaybackcontroller.h"
-#include <memory>
-#include <modularity/ioc.h>
-#include <vector>
+#include "IOrchestrionSequencerConfiguration.h"
 
-namespace mu::notation
-{
-class IMasterNotation;
-}
+#include "framework/global/async/asyncable.h"
 
 namespace dgk
 {
-struct NotationProducts
+class OrchestrionSequencerConfiguration
+    : public IOrchestrionSequencerConfiguration,
+      public muse::async::Asyncable
 {
-  const IOrchestrionSequencerPtr sequencer;
-  const IModifiableItemRegistryPtr modifiableItemRegistry;
-};
-
-class OrchestrionSequencerFactory : public muse::Injectable
-{
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
-
 public:
-  NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  OrchestrionSequencerConfiguration() = default;
+  ~OrchestrionSequencerConfiguration() override = default;
+
+  void init();
+
+private:
+  bool velocityRecordingEnabled() const override;
+  void setVelocityRecordingEnabled(bool) override;
+  muse::async::Notification velocityRecordingEnabledChanged() const override;
+
+  muse::async::Notification m_velocityRecordingEnabledChanged;
 };
 } // namespace dgk

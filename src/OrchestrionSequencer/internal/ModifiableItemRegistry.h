@@ -19,35 +19,26 @@
 #pragma once
 
 #include "IModifiableItemRegistry.h"
-#include "IOrchestrionSequencer.h"
-#include "OrchestrionSynthesis/ITrackChannelMapper.h"
-#include "OrchestrionTypes.h"
-#include "ScoreAnimation/ISegmentRegistry.h"
-#include "playback/iplaybackcontroller.h"
-#include <memory>
-#include <modularity/ioc.h>
-#include <vector>
 
-namespace mu::notation
-{
-class IMasterNotation;
-}
+#include <vector>
 
 namespace dgk
 {
-struct NotationProducts
+class ModifiableItemRegistry : public IModifiableItemRegistry
 {
-  const IOrchestrionSequencerPtr sequencer;
-  const IModifiableItemRegistryPtr modifiableItemRegistry;
-};
-
-class OrchestrionSequencerFactory : public muse::Injectable
-{
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
-
 public:
-  NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  ~ModifiableItemRegistry() override = default;
+
+private:
+  void RegisterItem(std::weak_ptr<IModifiableItem>) override;
+  bool Unsaved() const override;
+  void Save() override;
+  void RevertToLastSaved() override;
+  muse::async::Notification UnsavedChanged() const override;
+
+  std::unordered_set<IModifiableItem *> _GetItems() const;
+
+  std::vector<std::weak_ptr<IModifiableItem>> m_items;
+  muse::async::Notification m_unsavedChanged;
 };
 } // namespace dgk

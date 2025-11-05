@@ -19,6 +19,7 @@
 #pragma once
 
 #include "ExternalDevices/IMidiDeviceService.h"
+#include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include <QWindow>
 #include <actions/actionable.h>
@@ -40,9 +41,10 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   Q_PROPERTY(QRect openedMenuAreaRect READ openedMenuAreaRect WRITE
                  setOpenedMenuAreaRect NOTIFY openedMenuAreaRectChanged)
 
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  muse::Inject<IOrchestrionUiActions> orchestrionUiActions = {this};
-  muse::Inject<IMidiDeviceService> midiDeviceService = {this};
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
+  muse::Inject<IMidiDeviceService> midiDeviceService;
+  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);
@@ -72,9 +74,12 @@ signals:
 private:
   using muse::uicomponents::AbstractMenuModel::makeMenuItem;
 
-  muse::uicomponents::MenuItem *makeFileMenu();
+  muse::uicomponents::MenuItem *makeFileMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
+  muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
+
+  void createMenus(bool withSaveItem);
 
   QList<muse::uicomponents::MenuItem *>
   getMenuItems(const std::vector<DeviceAction> &devices);

@@ -18,36 +18,28 @@
  */
 #pragma once
 
-#include "IModifiableItemRegistry.h"
-#include "IOrchestrionSequencer.h"
-#include "OrchestrionSynthesis/ITrackChannelMapper.h"
-#include "OrchestrionTypes.h"
-#include "ScoreAnimation/ISegmentRegistry.h"
-#include "playback/iplaybackcontroller.h"
-#include <memory>
-#include <modularity/ioc.h>
-#include <vector>
+#include "framework/global/modularity/imoduleinterface.h"
+#include "framework/global/async/notification.h"
 
-namespace mu::notation
-{
-class IMasterNotation;
-}
+#include <memory>
+#include <unordered_set>
 
 namespace dgk
 {
-struct NotationProducts
-{
-  const IOrchestrionSequencerPtr sequencer;
-  const IModifiableItemRegistryPtr modifiableItemRegistry;
-};
+class IModifiableItem;
 
-class OrchestrionSequencerFactory : public muse::Injectable
+class IModifiableItemRegistry : MODULE_EXPORT_INTERFACE
 {
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
+  INTERFACE_ID(IModifiableItemRegistry);
 
 public:
-  NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  virtual ~IModifiableItemRegistry() = default;
+  virtual void RegisterItem(std::weak_ptr<IModifiableItem>) = 0;
+  virtual bool Unsaved() const = 0;
+  virtual void Save() = 0;
+  virtual void RevertToLastSaved() = 0;
+  virtual muse::async::Notification UnsavedChanged() const = 0;
 };
+
+using IModifiableItemRegistryPtr = std::shared_ptr<IModifiableItemRegistry>;
 } // namespace dgk

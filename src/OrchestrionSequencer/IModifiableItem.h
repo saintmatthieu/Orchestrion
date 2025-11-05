@@ -18,36 +18,14 @@
  */
 #pragma once
 
-#include "IModifiableItemRegistry.h"
-#include "IOrchestrionSequencer.h"
-#include "OrchestrionSynthesis/ITrackChannelMapper.h"
-#include "OrchestrionTypes.h"
-#include "ScoreAnimation/ISegmentRegistry.h"
-#include "playback/iplaybackcontroller.h"
-#include <memory>
-#include <modularity/ioc.h>
-#include <vector>
-
-namespace mu::notation
-{
-class IMasterNotation;
-}
-
 namespace dgk
 {
-struct NotationProducts
+class IModifiableItem
 {
-  const IOrchestrionSequencerPtr sequencer;
-  const IModifiableItemRegistryPtr modifiableItemRegistry;
-};
-
-class OrchestrionSequencerFactory : public muse::Injectable
-{
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
-
 public:
-  NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  virtual ~IModifiableItem() = default;
+  virtual bool Modified() const = 0;
+  virtual void Save() = 0;
+  virtual void RevertChanges() = 0;
 };
 } // namespace dgk

@@ -19,20 +19,24 @@
 #pragma once
 
 #include "ISegmentRegistry.h"
-#include <unordered_map>
+#include <vector>
 
 namespace dgk
 {
 class SegmentRegistry : public ISegmentRegistry
 {
 private:
-  void RegisterSegment(const IMelodySegment *,
+  void RegisterSegment(IMelodySegmentWPtr,
                        const mu::engraving::Segment *) override;
+
   void UnregisterSegment(const IMelodySegment *) override;
+
   const mu::engraving::Segment *
   GetSegment(const IMelodySegment *) const override;
 
-  std::unordered_map<const IMelodySegment *, const mu::engraving::Segment *>
-      m_chords;
+  std::vector<IMelodySegment *> GetMelodySegments() override;
+
+  using Entry = std::pair<IMelodySegmentWPtr, const mu::engraving::Segment *>;
+  std::vector<Entry> m_chords;
 };
 } // namespace dgk
