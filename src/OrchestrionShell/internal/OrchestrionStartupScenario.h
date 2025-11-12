@@ -20,11 +20,19 @@
 
 #include "IOrchestrionStartupScenario.h"
 
+#include "framework/global/modularity/ioc.h"
+#include "project/iprojectconfiguration.h"
+
+
 namespace dgk
 {
 class OrchestrionStartupScenario : public IOrchestrionStartupScenario
 {
+  muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
+
 public:
+  void init();
+
   const StartupProjectFile &startupProjectFile() const override;
   void
   setStartupScoreFile(const std::optional<StartupProjectFile> &file) override;

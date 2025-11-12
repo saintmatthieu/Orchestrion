@@ -43,7 +43,9 @@ OrchestrionShellModule::OrchestrionShellModule()
           m_midiControllerMenuManager, m_midiSynthesizerMenuManager,
           m_playbackDeviceMenuManager)},
       m_orchestrionActionController{
-          std::make_shared<OrchestrionActionController>()}
+          std::make_shared<OrchestrionActionController>()},
+      m_orchestrionStartupScenario{
+          std::make_shared<OrchestrionStartupScenario>()}
 {
 }
 
@@ -57,7 +59,7 @@ void OrchestrionShellModule::registerExports()
   ioc()->registerExport<IOrchestrionUiActions>(moduleName(),
                                                m_orchestrionUiActions);
   ioc()->registerExport<IOrchestrionStartupScenario>(
-      moduleName(), std::make_shared<OrchestrionStartupScenario>());
+      moduleName(), m_orchestrionStartupScenario);
 }
 
 void OrchestrionShellModule::resolveImports()
@@ -87,6 +89,7 @@ void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
   m_orchestrionUiActions->init();
   m_orchestrionActionController->init();
   m_midiControllerMenuManager->init();
+  m_orchestrionStartupScenario->init();
 }
 
 void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &) {}

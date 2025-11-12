@@ -83,7 +83,7 @@ void OrchestrionActionController::onFileOpen(
   }
 
   muse::io::path_t defaultDir =
-      projectConfiguration()->lastOpenedProjectsPath();
+      muse::io::dirpath(projectConfiguration()->lastOpenedProjectsPath());
   if (defaultDir.empty())
     defaultDir = fallbackPath();
   openFromDir(defaultDir);
@@ -94,9 +94,9 @@ void OrchestrionActionController::onFileSave() const
   if (const auto registry = orchestrion()->modifiableItemRegistry())
     registry->Save();
 
-  projectFilesController()->saveProjectLocally(
-      projectConfiguration()->lastSavedProjectsPath(),
-      mu::project::SaveMode::Save);
+  if (const mu::project::INotationProjectPtr notationProject =
+          globalContext()->currentProject())
+    notationProject->save();
 }
 
 namespace
@@ -113,7 +113,8 @@ void OrchestrionActionController::onFileSaveAs() const
   if (const auto registry = orchestrion()->modifiableItemRegistry())
     registry->Save();
 
-  muse::io::path_t defaultDir = projectConfiguration()->lastSavedProjectsPath();
+  muse::io::path_t defaultDir =
+      muse::io::dirpath(projectConfiguration()->lastSavedProjectsPath());
   if (defaultDir.empty())
     defaultDir = fallbackPath();
   const muse::io::path_t filePath = interactive()->selectSavingFile(
@@ -151,8 +152,7 @@ void OrchestrionActionController::openProject(
   constexpr auto closeApp = false;
   projectFilesController()->closeOpenedProject(closeApp);
 
-  projectConfiguration()->setLastOpenedProjectsPath(
-      muse::io::dirpath(projectFile.path()));
+  projectConfiguration()->setLastOpenedProjectsPath(projectFile.path());
 
   projectFilesController()->openProject(projectFile);
 }

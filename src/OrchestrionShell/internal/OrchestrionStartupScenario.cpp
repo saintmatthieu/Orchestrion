@@ -18,8 +18,27 @@
  */
 #include "OrchestrionStartupScenario.h"
 
+#include "framework/global/io/fileinfo.h"
+
+#include <cassert>
+
 namespace dgk
 {
+void OrchestrionStartupScenario::init()
+{
+  assert(m_startupProjectFile.url.isEmpty());
+  const muse::io::path_t path =
+      projectConfiguration()->lastOpenedProjectsPath();
+  if (muse::io::FileInfo{path}.entryType() == muse::io::EntryType::File)
+  {
+    QUrl url{path.toQString()};
+    url.setScheme("file");
+    m_startupProjectFile.url = url;
+    m_startupProjectFile.displayNameOverride =
+        muse::io::filename(path, false).toStdString();
+  }
+}
+
 const StartupProjectFile &OrchestrionStartupScenario::startupProjectFile() const
 {
   return m_startupProjectFile;
@@ -29,12 +48,8 @@ void OrchestrionStartupScenario::setStartupScoreFile(
     const std::optional<StartupProjectFile> &file)
 {
   if (file)
-  {
     m_startupProjectFile = *file;
-  }
   else
-  {
     m_startupProjectFile = {};
-  }
 }
 } // namespace dgk
