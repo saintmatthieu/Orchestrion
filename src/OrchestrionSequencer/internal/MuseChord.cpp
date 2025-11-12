@@ -156,12 +156,7 @@ void MuseChord::Save()
   if (notes.empty())
     return;
 
-  if (m_originalColor.has_value())
-  {
-    for (auto note : notes)
-      note->setColor(*m_originalColor);
-    m_originalColor.reset();
-  }
+  ResetNoteColors(notes);
 
   if (m_unsavedVelocity.has_value())
   {
@@ -177,7 +172,6 @@ void MuseChord::SetModified()
   const auto notes = GetNotes();
   if (notes.empty())
     return;
-  m_originalColor = notes.front()->color();
   // Dark violet
   constexpr auto modifiedRgb = "#B040B0";
   for (auto note : notes)
@@ -188,10 +182,17 @@ bool MuseChord::Modified() const { return m_unsavedVelocity.has_value(); }
 
 void MuseChord::RevertChanges()
 {
-  if (m_originalColor.has_value())
-    for (auto note : GetNotes())
-      note->setColor(*m_originalColor);
-  m_originalColor.reset();
+  if (!Modified())
+    return;
+  ResetNoteColors(GetNotes());
   m_unsavedVelocity.reset();
+}
+
+void MuseChord::ResetNoteColors(const std::vector<mu::engraving::Note *> &notes)
+{
+  for (auto note : notes)
+    // This assumes the default color is black. It was true when I debugged
+    // default note colors, not sure how future-proof this is.
+    note->setColor("black");
 }
 } // namespace dgk

@@ -53,6 +53,7 @@ private:
   std::vector<int> GetPitches() const override;
   std::vector<mu::engraving::Note *> GetNotes() const;
   void SetModified();
+  void ResetNoteColors(const std::vector<mu::engraving::Note *>& notes);
 
   // IChord
 private:
@@ -65,7 +66,6 @@ private:
   void Save() override;
   void RevertChanges() override;
 
-  std::optional<mu::engraving::Color> m_originalColor;
   std::optional<float> m_unsavedVelocity;
 };
 } // namespace dgk
