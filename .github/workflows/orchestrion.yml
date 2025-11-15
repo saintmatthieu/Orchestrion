@@ -67,7 +67,7 @@ jobs:
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
-        cmake-version: '4'
+        cmake-version: '3.5'
 
     - name: Configure CMake
       run: >
@@ -151,7 +151,7 @@ jobs:
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
-        cmake-version: '4'
+        cmake-version: '3.5'
 
     - name: Configure CMake
       run: >

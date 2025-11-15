@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0000 NEW)
 
 # Set the project name and version
