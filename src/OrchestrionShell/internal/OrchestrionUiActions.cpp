@@ -38,7 +38,13 @@ muse::ui::UiActionList makeActions(
       muse::ui::UiAction("orchestrion-search-musescore", mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-file-help", mu::context::UiCtxAny,
-                         mu::context::CTX_ANY)};
+                         mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-file-save", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-file-save-as", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-advanced-toggle-recording",
+                         mu::context::UiCtxAny, mu::context::CTX_ANY)};
 
   for (const auto &[_, menuId] : actionIds::chooseDevicesSubmenu)
     actions.push_back(muse::ui::UiAction(menuId, mu::context::UiCtxAny,

@@ -1,13 +1,15 @@
 declare_module(OrchestrionSequencer)
 
 set(MODULE_SRC
+    internal/ChordTransitionUtil.cpp
+    internal/ChordTransitionUtil.h
     internal/GestureControllerConfigurator.cpp
     internal/GestureControllerConfigurator.h
     internal/IGestureControllerConfigurator.h
+    internal/ModifiableItemRegistry.cpp
+    internal/ModifiableItemRegistry.h
     internal/MuseChord.cpp
     internal/MuseChord.h
-    internal/ChordTransitionUtil.cpp
-    internal/ChordTransitionUtil.h
     internal/MuseMelodySegment.cpp
     internal/MuseMelodySegment.h
     internal/MuseRest.cpp
@@ -16,8 +18,8 @@ set(MODULE_SRC
     internal/Orchestrion.h
     internal/OrchestrionSequencer.cpp
     internal/OrchestrionSequencer.h
-    internal/OrchestrionSequencer.cpp
-    internal/OrchestrionSequencer.h
+    internal/OrchestrionSequencerConfiguration.cpp
+    internal/OrchestrionSequencerConfiguration.h
     internal/OrchestrionSequencerFactory.cpp
     internal/OrchestrionSequencerFactory.h
     internal/OrchestrionTypes.cpp
@@ -32,8 +34,10 @@ set(MODULE_SRC
     view/MidiDeviceActivityPopupModel.h
 
     IChord.h
-    OrchestrionTypes.h
     IMelodySegment.h
+    IModifiableItem.h
+    IModifiableItemRegistry.h
+    OrchestrionTypes.h
     IOrchestrion.h
     IOrchestrionSequencer.h
     IRest.h

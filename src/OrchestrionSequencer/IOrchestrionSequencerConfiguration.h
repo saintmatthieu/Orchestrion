@@ -18,26 +18,20 @@
  */
 #pragma once
 
-#include "IOrchestrionStartupScenario.h"
-
+#include "framework/global/async/notification.h"
 #include "framework/global/modularity/ioc.h"
-#include "project/iprojectconfiguration.h"
-
 
 namespace dgk
 {
-class OrchestrionStartupScenario : public IOrchestrionStartupScenario
+class IOrchestrionSequencerConfiguration : MODULE_EXPORT_INTERFACE
 {
-  muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
+  INTERFACE_ID(IOrchestrionSequencerConfiguration);
 
 public:
-  void init();
+  virtual ~IOrchestrionSequencerConfiguration() = default;
 
-  const StartupProjectFile &startupProjectFile() const override;
-  void
-  setStartupScoreFile(const std::optional<StartupProjectFile> &file) override;
-
-private:
-  StartupProjectFile m_startupProjectFile;
+  virtual bool velocityRecordingEnabled() const = 0;
+  virtual void setVelocityRecordingEnabled(bool) = 0;
+  virtual muse::async::Notification velocityRecordingEnabledChanged() const = 0;
 };
 } // namespace dgk

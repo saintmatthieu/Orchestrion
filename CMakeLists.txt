@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0000 NEW)
 
 # Set the project name and version
@@ -155,11 +155,13 @@ install(TARGETS Orchestrion
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .)
 
-install(FILES
-        ${QT_INSTALL_PLUGINS}/imageformats/qjpeg.dll
-        ${QT_INSTALL_PLUGINS}/imageformats/qsvg.dll
-        ${QT_INSTALL_PLUGINS}/imageformats/qico.dll
-        DESTINATION bin/imageformats)
+if (OS_IS_WIN)
+    install(FILES
+            ${QT_INSTALL_PLUGINS}/imageformats/qjpeg.dll
+            ${QT_INSTALL_PLUGINS}/imageformats/qsvg.dll
+            ${QT_INSTALL_PLUGINS}/imageformats/qico.dll
+            DESTINATION bin/imageformats)
+endif()
 
 ### TRANSLATIONS ### Copied and adapted from MuseScore/share/locale/CMakeLists.txt
 file(GLOB TS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/share/locale/*.ts)

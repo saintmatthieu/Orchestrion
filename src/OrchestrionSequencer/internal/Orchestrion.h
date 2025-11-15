@@ -18,8 +18,10 @@
  */
 #pragma once
 
+#include "IModifiableItemRegistry.h"
 #include "IOrchestrion.h"
 #include "OrchestrionSequencer.h"
+#include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
 #include <audio/internal/worker/iaudioengine.h>
@@ -31,9 +33,10 @@ class Orchestrion : public IOrchestrion,
                     public muse::async::Asyncable,
                     public muse::Injectable
 {
-  muse::Inject<mu::playback::IPlaybackController> playbackController = {this};
-  muse::Inject<mu::context::IGlobalContext> globalContext = {this};
-  muse::Inject<muse::audio::IAudioEngine> audioEngine = {this};
+  muse::Inject<mu::playback::IPlaybackController> playbackController;
+  muse::Inject<mu::context::IGlobalContext> globalContext;
+  muse::Inject<muse::audio::IAudioEngine> audioEngine;
+  muse::Inject<ISegmentRegistry> segmentRegistry;
 
 public:
   void init();
@@ -42,9 +45,11 @@ private:
   IOrchestrionSequencerPtr sequencer() override;
   muse::async::Notification sequencerChanged() const override;
   void setSequencer(IOrchestrionSequencerPtr sequencer);
+  IModifiableItemRegistryPtr modifiableItemRegistry() const override;
 
 private:
   IOrchestrionSequencerPtr m_sequencer;
+  IModifiableItemRegistryPtr m_modifiableItemRegistry;
   muse::async::Notification m_sequencerChanged;
 };
 } // namespace dgk

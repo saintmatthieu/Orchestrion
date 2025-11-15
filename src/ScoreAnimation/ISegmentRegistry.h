@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include "OrchestrionSequencer/IMelodySegment.h"
+
 #include <modularity/imoduleinterface.h>
 
 namespace mu
@@ -30,11 +32,6 @@ class Segment;
 
 namespace dgk
 {
-class IMelodySegment;
-}
-
-namespace dgk
-{
 class ISegmentRegistry : MODULE_EXPORT_INTERFACE
 {
   INTERFACE_ID(ISegmentRegistry);
@@ -42,10 +39,11 @@ class ISegmentRegistry : MODULE_EXPORT_INTERFACE
 public:
   virtual ~ISegmentRegistry() = default;
 
-  virtual void RegisterSegment(const IMelodySegment *,
+  virtual void RegisterSegment(IMelodySegmentWPtr,
                                const mu::engraving::Segment *) = 0;
   virtual void UnregisterSegment(const IMelodySegment *) = 0;
   virtual const mu::engraving::Segment *
   GetSegment(const IMelodySegment *) const = 0;
+  virtual std::vector<IMelodySegment *> GetMelodySegments() = 0;
 };
 } // namespace dgk

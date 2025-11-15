@@ -114,6 +114,15 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
 #endif
 
+  m_velocityRecordingEnabled = configuration()->velocityRecordingEnabled();
+  configuration()->velocityRecordingEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        m_velocityRecordingEnabled =
+            configuration()->velocityRecordingEnabled();
+      });
+
   dispatcher()->reg(this, "nav-first-control", [this] { GoToTick(0); });
   interactionProcessor()->itemClicked().onReceive(
       this, [this](const mu::engraving::EngravingItem *item)
@@ -192,7 +201,7 @@ void UniteStaffTransitions(std::map<TrackIndex, ChordTransition> &transitions)
 
 void OrchestrionSequencer::SendTransitions(
     std::map<TrackIndex, ChordTransition> transitions,
-    std::optional<float> velocity, bool isLeftHand)
+    std::optional<float> controllerVelocity, bool isLeftHand)
 {
   if (transitions.empty())
     return;
@@ -203,6 +212,7 @@ void OrchestrionSequencer::SendTransitions(
     const auto past = GetPastChord(transition);
     const auto present = GetPresentChord(transition);
     std::vector<int> noteons;
+    auto velocity = controllerVelocity;
     if (present)
     {
       if (!velocity.has_value())
@@ -212,7 +222,7 @@ void OrchestrionSequencer::SendTransitions(
         else
           velocity = isLeftHand ? 0.3f : 0.5f;
       }
-      else
+      else if (m_velocityRecordingEnabled)
         present->SetVelocity(*velocity);
 
       noteons = present->GetPitches();

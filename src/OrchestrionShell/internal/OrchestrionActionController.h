@@ -18,6 +18,9 @@
  */
 #pragma once
 
+#include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
+
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
@@ -25,22 +28,40 @@
 #include <global/iinteractive.h>
 #include <modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
+#include <project/iprojectfilescontroller.h>
+#include <ui/imainwindow.h>
+
+#include <QObject>
 
 namespace dgk
 {
 class OrchestrionActionController : public muse::actions::Actionable,
-                                    public muse::Injectable
+                                    public muse::Injectable,
+                                    public QObject
 {
+  muse::Inject<IOrchestrion> orchestrion;
+  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
-  muse::Inject<mu::project::IProjectConfiguration> configuration;
+  muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
+  muse::Inject<mu::project::IProjectFilesController> projectFilesController;
   muse::Inject<muse::IInteractive> interactive;
+  muse::Inject<muse::ui::IMainWindow> mainWindow;
 
 public:
+  void preInit();
   void init();
-  void onFileOpen() const;
+
+private:
+  bool eventFilter(QObject *obj, QEvent *event) override;
+
+  void onFileOpen(const muse::actions::ActionData &data) const;
+  void onFileSave() const;
+  void onFileSaveAs() const;
   void openFromDir(const muse::io::path_t &dir) const;
-  void closeCurrent() const;
+  void openProject(const mu::project::ProjectFile &) const;
+  void toggleRecording() const;
+  muse::io::path_t fallbackPath() const;
 };
 } // namespace dgk

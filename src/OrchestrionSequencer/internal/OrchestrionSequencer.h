@@ -19,9 +19,11 @@
 #pragma once
 
 #include "IOrchestrionSequencer.h"
+#include "IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "internal/VoiceSequencer.h"
+
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <array>
@@ -47,6 +49,7 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
+  muse::Inject<IOrchestrionSequencerConfiguration> configuration;
 
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
@@ -130,5 +133,7 @@ private:
   muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Notification m_aboutToJumpPosition;
+
+  bool m_velocityRecordingEnabled = false;
 };
 } // namespace dgk

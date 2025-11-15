@@ -20,6 +20,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionWindowTitleProvider.h"
+#include "OrchestrionSequencer/IModifiableItemRegistry.h"
 #include "translation.h"
 
 namespace dgk
@@ -48,6 +49,14 @@ void OrchestrionWindowTitleProvider::load()
       });
 
   context()->currentNotationChanged().onNotify(this, [this]() { update(); });
+
+  orchestrion()->sequencerChanged().onNotify(
+      this,
+      [this]()
+      {
+        if (const auto registry = orchestrion()->modifiableItemRegistry())
+          registry->ModifiedChanged().onNotify(this, [this]() { update(); });
+      });
 }
 
 QString OrchestrionWindowTitleProvider::title() const { return m_title; }
@@ -94,7 +103,7 @@ void OrchestrionWindowTitleProvider::setFileModified(bool fileModified)
 
 void OrchestrionWindowTitleProvider::update()
 {
-  mu::project::INotationProjectPtr project = context()->currentProject();
+  const mu::project::INotationProjectPtr project = context()->currentProject();
   const auto notation = context()->currentNotation();
 
   if (!project || !notation)
@@ -105,7 +114,11 @@ void OrchestrionWindowTitleProvider::update()
     return;
   }
 
-  setTitle(notation->projectNameAndPartName());
+  auto title = notation->projectNameAndPartName();
+  if (const auto registry = orchestrion()->modifiableItemRegistry();
+      registry->Modified())
+    title += " *";
+  setTitle(title);
 
   setFilePath((project->isNewlyCreated() || project->isCloudProject())
                   ? ""

@@ -19,6 +19,7 @@
 #pragma once
 
 #include "OrchestrionTypes.h"
+#include <memory>
 #include <vector>
 
 namespace dgk
@@ -40,4 +41,7 @@ public:
   virtual Tick GetBeginTick() const = 0;
   virtual Tick GetEndTick() const = 0;
 };
+
+using IMelodySegmentPtr = std::shared_ptr<IMelodySegment>;
+using IMelodySegmentWPtr = std::weak_ptr<IMelodySegment>;
 } // namespace dgk

@@ -30,6 +30,7 @@ class PlaybackDeviceMenuManager;
 class SynthesizerMenuManager;
 class OrchestrionEventProcessor;
 class OrchestrionActionController;
+class OrchestrionStartupScenario;
 
 class OrchestrionShellModule : public muse::modularity::IModuleSetup
 {
@@ -53,5 +54,6 @@ private:
   const std::shared_ptr<OrchestrionEventProcessor> m_orchestrionEventProcessor;
   const std::shared_ptr<OrchestrionUiActions> m_orchestrionUiActions;
   const std::shared_ptr<OrchestrionActionController> m_orchestrionActionController;
+  const std::shared_ptr<OrchestrionStartupScenario> m_orchestrionStartupScenario;
 };
 } // namespace dgk

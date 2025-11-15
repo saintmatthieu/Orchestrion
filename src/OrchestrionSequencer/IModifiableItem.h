@@ -18,26 +18,17 @@
  */
 #pragma once
 
-#include "IOrchestrionStartupScenario.h"
-
-#include "framework/global/modularity/ioc.h"
-#include "project/iprojectconfiguration.h"
-
+#include "framework/global/async/notification.h"
 
 namespace dgk
 {
-class OrchestrionStartupScenario : public IOrchestrionStartupScenario
+class IModifiableItem
 {
-  muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
-
 public:
-  void init();
-
-  const StartupProjectFile &startupProjectFile() const override;
-  void
-  setStartupScoreFile(const std::optional<StartupProjectFile> &file) override;
-
-private:
-  StartupProjectFile m_startupProjectFile;
+  virtual ~IModifiableItem() = default;
+  virtual bool Modified() const = 0;
+  virtual void Save() = 0;
+  virtual void RevertChanges() = 0;
+  virtual muse::async::Notification ModifiedChanged() = 0;
 };
 } // namespace dgk
