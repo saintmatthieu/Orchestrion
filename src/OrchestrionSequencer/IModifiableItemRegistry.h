@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include "framework/global/modularity/imoduleinterface.h"
 #include "framework/global/async/notification.h"
 
 #include <memory>
@@ -28,10 +27,8 @@ namespace dgk
 {
 class IModifiableItem;
 
-class IModifiableItemRegistry : MODULE_EXPORT_INTERFACE
+class IModifiableItemRegistry
 {
-  INTERFACE_ID(IModifiableItemRegistry);
-
 public:
   virtual ~IModifiableItemRegistry() = default;
   virtual void RegisterItem(std::weak_ptr<IModifiableItem>) = 0;

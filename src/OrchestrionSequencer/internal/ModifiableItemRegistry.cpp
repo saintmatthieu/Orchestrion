@@ -19,6 +19,7 @@
 #include "ModifiableItemRegistry.h"
 #include "IModifiableItem.h"
 
+#include <algorithm>
 #include <cassert>
 
 namespace dgk
