@@ -20,25 +20,28 @@
 
 #include "IModifiableItemRegistry.h"
 
+#include "framework/global/async/asyncable.h"
+
 #include <vector>
 
 namespace dgk
 {
-class ModifiableItemRegistry : public IModifiableItemRegistry
+class ModifiableItemRegistry : public IModifiableItemRegistry,
+                               public muse::async::Asyncable
 {
 public:
   ~ModifiableItemRegistry() override = default;
 
 private:
   void RegisterItem(std::weak_ptr<IModifiableItem>) override;
-  bool Unsaved() const override;
+  bool Modified() const override;
   void Save() override;
   void RevertToLastSaved() override;
-  muse::async::Notification UnsavedChanged() const override;
+  muse::async::Notification ModifiedChanged() const override;
 
   std::unordered_set<IModifiableItem *> _GetItems() const;
 
   std::vector<std::weak_ptr<IModifiableItem>> m_items;
-  muse::async::Notification m_unsavedChanged;
+  muse::async::Notification m_modifiedChanged;
 };
 } // namespace dgk

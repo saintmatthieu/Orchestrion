@@ -176,6 +176,7 @@ void MuseChord::SetModified()
   constexpr auto modifiedRgb = "#B040B0";
   for (auto note : notes)
     note->setColor(modifiedRgb);
+  m_modifiedChanged.notify();
 }
 
 bool MuseChord::Modified() const { return m_unsavedVelocity.has_value(); }
@@ -194,5 +195,10 @@ void MuseChord::ResetNoteColors(const std::vector<mu::engraving::Note *> &notes)
     // This assumes the default color is black. It was true when I debugged
     // default note colors, not sure how future-proof this is.
     note->setColor("black");
+}
+
+muse::async::Notification MuseChord::ModifiedChanged()
+{
+  return m_modifiedChanged;
 }
 } // namespace dgk

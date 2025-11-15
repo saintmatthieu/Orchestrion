@@ -35,10 +35,10 @@ class IModifiableItemRegistry : MODULE_EXPORT_INTERFACE
 public:
   virtual ~IModifiableItemRegistry() = default;
   virtual void RegisterItem(std::weak_ptr<IModifiableItem>) = 0;
-  virtual bool Unsaved() const = 0;
+  virtual bool Modified() const = 0;
   virtual void Save() = 0;
   virtual void RevertToLastSaved() = 0;
-  virtual muse::async::Notification UnsavedChanged() const = 0;
+  virtual muse::async::Notification ModifiedChanged() const = 0;
 };
 
 using IModifiableItemRegistryPtr = std::shared_ptr<IModifiableItemRegistry>;

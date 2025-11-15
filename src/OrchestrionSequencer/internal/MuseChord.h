@@ -65,7 +65,9 @@ private:
   bool Modified() const override;
   void Save() override;
   void RevertChanges() override;
+  muse::async::Notification ModifiedChanged() override;
 
   std::optional<float> m_unsavedVelocity;
+  muse::async::Notification m_modifiedChanged;
 };
 } // namespace dgk

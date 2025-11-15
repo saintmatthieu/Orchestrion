@@ -45,7 +45,7 @@ void OrchestrionNotationPaintView::subscribe(
         update();
       });
 
-  registry.UnsavedChanged().onNotify(this, [this] { update(); });
+  registry.ModifiedChanged().onNotify(this, [this] { update(); });
 
   if (const auto &transitions = sequencer.GetCurrentTransitions();
       !transitions.empty())

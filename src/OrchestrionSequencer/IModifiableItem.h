@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include "framework/global/async/notification.h"
+
 namespace dgk
 {
 class IModifiableItem
@@ -27,5 +29,6 @@ public:
   virtual bool Modified() const = 0;
   virtual void Save() = 0;
   virtual void RevertChanges() = 0;
+  virtual muse::async::Notification ModifiedChanged() = 0;
 };
 } // namespace dgk

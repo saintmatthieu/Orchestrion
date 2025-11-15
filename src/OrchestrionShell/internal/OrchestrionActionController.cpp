@@ -76,7 +76,7 @@ bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
     constexpr auto closeApp = true;
     const IModifiableItemRegistryPtr registry =
         orchestrion()->modifiableItemRegistry();
-    if (registry && registry->Unsaved())
+    if (registry && registry->Modified())
     {
       const auto notation = globalContext()->currentMasterNotation();
       assert(notation);
@@ -175,7 +175,7 @@ void OrchestrionActionController::openProject(
   const IModifiableItemRegistryPtr registry =
       orchestrion()->modifiableItemRegistry();
   if (const auto notation = globalContext()->currentMasterNotation())
-    if (!registry->Unsaved())
+    if (!registry->Modified())
     {
       registry->RevertToLastSaved();
       // We don't want to get the "Would you like to save?"

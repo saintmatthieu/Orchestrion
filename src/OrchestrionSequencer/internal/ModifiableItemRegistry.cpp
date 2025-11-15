@@ -25,10 +25,16 @@ namespace dgk
 {
 void ModifiableItemRegistry::RegisterItem(std::weak_ptr<IModifiableItem> item)
 {
+  const auto lockedItem = item.lock();
+  if (!lockedItem)
+    return;
+  lockedItem->ModifiedChanged().onNotify(
+      this, [this] { m_modifiedChanged.notify(); },
+      muse::async::Asyncable::AsyncMode::AsyncSetOnce);
   m_items.push_back(std::move(item));
 }
 
-bool ModifiableItemRegistry::Unsaved() const
+bool ModifiableItemRegistry::Modified() const
 {
   return std::any_of(m_items.begin(), m_items.end(),
                      [](const std::weak_ptr<IModifiableItem> &weakItem)
@@ -41,20 +47,20 @@ bool ModifiableItemRegistry::Unsaved() const
 
 void ModifiableItemRegistry::Save()
 {
-  if (!Unsaved())
+  if (!Modified())
     return;
   for (IModifiableItem *item : _GetItems())
     item->Save();
-  m_unsavedChanged.notify();
+  m_modifiedChanged.notify();
 }
 
 void ModifiableItemRegistry::RevertToLastSaved()
 {
-  if (!Unsaved())
+  if (!Modified())
     return;
   for (IModifiableItem *item : _GetItems())
     item->RevertChanges();
-  m_unsavedChanged.notify();
+  m_modifiedChanged.notify();
 }
 
 std::unordered_set<IModifiableItem *> ModifiableItemRegistry::_GetItems() const
@@ -66,8 +72,8 @@ std::unordered_set<IModifiableItem *> ModifiableItemRegistry::_GetItems() const
   return result;
 }
 
-muse::async::Notification ModifiableItemRegistry::UnsavedChanged() const
+muse::async::Notification ModifiableItemRegistry::ModifiedChanged() const
 {
-  return m_unsavedChanged;
+  return m_modifiedChanged;
 }
 } // namespace dgk
