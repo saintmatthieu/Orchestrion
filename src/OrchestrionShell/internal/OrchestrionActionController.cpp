@@ -105,13 +105,14 @@ void OrchestrionActionController::onFileOpen(
     const muse::actions::ActionData &args) const
 {
   {
-    QUrl url = !args.empty() ? args.arg<QUrl>(0) : QUrl();
-    QString displayNameOverride =
-        args.count() >= 2 ? args.arg<QString>(1) : QString();
-    const mu::project::ProjectFile projectFile(url, displayNameOverride);
+    const QUrl url = !args.empty() ? args.arg<QUrl>(0) : QUrl();
+    const std::string displayNameOverride =
+        args.count() >= 2 ? args.arg<std::string>(1) : std::string();
+    const mu::project::ProjectFile projectFile(
+        url, QString::fromStdString(displayNameOverride));
     if (projectFile.isValid())
     {
-      openProject(mu::project::ProjectFile(url, displayNameOverride));
+      openProject(projectFile);
       return;
     }
   }
