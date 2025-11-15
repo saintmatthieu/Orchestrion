@@ -20,8 +20,13 @@
 #include <engraving/dom/masterscore.h>
 #include <notation/imasternotation.h>
 
+#include <QApplication>
+#include <QWindow>
+
 namespace dgk
 {
+void OrchestrionActionController::preInit() { qApp->installEventFilter(this); }
+
 void OrchestrionActionController::init()
 {
   dispatcher()->reg(this, "orchestrion-file-open",
@@ -57,6 +62,35 @@ void OrchestrionActionController::init()
       });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
+
+  projectConfiguration()->setShouldAskSaveLocationType(false);
+  projectConfiguration()->setLastUsedSaveLocationType(
+      mu::project::SaveLocationType::Local);
+}
+
+bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
+{
+  if ((event->type() == QEvent::Close && watched == mainWindow()->qWindow()) ||
+      event->type() == QEvent::Quit)
+  {
+    constexpr auto closeApp = true;
+    const IModifiableItemRegistryPtr registry =
+        orchestrion()->modifiableItemRegistry();
+    if (registry && registry->Unsaved())
+    {
+      const auto notation = globalContext()->currentMasterNotation();
+      assert(notation);
+      if (notation)
+        notation->masterScore()->setSaved(false);
+      if (!projectFilesController()->closeOpenedProject(closeApp))
+      {
+        // Cancel the close event
+        event->setAccepted(true);
+        return true;
+      }
+    }
+  }
+  return QObject::eventFilter(watched, event);
 }
 
 muse::io::path_t OrchestrionActionController::fallbackPath() const

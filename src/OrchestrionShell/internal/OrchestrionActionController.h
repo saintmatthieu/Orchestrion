@@ -29,11 +29,15 @@
 #include <modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
 #include <project/iprojectfilescontroller.h>
+#include <ui/imainwindow.h>
+
+#include <QObject>
 
 namespace dgk
 {
 class OrchestrionActionController : public muse::actions::Actionable,
-                                    public muse::Injectable
+                                    public muse::Injectable,
+                                    public QObject
 {
   muse::Inject<IOrchestrion> orchestrion;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
@@ -43,16 +47,20 @@ class OrchestrionActionController : public muse::actions::Actionable,
   muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
   muse::Inject<mu::project::IProjectFilesController> projectFilesController;
   muse::Inject<muse::IInteractive> interactive;
+  muse::Inject<muse::ui::IMainWindow> mainWindow;
 
 public:
+  void preInit();
   void init();
 
 private:
+  bool eventFilter(QObject *obj, QEvent *event) override;
+
   void onFileOpen(const muse::actions::ActionData &data) const;
   void onFileSave() const;
   void onFileSaveAs() const;
   void openFromDir(const muse::io::path_t &dir) const;
-  void openProject(const mu::project::ProjectFile&) const;
+  void openProject(const mu::project::ProjectFile &) const;
   void toggleRecording() const;
   muse::io::path_t fallbackPath() const;
 };

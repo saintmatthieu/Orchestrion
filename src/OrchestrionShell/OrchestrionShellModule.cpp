@@ -77,7 +77,10 @@ void OrchestrionShellModule::registerUiTypes()
       "Orchestrion.OrchestrionShell", 1, 0, "OrchestrionWindowTitleProvider");
 }
 
-void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &) {}
+void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &)
+{
+  m_orchestrionActionController->preInit();
+}
 
 void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
 {
