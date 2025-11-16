@@ -40,7 +40,7 @@ jobs:
         host: 'windows'
         target: 'desktop'
         arch: 'win64_msvc2022_64'
-        modules: qtnetworkauth qt5compat qtscxml
+        modules: qtnetworkauth qt5compat qtscxml qtshadertools
         cache: true
 
     - name: Cache Ninja
@@ -126,7 +126,7 @@ jobs:
         version: '6.9.1'
         arch: 'clang_64'
         target: 'desktop'
-        modules: qtnetworkauth qt5compat qtscxml
+        modules: qtnetworkauth qt5compat qtscxml qtshadertools
         cache: true
 
     - name: Cache Ninja
