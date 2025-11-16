@@ -19,6 +19,7 @@
 #include "OrchestrionModule.h"
 #include "internal/GestureControllerConfigurator.h"
 #include "internal/Orchestrion.h"
+#include "internal/OrchestrionSequencerConfiguration.h"
 #include "view/GestureControllerSelectionModel.h"
 #include "view/MidiDeviceActivityPopupModel.h"
 
@@ -30,7 +31,9 @@ namespace dgk
 OrchestrionModule::OrchestrionModule()
     : m_orchestrion(std::make_shared<Orchestrion>()),
       m_midiControllerConfigurator(
-          std::make_shared<GestureControllerConfigurator>())
+          std::make_shared<GestureControllerConfigurator>()),
+      m_sequencerConfiguration(
+          std::make_shared<OrchestrionSequencerConfiguration>())
 {
 }
 
@@ -41,6 +44,8 @@ void OrchestrionModule::registerExports()
   ioc()->registerExport<IOrchestrion>(moduleName(), m_orchestrion);
   ioc()->registerExport<IGestureControllerConfigurator>(
       moduleName(), m_midiControllerConfigurator);
+  ioc()->registerExport<IOrchestrionSequencerConfiguration>(
+      moduleName(), m_sequencerConfiguration);
 }
 
 void OrchestrionModule::registerUiTypes()
@@ -56,5 +61,6 @@ void OrchestrionModule::onInit(const muse::IApplication::RunMode &)
 {
   m_orchestrion->init();
   m_midiControllerConfigurator->init();
+  m_sequencerConfiguration->init();
 }
 } // namespace dgk

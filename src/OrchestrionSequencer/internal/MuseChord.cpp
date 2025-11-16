@@ -32,11 +32,6 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
     : MuseMelodySegment(segment, track, measurePlaybackTick)
 {
-  const auto notes = GetNotes();
-  if (!notes.empty())
-  {
-    const auto velocity = notes.front()->userVelocity();
-  }
 }
 
 std::vector<me::Note *> MuseChord::GetNotes() const
@@ -137,15 +132,73 @@ dgk::Tick MuseChord::GetEndTick() const
   return endTick;
 }
 
-float MuseChord::GetVelocity() const { return m_velocity; }
+float MuseChord::GetVelocity() const
+{
+  if (m_unsavedVelocity.has_value())
+    return *m_unsavedVelocity;
+  const auto notes = GetNotes();
+  if (notes.empty())
+    return 0.f;
+  return static_cast<float>(notes.front()->userVelocity()) / 127.f;
+}
 
 void MuseChord::SetVelocity(float velocity)
 {
-  m_velocity = velocity;
+  const auto wasModified = m_unsavedVelocity.has_value();
+  m_unsavedVelocity = velocity;
+  if (!wasModified)
+    SetModified();
+}
+
+void MuseChord::Save()
+{
   const auto notes = GetNotes();
-  const auto midiVelocity =
-      std::clamp(static_cast<int>(m_velocity * 128), 0, 127);
-  for (const auto note : notes)
-    note->setUserVelocity(midiVelocity);
+  if (notes.empty())
+    return;
+
+  ResetNoteColors(notes);
+
+  if (m_unsavedVelocity.has_value())
+  {
+    const auto midiVelocity = static_cast<int>(*m_unsavedVelocity * 127);
+    for (const auto note : notes)
+      note->setUserVelocity(midiVelocity);
+    m_unsavedVelocity.reset();
+  }
+}
+
+void MuseChord::SetModified()
+{
+  const auto notes = GetNotes();
+  if (notes.empty())
+    return;
+  // Dark violet
+  constexpr auto modifiedRgb = "#B040B0";
+  for (auto note : notes)
+    note->setColor(modifiedRgb);
+  m_modifiedChanged.notify();
+}
+
+bool MuseChord::Modified() const { return m_unsavedVelocity.has_value(); }
+
+void MuseChord::RevertChanges()
+{
+  if (!Modified())
+    return;
+  ResetNoteColors(GetNotes());
+  m_unsavedVelocity.reset();
+}
+
+void MuseChord::ResetNoteColors(const std::vector<mu::engraving::Note *> &notes)
+{
+  for (auto note : notes)
+    // This assumes the default color is black. It was true when I debugged
+    // default note colors, not sure how future-proof this is.
+    note->setColor("black");
+}
+
+muse::async::Notification MuseChord::ModifiedChanged()
+{
+  return m_modifiedChanged;
 }
 } // namespace dgk

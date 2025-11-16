@@ -67,6 +67,6 @@ void OrchestrionOnboardingModel::startOnboarding()
   if (const auto args =
           getFileOpenArgs(startupScenario()->startupProjectFile());
       args)
-    dispatcher()->dispatch("file-open", *args);
+    dispatcher()->dispatch("orchestrion-file-open", *args);
 }
 } // namespace dgk

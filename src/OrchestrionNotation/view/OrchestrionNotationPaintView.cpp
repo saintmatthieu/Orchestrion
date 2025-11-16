@@ -34,7 +34,8 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
 }
 
 void OrchestrionNotationPaintView::subscribe(
-    const IOrchestrionSequencer &sequencer)
+    const IOrchestrionSequencer &sequencer,
+    const IModifiableItemRegistry &registry)
 {
   sequencer.ChordTransitions().onReceive(
       this,
@@ -43,6 +44,8 @@ void OrchestrionNotationPaintView::subscribe(
         OnTransitions(transitions);
         update();
       });
+
+  registry.ModifiedChanged().onNotify(this, [this] { update(); });
 
   if (const auto &transitions = sequencer.GetCurrentTransitions();
       !transitions.empty())
@@ -150,8 +153,6 @@ void OrchestrionNotationPaintView::onLoadNotation(
 
 bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 {
-  const auto ans = acceptHoverEvents();
-
   if (watched == this)
   {
     if (event->type() == QEvent::MouseButtonPress)
@@ -190,17 +191,20 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   qApp->installEventFilter(this);
 
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this]
-                                             {
-                                               const auto sequencer =
-                                                   orchestrion()->sequencer();
-                                               if (!sequencer)
-                                                 return;
-                                               subscribe(*sequencer);
-                                             });
-  if (const auto sequencer = orchestrion()->sequencer())
-    subscribe(*sequencer);
+  orchestrion()->sequencerChanged().onNotify(
+      this,
+      [this]
+      {
+        const auto sequencer = orchestrion()->sequencer();
+        const auto registry = orchestrion()->modifiableItemRegistry();
+        if (!sequencer || !registry)
+          return;
+        subscribe(*sequencer, *registry);
+      });
+  const auto sequencer = orchestrion()->sequencer();
+  const auto registry = orchestrion()->modifiableItemRegistry();
+  if (sequencer && registry)
+    subscribe(*sequencer, *registry);
 
   globalContext()->currentNotationChanged().onNotify(
       this,

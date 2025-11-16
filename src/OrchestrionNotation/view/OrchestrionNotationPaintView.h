@@ -49,7 +49,7 @@ public:
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
-  void subscribe(const IOrchestrionSequencer &sequencer);
+  void subscribe(const IOrchestrionSequencer &sequencer, const IModifiableItemRegistry &registry);
   void alignVertically();
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;

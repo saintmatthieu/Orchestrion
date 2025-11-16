@@ -17,7 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "FluidSynthesizer.h"
+
 #include <fluidsynth.h>
+#include "framework/global/log.h"
 
 namespace muse::audio::synth
 {
@@ -142,7 +144,8 @@ void FluidSynthesizer::onNoteOffs(size_t numNoteoffs,
     const auto success =
         fluid_synth_noteoff(m_fluidSynth, GetChannel(channels[i]),
                             pitches[i]) == FLUID_OK;
-    assert(success);
+    if (!success)
+      LOGE() << "fluid_synth_noteoff failed";
   }
 }
 
@@ -152,13 +155,15 @@ void FluidSynthesizer::onPedal(bool on)
   {
     const auto success = fluid_synth_cc(m_fluidSynth, GetChannel(voice), 0x40,
                                         on ? 127 : 0) == FLUID_OK;
-    assert(success);
+    if (!success)
+      LOGE() << "fluid_synth_cc failed";
   }
 }
 
 void FluidSynthesizer::allNotesOff()
 {
   const auto success = fluid_synth_all_notes_off(m_fluidSynth, -1) == FLUID_OK;
-  assert(success);
+  if (!success)
+    LOGE() << "fluid_synth_all_notes_off failed";
 }
 } // namespace dgk

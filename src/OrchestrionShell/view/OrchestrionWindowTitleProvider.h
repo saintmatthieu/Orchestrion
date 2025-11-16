@@ -21,6 +21,8 @@
  */
 #pragma once
 
+#include "OrchestrionSequencer/IOrchestrion.h"
+
 #include "async/asyncable.h"
 #include "context/iglobalcontext.h"
 
@@ -31,7 +33,8 @@ class OrchestrionWindowTitleProvider : public QObject,
 {
   Q_OBJECT
 
-  INJECT(mu::context::IGlobalContext, context)
+  muse::Inject<mu::context::IGlobalContext> context;
+  muse::Inject<IOrchestrion> orchestrion;
 
   Q_PROPERTY(QString title READ title NOTIFY titleChanged)
   Q_PROPERTY(QString filePath READ filePath NOTIFY filePathChanged)

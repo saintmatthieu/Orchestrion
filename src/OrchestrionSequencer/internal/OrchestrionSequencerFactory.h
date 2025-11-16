@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "IModifiableItemRegistry.h"
 #include "IOrchestrionSequencer.h"
 #include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include "OrchestrionTypes.h"
@@ -34,7 +35,11 @@ class IMasterNotation;
 
 namespace dgk
 {
-class IOrchestrionSequencer;
+struct NotationProducts
+{
+  const IOrchestrionSequencerPtr sequencer;
+  const IModifiableItemRegistryPtr modifiableItemRegistry;
+};
 
 class OrchestrionSequencerFactory : public muse::Injectable
 {
@@ -42,7 +47,7 @@ class OrchestrionSequencerFactory : public muse::Injectable
   muse::Inject<ITrackChannelMapper> mapper;
 
 public:
-  IOrchestrionSequencerPtr
+  NotationProducts
   CreateSequencer(mu::notation::IMasterNotation &masterNotation);
 };
 } // namespace dgk

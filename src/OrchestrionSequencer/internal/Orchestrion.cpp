@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "Orchestrion.h"
+#include "IChord.h"
 #include "OrchestrionSequencerFactory.h"
 #include <async/async.h>
 #include <audio/internal/audiothread.h>
@@ -36,7 +37,7 @@ void Orchestrion::init()
           setSequencer(nullptr);
           return;
         }
-        auto sequencer =
+        const NotationProducts products =
             OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
 
         // This goes beyond just the official API of the audio module. Is there
@@ -46,7 +47,11 @@ void Orchestrion::init()
             { audioEngine()->setMode(muse::audio::RenderMode::RealTimeMode); },
             muse::audio::AudioThread::ID);
 
-        setSequencer(std::move(sequencer));
+        m_modifiableItemRegistry = products.modifiableItemRegistry;
+        setSequencer(products.sequencer);
+
+        if (const auto notation = globalContext()->currentMasterNotation())
+          notation->masterScore()->setSaved(true);
       });
 }
 
@@ -63,5 +68,10 @@ IOrchestrionSequencerPtr Orchestrion::sequencer() { return m_sequencer; }
 muse::async::Notification Orchestrion::sequencerChanged() const
 {
   return m_sequencerChanged;
+}
+
+IModifiableItemRegistryPtr Orchestrion::modifiableItemRegistry() const
+{
+  return m_modifiableItemRegistry;
 }
 } // namespace dgk

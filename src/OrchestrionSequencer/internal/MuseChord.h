@@ -19,7 +19,10 @@
 #pragma once
 
 #include "IChord.h"
+#include "IModifiableItem.h"
 #include "MuseMelodySegment.h"
+
+#include "engraving/types/types.h"
 
 namespace mu::engraving
 {
@@ -29,7 +32,9 @@ class Segment;
 
 namespace dgk
 {
-class MuseChord : public IChord, private MuseMelodySegment
+class MuseChord : public IChord,
+                  public IModifiableItem,
+                  private MuseMelodySegment
 {
 public:
   MuseChord(const mu::engraving::Segment &segment, TrackIndex,
@@ -47,10 +52,22 @@ public:
 private:
   std::vector<int> GetPitches() const override;
   std::vector<mu::engraving::Note *> GetNotes() const;
+  void SetModified();
+  void ResetNoteColors(const std::vector<mu::engraving::Note *>& notes);
 
+  // IChord
+private:
   float GetVelocity() const override;
   void SetVelocity(float) override;
 
-  float m_velocity = 0.f;
+  // IModifiableItem
+private:
+  bool Modified() const override;
+  void Save() override;
+  void RevertChanges() override;
+  muse::async::Notification ModifiedChanged() override;
+
+  std::optional<float> m_unsavedVelocity;
+  muse::async::Notification m_modifiedChanged;
 };
 } // namespace dgk

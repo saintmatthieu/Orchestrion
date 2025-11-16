@@ -27,6 +27,7 @@ namespace
 {
 constexpr auto audioMidiMenuId = "menu-audio-midi";
 constexpr auto keyboardMenuId = "menu-keyboard";
+constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -50,11 +51,26 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
   emit openedMenuIdChanged(m_openedMenuId);
 }
 
+void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
+{
+  setItems({makeFileMenu(velocityRecordingEnabled), makeAudioMidiMenu(),
+            makeAdvancedMenu(velocityRecordingEnabled)});
+}
+
 void OrchestrionMenuModel::load()
 {
   AbstractMenuModel::load();
 
-  setItems({makeFileMenu(), makeAudioMidiMenu()});
+  createMenus(sequencerConfiguration()->velocityRecordingEnabled());
+
+  sequencerConfiguration()->velocityRecordingEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        const auto recordingEnabled =
+            sequencerConfiguration()->velocityRecordingEnabled();
+        createMenus(recordingEnabled);
+      });
 
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
@@ -142,15 +158,16 @@ void OrchestrionMenuModel::openMenu(const QString &menuId, bool byHover)
   emit openMenuRequested(menuId, byHover);
 }
 
-muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
+muse::uicomponents::MenuItem *
+OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
 {
-  const QList<muse::uicomponents::MenuItem *> menu{
-      makeMenuItem(
-          "orchestrion-file-open",
-          muse::TranslatableString("appshell/menu/file", "&From computer…")),
-      makeMenuItem(
-          "orchestrion-file-open-example",
-          muse::TranslatableString("appshell/menu/file", "&Example file…")),
+  QList<muse::uicomponents::MenuItem *> menu{
+      makeMenuItem("orchestrion-file-open",
+                   muse::TranslatableString("appshell/menu/file",
+                                            "Open from &computer…")),
+      makeMenuItem("orchestrion-file-open-example",
+                   muse::TranslatableString("appshell/menu/file",
+                                            "Open &example file…")),
       makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
                    muse::TranslatableString("appshell/menu/file",
@@ -158,7 +175,18 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeFileMenu()
       makeSeparator(),
       makeMenuItem("orchestrion-file-help",
                    muse::TranslatableString("appshell/menu/file", "&Help…"))};
-  return makeMenu(muse::TranslatableString("appshell/menu/file", "&Open"), menu,
+
+  if (withSaveItem)
+  {
+    menu.append(
+        makeMenuItem("orchestrion-file-save",
+                     muse::TranslatableString("appshell/menu/file", "Save")));
+    menu.append(makeMenuItem(
+        "orchestrion-file-save-as",
+        muse::TranslatableString("appshell/menu/file", "Save &as…")));
+  }
+
+  return makeMenu(muse::TranslatableString("appshell/menu/file", "&File"), menu,
                   "menu-orchestrion-file");
 }
 
@@ -191,6 +219,22 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
        makeAudioMidiSubmenu(DeviceType::MidiSynthesizer),
        makeAudioMidiSubmenu(DeviceType::PlaybackDevice)},
       audioMidiMenuId);
+}
+
+muse::uicomponents::MenuItem *
+OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
+{
+  using namespace muse::uicomponents;
+  muse::uicomponents::MenuItem *const item =
+      makeMenuItem(toggleRecordingMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "&Toggle velocity recording"));
+  item->setSelectable(true);
+  item->setSelected(velocityRecordingEnabled);
+  const QList<MenuItem *> menu{item};
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
+      "menu-orchestrion-advanced");
 }
 
 QList<muse::uicomponents::MenuItem *>
