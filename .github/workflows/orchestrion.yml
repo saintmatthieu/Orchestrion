@@ -170,7 +170,7 @@ jobs:
         security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
         security find-identity -v
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-        find ${{env.BUILD_DIR}}/Orchestrion.app -name "*.dylib" -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
+        find ${{env.BUILD_DIR}}/Orchestrion.app -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" -o -name "*.framework" -o -name "*.o" \) -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
         codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/Orchestrion.app
 
     - name: Install create-dmg
