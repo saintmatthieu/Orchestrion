@@ -268,8 +268,6 @@ jobs:
         set -e
         export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
         export QML_SOURCES_PATHS=${{github.workspace}}/src
-        # Copy and rename icon for consistency with desktop file
-        cp ${{github.workspace}}/icons/music-box.png ${{github.workspace}}/icons/orchestrion.png
         ./linuxdeploy-x86_64.AppImage \
           --appdir=${{env.BUILD_DIR}}/AppDir \
           --executable=${{env.BUILD_DIR}}/install/bin/Orchestrion \
