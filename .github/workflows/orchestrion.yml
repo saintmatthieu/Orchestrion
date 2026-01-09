@@ -275,12 +275,13 @@ jobs:
           --icon-file=${{github.workspace}}/icons/orchestrion.png \
           --plugin qt \
           --output appimage
-        # Verify AppImage was created
-        if [ ! -f Orchestrion*.AppImage ]; then
+        # Find and verify the created AppImage
+        APPIMAGE_FILE=$(find . -maxdepth 1 -name "Orchestrion*.AppImage" -type f | head -n 1)
+        if [ -z "$APPIMAGE_FILE" ]; then
           echo "Error: AppImage was not created"
           exit 1
         fi
-        mv Orchestrion*.AppImage "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+        mv "$APPIMAGE_FILE" "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
         echo "AppImage created successfully: ${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
 
     - name: Upload Artifacts
