@@ -265,6 +265,7 @@ jobs:
 
     - name: Create AppImage
       run: |
+        set -e
         export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
         export QML_SOURCES_PATHS=${{github.workspace}}/src
         ./linuxdeploy-x86_64.AppImage \
@@ -274,7 +275,13 @@ jobs:
           --icon-file=${{github.workspace}}/icons/music-box.png \
           --plugin qt \
           --output appimage
+        # Verify AppImage was created
+        if [ ! -f Orchestrion*.AppImage ]; then
+          echo "Error: AppImage was not created"
+          exit 1
+        fi
         mv Orchestrion*.AppImage "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+        echo "AppImage created successfully: ${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
