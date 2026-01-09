@@ -193,6 +193,8 @@ jobs:
 
   build_linux:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
 
     steps:
     - name: Install Git LFS
