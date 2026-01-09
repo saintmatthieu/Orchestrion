@@ -248,7 +248,7 @@ jobs:
 
     - name: Configure CMake
       run: >
-        cmake -B ${{github.workspace}}/build -G Ninja
+        cmake -B ${{github.workspace}}/${{env.BUILD_DIR}} -G Ninja
         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
         -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
         -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
