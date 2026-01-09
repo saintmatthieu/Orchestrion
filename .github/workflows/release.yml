@@ -15,7 +15,8 @@ jobs:
         with:
           # Specify the ID of the workflow run that produced the artifacts
           run-id: 19586111938
-          # Looks for "Artifact ID" in the "Upload Artifacts" step of the win and mac build jobs
+          # Looks for "Artifact ID" in the "Upload Artifacts" step of the win, mac, and linux build jobs
+          # NOTE: Update these IDs from the workflow run you want to release
           artifact-ids: 4646243212,4646196869
           path: ./artifacts
           github-token: ${{ secrets.GITHUB_TOKEN }}
