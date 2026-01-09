@@ -7,4 +7,3 @@ Exec=orchestrion
 Icon=orchestrion
 Terminal=false
 Categories=AudioVideo;Audio;Sequencer;Midi;Qt;
-MimeType=application/x-musescore;application/x-musescore+xml;

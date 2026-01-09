@@ -234,7 +234,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /opt/Qt
-        key: ${{ runner.os }}-qt-6.9.1
+        key: ${{ runner.os }}-qt-6.9.1-gcc_64
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
@@ -275,12 +275,14 @@ jobs:
           --icon-file=${{github.workspace}}/icons/orchestrion.png \
           --plugin qt \
           --output appimage
-        # Find and verify the created AppImage
-        APPIMAGE_FILE=$(find . -maxdepth 1 -name "Orchestrion*.AppImage" -type f | head -n 1)
+        # Find and verify the created AppImage (should match Orchestrion-*-x86_64.AppImage or Orchestrion-x86_64.AppImage)
+        APPIMAGE_FILE=$(find . -maxdepth 1 -name "Orchestrion*x86_64.AppImage" -type f -print -quit)
         if [ -z "$APPIMAGE_FILE" ]; then
           echo "Error: AppImage was not created"
+          ls -la *.AppImage 2>/dev/null || echo "No AppImage files found"
           exit 1
         fi
+        echo "Found AppImage: $APPIMAGE_FILE"
         mv "$APPIMAGE_FILE" "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
         echo "AppImage created successfully: ${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
 
