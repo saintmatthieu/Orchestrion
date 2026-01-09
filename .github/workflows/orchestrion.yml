@@ -190,3 +190,92 @@ jobs:
       with:
         name: Orchestrion Mac
         path: "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
+
+  build_linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Install Git LFS
+      run: sudo apt-get update && sudo apt-get install -y git-lfs
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Pull LFS files
+      run: git lfs pull
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          libsndfile1-dev \
+          libasound2-dev \
+          libpulse-dev \
+          libjack-dev \
+          libgl1-mesa-dev \
+          libxkbcommon-x11-0 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-render-util0 \
+          libxcb-xinerama0 \
+          libxcb-xfixes0 \
+          libxcb-shape0 \
+          fuse \
+          file
+
+    - name: Cache Qt
+      uses: actions/cache@v4
+      with:
+        path: /opt/Qt
+        key: ${{ runner.os }}-qt-6.9.1
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.9.1'
+        host: 'linux'
+        target: 'desktop'
+        arch: 'gcc_64'
+        modules: qtnetworkauth qt5compat qtscxml qtshadertools
+        cache: true
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{github.workspace}}/build -G Ninja
+        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+        -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
+        -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
+
+    - name: Install linuxdeploy
+      run: |
+        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        chmod +x linuxdeploy*.AppImage
+
+    - name: Create AppImage
+      run: |
+        export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
+        export QML_SOURCES_PATHS=${{github.workspace}}/src
+        ./linuxdeploy-x86_64.AppImage \
+          --appdir=${{env.BUILD_DIR}}/AppDir \
+          --executable=${{env.BUILD_DIR}}/install/bin/Orchestrion \
+          --desktop-file=${{github.workspace}}/share/orchestrion.desktop \
+          --icon-file=${{github.workspace}}/icons/music-box.png \
+          --plugin qt \
+          --output appimage
+        mv Orchestrion*.AppImage "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Orchestrion Linux
+        path: "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Orchestrion
+Comment=Music Composition & Notation
+Exec=Orchestrion
+Icon=music-box
+Terminal=false
+Categories=AudioVideo;Audio;Sequencer;Midi;Qt;
+MimeType=application/x-musescore;application/x-musescore+xml;
