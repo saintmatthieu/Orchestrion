@@ -219,14 +219,20 @@ jobs:
           libpulse-dev \
           libjack-dev \
           libgl1-mesa-dev \
-          libxkbcommon-x11-0 \
-          libxcb-icccm4 \
-          libxcb-image0 \
-          libxcb-keysyms1 \
-          libxcb-render-util0 \
-          libxcb-xinerama0 \
-          libxcb-xfixes0 \
-          libxcb-shape0 \
+          libxkbcommon-x11-dev \
+          libxkbcommon-dev \
+          libxcb-util-dev \
+          libxcb-cursor-dev \
+          libxcb-keysyms1-dev \
+          libxcb-icccm4-dev \
+          libxcb-image0-dev \
+          libxcb-render-util0-dev \
+          libxcb-xinerama0-dev \
+          libxcb-xfixes0-dev \
+          libxcb-shape0-dev \
+          libxcb-xkb-dev \
+          libgtkmm-3.0-dev \
+          libsqlite3-dev \
           fuse \
           file
 

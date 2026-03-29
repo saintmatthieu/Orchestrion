@@ -150,7 +150,34 @@ endif(MUE_COMPILE_USE_CCACHE)
 # Setup external dependencies
 ###########################################
 set(QT_MIN_VERSION "6.9.1")
+# Ensure Qt private modules are loaded alongside their public counterparts.
+# This is needed on Linux where the accessibility module uses Qt6Core_PRIVATE_INCLUDE_DIRS
+# and KDDockWidgets links to Qt6::GuiPrivate.
+set(__qt_Core_always_load_private_module TRUE)
+set(__qt_Gui_always_load_private_module TRUE)
+
 include(FindQt6)
+
+# Explicitly find Qt private modules and set include dirs for modules that need them.
+if (NOT TARGET Qt6::GuiPrivate)
+    find_package(Qt6GuiPrivate REQUIRED)
+endif()
+if (NOT TARGET Qt6::CorePrivate)
+    find_package(Qt6CorePrivate REQUIRED)
+endif()
+if (NOT Qt6Core_PRIVATE_INCLUDE_DIRS)
+    get_target_property(Qt6Core_PRIVATE_INCLUDE_DIRS Qt6::CorePrivate INTERFACE_INCLUDE_DIRECTORIES)
+endif()
+if (NOT Qt6Gui_PRIVATE_INCLUDE_DIRS)
+    get_target_property(Qt6Gui_PRIVATE_INCLUDE_DIRS Qt6::GuiPrivate INTERFACE_INCLUDE_DIRECTORIES)
+    # Gui private headers also depend on Core private headers
+    list(APPEND Qt6Gui_PRIVATE_INCLUDE_DIRS ${Qt6Core_PRIVATE_INCLUDE_DIRS})
+endif()
+
+# Explicitly find GuiPrivate in case the flag above didn't work for all Qt versions
+if (NOT TARGET Qt6::GuiPrivate)
+    find_package(Qt6GuiPrivate REQUIRED)
+endif()
 
 if (OS_IS_WIN)
     include(FetchContent)
@@ -219,9 +246,11 @@ endif(MUSE_MODULE_UPDATE)
 # Setup Packaging
 ###########################################
 
-if (OS_IS_LIN)
-    include(SetupAppImagePackaging)
-endif(OS_IS_LIN)
+# Orchestrion handles its own Linux packaging via linuxdeploy in CI,
+# so we skip MuseScore's AppImage packaging setup.
+# if (OS_IS_LIN)
+#     include(SetupAppImagePackaging)
+# endif(OS_IS_LIN)
 
 if (OS_IS_WIN)
     include(${CMAKE_CURRENT_LIST_DIR}/MuseScore/buildscripts/packaging/Windows/SetupWindowsPackaging.cmake)
