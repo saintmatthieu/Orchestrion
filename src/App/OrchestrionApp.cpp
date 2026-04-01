@@ -73,11 +73,10 @@ void OrchestrionApp::perform()
   {
     StartupProjectFile file{
         *m_opts.startup.scoreUrl,
-        m_opts.startup.scoreDisplayNameOverride.value_or("").toStdString()};
+        m_opts.startup.scoreDisplayNameOverride.value_or("")};
 
     if (m_opts.startup.scoreDisplayNameOverride.has_value())
-      file.displayNameOverride =
-          m_opts.startup.scoreDisplayNameOverride->toStdString();
+      file.displayNameOverride = *m_opts.startup.scoreDisplayNameOverride;
 
     startupScenario()->setStartupScoreFile(file);
   }

@@ -54,11 +54,11 @@ OrchestrionOnboardingModel::getFileOpenArgs(
     }
     QUrl url{QString::fromStdString(path.toStdString())};
     url.setScheme("file");
-    return muse::actions::ActionData::make_arg2(
+    return muse::actions::ActionData::make_arg2<QUrl, QString>(
         url, QString{"Chopin - Nocturne Op 9 No 2 E Flat Major"});
   }
   else
-    return muse::actions::ActionData::make_arg2(
+    return muse::actions::ActionData::make_arg2<QUrl, QString>(
         projectFile.url, projectFile.displayNameOverride);
 }
 
