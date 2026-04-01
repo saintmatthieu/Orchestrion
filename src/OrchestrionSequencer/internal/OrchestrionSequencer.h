@@ -29,11 +29,11 @@
 #include <array>
 #include <async/asyncable.h>
 #include <chrono>
+#include <condition_variable>
 #include <context/iglobalcontext.h>
 #include <functional>
 #include <memory>
 #include <modularity/ioc.h>
-#include <condition_variable>
 #include <mutex>
 #include <queue>
 #include <random>
@@ -120,10 +120,10 @@ private:
   const PedalSequence m_pedalSequence;
   PedalSequence::const_iterator m_pedalSequenceIt;
 
-  std::thread m_pedalThread;
   ThreadMembers<PedalEvent> m_pedalThreadMembers;
-  std::thread m_noteThread;
   ThreadMembers<NoteEvent> m_noteThreadMembers;
+  std::thread m_pedalThread;
+  std::thread m_noteThread;
 
   bool m_finished = false;
   bool m_pedalDown = false;
