@@ -133,6 +133,12 @@ else()
     include(SetupConfigure)
 endif()
 
+# Override MuseScore's default Mscore_INSTALL_NAME (e.g. "mscore-4.4/" on Linux)
+# so that MUSE_APP_INSTALL_NAME resolves to an empty string for Orchestrion.
+set(Mscore_INSTALL_NAME "")
+set(MUSE_APP_INSTALL_NAME "\"\"")
+configure_file(${MUSE_FRAMEWORK_PATH}/src/framework/cmake/muse_framework_config.h.in muse_framework_config.h)
+
 set(THIRDPARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
 
 ###########################################
