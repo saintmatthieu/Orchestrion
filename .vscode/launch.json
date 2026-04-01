@@ -1,6 +1,15 @@
 {
   "configurations": [
     {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Launch (Linux)",
+      "program": "${workspaceFolder}/build/Debug/install/bin/Orchestrion",
+      "preLaunchTask": "CMake: install",
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
       "name": "Touchpad test app",
       "type": "cppvsdbg",
       "request": "launch",
