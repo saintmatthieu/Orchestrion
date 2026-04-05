@@ -1,11 +1,11 @@
 name: Orchestrion
 
 on:
-    push:
-      branches: [master]
-      tags: ['v*']
-    pull_request:
-      branches: [master]
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
 
 env:
   BUILD_TYPE: Release
@@ -16,180 +16,180 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - name: Install Git LFS
-      run: choco install git-lfs -y
+      - name: Install Git LFS
+        run: choco install git-lfs -y
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Pull LFS files
-      run: git lfs pull
+      - name: Pull LFS files
+        run: git lfs pull
 
-    - name: Cache Qt
-      uses: actions/cache@v4
-      with:
-        path: C:\Qt
-        key: ${{ runner.os }}-qt
+      - name: Cache Qt
+        uses: actions/cache@v4
+        with:
+          path: C:\Qt
+          key: ${{ runner.os }}-qt
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: '6.9.1'
-        host: 'windows'
-        target: 'desktop'
-        arch: 'win64_msvc2022_64'
-        modules: qtnetworkauth qt5compat qtscxml qtshadertools
-        cache: true
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.9.1"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_msvc2022_64"
+          modules: qtnetworkauth qt5compat qtscxml qtshadertools
+          cache: true
 
-    - name: Cache Ninja
-      uses: actions/cache@v4
-      with:
-        path: C:\ProgramData\chocolatey\bin\ninja.exe
-        key: ${{ runner.os }}-ninja
+      - name: Cache Ninja
+        uses: actions/cache@v4
+        with:
+          path: C:\ProgramData\chocolatey\bin\ninja.exe
+          key: ${{ runner.os }}-ninja
 
-    - name: Install Ninja
-      run: choco install ninja -y
+      - name: Install Ninja
+        run: choco install ninja -y
 
-    - name: Cache NSIS
-      uses: actions/cache@v4
-      with:
-        path: C:\Program Files (x86)\NSIS
-        key: ${{ runner.os }}-nsis
+      - name: Cache NSIS
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: ${{ runner.os }}-nsis
 
-    - name: Install NSIS
-      run: choco install nsis -y
+      - name: Install NSIS
+        run: choco install nsis -y
 
-    - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{github.workspace}}/build -G Ninja
-        -DCMAKE_C_COMPILER=cl
-        -DCMAKE_CXX_COMPILER=cl
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
-        -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
-        -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+      - name: Configure CMake
+        run: >
+          cmake -B ${{github.workspace}}/build -G Ninja
+          -DCMAKE_C_COMPILER=cl
+          -DCMAKE_CXX_COMPILER=cl
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+          -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
+          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
+      - name: Build
+        run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
-    - name: Add NSIS to PATH
-      run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: Add NSIS to PATH
+        run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
-    - name: Build NSIS Installer
-      run: makensis /DQtInstallDir="${{env.QT_ROOT_DIR}}" installer.nsi
+      - name: Build NSIS Installer
+        run: makensis /DQtInstallDir="${{env.QT_ROOT_DIR}}" installer.nsi
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion
-        path: "${{env.BUILD_DIR}}/Orchestrion installer for Windows.exe"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orchestrion
+          path: "${{env.BUILD_DIR}}/Orchestrion installer for Windows.exe"
 
-    - name: Upload Debug Symbols
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion Windows
-        path: ${{env.BUILD_DIR}}\Orchestrion.pdb
-      if: false # Set to true (and BUILD_TYPE to Debug) if you need to locally debug a github build
+      - name: Upload Debug Symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orchestrion Windows
+          path: ${{env.BUILD_DIR}}\Orchestrion.pdb
+        if: false # Set to true (and BUILD_TYPE to Debug) if you need to locally debug a github build
 
   build_mac:
     runs-on: macos-latest
 
     steps:
-    - name: Install libsndfile
-      run: brew install libsndfile
+      - name: Install libsndfile
+        run: brew install libsndfile
 
-    - name: Install Git LFS
-      run: brew install git-lfs
+      - name: Install Git LFS
+        run: brew install git-lfs
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Pull LFS files
-      run: git lfs pull
+      - name: Pull LFS files
+        run: git lfs pull
 
-    - name: Cache Qt
-      uses: actions/cache@v4
-      with:
-        path: "/usr/local/Qt"
-        key: ${{ runner.os }}-qt
+      - name: Cache Qt
+        uses: actions/cache@v4
+        with:
+          path: "/usr/local/Qt"
+          key: ${{ runner.os }}-qt
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: '6.9.1'
-        arch: 'clang_64'
-        target: 'desktop'
-        modules: qtnetworkauth qt5compat qtscxml qtshadertools
-        cache: true
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.9.1"
+          arch: "clang_64"
+          target: "desktop"
+          modules: qtnetworkauth qt5compat qtscxml qtshadertools
+          cache: true
 
-    - name: Cache Ninja
-      uses: actions/cache@v4
-      with:
-        path: "/usr/local/bin/ninja"
-        key: ${{ runner.os }}-ninja
+      - name: Cache Ninja
+        uses: actions/cache@v4
+        with:
+          path: "/usr/local/bin/ninja"
+          key: ${{ runner.os }}-ninja
 
-    - name: Install Ninja
-      run: brew install ninja
+      - name: Install Ninja
+        run: brew install ninja
 
-    - name: Setup macOS
-      run: |
-        export PATH="/usr/local/opt/qt/bin:$PATH"
-        export PATH="/usr/local/opt/ninja/bin:$PATH"
+      - name: Setup macOS
+        run: |
+          export PATH="/usr/local/opt/qt/bin:$PATH"
+          export PATH="/usr/local/opt/ninja/bin:$PATH"
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{github.workspace}}/build -G Ninja
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
-        -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
-        -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+      - name: Configure CMake
+        run: >
+          cmake -B ${{github.workspace}}/build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+          -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
+          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
+      - name: Build
+        run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
-    - name: Run macdeployqt
-      run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app
+      - name: Run macdeployqt
+        run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app
 
-    - name: Codesign executable
-      # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
-      env: 
-        MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-        MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-      run: |
-        echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
-        security create-keychain -p "" build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p "" build.keychain
-        security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
-        security find-identity -v
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
-        find ${{env.BUILD_DIR}}/Orchestrion.app -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" -o -name "*.framework" -o -name "*.o" \) -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
-        codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/Orchestrion.app
+      - name: Codesign executable
+        # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+          security find-identity -v
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+          find ${{env.BUILD_DIR}}/Orchestrion.app -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" -o -name "*.framework" -o -name "*.o" \) -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
+          codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/Orchestrion.app
 
-    - name: Install create-dmg
-      run: brew install create-dmg
+      - name: Install create-dmg
+        run: brew install create-dmg
 
-    - name: Create DMG
-      run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" ${{env.BUILD_DIR}}/Orchestrion.app
+      - name: Create DMG
+        run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" ${{env.BUILD_DIR}}/Orchestrion.app
 
-    - name: Notarize
-      if: github.ref == 'refs/heads/master'
-      run: |
-        xcrun notarytool submit "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
-        xcrun stapler staple "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
+      - name: Notarize
+        if: github.ref == 'refs/heads/master'
+        run: |
+          xcrun notarytool submit "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
+          xcrun stapler staple "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion Mac
-        path: "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orchestrion Mac
+          path: "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
 
   build_linux:
     runs-on: ubuntu-22.04
@@ -197,103 +197,110 @@ jobs:
       contents: read
 
     steps:
-    - name: Install Git LFS
-      run: sudo apt-get update && sudo apt-get install -y git-lfs
+      - name: Install Git LFS
+        run: sudo apt-get update && sudo apt-get install -y git-lfs
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Pull LFS files
-      run: git lfs pull
+      - name: Pull LFS files
+        run: git lfs pull
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          cmake \
-          ninja-build \
-          libsndfile1-dev \
-          libasound2-dev \
-          libpulse-dev \
-          libjack-dev \
-          libgl1-mesa-dev \
-          libxkbcommon-x11-dev \
-          libxkbcommon-dev \
-          libxcb-util-dev \
-          libxcb-cursor-dev \
-          libxcb-keysyms1-dev \
-          libxcb-icccm4-dev \
-          libxcb-image0-dev \
-          libxcb-render-util0-dev \
-          libxcb-xinerama0-dev \
-          libxcb-xfixes0-dev \
-          libxcb-shape0-dev \
-          libxcb-xkb-dev \
-          libgtkmm-3.0-dev \
-          libsqlite3-dev \
-          fuse \
-          file
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            libsndfile1-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libjack-dev \
+            libgl1-mesa-dev \
+            libxkbcommon-x11-dev \
+            libxkbcommon-dev \
+            libxcb-util-dev \
+            libxcb-cursor-dev \
+            libxcb-keysyms1-dev \
+            libxcb-icccm4-dev \
+            libxcb-image0-dev \
+            libxcb-render-util0-dev \
+            libxcb-xinerama0-dev \
+            libxcb-xfixes0-dev \
+            libxcb-shape0-dev \
+            libxcb-xkb-dev \
+            libgtkmm-3.0-dev \
+            libsqlite3-dev \
+            fuse \
+            file
 
-    - name: Cache Qt
-      uses: actions/cache@v4
-      with:
-        path: /opt/Qt
-        key: ${{ runner.os }}-qt-6.9.1-gcc_64
+      - name: Cache Qt
+        uses: actions/cache@v4
+        with:
+          path: /opt/Qt
+          key: ${{ runner.os }}-qt-6.9.1-linux_gcc_64
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: '6.9.1'
-        host: 'linux'
-        target: 'desktop'
-        arch: 'gcc_64'
-        modules: qtnetworkauth qt5compat qtscxml qtshadertools
-        cache: true
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.9.1"
+          host: "linux"
+          target: "desktop"
+          arch: "linux_gcc_64"
+          modules: qtnetworkauth qt5compat qtscxml qtshadertools
+          cache: true
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{github.workspace}}/${{env.BUILD_DIR}} -G Ninja
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
-        -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
-        -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+      - name: Configure CMake
+        run: >
+          cmake -B ${{github.workspace}}/${{env.BUILD_DIR}} -G Ninja
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+          -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
+          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
+          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
+      - name: Build
+        run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
-    - name: Install linuxdeploy
-      run: |
-        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-        chmod +x linuxdeploy*.AppImage
+      - name: Install linuxdeploy
+        run: |
+          wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
 
-    - name: Create AppImage
-      run: |
-        set -e
-        export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
-        export QML_SOURCES_PATHS=${{github.workspace}}/src
-        ./linuxdeploy-x86_64.AppImage \
-          --appdir=${{env.BUILD_DIR}}/AppDir \
-          --executable=${{env.BUILD_DIR}}/install/bin/Orchestrion \
-          --desktop-file=${{github.workspace}}/share/orchestrion.desktop \
-          --icon-file=${{github.workspace}}/icons/orchestrion.png \
-          --plugin qt \
-          --output appimage
-        # Find and verify the created AppImage (should match Orchestrion-*-x86_64.AppImage or Orchestrion-x86_64.AppImage)
-        APPIMAGE_FILE=$(find . -maxdepth 1 -name "Orchestrion*-x86_64.AppImage" -type f -print -quit)
-        if [ -z "$APPIMAGE_FILE" ]; then
-          echo "Error: AppImage was not created"
-          ls -la *.AppImage 2>/dev/null || echo "No AppImage files found"
-          exit 1
-        fi
-        echo "Found AppImage: $APPIMAGE_FILE"
-        mv "$APPIMAGE_FILE" "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
-        echo "AppImage created successfully: ${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+      - name: Create AppImage
+        run: |
+          set -e
+          export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
+          export QML_SOURCES_PATHS=${{github.workspace}}/src:${{github.workspace}}/MuseScore/src
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Orchestrion Linux
-        path: "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+          # Pre-populate AppDir with the install tree data files (wallpapers, soundfonts, etc.)
+          # linuxdeploy only bundles the executable and libraries, so we need to
+          # place data files where the app expects them: <exe_dir>/../share/
+          mkdir -p ${{env.BUILD_DIR}}/AppDir/usr
+          cp -r ${{env.BUILD_DIR}}/install/share ${{env.BUILD_DIR}}/AppDir/usr/
+
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir=${{env.BUILD_DIR}}/AppDir \
+            --executable=${{env.BUILD_DIR}}/install/bin/Orchestrion \
+            --desktop-file=${{github.workspace}}/share/orchestrion.desktop \
+            --icon-file=${{github.workspace}}/icons/orchestrion.png \
+            --plugin qt \
+            --output appimage
+          # Find and verify the created AppImage (should match Orchestrion-*-x86_64.AppImage or Orchestrion-x86_64.AppImage)
+          APPIMAGE_FILE=$(find . -maxdepth 1 -name "Orchestrion*-x86_64.AppImage" -type f -print -quit)
+          if [ -z "$APPIMAGE_FILE" ]; then
+            echo "Error: AppImage was not created"
+            ls -la *.AppImage 2>/dev/null || echo "No AppImage files found"
+            exit 1
+          fi
+          echo "Found AppImage: $APPIMAGE_FILE"
+          mv "$APPIMAGE_FILE" "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+          echo "AppImage created successfully: ${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orchestrion Linux
+          path: "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
