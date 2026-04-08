@@ -19,8 +19,8 @@
 #pragma once
 
 #include "IOrchestrionSynthesizer.h"
-#include <DSPFilters/Bessel.h>
-#include <DSPFilters/SmoothedFilter.h>
+#include <DspFilters/Bessel.h>
+#include <DspFilters/SmoothedFilter.h>
 
 namespace dgk
 {

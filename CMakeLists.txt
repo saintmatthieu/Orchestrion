@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0000 NEW)
+cmake_policy(SET CMP0079 NEW)
 
 # Set the project name and version
 project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
@@ -13,6 +14,11 @@ qt_policy(SET QTP0004 NEW)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# On Linux with GCC, some MuseScore source files use memset/memcpy without including <cstring>
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include$<SEMICOLON>cstring>)
+endif()
+
 set(MuseScore_ROOT_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
 set(MUSE_BUILD_UNIT_TESTS OFF)
@@ -25,7 +31,13 @@ include(vst3sdk.cmake)
 include(MuseScore.cmake)
 
 # This statement must be after include(MuseScore.cmake), as it sets QT_INSTALL_LIBS
-set(CMAKE_INSTALL_RPATH "${QT_INSTALL_LIBS};@loader_path/../Frameworks")
+if (OS_IS_MAC)
+    set(CMAKE_INSTALL_RPATH "${QT_INSTALL_LIBS};@loader_path/../Frameworks")
+elseif (OS_IS_LIN)
+    set(CMAKE_INSTALL_RPATH "${QT_INSTALL_LIBS};$ORIGIN/../lib")
+else()
+    set(CMAKE_INSTALL_RPATH "${QT_INSTALL_LIBS}")
+endif()
 if (OS_IS_MAC)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Installation prefix for macOS" FORCE)
 else()
@@ -34,7 +46,7 @@ endif()
 
 add_subdirectory(src/ExternalDevices)
 add_subdirectory(src/GestureControllers)
-add_subdirectory(src/MusescoreShell)
+add_subdirectory(src/MuseScoreShell)
 add_subdirectory(src/OrchestrionConfiguration)
 add_subdirectory(src/OrchestrionNotation)
 add_subdirectory(src/OrchestrionOnboarding)
@@ -62,6 +74,15 @@ set_target_properties(Orchestrion PROPERTIES
     AUTORCC ON
     AUTOUIC ON
 )
+
+# On Linux, the QML module creates an "Orchestrion/" directory in the build tree,
+# which conflicts with the executable name "Orchestrion" (no extension on Linux).
+# Place the executable in a bin/ subdirectory to avoid the collision.
+if (OS_IS_LIN)
+    set_target_properties(Orchestrion PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+endif()
 
 target_link_libraries(Orchestrion PRIVATE
     Qt6::Core
@@ -115,6 +136,13 @@ if (OS_IS_WIN)
     target_link_libraries(Orchestrion PRIVATE runtimeobject)
 endif()
 
+# On Linux, static library link order matters. The VST3 SDK's vst_sdk_3 (built by MuseScore)
+# depends on symbols in sdk_common (built by the fetched VST3 SDK), but CMake places
+# sdk_common before vst_sdk_3. Declaring the dependency ensures correct link ordering.
+if (OS_IS_LIN)
+    target_link_libraries(vst_sdk_3 PRIVATE sdk_common)
+endif()
+
 # Add QML files to the project (for IDEs and resource system)
 qt_add_qml_module(Orchestrion
     URI Orchestrion
@@ -136,6 +164,12 @@ if (OS_IS_MAC)
     # SET(Mscore_SHARE_NAME      "mscore.app/")
     SET(Mscore_SHARE_NAME "Orchestrion.app/")
     SET(Mscore_INSTALL_NAME "Contents/Resources/")
+elseif (OS_IS_LIN)
+    SET(Mscore_SHARE_NAME "share/")
+    SET(Mscore_INSTALL_NAME "")
+elseif (OS_IS_WIN)
+    SET(Mscore_SHARE_NAME "./")
+    SET(Mscore_INSTALL_NAME "")
 endif()
 add_subdirectory(MuseScore/share/sound)
 
@@ -143,7 +177,9 @@ add_subdirectory(DSPFilters/shared/DSPFilters)
 
 if (OS_IS_MAC)
     set(resource_install_dir "Orchestrion.app/Contents/Resources")
-else()
+elseif (OS_IS_LIN)
+    set(resource_install_dir "${CMAKE_INSTALL_PREFIX}/share")
+elseif (OS_IS_WIN)
     set(resource_install_dir ${CMAKE_INSTALL_PREFIX})
 endif()
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)

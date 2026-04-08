@@ -106,10 +106,9 @@ void OrchestrionActionController::onFileOpen(
 {
   {
     const QUrl url = !args.empty() ? args.arg<QUrl>(0) : QUrl();
-    const std::string displayNameOverride =
-        args.count() >= 2 ? args.arg<std::string>(1) : std::string();
-    const mu::project::ProjectFile projectFile(
-        url, QString::fromStdString(displayNameOverride));
+    const QString displayNameOverride =
+        args.count() >= 2 ? args.arg<QString>(1) : QString();
+    const mu::project::ProjectFile projectFile(url, displayNameOverride);
     if (projectFile.isValid())
     {
       openProject(projectFile);

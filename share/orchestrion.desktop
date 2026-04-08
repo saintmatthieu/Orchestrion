@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Orchestrion
+Comment=Music Composition & Notation
+Exec=Orchestrion
+Icon=orchestrion
+Terminal=false
+Categories=AudioVideo;Audio;Sequencer;Midi;Qt;

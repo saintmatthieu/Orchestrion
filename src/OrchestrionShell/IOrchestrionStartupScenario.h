@@ -27,7 +27,7 @@ namespace dgk
 struct StartupProjectFile
 {
   QUrl url;
-  std::string displayNameOverride;
+  QString displayNameOverride;
 };
 
 class IOrchestrionStartupScenario : MODULE_EXPORT_INTERFACE

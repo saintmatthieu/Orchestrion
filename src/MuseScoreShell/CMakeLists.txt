@@ -10,7 +10,7 @@ set(MODULE_SRC
   view/OrchestrionMenuModel.h
   MusescoreShellModule.cpp
   MusescoreShellModule.h
-  MusescoreShellTypes.h
+  MuseScoreShellTypes.h
   OrchestrionActionIds.h
 )
 

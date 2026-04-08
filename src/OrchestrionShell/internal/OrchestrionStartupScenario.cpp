@@ -35,7 +35,7 @@ void OrchestrionStartupScenario::init()
     url.setScheme("file");
     m_startupProjectFile.url = url;
     m_startupProjectFile.displayNameOverride =
-        muse::io::filename(path, false).toStdString();
+        muse::io::filename(path, false).toQString();
   }
 }
 
