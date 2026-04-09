@@ -21,6 +21,8 @@
 #include "log.h"
 #include "types/translatablestring.h"
 
+#include <QDir>
+
 namespace dgk
 {
 namespace
@@ -165,9 +167,7 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
       makeMenuItem("orchestrion-file-open",
                    muse::TranslatableString("appshell/menu/file",
                                             "Open from &computer…")),
-      makeMenuItem("orchestrion-file-open-example",
-                   muse::TranslatableString("appshell/menu/file",
-                                            "Open &example file…")),
+      makeExampleScoresSubmenu(),
       makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
                    muse::TranslatableString("appshell/menu/file",
@@ -188,6 +188,47 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
 
   return makeMenu(muse::TranslatableString("appshell/menu/file", "&File"), menu,
                   "menu-orchestrion-file");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeExampleScoresSubmenu()
+{
+  using namespace muse::uicomponents;
+
+  const auto scoreDir =
+      globalConfiguration()->appDataPath().toQString() + "scores/";
+  const QDir dir(scoreDir);
+  const auto entries =
+      dir.entryInfoList({"*.mscz", "*.mscx", "*.mxl", "*.musicxml", "*.xml"},
+                        QDir::Files, QDir::Name);
+
+  QList<MenuItem *> items;
+  int index = 0;
+  for (const auto &entry : entries)
+  {
+    const QString displayName = entry.completeBaseName().replace('_', ' ');
+
+    auto *item = new MenuItem(this);
+    item->setId(QString("example-score-%1").arg(index++));
+
+    muse::ui::UiAction action;
+    action.code = "orchestrion-file-open";
+    action.title = muse::TranslatableString::untranslatable(
+        muse::String::fromQString(displayName));
+    item->setAction(action);
+
+    muse::ui::UiActionState state;
+    state.enabled = true;
+    item->setState(state);
+
+    item->setArgs(muse::actions::ActionData::make_arg2<QUrl, QString>(
+        QUrl::fromLocalFile(entry.absoluteFilePath()), displayName));
+
+    items.append(item);
+  }
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/file", "&Example scores"), items,
+      "menu-orchestrion-example-scores");
 }
 
 muse::uicomponents::MenuItem *

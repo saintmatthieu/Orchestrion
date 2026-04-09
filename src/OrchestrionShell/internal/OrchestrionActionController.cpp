@@ -32,13 +32,6 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, "orchestrion-file-open",
                     [this](const muse::actions::ActionData &args)
                     { onFileOpen(args); });
-  dispatcher()->reg(this, "orchestrion-file-open-example",
-                    [this]
-                    {
-                      const auto scoreDir =
-                          globalConfiguration()->appDataPath() + "scores/";
-                      openFromDir(scoreDir);
-                    });
 
   dispatcher()->reg(this, "orchestrion-file-save", [this] { onFileSave(); });
   dispatcher()->reg(this, "orchestrion-file-save-as",

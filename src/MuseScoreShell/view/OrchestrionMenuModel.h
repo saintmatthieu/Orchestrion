@@ -24,6 +24,7 @@
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
+#include <global/iglobalconfiguration.h>
 #include <uicomponents/view/abstractmenumodel.h>
 
 namespace dgk
@@ -42,6 +43,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
                  setOpenedMenuAreaRect NOTIFY openedMenuAreaRectChanged)
 
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
   muse::Inject<IMidiDeviceService> midiDeviceService;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
@@ -75,6 +77,7 @@ private:
   using muse::uicomponents::AbstractMenuModel::makeMenuItem;
 
   muse::uicomponents::MenuItem *makeFileMenu(bool velocityRecordingEnabled);
+  muse::uicomponents::MenuItem *makeExampleScoresSubmenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
