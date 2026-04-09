@@ -20,7 +20,7 @@
 
 #include <ISynthesizerConnector.h>
 #include <async/asyncable.h>
-#include <audio/isynthresolver.h>
+#include <audio/worker/isynthresolver.h>
 #include <modularity/ioc.h>
 #include <optional>
 

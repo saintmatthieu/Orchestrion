@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "LowpassFilteredSynthesizer.h"
+#include <audio/common/audiotypes.h>
+#include <log.h>
 
 namespace dgk
 {
@@ -85,7 +87,7 @@ size_t LowpassFilteredSynthesizer::process(float *buffer,
 }
 
 void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
-                                           const TrackIndex* channels,
+                                           const TrackIndex *channels,
                                            const int *pitches,
                                            const float *velocities)
 {
@@ -93,7 +95,7 @@ void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
 }
 
 void LowpassFilteredSynthesizer::onNoteOffs(size_t numNoteoffs,
-                                            const TrackIndex* channels,
+                                            const TrackIndex *channels,
                                             const int *pitches)
 {
   m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);

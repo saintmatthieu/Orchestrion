@@ -18,6 +18,7 @@
  */
 #include "LowpassFilterBank.h"
 #include <array>
+#include <log.h>
 
 namespace dgk
 {

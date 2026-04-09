@@ -24,7 +24,7 @@
 #include "async/async.h"
 #include "async/asyncable.h"
 #include "async/notification.h"
-#include "audio/iaudiodriver.h"
+#include "audio/iaudiodrivercontroller.h"
 #include "modularity/ioc.h"
 
 namespace dgk
@@ -54,7 +54,11 @@ private:
   std::vector<muse::audio::AudioDevice> museAvailableDevices() const;
   void doSelectDevice(const ExternalDeviceId &id);
   muse::Inject<IExternalDevicesConfiguration> configuration;
-  muse::Inject<muse::audio::IAudioDriver> audioDriver;
+  muse::Inject<muse::audio::IAudioDriverController> audioDriverController;
+  muse::audio::IAudioDriverPtr audioDriver() const
+  {
+    return audioDriverController()->audioDriver();
+  }
   muse::async::Notification m_selectedDeviceChanged;
   bool m_deviceChangeExpected = false;
   bool m_postInitCalled = false;

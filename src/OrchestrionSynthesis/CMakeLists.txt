@@ -52,6 +52,7 @@ set (FLUIDSYNTH_INC
 set (MODULE_INCLUDE
     ${FLUIDSYNTH_INC}
     ${PROJECT_SOURCE_DIR}/MuseScore/src/framework/audio/internal/synthesizers/fluidsynth
+    ${PROJECT_SOURCE_DIR}/MuseScore/src/framework/vst
     )
 
 set(MODULE_LINK

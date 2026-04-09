@@ -6,7 +6,7 @@ cmake_policy(SET CMP0079 NEW)
 project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
-find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick Widgets ShaderTools)
+find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick Widgets ShaderTools LinguistTools)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -83,6 +83,13 @@ if (OS_IS_LIN)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
 endif()
+
+target_include_directories(Orchestrion PRIVATE
+    ${PROJECT_SOURCE_DIR}/MuseScore
+    ${PROJECT_SOURCE_DIR}/MuseScore/src
+    ${PROJECT_SOURCE_DIR}/MuseScore/src/framework
+    ${PROJECT_SOURCE_DIR}/MuseScore/src/framework/global
+)
 
 target_link_libraries(Orchestrion PRIVATE
     Qt6::Core

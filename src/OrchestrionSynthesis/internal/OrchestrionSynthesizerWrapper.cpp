@@ -203,4 +203,24 @@ OrchestrionSynthesizerWrapper::audioChannelsCountChanged() const
 {
   return m_audioChannelsCountChanged;
 }
+
+void OrchestrionSynthesizerWrapper::prepareToPlay() {}
+
+bool OrchestrionSynthesizerWrapper::readyToPlay() const { return true; }
+
+muse::async::Notification
+OrchestrionSynthesizerWrapper::readyToPlayChanged() const
+{
+  return {};
+}
+
+void OrchestrionSynthesizerWrapper::processInput() {}
+
+muse::audio::InputProcessingProgress
+OrchestrionSynthesizerWrapper::inputProcessingProgress() const
+{
+  return {};
+}
+
+void OrchestrionSynthesizerWrapper::clearCache() {}
 } // namespace dgk

@@ -65,7 +65,7 @@ Steinberg::Vst::Event toSteinbergEvent(const PedalEvent &pedalEvent)
 } // namespace
 
 OrchestrionVstSynthesizer::OrchestrionVstSynthesizer(
-    muse::vst::VstPluginPtr loadedVstPlugin, int sampleRate)
+    muse::vst::IVstPluginInstancePtr loadedVstPlugin, int sampleRate)
     : m_sampleRate{sampleRate}
 {
   assert(loadedVstPlugin && loadedVstPlugin->isLoaded());
@@ -124,6 +124,6 @@ void OrchestrionVstSynthesizer::onPedal(bool on)
 
 void OrchestrionVstSynthesizer::allNotesOff()
 {
-  m_vstAudioClient->allNotesOff();
+  m_vstAudioClient->flushSound();
 }
 } // namespace dgk

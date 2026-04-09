@@ -151,16 +151,16 @@ void OrchestrionActionController::onFileSaveAs() const
       muse::io::dirpath(projectConfiguration()->lastSavedProjectsPath());
   if (defaultDir.empty())
     defaultDir = fallbackPath();
-  const muse::io::path_t filePath = interactive()->selectSavingFile(
-      muse::qtrc("project", "Save as"), defaultDir, filter);
+  const muse::io::path_t filePath = interactive()->selectSavingFileSync(
+      muse::trc("project", "Save as"), defaultDir, filter);
   projectFilesController()->saveProjectLocally(filePath,
                                                mu::project::SaveMode::SaveAs);
 }
 
 void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const
 {
-  const muse::io::path_t filePath = interactive()->selectOpeningFile(
-      muse::qtrc("project", "Open"), dir, filter);
+  const muse::io::path_t filePath = interactive()->selectOpeningFileSync(
+      muse::trc("project", "Open"), dir, filter);
 
   if (filePath.empty())
     return;

@@ -20,7 +20,7 @@
 #include "IChord.h"
 #include "OrchestrionSequencerFactory.h"
 #include <async/async.h>
-#include <audio/internal/audiothread.h>
+#include <audio/worker/internal/audiothread.h>
 #include <engraving/dom/masterscore.h>
 
 namespace dgk
@@ -45,7 +45,7 @@ void Orchestrion::init()
         muse::async::Async::call(
             this, [this]
             { audioEngine()->setMode(muse::audio::RenderMode::RealTimeMode); },
-            muse::audio::AudioThread::ID);
+            muse::audio::worker::AudioThread::ID);
 
         m_modifiableItemRegistry = products.modifiableItemRegistry;
         setSequencer(products.sequencer);

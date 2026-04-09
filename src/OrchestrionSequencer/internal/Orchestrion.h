@@ -24,7 +24,7 @@
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
-#include <audio/internal/worker/iaudioengine.h>
+#include <audio/worker/iaudioengine.h>
 #include <context/iglobalcontext.h>
 
 namespace dgk
@@ -35,7 +35,7 @@ class Orchestrion : public IOrchestrion,
 {
   muse::Inject<mu::playback::IPlaybackController> playbackController;
   muse::Inject<mu::context::IGlobalContext> globalContext;
-  muse::Inject<muse::audio::IAudioEngine> audioEngine;
+  muse::Inject<muse::audio::worker::IAudioEngine> audioEngine;
   muse::Inject<ISegmentRegistry> segmentRegistry;
 
 public:

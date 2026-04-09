@@ -148,7 +148,7 @@ set(THIRDPARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
 include(SetupBuildEnvironment)
 include(GetPlatformInfo)
 if (MUE_COMPILE_USE_CCACHE)
-    include(TryUseCcache)
+    include(SetupCompilerCache)
 endif(MUE_COMPILE_USE_CCACHE)
 
 
@@ -156,13 +156,15 @@ endif(MUE_COMPILE_USE_CCACHE)
 # Setup external dependencies
 ###########################################
 set(QT_MIN_VERSION "6.9.1")
+set(QT_ADD_STATEMACHINE ON)
+set(QT_ADD_LINGUISTTOOLS ON)
 # Ensure Qt private modules are loaded alongside their public counterparts.
 # This is needed on Linux where the accessibility module uses Qt6Core_PRIVATE_INCLUDE_DIRS
 # and KDDockWidgets links to Qt6::GuiPrivate.
 set(__qt_Core_always_load_private_module TRUE)
 set(__qt_Gui_always_load_private_module TRUE)
 
-include(FindQt6)
+include(SetupQt6)
 
 # Explicitly find Qt private modules and set include dirs for modules that need them.
 if (NOT TARGET Qt6::GuiPrivate)

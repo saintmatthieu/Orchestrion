@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "audio/isynthresolver.h"
+#include "audio/worker/isynthresolver.h"
 #include "modularity/imodulesetup.h"
 
 namespace dgk
