@@ -137,6 +137,11 @@ endif()
 # so that MUSE_APP_INSTALL_NAME resolves to an empty string for Orchestrion.
 set(Mscore_INSTALL_NAME "")
 set(MUSE_APP_INSTALL_NAME "\"\"")
+# Map Orchestrion option to Muse framework define so that text fonts (Edwin,
+# Bravura Text, Leland Text, …) are registered with QFontDatabase.  Without
+# this, only music-symbol fonts are available to Qt and text elements render as
+# garbled glyphs (see GitHub issue #10).
+set(MUSE_MODULE_DRAW_USE_QTFONTMETRICS ${MUE_COMPILE_USE_QTFONTMETRICS})
 configure_file(${MUSE_FRAMEWORK_PATH}/src/framework/cmake/muse_framework_config.h.in muse_framework_config.h)
 
 set(THIRDPARTY_DIR ${PROJECT_SOURCE_DIR}/thirdparty)
