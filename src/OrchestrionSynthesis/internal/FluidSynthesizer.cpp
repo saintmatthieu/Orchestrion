@@ -18,8 +18,8 @@
  */
 #include "FluidSynthesizer.h"
 
-#include <fluidsynth.h>
 #include "framework/global/log.h"
+#include <fluidsynth.h>
 
 namespace muse::audio::synth
 {
@@ -166,4 +166,6 @@ void FluidSynthesizer::allNotesOff()
   if (!success)
     LOGE() << "fluid_synth_all_notes_off failed";
 }
+
+void FluidSynthesizer::doAllNotesOff() { allNotesOff(); }
 } // namespace dgk

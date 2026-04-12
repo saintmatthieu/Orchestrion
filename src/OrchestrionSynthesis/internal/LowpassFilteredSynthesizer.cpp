@@ -85,7 +85,7 @@ size_t LowpassFilteredSynthesizer::process(float *buffer,
 }
 
 void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
-                                           const TrackIndex* channels,
+                                           const TrackIndex *channels,
                                            const int *pitches,
                                            const float *velocities)
 {
@@ -93,7 +93,7 @@ void LowpassFilteredSynthesizer::onNoteOns(size_t numNoteons,
 }
 
 void LowpassFilteredSynthesizer::onNoteOffs(size_t numNoteoffs,
-                                            const TrackIndex* channels,
+                                            const TrackIndex *channels,
                                             const int *pitches)
 {
   m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);
@@ -104,4 +104,5 @@ void LowpassFilteredSynthesizer::onPedal(bool on)
   m_synthesizer->onPedal(on);
 }
 
+void LowpassFilteredSynthesizer::allNotesOff() { m_synthesizer->allNotesOff(); }
 } // namespace dgk

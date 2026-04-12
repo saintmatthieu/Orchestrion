@@ -92,7 +92,7 @@ void OrchestrionSynthesizerWrapper::sendNoteoffs(const NoteEvent *noteoffs,
   TrackIndex *const channels =
       (TrackIndex *)alloca(numNoteoffs * sizeof(TrackIndex));
   int *const pitches = (int *)alloca(numNoteoffs * sizeof(int));
-  for (auto i = 0; i < numNoteoffs; ++i)
+  for (auto i = 0u; i < numNoteoffs; ++i)
   {
     const_cast<int &>(channels[i].value) = noteoffs[i].track.value;
     pitches[i] = noteoffs[i].pitch;
@@ -109,7 +109,7 @@ void OrchestrionSynthesizerWrapper::sendNoteons(const NoteEvent *noteons,
       (TrackIndex *)alloca(numNoteons * sizeof(TrackIndex));
   int *const pitches = (int *)alloca(numNoteons * sizeof(int));
   float *const velocities = (float *)alloca(numNoteons * sizeof(float));
-  for (auto i = 0; i < numNoteons; ++i)
+  for (auto i = 0u; i < numNoteons; ++i)
   {
     const_cast<int &>(channels[i].value) = noteons[i].track.value;
     pitches[i] = noteons[i].pitch;
@@ -171,14 +171,12 @@ void OrchestrionSynthesizerWrapper::setPlaybackPosition(
   m_playbackPosition = newPosition;
 }
 
-void OrchestrionSynthesizerWrapper::revokePlayingNotes()
-{
-  // TODO
-}
+void OrchestrionSynthesizerWrapper::revokePlayingNotes() { flushSound(); }
 
 void OrchestrionSynthesizerWrapper::flushSound()
 {
-  // What's that for?
+  if (m_synthesizer)
+    m_synthesizer->allNotesOff();
 }
 
 bool OrchestrionSynthesizerWrapper::isActive() const { return m_isActive; }

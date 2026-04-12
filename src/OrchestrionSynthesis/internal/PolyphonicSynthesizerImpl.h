@@ -36,7 +36,7 @@ public:
 
 protected:
   virtual void onVoicesReset() {}
-  virtual void allNotesOff() = 0;
+  virtual void doAllNotesOff() = 0;
   void Initialize();
   int GetChannel(const TrackIndex &voice) const;
 

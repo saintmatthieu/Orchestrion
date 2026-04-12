@@ -122,4 +122,9 @@ void LowpassFilterBank::onPedal(bool on)
     synth->onPedal(on);
 }
 
+void LowpassFilterBank::allNotesOff()
+{
+  for (auto &synth : m_synthesizers)
+    synth->allNotesOff();
+}
 } // namespace dgk

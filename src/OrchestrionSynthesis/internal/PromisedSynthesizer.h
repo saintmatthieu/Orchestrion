@@ -35,11 +35,12 @@ public:
 
   int sampleRate() const override;
   size_t process(float *buffer, size_t samplesPerChannel) override;
-  void onNoteOns(size_t numNoteons, const TrackIndex* channels, const int *pitches,
-                 const float *velocities) override;
-  void onNoteOffs(size_t numNoteoffs, const TrackIndex* channels,
+  void onNoteOns(size_t numNoteons, const TrackIndex *channels,
+                 const int *pitches, const float *velocities) override;
+  void onNoteOffs(size_t numNoteoffs, const TrackIndex *channels,
                   const int *pitches) override;
   void onPedal(bool on) override;
+  void allNotesOff() override;
 
 private:
   SynthPromise m_promise;

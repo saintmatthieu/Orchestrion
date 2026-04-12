@@ -65,7 +65,8 @@ size_t AntiMetronomeSynthesizer::process(float *buffer,
   return samplesPerChannel;
 }
 
-void AntiMetronomeSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex* channels,
+void AntiMetronomeSynthesizer::onNoteOns(size_t numNoteons,
+                                         const TrackIndex *channels,
                                          const int *pitches,
                                          const float *velocities)
 {
@@ -74,7 +75,7 @@ void AntiMetronomeSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex* ch
 }
 
 void AntiMetronomeSynthesizer::onNoteOffs(size_t numNoteoffs,
-                                          const TrackIndex* channels,
+                                          const TrackIndex *channels,
                                           const int *pitches)
 {
   if (m_synthesizer)
@@ -87,4 +88,9 @@ void AntiMetronomeSynthesizer::onPedal(bool on)
     m_synthesizer->onPedal(on);
 }
 
+void AntiMetronomeSynthesizer::allNotesOff()
+{
+  if (m_synthesizer)
+    m_synthesizer->allNotesOff();
+}
 } // namespace dgk
