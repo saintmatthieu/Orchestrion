@@ -137,10 +137,6 @@ ApplicationWindow {
             }
         }
 
-        PlaybackButton {
-            Layout.alignment: Qt.AlignHCenter
-        }
-
         NotationScrollAndZoomArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -154,9 +150,18 @@ ApplicationWindow {
                     y: 10
                     id: selectionPopup
                 }
+
                 MidiDeviceActivityPopup {
                     x: selectionPopup.x + selectionPopup.width + 10
                     y: selectionPopup.y
+                }
+
+                PlaybackButton {
+                    id: playbackRow
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.rightMargin: 8
+                    anchors.topMargin: 8
                 }
             }
         }

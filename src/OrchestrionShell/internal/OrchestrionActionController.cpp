@@ -75,6 +75,12 @@ void OrchestrionActionController::init()
                       if (auto seq = orchestrion()->sequencer())
                         seq->GoToNextNoteonTick();
                     });
+  dispatcher()->reg(this, "rewind",
+                    [this]
+                    {
+                      if (auto seq = orchestrion()->sequencer())
+                        seq->GoToTick(0);
+                    });
 
   projectConfiguration()->setShouldAskSaveLocationType(false);
   projectConfiguration()->setLastUsedSaveLocationType(

@@ -32,8 +32,12 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
     IOrchestrionSequencer &sequencer)
     : m_sequencer{sequencer}
 {
-  sequencer.AboutToJumpPosition().onReceive(this, [this](int /*tick*/)
-                                            { ScheduleNext(); });
+  sequencer.AboutToJumpPosition().onReceive(this,
+                                            [this](int /*tick*/)
+                                            {
+                                              ++m_generation;
+                                              ScheduleNext();
+                                            });
 
   playbackController()->isPlayingChanged().onNotify(
       this,
@@ -41,7 +45,10 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
       {
         m_playing = playbackController()->isPlaying();
         if (m_playing)
+        {
+          ++m_generation;
           ScheduleNext();
+        }
       });
 }
 
@@ -56,8 +63,15 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
   }
 
   if (next->deltaTicks > 0)
+  {
+    const int gen = m_generation;
     QTimer::singleShot(TicksToMilliseconds(next->deltaTicks),
-                       [this, events = *next] { FireAndContinue(events); });
+                       [this, events = *next, gen]
+                       {
+                         if (gen == m_generation)
+                           FireAndContinue(events);
+                       });
+  }
   else
     FireAndContinue(*next);
 }

@@ -41,6 +41,7 @@ RowLayout {
         iconFont: ui.theme.toolbarIconsFont
         toolTipTitle: qsTr("Rewind to start")
         transparent: true
+        normalColor: "white"
         enabled: playbackModel.isPlayAllowed
         onClicked: playbackModel.rewind()
     }
@@ -50,6 +51,7 @@ RowLayout {
         iconFont: ui.theme.toolbarIconsFont
         toolTipTitle: qsTr("Step back")
         transparent: true
+        normalColor: "white"
         enabled: playbackModel.isPlayAllowed
         onClicked: playbackModel.backStep()
     }
@@ -59,6 +61,7 @@ RowLayout {
         iconFont: ui.theme.toolbarIconsFont
         toolTipTitle: playbackModel.isPlaying ? qsTr("Pause") : qsTr("Play")
         transparent: true
+        normalColor: "white"
         enabled: playbackModel.isPlayAllowed
         onClicked: playbackModel.togglePlay()
     }
@@ -68,6 +71,7 @@ RowLayout {
         iconFont: ui.theme.toolbarIconsFont
         toolTipTitle: qsTr("Stop")
         transparent: true
+        normalColor: "white"
         enabled: playbackModel.isPlayAllowed
         onClicked: playbackModel.stop()
     }
@@ -77,6 +81,7 @@ RowLayout {
         iconFont: ui.theme.toolbarIconsFont
         toolTipTitle: qsTr("Step forward")
         transparent: true
+        normalColor: "white"
         enabled: playbackModel.isPlayAllowed
         onClicked: playbackModel.forwardStep()
     }

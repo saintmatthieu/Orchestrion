@@ -33,12 +33,12 @@
   <SC>
     <key>prev</key>
     <seq>Left</seq>
-    <autorepeat>0</autorepeat>
+    <autorepeat>1</autorepeat>
   </SC>
   <SC>
     <key>next</key>
     <seq>Right</seq>
-    <autorepeat>0</autorepeat>
+    <autorepeat>1</autorepeat>
   </SC>
   <SC>
     <key>loop</key>

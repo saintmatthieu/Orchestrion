@@ -42,5 +42,8 @@ private:
 
   IOrchestrionSequencer &m_sequencer;
   bool m_playing = false;
+  // Used to cancel previously scheduled calls to FireAndContinue when the
+  // position changes e.g. by the user pressing left/right during playback.
+  int m_generation = 0;
 };
 } // namespace dgk

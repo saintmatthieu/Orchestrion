@@ -46,7 +46,9 @@ muse::ui::UiActionList makeActions(
       muse::ui::UiAction("orchestrion-advanced-toggle-recording",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("prev", mu::context::UiCtxAny, mu::context::CTX_ANY),
-      muse::ui::UiAction("next", mu::context::UiCtxAny, mu::context::CTX_ANY)};
+      muse::ui::UiAction("next", mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction("rewind", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY)};
 
   for (const auto &[_, menuId] : actionIds::chooseDevicesSubmenu)
     actions.push_back(muse::ui::UiAction(menuId, mu::context::UiCtxAny,
