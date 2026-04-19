@@ -428,14 +428,14 @@ void OrchestrionSequencer::GoToTick(int tick)
 
 void OrchestrionSequencer::GoToPrevNoteonTick()
 {
-  std::optional<Tick> earliest;
+  std::optional<Tick> latest;
   for (const auto *voice : m_allVoices)
   {
     const auto tick = voice->GetPreviousNoteonTick();
-    if (tick && (!earliest || *tick < *earliest))
-      earliest = tick;
+    if (tick && (!latest || *tick > *latest))
+      latest = tick;
   }
-  GoToTick(earliest ? earliest->withoutRepeats : 0);
+  GoToTick(latest ? latest->withoutRepeats : 0);
 }
 
 void OrchestrionSequencer::GoToNextNoteonTick()

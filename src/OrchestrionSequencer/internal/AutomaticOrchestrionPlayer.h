@@ -36,12 +36,11 @@ public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
 
 private:
-  void Advance();
+  void ScheduleNext();
+  void FireAndContinue(const NextAutoPlayEvents &events);
+  int TicksToMilliseconds(int ticks) const;
 
   IOrchestrionSequencer &m_sequencer;
-  std::optional<NextAutoPlayEvents> m_next;
-  int m_targetTick = 0;
-  bool m_needsRefetch = false;
-  bool m_done = false;
+  bool m_playing = false;
 };
 } // namespace dgk

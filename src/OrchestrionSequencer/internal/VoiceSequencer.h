@@ -52,7 +52,7 @@ private:
                                   int index);
   ChordTransitionType GetNextTransition(NoteEventType event,
                                         const Tick &cursorTick) const;
-  const IChord *GetFutureChord() const;
+  const IChord *GetFutureChord(unsigned offset = 0u) const;
   const IMelodySegment *GetPresentThing() const;
   std::optional<dgk::Tick> GetNextMatchingTickForNoteoff() const;
   std::optional<dgk::Tick>

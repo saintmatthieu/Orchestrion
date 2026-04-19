@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "AutomaticOrchestrionPlayer.h"
+#include <QTimer>
 
 namespace dgk
 {
@@ -24,71 +25,64 @@ namespace
 {
 constexpr int rightHandPitch = 60;
 constexpr int leftHandPitch = 59;
+constexpr int ticksPerQuarterNote = 480;
 } // namespace
 
 AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
     IOrchestrionSequencer &sequencer)
     : m_sequencer{sequencer}
 {
-  Advance();
-
-  sequencer.AboutToJumpPosition().onReceive(this,
-                                            [this](int tick)
-                                            {
-                                              m_targetTick = tick;
-                                              m_needsRefetch = true;
-                                            });
+  sequencer.AboutToJumpPosition().onReceive(this, [this](int /*tick*/)
+                                            { ScheduleNext(); });
 
   playbackController()->isPlayingChanged().onNotify(
       this,
       [this]
       {
-        if (playbackController()->isPlaying())
-        {
-          m_done = false;
-          m_needsRefetch = true;
-        }
-      });
-
-  playbackController()->currentPlaybackPositionChanged().onReceive(
-      this,
-      [this](muse::audio::secs_t, muse::midi::tick_t tick)
-      {
-        if (!playbackController()->isPlaying() || m_done)
-          return;
-        const int t = static_cast<int>(tick);
-        if (m_needsRefetch)
-        {
-          m_needsRefetch = false;
-          Advance();
-        }
-        while (m_next && t >= m_targetTick)
-        {
-          if (m_next->leftHandEvent)
-            m_sequencer.OnInputEvent(*m_next->leftHandEvent, leftHandPitch,
-                                     std::nullopt);
-          if (m_next->rightHandEvent)
-            m_sequencer.OnInputEvent(*m_next->rightHandEvent, rightHandPitch,
-                                     std::nullopt);
-          if (m_needsRefetch)
-          {
-            m_done = true;
-            return;
-          }
-          Advance();
-        }
+        m_playing = playbackController()->isPlaying();
+        if (m_playing)
+          ScheduleNext();
       });
 }
 
-void AutomaticOrchestrionPlayer::Advance()
+void AutomaticOrchestrionPlayer::ScheduleNext()
 {
-  m_next = m_sequencer.WhatToPlayNext();
-  if (m_next)
-    m_targetTick += m_next->deltaTicks;
-  else
+  const auto next = m_sequencer.WhatToPlayNext();
+  if (!next)
   {
-    m_done = true;
     dispatcher()->dispatch("stop");
+    m_playing = false;
+    return;
   }
+
+  if (next->deltaTicks > 0)
+    QTimer::singleShot(TicksToMilliseconds(next->deltaTicks),
+                       [this, events = *next] { FireAndContinue(events); });
+  else
+    FireAndContinue(*next);
+}
+
+void AutomaticOrchestrionPlayer::FireAndContinue(
+    const NextAutoPlayEvents &events)
+{
+  if (!m_playing)
+    return;
+  if (events.leftHandEvent)
+    m_sequencer.OnInputEvent(*events.leftHandEvent, leftHandPitch,
+                             std::nullopt);
+  if (events.rightHandEvent)
+    m_sequencer.OnInputEvent(*events.rightHandEvent, rightHandPitch,
+                             std::nullopt);
+  ScheduleNext();
+}
+
+int AutomaticOrchestrionPlayer::TicksToMilliseconds(int ticks) const
+{
+  const double bpm = playbackController()->currentTempo().valueBpm;
+  const double multiplier = playbackController()->tempoMultiplier();
+  if (bpm <= 0 || multiplier <= 0)
+    return 0;
+  return static_cast<int>(ticks * 60000.0 /
+                          (bpm * ticksPerQuarterNote * multiplier));
 }
 } // namespace dgk

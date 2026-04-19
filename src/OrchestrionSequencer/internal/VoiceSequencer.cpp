@@ -136,10 +136,10 @@ VoiceSequencer::OnInputEvent(NoteEventType event, const dgk::Tick &cursorTick)
   }
 }
 
-const IChord *VoiceSequencer::GetFutureChord() const
+const IChord *VoiceSequencer::GetFutureChord(unsigned offset) const
 {
-  auto index = m_index;
-  if (!m_onImplicitRest)
+  auto index = m_index + static_cast<int>(offset);
+  if (offset == 0u && !m_onImplicitRest)
     ++index;
   while (index < m_numGestures)
   {
@@ -273,7 +273,7 @@ dgk::Tick VoiceSequencer::GetFinalTick() const
 
 std::optional<dgk::Tick> VoiceSequencer::GetNextNoteonTick() const
 {
-  if (const auto *future = GetFutureChord())
+  if (const auto *future = GetFutureChord(1u))
     return future->GetBeginTick();
   return std::nullopt;
 }
@@ -281,7 +281,8 @@ std::optional<dgk::Tick> VoiceSequencer::GetNextNoteonTick() const
 std::optional<dgk::Tick> VoiceSequencer::GetPreviousNoteonTick() const
 {
   // Walk backwards from current index to find the previous chord.
-  const int start = m_onImplicitRest ? m_index - 1 : m_index;
+  const int start = std::clamp<int>(m_onImplicitRest ? m_index - 1 : m_index, 0,
+                                    m_numGestures - 1);
   for (int i = start; i >= 0; --i)
     if (m_gestures[i]->AsChord())
       return m_gestures[i]->GetBeginTick();
