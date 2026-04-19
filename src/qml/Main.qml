@@ -21,7 +21,6 @@ import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 
 import Muse.Ui 1.0
-import MuseScore.Playback 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
 import Muse.Shortcuts 1.0
@@ -138,9 +137,9 @@ ApplicationWindow {
             }
         }
 
-        // PlaybackToolBar {
-        //     floating: false
-        // }
+        PlaybackButton {
+            Layout.alignment: Qt.AlignHCenter
+        }
 
         NotationScrollAndZoomArea {
             Layout.fillWidth: true

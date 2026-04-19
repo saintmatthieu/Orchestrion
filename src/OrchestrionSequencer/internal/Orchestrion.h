@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "AutomaticOrchestrionPlayer.h"
 #include "IModifiableItemRegistry.h"
 #include "IOrchestrion.h"
 #include "OrchestrionSequencer.h"
@@ -50,6 +51,7 @@ private:
 private:
   IOrchestrionSequencerPtr m_sequencer;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
+  std::unique_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   muse::async::Notification m_sequencerChanged;
 };
 } // namespace dgk

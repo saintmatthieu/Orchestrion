@@ -1,6 +1,8 @@
 declare_module(OrchestrionSequencer)
 
 set(MODULE_SRC
+    internal/AutomaticOrchestrionPlayer.cpp
+    internal/AutomaticOrchestrionPlayer.h
     internal/ChordTransitionUtil.cpp
     internal/ChordTransitionUtil.h
     internal/GestureControllerConfigurator.cpp

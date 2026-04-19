@@ -23,6 +23,8 @@ set(MODULE_SRC
   view/NotationPaintViewLoaderModel.h
   view/OrchestrionWindowTitleProvider.cpp
   view/OrchestrionWindowTitleProvider.h
+  view/PlaybackButtonModel.cpp
+  view/PlaybackButtonModel.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   OrchestrionShellModule.cpp

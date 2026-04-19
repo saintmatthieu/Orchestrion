@@ -100,7 +100,7 @@ OrchestrionSynthResolver::resolveResources() const
 }
 
 muse::audio::SoundPresetList OrchestrionSynthResolver::resolveSoundPresets(
-    const muse::audio::AudioResourceMeta &resourceMeta) const
+    const muse::audio::AudioResourceMeta &) const
 {
   return {};
 }

@@ -2,6 +2,8 @@
   <qresource prefix="/">
     <file>src/qml/Main.qml</file>
     <file>src/qml/OrchestrionIcon.qml</file>
+    <file>src/qml/PlaybackButton.qml</file>
     <file>icons/music-box.ico</file>
+    <file>icons/music-box.png</file>
   </qresource>
 </RCC>

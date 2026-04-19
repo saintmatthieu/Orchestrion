@@ -68,7 +68,9 @@ public:
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
-  muse::async::Notification AboutToJumpPosition() const override;
+  muse::async::Channel<int> AboutToJumpPosition() const override;
+  void GoToTick(int tick) override;
+  std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
 
 private:
   struct Hand
@@ -80,8 +82,7 @@ private:
   void SendTransitions(std::map<TrackIndex, ChordTransition>,
                        std::optional<float> velocity = std::nullopt,
                        bool isLeftHand = false);
-  void GoToTick(int tick);
-  std::map<TrackIndex, ChordTransition> PrepareStaffransitions(
+  std::map<TrackIndex, ChordTransition> PrepareStaffTransitions(
       const HandVoices &,
       std::function<std::optional<ChordTransition>(VoiceSequencer &)>);
 
@@ -133,7 +134,8 @@ private:
 
   muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
   muse::async::Channel<EventVariant> m_outputEvent;
-  muse::async::Notification m_aboutToJumpPosition;
+  muse::async::Channel<int /*tick*/> m_aboutToJumpPosition;
+  int m_autoPlayTick = 0;
 
   bool m_velocityRecordingEnabled = false;
 };

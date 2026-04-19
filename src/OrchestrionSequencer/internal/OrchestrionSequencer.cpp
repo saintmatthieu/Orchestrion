@@ -117,8 +117,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   m_velocityRecordingEnabled = configuration()->velocityRecordingEnabled();
   configuration()->velocityRecordingEnabledChanged().onNotify(
       this,
-      [this]
-      {
+      [this] {
         m_velocityRecordingEnabled =
             configuration()->velocityRecordingEnabled();
       });
@@ -138,10 +137,10 @@ void AppendNoteoffs(dgk::NoteEvents &output, const std::vector<int> &noteoffs,
   if (noteons.empty())
   {
     output.reserve(output.size() + noteoffs.size());
-    std::transform(
-        noteoffs.begin(), noteoffs.end(), std::back_inserter(output),
-        [&](int note)
-        { return NoteEvent{NoteEventType::noteOff, track, note, 0.f}; });
+    std::transform(noteoffs.begin(), noteoffs.end(), std::back_inserter(output),
+                   [&](int note) {
+                     return NoteEvent{NoteEventType::noteOff, track, note, 0.f};
+                   });
   }
   else
     // Only append noteoffs that aren't in `noteons`.
@@ -264,7 +263,7 @@ std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
   return result;
 }
 
-muse::async::Notification OrchestrionSequencer::AboutToJumpPosition() const
+muse::async::Channel<int> OrchestrionSequencer::AboutToJumpPosition() const
 {
   return m_aboutToJumpPosition;
 }
@@ -322,7 +321,7 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
 }
 
 std::map<TrackIndex, ChordTransition>
-OrchestrionSequencer::PrepareStaffransitions(
+OrchestrionSequencer::PrepareStaffTransitions(
     const HandVoices &voices,
     std::function<std::optional<ChordTransition>(VoiceSequencer &)> op)
 {
@@ -362,10 +361,10 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   }
 
   const std::map<TrackIndex, ChordTransition> transitions =
-      PrepareStaffransitions(hand.voices,
-                             [&](VoiceSequencer &voice) { //
-                               return voice.OnInputEvent(type, cursorTick);
-                             });
+      PrepareStaffTransitions(hand.voices,
+                              [&](VoiceSequencer &voice) { //
+                                return voice.OnInputEvent(type, cursorTick);
+                              });
 
   Finally maybeRewind{[this, doRewind = transitions.empty()]
                       {
@@ -411,19 +410,63 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
 void OrchestrionSequencer::GoToTick(int tick)
 {
-  m_aboutToJumpPosition.notify();
+  m_aboutToJumpPosition.send(tick);
   {
     std::map<TrackIndex, ChordTransition> transitions;
     for (auto voices : {&m_rightHand.voices, &m_leftHand.voices})
       transitions.merge(
-          PrepareStaffransitions(*voices, [&](VoiceSequencer &voice)
-                                 { return voice.GoToTick(tick); }));
+          PrepareStaffTransitions(*voices, [&](VoiceSequencer &voice)
+                                  { return voice.GoToTick(tick); }));
     SendTransitions(std::move(transitions));
   }
   m_outputEvent.send(PedalEvent{m_instrument, false});
   m_pedalSequenceIt = std::lower_bound(
       m_pedalSequence.begin(), m_pedalSequence.end(), tick,
       [](const auto &item, int tick) { return item.tick < tick; });
+  m_autoPlayTick = tick;
+}
+
+std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
+{
+  struct Candidate
+  {
+    Tick tick;
+    NoteEventType type;
+    bool isLeftHand;
+  };
+
+  std::vector<Candidate> candidates;
+  for (bool isLeftHand : {false, true})
+  {
+    auto &hand = isLeftHand ? m_leftHand : m_rightHand;
+    for (auto eventType : {NoteEventType::noteOff, NoteEventType::noteOn})
+    {
+      auto tick = GetCursorTick(hand.voices, eventType);
+      if (tick)
+        candidates.push_back({*tick, eventType, isLeftHand});
+    }
+  }
+
+  if (candidates.empty())
+    return std::nullopt;
+
+  const auto minTick =
+      std::min_element(candidates.begin(), candidates.end(),
+                       [](const Candidate &a, const Candidate &b)
+                       { return a.tick < b.tick; })
+          ->tick;
+
+  NextAutoPlayEvents result;
+  result.deltaTicks = minTick.withRepeats - m_autoPlayTick;
+
+  // Collect all events at the minimum tick, noteoffs first.
+  for (auto type : {NoteEventType::noteOff, NoteEventType::noteOn})
+    for (const auto &c : candidates)
+      if (c.tick.withRepeats == minTick.withRepeats && c.type == type)
+        result.events.push_back({c.type, c.isLeftHand});
+
+  m_autoPlayTick = minTick.withRepeats;
+  return result;
 }
 
 const std::map<TrackIndex, ChordTransition> &

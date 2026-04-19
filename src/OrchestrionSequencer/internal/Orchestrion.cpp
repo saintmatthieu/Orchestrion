@@ -18,7 +18,7 @@
  */
 #include "Orchestrion.h"
 #include "IChord.h"
-#include "OrchestrionSequencerFactory.h"
+#include "OrchestrionSequencerFactory.h" // NotationProducts
 #include <async/async.h>
 #include <audio/internal/audiothread.h>
 #include <engraving/dom/masterscore.h>
@@ -48,6 +48,11 @@ void Orchestrion::init()
             muse::audio::AudioThread::ID);
 
         m_modifiableItemRegistry = products.modifiableItemRegistry;
+        if (products.sequencer)
+          m_autoPlayer =
+              std::make_unique<AutomaticOrchestrionPlayer>(*products.sequencer);
+        else
+          m_autoPlayer.reset();
         setSequencer(products.sequencer);
 
         if (const auto notation = globalContext()->currentMasterNotation())

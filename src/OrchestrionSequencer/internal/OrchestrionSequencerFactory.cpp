@@ -244,10 +244,15 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   }
   auto pedalSequence = GetPedalSequence(score, staff, staff + 2);
 
+  // Copy the staffs before MakeHand moves them.
+  Staff rightHandCopy = rightHand;
+  Staff leftHandCopy = leftHand;
+
   auto sequencer = std::make_shared<OrchestrionSequencer>(
       mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
       MakeHand(staff + 1, leftHand), std::move(pedalSequence));
 
-  return {sequencer, modifiableItems};
+  return {sequencer, modifiableItems, std::move(rightHandCopy),
+          std::move(leftHandCopy)};
 }
 } // namespace dgk

@@ -18,38 +18,28 @@
  */
 #pragma once
 
-#include "IModifiableItemRegistry.h"
 #include "IOrchestrionSequencer.h"
-#include "OrchestrionSynthesis/ITrackChannelMapper.h"
-#include "OrchestrionTypes.h"
-#include "ScoreAnimation/ISegmentRegistry.h"
-#include "playback/iplaybackcontroller.h"
-#include <memory>
+#include <async/asyncable.h>
 #include <modularity/ioc.h>
-#include <vector>
-
-namespace mu::notation
-{
-class IMasterNotation;
-}
+#include <playback/iplaybackcontroller.h>
 
 namespace dgk
 {
-struct NotationProducts
+class AutomaticOrchestrionPlayer : public muse::async::Asyncable,
+                                   public muse::Injectable
 {
-  const IOrchestrionSequencerPtr sequencer;
-  const IModifiableItemRegistryPtr modifiableItemRegistry;
-  const Staff rightHand;
-  const Staff leftHand;
-};
-
-class OrchestrionSequencerFactory : public muse::Injectable
-{
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
+  muse::Inject<mu::playback::IPlaybackController> playbackController;
 
 public:
-  NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
+
+private:
+  void Advance();
+
+  IOrchestrionSequencer &m_sequencer;
+  std::optional<NextAutoPlayEvents> m_next;
+  int m_targetTick = 0;
+  bool m_needsRefetch = false;
+  bool m_done = false;
 };
 } // namespace dgk
