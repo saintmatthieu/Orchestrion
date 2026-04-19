@@ -70,6 +70,8 @@ public:
   muse::async::Channel<EventVariant> OutputEvent() const override;
   muse::async::Channel<int> AboutToJumpPosition() const override;
   void GoToTick(int tick) override;
+  void GoToPrevNoteonTick() override;
+  void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
 
 private:

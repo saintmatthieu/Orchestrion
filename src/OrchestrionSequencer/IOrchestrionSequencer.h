@@ -57,6 +57,8 @@ public:
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
   virtual muse::async::Channel<int /*tick*/> AboutToJumpPosition() const = 0;
   virtual void GoToTick(int tick) = 0;
+  virtual void GoToPrevNoteonTick() = 0;
+  virtual void GoToNextNoteonTick() = 0;
 
   //! Returns the next batch of input events to play, with a delta tick count
   //! relative to the previous call (0 at the start of the score). Returns

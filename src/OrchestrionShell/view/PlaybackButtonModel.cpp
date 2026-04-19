@@ -47,13 +47,7 @@ void PlaybackButtonModel::stop() { dispatcher()->dispatch("stop"); }
 
 void PlaybackButtonModel::rewind() { dispatcher()->dispatch("rewind"); }
 
-void PlaybackButtonModel::backStep()
-{
-  dispatcher()->dispatch("notation-move-left");
-}
+void PlaybackButtonModel::backStep() { dispatcher()->dispatch("prev"); }
 
-void PlaybackButtonModel::forwardStep()
-{
-  dispatcher()->dispatch("notation-move-right");
-}
+void PlaybackButtonModel::forwardStep() { dispatcher()->dispatch("next"); }
 } // namespace dgk

@@ -271,4 +271,21 @@ dgk::Tick VoiceSequencer::GetFinalTick() const
   return m_gestures.empty() ? dgk::Tick{0, 0} : m_gestures.back()->GetEndTick();
 }
 
+std::optional<dgk::Tick> VoiceSequencer::GetNextNoteonTick() const
+{
+  if (const auto *future = GetFutureChord())
+    return future->GetBeginTick();
+  return std::nullopt;
+}
+
+std::optional<dgk::Tick> VoiceSequencer::GetPreviousNoteonTick() const
+{
+  // Walk backwards from current index to find the previous chord.
+  const int start = m_onImplicitRest ? m_index - 1 : m_index;
+  for (int i = start; i >= 0; --i)
+    if (m_gestures[i]->AsChord())
+      return m_gestures[i]->GetBeginTick();
+  return std::nullopt;
+}
+
 } // namespace dgk

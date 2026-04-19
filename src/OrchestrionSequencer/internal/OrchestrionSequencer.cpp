@@ -426,6 +426,31 @@ void OrchestrionSequencer::GoToTick(int tick)
   m_autoPlayTick = tick;
 }
 
+void OrchestrionSequencer::GoToPrevNoteonTick()
+{
+  std::optional<Tick> earliest;
+  for (const auto *voice : m_allVoices)
+  {
+    const auto tick = voice->GetPreviousNoteonTick();
+    if (tick && (!earliest || *tick < *earliest))
+      earliest = tick;
+  }
+  GoToTick(earliest ? earliest->withoutRepeats : 0);
+}
+
+void OrchestrionSequencer::GoToNextNoteonTick()
+{
+  std::optional<Tick> earliest;
+  for (const auto *voice : m_allVoices)
+  {
+    const auto tick = voice->GetNextNoteonTick();
+    if (tick && (!earliest || *tick < *earliest))
+      earliest = tick;
+  }
+  if (earliest)
+    GoToTick(earliest->withoutRepeats);
+}
+
 std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
 {
   struct Candidate

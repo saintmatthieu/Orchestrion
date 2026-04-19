@@ -44,6 +44,9 @@ public:
   GetNextMatchingTick(NoteEventType,
                       const std::optional<dgk::Tick> &upperLimit) const;
 
+  std::optional<dgk::Tick> GetNextNoteonTick() const;
+  std::optional<dgk::Tick> GetPreviousNoteonTick() const;
+
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                                   int index);
