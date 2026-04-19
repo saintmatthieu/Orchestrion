@@ -35,8 +35,9 @@ struct AutoPlayEvent
 
 struct NextAutoPlayEvents
 {
-  int deltaTicks;
-  std::vector<AutoPlayEvent> events;
+  int deltaTicks = 0;
+  std::optional<NoteEventType> leftHandEvent;
+  std::optional<NoteEventType> rightHandEvent;
 };
 
 class IOrchestrionSequencer

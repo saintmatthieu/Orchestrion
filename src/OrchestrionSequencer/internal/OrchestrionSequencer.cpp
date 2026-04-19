@@ -463,7 +463,7 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
   for (auto type : {NoteEventType::noteOff, NoteEventType::noteOn})
     for (const auto &c : candidates)
       if (c.tick.withRepeats == minTick.withRepeats && c.type == type)
-        result.events.push_back({c.type, c.isLeftHand});
+        (c.isLeftHand ? result.leftHandEvent : result.rightHandEvent) = c.type;
 
   m_autoPlayTick = minTick.withRepeats;
   return result;

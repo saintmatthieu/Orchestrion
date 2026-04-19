@@ -19,6 +19,7 @@
 #pragma once
 
 #include "IOrchestrionSequencer.h"
+#include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
 #include <modularity/ioc.h>
 #include <playback/iplaybackcontroller.h>
@@ -29,6 +30,7 @@ class AutomaticOrchestrionPlayer : public muse::async::Asyncable,
                                    public muse::Injectable
 {
   muse::Inject<mu::playback::IPlaybackController> playbackController;
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
 
 public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);

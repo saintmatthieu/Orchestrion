@@ -64,10 +64,12 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
         }
         while (m_next && t >= m_targetTick)
         {
-          for (const auto &event : m_next->events)
-            m_sequencer.OnInputEvent(
-                event.type, event.isLeftHand ? leftHandPitch : rightHandPitch,
-                std::nullopt);
+          if (m_next->leftHandEvent)
+            m_sequencer.OnInputEvent(*m_next->leftHandEvent, leftHandPitch,
+                                     std::nullopt);
+          if (m_next->rightHandEvent)
+            m_sequencer.OnInputEvent(*m_next->rightHandEvent, rightHandPitch,
+                                     std::nullopt);
           if (m_needsRefetch)
           {
             m_done = true;
@@ -83,5 +85,10 @@ void AutomaticOrchestrionPlayer::Advance()
   m_next = m_sequencer.WhatToPlayNext();
   if (m_next)
     m_targetTick += m_next->deltaTicks;
+  else
+  {
+    m_done = true;
+    dispatcher()->dispatch("stop");
+  }
 }
 } // namespace dgk
