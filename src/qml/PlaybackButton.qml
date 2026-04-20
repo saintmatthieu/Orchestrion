@@ -18,12 +18,13 @@
  */
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Controls 2.15
 
 import Muse.Ui 1.0
 import Muse.UiComponents 1.0
 import Orchestrion.OrchestrionShell 1.0
 
-RowLayout {
+Row {
     id: root
 
     spacing: 2
@@ -36,53 +37,61 @@ RowLayout {
         playbackModel.load()
     }
 
-    FlatButton {
-        icon: IconCode.REWIND
-        iconFont: ui.theme.toolbarIconsFont
-        toolTipTitle: qsTr("Rewind to start")
-        transparent: true
-        normalColor: "white"
-        enabled: playbackModel.isPlayAllowed
-        onClicked: playbackModel.rewind()
-    }
+    Repeater {
+        model: [
+            { icon: "back", action: () => playbackModel.rewind(), tooltip: "Rewind (Home)" },
+            { icon: "rewind-button", action: () => playbackModel.backStep(), tooltip: "Previous (Left)" },
+            { icon: playbackModel.isPlaying ? "pause-button" : "play", action: () => playbackModel.togglePlay(), tooltip: "Play/Pause (Space)" },
+            { icon: "stop-sign", action: () => playbackModel.stop(), tooltip: "Stop" },
+            { icon: "rewind-button", action: () => playbackModel.forwardStep(), tooltip: "Next (Right)", flipped: true }
+        ]
 
-    FlatButton {
-        icon: IconCode.SMALL_ARROW_LEFT
-        iconFont: ui.theme.toolbarIconsFont
-        toolTipTitle: qsTr("Step back")
-        transparent: true
-        normalColor: "white"
-        enabled: playbackModel.isPlayAllowed
-        onClicked: playbackModel.backStep()
-    }
+        Image {
+            id: iconImage
+            source: "qrc:/icons/player/" + modelData.icon + ".png"
+            width: 36
+            height: 36
+            fillMode: Image.PreserveAspectFit
+            opacity: 0.7
+            mipmap: true
+            rotation: modelData.flipped ? 180 : 0
 
-    FlatButton {
-        icon: playbackModel.isPlaying ? IconCode.PAUSE : IconCode.PLAY
-        iconFont: ui.theme.toolbarIconsFont
-        toolTipTitle: playbackModel.isPlaying ? qsTr("Pause") : qsTr("Play")
-        transparent: true
-        normalColor: "white"
-        enabled: playbackModel.isPlayAllowed
-        onClicked: playbackModel.togglePlay()
-    }
+            MouseArea {
+                id: mouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                onEntered: { hideTimer.stop(); tip.visible = true }
+                onExited: hideTimer.restart()
+                onClicked: modelData.action()
+            }
 
-    FlatButton {
-        icon: IconCode.STOP
-        iconFont: ui.theme.toolbarIconsFont
-        toolTipTitle: qsTr("Stop")
-        transparent: true
-        normalColor: "white"
-        enabled: playbackModel.isPlayAllowed
-        onClicked: playbackModel.stop()
-    }
+            Timer {
+                id: hideTimer
+                interval: 300
+                onTriggered: tip.visible = false
+            }
 
-    FlatButton {
-        icon: IconCode.SMALL_ARROW_RIGHT
-        iconFont: ui.theme.toolbarIconsFont
-        toolTipTitle: qsTr("Step forward")
-        transparent: true
-        normalColor: "white"
-        enabled: playbackModel.isPlayAllowed
-        onClicked: playbackModel.forwardStep()
+            ToolTip {
+                id: tip
+                delay: 500
+                contentItem: Text {
+                    text: modelData.tooltip + "<br><span style='font-size:9px'><a href='https://www.flaticon.com/free-icons/ui' title='ui icons'>Ui icons created by chehuna - Flaticon</a></span>"
+                    textFormat: Text.RichText
+                    onLinkActivated: function(link) {
+                        Qt.openUrlExternally(link);
+                    }
+                    HoverHandler {
+                        cursorShape: Qt.PointingHandCursor
+                        onHoveredChanged: {
+                            if (hovered) {
+                                hideTimer.stop()
+                            } else {
+                                hideTimer.restart()
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
