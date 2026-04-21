@@ -45,6 +45,7 @@ public:
 private:
   void onVoicesReset() override;
   void allNotesOff() override;
+  void doAllNotesOff() override;
 
   const int m_sampleRate;
   bool m_allSet = false;

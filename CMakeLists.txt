@@ -148,6 +148,7 @@ qt_add_qml_module(Orchestrion
     URI Orchestrion
     VERSION 1.0
     QML_FILES "src/qml/Main.qml"
+    QML_FILES "src/qml/PlaybackButton.qml"
 )
 
 qt_add_resources(RESOURCES resources.qrc)

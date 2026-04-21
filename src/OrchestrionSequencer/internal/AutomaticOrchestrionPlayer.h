@@ -18,38 +18,32 @@
  */
 #pragma once
 
-#include "IModifiableItemRegistry.h"
 #include "IOrchestrionSequencer.h"
-#include "OrchestrionSynthesis/ITrackChannelMapper.h"
-#include "OrchestrionTypes.h"
-#include "ScoreAnimation/ISegmentRegistry.h"
-#include "playback/iplaybackcontroller.h"
-#include <memory>
+#include <actions/iactionsdispatcher.h>
+#include <async/asyncable.h>
 #include <modularity/ioc.h>
-#include <vector>
-
-namespace mu::notation
-{
-class IMasterNotation;
-}
+#include <playback/iplaybackcontroller.h>
 
 namespace dgk
 {
-struct NotationProducts
+class AutomaticOrchestrionPlayer : public muse::async::Asyncable,
+                                   public muse::Injectable
 {
-  const IOrchestrionSequencerPtr sequencer;
-  const IModifiableItemRegistryPtr modifiableItemRegistry;
-  const Staff rightHand;
-  const Staff leftHand;
-};
-
-class OrchestrionSequencerFactory : public muse::Injectable
-{
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
+  muse::Inject<mu::playback::IPlaybackController> playbackController;
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
 
 public:
-  NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
+
+private:
+  void ScheduleNext();
+  void FireAndContinue(const NextAutoPlayEvents &events);
+  int TicksToMilliseconds(int ticks) const;
+
+  IOrchestrionSequencer &m_sequencer;
+  bool m_playing = false;
+  // Used to cancel previously scheduled calls to FireAndContinue when the
+  // position changes e.g. by the user pressing left/right during playback.
+  int m_generation = 0;
 };
 } // namespace dgk

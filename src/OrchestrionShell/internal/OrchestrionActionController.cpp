@@ -56,6 +56,25 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
 
+  dispatcher()->reg(this, "prev",
+                    [this]
+                    {
+                      if (auto seq = orchestrion()->sequencer())
+                        seq->GoToPrevNoteonTick();
+                    });
+  dispatcher()->reg(this, "next",
+                    [this]
+                    {
+                      if (auto seq = orchestrion()->sequencer())
+                        seq->GoToNextNoteonTick();
+                    });
+  dispatcher()->reg(this, "rewind",
+                    [this]
+                    {
+                      if (auto seq = orchestrion()->sequencer())
+                        seq->GoToTick(0);
+                    });
+
   projectConfiguration()->setShouldAskSaveLocationType(false);
   projectConfiguration()->setLastUsedSaveLocationType(
       mu::project::SaveLocationType::Local);

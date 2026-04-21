@@ -31,10 +31,11 @@ public:
 
   virtual int sampleRate() const = 0;
   virtual size_t process(float *buffer, size_t samplesPerChannel) = 0;
-  virtual void onNoteOns(size_t numNoteons, const TrackIndex* channels,
+  virtual void onNoteOns(size_t numNoteons, const TrackIndex *channels,
                          const int *pitches, const float *velocities) = 0;
-  virtual void onNoteOffs(size_t numNoteoffs, const TrackIndex* channels,
+  virtual void onNoteOffs(size_t numNoteoffs, const TrackIndex *channels,
                           const int *pitches) = 0;
   virtual void onPedal(bool on) = 0;
+  virtual void allNotesOff() = 0;
 };
 } // namespace dgk

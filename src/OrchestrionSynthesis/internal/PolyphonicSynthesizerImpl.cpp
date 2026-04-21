@@ -34,7 +34,8 @@ void PolyphonicSynthesizerImpl::Setup()
     return;
   m_voices = sequencer->GetAllVoices();
   onVoicesReset();
-  sequencer->AboutToJumpPosition().onNotify(this, [this] { allNotesOff(); });
+  sequencer->AboutToJumpPosition().onReceive(this,
+                                             [this](auto) { doAllNotesOff(); });
 }
 
 int PolyphonicSynthesizerImpl::GetChannel(const TrackIndex &voice) const

@@ -26,6 +26,20 @@
 
 namespace dgk
 {
+
+struct AutoPlayEvent
+{
+  NoteEventType type;
+  bool isLeftHand;
+};
+
+struct NextAutoPlayEvents
+{
+  int deltaTicks = 0;
+  std::optional<NoteEventType> leftHandEvent;
+  std::optional<NoteEventType> rightHandEvent;
+};
+
 class IOrchestrionSequencer
 {
 public:
@@ -41,7 +55,15 @@ public:
   GetCurrentTransitions() const = 0;
   virtual std::vector<TrackIndex> GetAllVoices() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
-  virtual muse::async::Notification AboutToJumpPosition() const = 0;
+  virtual muse::async::Channel<int /*tick*/> AboutToJumpPosition() const = 0;
+  virtual void GoToTick(int tick) = 0;
+  virtual void GoToPrevNoteonTick() = 0;
+  virtual void GoToNextNoteonTick() = 0;
+
+  //! Returns the next batch of input events to play, with a delta tick count
+  //! relative to the previous call (0 at the start of the score). Returns
+  //! std::nullopt when there is nothing left to play.
+  virtual std::optional<NextAutoPlayEvents> WhatToPlayNext() = 0;
 };
 
 using IOrchestrionSequencerPtr = std::shared_ptr<IOrchestrionSequencer>;

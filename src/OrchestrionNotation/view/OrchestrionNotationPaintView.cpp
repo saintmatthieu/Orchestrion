@@ -51,12 +51,12 @@ void OrchestrionNotationPaintView::subscribe(
       !transitions.empty())
     OnTransitions(transitions);
 
-  sequencer.AboutToJumpPosition().onNotify(this,
-                                           [this]
-                                           {
-                                             m_boxes.clear();
-                                             update();
-                                           });
+  sequencer.AboutToJumpPosition().onReceive(this,
+                                            [this](auto)
+                                            {
+                                              m_boxes.clear();
+                                              update();
+                                            });
 }
 
 void OrchestrionNotationPaintView::OnTransitions(
@@ -257,9 +257,10 @@ void OrchestrionNotationPaintView::initTouchpadMidiController()
         // Delete contacts that are no longer active:
         for (auto it = m_contacts.begin(); it != m_contacts.end();)
         {
-          if (std::find_if(
-                  contacts.begin(), contacts.end(), [&](const auto &entry)
-                  { return entry.uid == it->first; }) == contacts.end())
+          if (std::find_if(contacts.begin(), contacts.end(),
+                           [&](const auto &entry) {
+                             return entry.uid == it->first;
+                           }) == contacts.end())
             it = m_contacts.erase(it);
           else
             ++it;

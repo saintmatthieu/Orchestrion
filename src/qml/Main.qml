@@ -21,7 +21,6 @@ import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 
 import Muse.Ui 1.0
-import MuseScore.Playback 1.0
 import MuseScore.NotationScene 1.0
 import MuseScore.AppShell 1.0
 import Muse.Shortcuts 1.0
@@ -138,10 +137,6 @@ ApplicationWindow {
             }
         }
 
-        // PlaybackToolBar {
-        //     floating: false
-        // }
-
         NotationScrollAndZoomArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -155,9 +150,18 @@ ApplicationWindow {
                     y: 10
                     id: selectionPopup
                 }
+
                 MidiDeviceActivityPopup {
                     x: selectionPopup.x + selectionPopup.width + 10
                     y: selectionPopup.y
+                }
+
+                PlaybackButton {
+                    id: playbackRow
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.rightMargin: 8
+                    anchors.topMargin: 8
                 }
             }
         }

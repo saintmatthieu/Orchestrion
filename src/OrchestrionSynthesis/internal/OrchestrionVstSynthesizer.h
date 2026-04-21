@@ -46,6 +46,7 @@ private:
                   const int *pitches) override;
   void onPedal(bool on) override;
   void allNotesOff() override;
+  void doAllNotesOff() override;
 
   const int m_sampleRate;
   std::unique_ptr<muse::vst::VstAudioClient> m_vstAudioClient;

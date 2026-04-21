@@ -44,12 +44,15 @@ public:
   GetNextMatchingTick(NoteEventType,
                       const std::optional<dgk::Tick> &upperLimit) const;
 
+  std::optional<dgk::Tick> GetNextNoteonTick() const;
+  std::optional<dgk::Tick> GetPreviousNoteonTick() const;
+
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                                   int index);
   ChordTransitionType GetNextTransition(NoteEventType event,
                                         const Tick &cursorTick) const;
-  const IChord *GetFutureChord() const;
+  const IChord *GetFutureChord(unsigned offset = 0u) const;
   const IMelodySegment *GetPresentThing() const;
   std::optional<dgk::Tick> GetNextMatchingTickForNoteoff() const;
   std::optional<dgk::Tick>

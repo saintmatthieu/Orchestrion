@@ -40,6 +40,7 @@ private:
   void onNoteOffs(size_t numNoteoffs, const TrackIndex *channels,
                   const int *pitches) override;
   void onPedal(bool on) override;
+  void allNotesOff() override;
 
   static const auto numVelocitySteps = 9;
   std::array<std::shared_ptr<IOrchestrionSynthesizer>, numVelocitySteps>

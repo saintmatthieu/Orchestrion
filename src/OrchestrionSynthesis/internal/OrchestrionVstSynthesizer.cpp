@@ -57,11 +57,6 @@ Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int channel,
   }
   return event;
 }
-
-Steinberg::Vst::Event toSteinbergEvent(const PedalEvent &pedalEvent)
-{
-  return {};
-}
 } // namespace
 
 OrchestrionVstSynthesizer::OrchestrionVstSynthesizer(
@@ -126,4 +121,6 @@ void OrchestrionVstSynthesizer::allNotesOff()
 {
   m_vstAudioClient->allNotesOff();
 }
+
+void OrchestrionVstSynthesizer::doAllNotesOff() { allNotesOff(); }
 } // namespace dgk
