@@ -1,6 +1,7 @@
 ; How to run this installer script:
 ;   makensis installer.nsi
-;     - Auto-detects BUILD_CONFIG in this order: Release, RelWithDebInfo, Debug.
+;     - Auto-detects BUILD_INSTALL_DIR in this order:
+;       build\install, build\Release\install, build\RelWithDebInfo\install, build\Debug\install.
 ;   makensis /DBUILD_CONFIG=Release installer.nsi
 ;     - Uses build\Release\install.
 ;   makensis /DBUILD_INSTALL_DIR="build\Release\install" installer.nsi
@@ -21,7 +22,11 @@
 !endif
 
 !ifndef BUILD_INSTALL_DIR
+!if /FileExists "build\install\bin\Orchestrion.exe"
+!define BUILD_INSTALL_DIR "build\install"
+!else
 !define BUILD_INSTALL_DIR "build\${BUILD_CONFIG}\install"
+!endif
 !endif
 
 !if /FileExists "${BUILD_INSTALL_DIR}\bin\Orchestrion.exe"

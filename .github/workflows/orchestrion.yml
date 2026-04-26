@@ -81,7 +81,7 @@ jobs:
         run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
       - name: Build NSIS Installer
-        run: makensis /DQtInstallDir="${{env.QT_ROOT_DIR}}" installer.nsi
+        run: makensis /DBUILD_INSTALL_DIR="${{env.BUILD_DIR}}/install" installer.nsi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
