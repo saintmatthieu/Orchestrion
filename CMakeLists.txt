@@ -192,12 +192,15 @@ install(TARGETS Orchestrion
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .)
 
+# Ensure all required Qt runtime DLLs/plugins are deployed into the install tree.
+# This prevents runtime failures on CI artifacts when new Qt runtime modules are introduced.
 if (OS_IS_WIN)
-    install(FILES
-            ${QT_INSTALL_PLUGINS}/imageformats/qjpeg.dll
-            ${QT_INSTALL_PLUGINS}/imageformats/qsvg.dll
-            ${QT_INSTALL_PLUGINS}/imageformats/qico.dll
-            DESTINATION bin/imageformats)
+    qt_generate_deploy_app_script(
+        TARGET Orchestrion
+        OUTPUT_SCRIPT orchestrion_qt_deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT ${orchestrion_qt_deploy_script})
 endif()
 
 ### TRANSLATIONS ### Copied and adapted from MuseScore/share/locale/CMakeLists.txt
