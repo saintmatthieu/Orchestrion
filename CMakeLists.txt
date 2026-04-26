@@ -6,7 +6,7 @@ cmake_policy(SET CMP0079 NEW)
 project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
-find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick Widgets ShaderTools)
+find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -89,6 +89,8 @@ target_link_libraries(Orchestrion PRIVATE
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::QuickLayouts
     Qt6::Widgets
 
     vst3sdk::sdk
@@ -173,6 +175,7 @@ elseif (OS_IS_WIN)
     SET(Mscore_INSTALL_NAME "")
 endif()
 add_subdirectory(MuseScore/share/sound)
+add_subdirectory(MuseScore/share/instruments)
 
 add_subdirectory(DSPFilters/shared/DSPFilters)
 
@@ -195,7 +198,7 @@ install(TARGETS Orchestrion
 # Ensure all required Qt runtime DLLs/plugins are deployed into the install tree.
 # This prevents runtime failures on CI artifacts when new Qt runtime modules are introduced.
 if (OS_IS_WIN)
-    qt_generate_deploy_app_script(
+    qt_generate_deploy_qml_app_script(
         TARGET Orchestrion
         OUTPUT_SCRIPT orchestrion_qt_deploy_script
         NO_UNSUPPORTED_PLATFORM_ERROR
