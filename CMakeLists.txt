@@ -236,3 +236,6 @@ if (OS_IS_WIN)
         message(FATAL_ERROR "libsndfile is needed by fluidsynth to load soundfonts")
     endif()
 endif()
+
+# Must be last: include(CPack) needs to see every install() rule above.
+include(buildscripts/packaging/Windows/SetupWindowsPackaging.cmake)

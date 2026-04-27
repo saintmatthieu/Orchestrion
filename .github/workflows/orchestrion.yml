@@ -52,15 +52,6 @@ jobs:
       - name: Install Ninja
         run: choco install ninja -y
 
-      - name: Cache NSIS
-        uses: actions/cache@v4
-        with:
-          path: C:\Program Files (x86)\NSIS
-          key: ${{ runner.os }}-nsis
-
-      - name: Install NSIS
-        run: choco install nsis -y
-
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
@@ -77,17 +68,26 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
-      - name: Add NSIS to PATH
-        run: echo "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: Add WiX to PATH
+        shell: pwsh
+        run: |
+          # WiX 3 ships preinstalled on windows-latest runners.
+          $wixBin = "$env:WIX\bin"
+          if (-not (Test-Path $wixBin)) {
+            $wixBin = (Get-ChildItem "C:\Program Files (x86)\WiX Toolset *" -Directory | Select-Object -First 1).FullName + "\bin"
+          }
+          Write-Host "WiX bin: $wixBin"
+          "$wixBin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
-      - name: Build NSIS Installer
-        run: makensis /DBUILD_INSTALL_DIR="${{env.BUILD_DIR}}/install" installer.nsi
+      - name: Build MSI Installer
+        working-directory: ${{github.workspace}}/${{env.BUILD_DIR}}
+        run: cpack -G WIX -C ${{env.BUILD_TYPE}} -B "${{github.workspace}}/${{env.BUILD_DIR}}/package"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Orchestrion
-          path: "${{env.BUILD_DIR}}/Orchestrion installer for Windows.exe"
+          path: "${{env.BUILD_DIR}}/package/Orchestrion-*.msi"
 
       - name: Upload Debug Symbols
         uses: actions/upload-artifact@v4
