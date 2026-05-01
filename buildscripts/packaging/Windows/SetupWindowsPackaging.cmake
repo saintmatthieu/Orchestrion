@@ -1,62 +1,89 @@
-if (NOT WIN32)
+include(GetPlatformInfo)
+
+if(NOT OS_IS_WIN)
     return()
 endif()
 
-set(CPACK_PACKAGE_NAME "Orchestrion")
-set(CPACK_PACKAGE_VENDOR "saintmatthieu")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Play your scores with gesture controllers and external MIDI devices")
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/saintmatthieu/Orchestrion")
-set(CPACK_PACKAGE_CONTACT "saintmatthieu@mailbox.org")
+include(InstallRequiredSystemLibraries)
 
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
-set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
-set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_NAME ${MUSE_APP_NAME})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MuseScore is a full featured WYSIWYG score editor")
+set(CPACK_PACKAGE_VENDOR "MuseScore Limited")
+set(CPACK_PACKAGE_CONTACT "https://musescore.org")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://musescore.org")
 
-set(CPACK_PACKAGE_FILE_NAME "Orchestrion-${PROJECT_VERSION}")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "Orchestrion")
+set(CPACK_PACKAGE_VERSION_MAJOR "${MUSE_APP_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${MUSE_APP_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${MUSE_APP_VERSION_PATCH}")
+set(CPACK_PACKAGE_VERSION_BUILD "${CMAKE_BUILD_NUMBER}")
+set(CPACK_PACKAGE_VERSION "${MUSE_APP_VERSION_MAJOR}.${MUSE_APP_VERSION_MINOR}.${MUSE_APP_VERSION_PATCH}.${CPACK_PACKAGE_VERSION_BUILD}")
+message("CPACK_PACKAGE_VERSION: ${CPACK_PACKAGE_VERSION}")
 
-# Start menu shortcut: <exe-basename> <label>
-set(CPACK_PACKAGE_EXECUTABLES "Orchestrion" "Orchestrion")
-set(CPACK_CREATE_DESKTOP_LINKS "Orchestrion")
+set(git_date_string "")
 
+if(MUSE_APP_UNSTABLE)
+    find_program(GIT_EXECUTABLE git PATHS ENV PATH)
+
+    if(GIT_EXECUTABLE)
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" log -1 --date=short --format=%cd
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+            OUTPUT_VARIABLE git_date
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+
+    if(git_date)
+        string(REGEX REPLACE "-" "" git_date "${git_date}")
+        set(git_date_string "~git${git_date}")
+    endif()
+endif(MUSE_APP_UNSTABLE)
+
+set(CPACK_PACKAGE_FILE_NAME "${MUSE_APP_NAME}-${MUSE_APP_VERSION}${git_date_string}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${MUSE_APP_NAME_VERSION})
+
+set(MUSESCORE_EXECUTABLE_NAME ${MUSE_APP_NAME}${MUSE_APP_VERSION_MAJOR})
+set(CPACK_PACKAGE_EXECUTABLES "${MUSESCORE_EXECUTABLE_NAME}" "${MUSE_APP_TITLE_VERSION}") # exe name, label
+set(CPACK_CREATE_DESKTOP_LINKS "${MUSESCORE_EXECUTABLE_NAME}" "${MUSE_APP_TITLE_VERSION}") # exe name, label
+
+# Wix-specific options
 set(CPACK_GENERATOR "WIX")
 
-# Stable across releases. UpgradeCode in particular MUST NOT change once you ship,
-# or upgrades will install side-by-side instead of replacing the previous version.
-# Replace the placeholder once with a freshly generated GUID and commit it.
-# (PowerShell: [guid]::NewGuid() | clip)
-if (NOT CPACK_WIX_UPGRADE_GUID)
-    set(CPACK_WIX_UPGRADE_GUID "REPLACE-ME-WITH-A-FRESH-GUID-FOR-UPGRADE")
-endif()
-# "*" tells WiX to mint a new ProductCode per build, which is what major upgrades want.
-if (NOT CPACK_WIX_PRODUCT_GUID)
-    set(CPACK_WIX_PRODUCT_GUID "*")
+file(TO_CMAKE_PATH $ENV{PROGRAMFILES} PROGRAMFILES)
+set(CPACK_WIX_ROOT "${PROGRAMFILES}/WiX Toolset v3.11")
+
+# Use custom version of WIX.template.in
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer" ${CMAKE_MODULE_PATH})
+
+if(NOT CPACK_WIX_PRODUCT_GUID)
+    set(CPACK_WIX_PRODUCT_GUID "00000000-0000-0000-0000-000000000000")
 endif()
 
-set(_orchestrion_installer_dir "${CMAKE_CURRENT_LIST_DIR}/Installer")
+message(STATUS "[SetupWindowsPackaging.cmake] CPACK_WIX_PRODUCT_GUID: ${CPACK_WIX_PRODUCT_GUID}")
 
-set(CPACK_WIX_LICENSE_RTF "${_orchestrion_installer_dir}/LICENSE.rtf")
-set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/icons/music-box.ico")
-set(CPACK_WIX_PROGRAM_MENU_FOLDER "Orchestrion")
-set(CPACK_WIX_UI_REF "WixUI_InstallDir")
-
-# Optional: drop a 493x58 banner and a 493x312 background PNG next to LICENSE.rtf
-# to brand the wizard. Without them WiX uses the default Microsoft graphics.
-if (EXISTS "${_orchestrion_installer_dir}/installer_banner_wix.png")
-    set(CPACK_WIX_UI_BANNER "${_orchestrion_installer_dir}/installer_banner_wix.png")
-endif()
-if (EXISTS "${_orchestrion_installer_dir}/installer_background_wix.png")
-    set(CPACK_WIX_UI_DIALOG "${_orchestrion_installer_dir}/installer_background_wix.png")
+if(NOT CPACK_WIX_UPGRADE_GUID)
+    set(CPACK_WIX_UPGRADE_GUID "11111111-1111-1111-1111-111111111111")
 endif()
 
-# Custom template only adds the "Launch Orchestrion" checkbox to the finish page;
-# everything else is plain WixUI_InstallDir.
-set(CPACK_WIX_TEMPLATE "${_orchestrion_installer_dir}/WIX.template.in")
+message(STATUS "[SetupWindowsPackaging.cmake] CPACK_WIX_UPGRADE_GUID: ${CPACK_WIX_UPGRADE_GUID}")
+
+set(CPACK_WIX_LICENSE_RTF "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/LICENSE.rtf")
+set(CPACK_WIX_PRODUCT_ICON "${PROJECT_SOURCE_DIR}/share/icons/AppIcon/MS4_AppIcon.ico")
+set(CPACK_WIX_UI_BANNER "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/installer_banner_wix.png")
+set(CPACK_WIX_UI_DIALOG "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/installer_background_wix.png")
+set(CPACK_WIX_PROGRAM_MENU_FOLDER "${MUSE_APP_TITLE_VERSION}")
 set(CPACK_WIX_EXTENSIONS "WixUtilExtension")
 
+# Extra CPack variables
 list(APPEND CPACK_WIX_CANDLE_EXTRA_FLAGS
-    "-dORCHESTRION_EXECUTABLE_NAME=Orchestrion"
+    "-dMUSE_APP_TITLE_VERSION=${MUSE_APP_TITLE_VERSION}"
+    "-dMUSE_APP_TITLE=${MUSE_APP_TITLE}"
+    "-dMUSESCORE_EXECUTABLE_NAME=${MUSESCORE_EXECUTABLE_NAME}"
+    "-dMUSE_APP_RELEASE_CHANNEL=${MUSE_APP_RELEASE_CHANNEL}"
+    "-dCPACK_PACKAGE_VERSION_MAJOR=${CPACK_PACKAGE_VERSION_MAJOR}"
 )
+
+if (MUSE_APP_IS_PRERELEASE)
+    list(APPEND CPACK_WIX_CANDLE_EXTRA_FLAGS "-dMUSE_APP_IS_PRERELEASE=ON")
+endif()
 
 include(CPack)

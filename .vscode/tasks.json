@@ -11,6 +11,22 @@
 			"group": "build",
 			"problemMatcher": [],
 			"detail": "CMake template build task"
+		},
+		{
+			"label": "CMake: install",
+			"type": "shell",
+			"command": "cmake --build \"${workspaceFolder}/build/${command:cmake.buildType}\" --target install",
+			"problemMatcher": []
+		},
+		{
+			"label": "CPack: Build MSI installer",
+			"type": "shell",
+			"command": "cpack -G WIX -C ${command:cmake.buildType} -B \"${workspaceFolder}/build/${command:cmake.buildType}/package\"",
+			"options": {
+				"cwd": "${workspaceFolder}/build/${command:cmake.buildType}"
+			},
+			"dependsOn": "CMake: install",
+			"problemMatcher": []
 		}
 	]
 }
