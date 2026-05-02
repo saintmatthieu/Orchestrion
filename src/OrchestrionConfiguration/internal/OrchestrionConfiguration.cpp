@@ -32,10 +32,10 @@ void OrchestrionConfiguration::init()
 {
   const auto config = globalConfiguration();
   const auto directory = config->appDataPath().toStdString() + "wallpapers";
-  constexpr auto opacity = 0.8f;
+  constexpr auto opacity = 0.0f;
   const std::string path = ConfigurationUtils::GetPathToProcessedWallpaper(
       directory, config->userAppDataPath().toStdString(),
-      "32465347965_95e360edc6_o.jpg", opacity);
+      "orchestrion_parchment.jpg", opacity);
 
   notationConfiguration()->setBackgroundWallpaperPath(path);
   notationConfiguration()->setBackgroundUseColor(false);

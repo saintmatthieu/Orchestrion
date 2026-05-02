@@ -19,6 +19,7 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
+import QtQuick.Effects
 
 import Muse.Ui 1.0
 import Muse.UiComponents 1.0
@@ -52,9 +53,16 @@ Row {
             width: 36
             height: 36
             fillMode: Image.PreserveAspectFit
-            opacity: 0.7
+            opacity: 0.85
             mipmap: true
             rotation: modelData.flipped ? 180 : 0
+
+            // Tint the dark source icons to cream so they read against the mahogany backdrop.
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorization: 1.0
+                colorizationColor: "#F0E5C8"
+            }
 
             MouseArea {
                 id: mouseArea
