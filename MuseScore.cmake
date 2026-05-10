@@ -253,19 +253,5 @@ else()
 endif(MUSE_MODULE_UPDATE)
 # add_subdirectory(src)
 
-###########################################
-# Setup Packaging
-###########################################
-
-# Orchestrion handles its own Linux packaging via linuxdeploy in CI,
-# so we skip MuseScore's AppImage packaging setup.
-# if (OS_IS_LIN)
-#     include(SetupAppImagePackaging)
-# endif(OS_IS_LIN)
-
-if (OS_IS_WIN)
-    include(${CMAKE_CURRENT_LIST_DIR}/MuseScore/buildscripts/packaging/Windows/SetupWindowsPackaging.cmake)
-endif(OS_IS_WIN)
-
 set(PROJECT_SOURCE_DIR ${PREV_PROJECT_SOURCE_DIR})
 set(PREV_PROJECT_SOURCE_DIR "")
