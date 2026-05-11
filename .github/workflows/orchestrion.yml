@@ -155,7 +155,7 @@ jobs:
         run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
       - name: Run macdeployqt
-        run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app
+        run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app -qmldir=${{github.workspace}}/src -qmldir=${{github.workspace}}/MuseScore/src
 
       - name: Codesign executable
         # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
