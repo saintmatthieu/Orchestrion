@@ -84,6 +84,16 @@ if (OS_IS_LIN)
     )
 endif()
 
+if (OS_IS_WIN)
+    # Match the exe filename to MUSESCORE_EXECUTABLE_NAME used by the WiX installer,
+    # so the shortcut and "launch on finish" file references resolve correctly.
+    set_target_properties(Orchestrion PROPERTIES
+        OUTPUT_NAME "Orchestrion${MUSE_APP_VERSION_MAJOR}"
+    )
+    # Embed the application icon so shortcuts and the taskbar show it.
+    target_sources(Orchestrion PRIVATE src/App/app.rc)
+endif()
+
 target_link_libraries(Orchestrion PRIVATE
     Qt6::Core
     Qt6::Gui
