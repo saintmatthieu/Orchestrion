@@ -19,10 +19,11 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
-import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
 
 import Muse.Ui 1.0
 import Muse.UiComponents 1.0
+import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
 Row {
@@ -47,21 +48,25 @@ Row {
             { icon: "rewind-button", action: () => playbackModel.forwardStep(), tooltip: "Next (Right)", flipped: true }
         ]
 
-        Image {
+        Item {
             id: iconImage
-            source: "qrc:/icons/player/" + modelData.icon + ".png"
             width: 36
             height: 36
-            fillMode: Image.PreserveAspectFit
-            opacity: 0.85
-            mipmap: true
             rotation: modelData.flipped ? 180 : 0
 
-            // Tint the dark source icons to cream so they read against the mahogany backdrop.
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: "#F0E5C8"
+            Image {
+                id: iconSource
+                anchors.fill: parent
+                source: "qrc:/icons/player/" + modelData.icon + ".png"
+                fillMode: Image.PreserveAspectFit
+                mipmap: true
+                visible: false
+            }
+
+            ColorOverlay {
+                anchors.fill: iconSource
+                source: iconSource
+                color: Theme.accent
             }
 
             MouseArea {

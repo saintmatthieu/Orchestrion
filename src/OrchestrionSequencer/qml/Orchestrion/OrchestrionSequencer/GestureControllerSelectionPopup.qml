@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
+import Orchestrion 1.0
 import Orchestrion.OrchestrionSequencer 1.0
 
 Item {
@@ -17,18 +18,18 @@ Item {
 
         Button {
             id: button
-            text: "Controllers"
+            text: qsTr("Controllers")
 
             // Cream-on-transparent styling, matching the rest of the toolbar over the mahogany backdrop.
             background: Rectangle {
                 color: button.hovered ? Qt.rgba(0.94, 0.90, 0.78, 0.18) : "transparent"
-                border.color: "#F0E5C8"
-                border.width: 1
+                border.color: Theme.accent
+                border.width: 2
                 radius: 4
             }
             contentItem: Text {
                 text: button.text
-                color: "#F0E5C8"
+                color: Theme.accent
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 leftPadding: 8
@@ -76,17 +77,22 @@ Item {
         Repeater {
             id: repeater
             model: selectionModel.selectedControllersInfo
-            delegate: Image {
+            delegate: Item {
                 visible: !toolTip.visible
-                source: modelData.icon
                 width: button.height
                 height: button.height
-                opacity: modelData.isWorking ? 0.85 : 0.25
+                opacity: modelData.isWorking ? 1 : 0.25
 
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    colorization: 1.0
-                    colorizationColor: "#F0E5C8"
+                Image {
+                    id: iconSource
+                    anchors.fill: parent
+                    source: modelData.icon
+                    visible: false
+                }
+                ColorOverlay {
+                    anchors.fill: iconSource
+                    source: iconSource
+                    color: Theme.accent
                 }
             }
         }

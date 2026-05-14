@@ -155,12 +155,19 @@ if (OS_IS_LIN)
     target_link_libraries(vst_sdk_3 PRIVATE sdk_common)
 endif()
 
-# Add QML files to the project (for IDEs and resource system)
+# Add QML files to the project (for IDEs and resource system).
+# Mark Theme.qml as a singleton BEFORE qt_add_qml_module consumes it —
+# qt_add_qml_module reads QT_QML_SINGLETON_TYPE at registration time.
+set_source_files_properties(src/qml/Theme.qml PROPERTIES
+    QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(Orchestrion
     URI Orchestrion
     VERSION 1.0
     QML_FILES "src/qml/Main.qml"
     QML_FILES "src/qml/PlaybackButton.qml"
+    QML_FILES "src/qml/Theme.qml"
 )
 
 qt_add_resources(RESOURCES resources.qrc)
