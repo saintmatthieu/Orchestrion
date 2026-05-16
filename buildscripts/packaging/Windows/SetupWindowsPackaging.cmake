@@ -107,6 +107,17 @@ message(STATUS "[SetupWindowsPackaging.cmake] CPACK_WIX_UPGRADE_GUID: ${CPACK_WI
 
 set(CPACK_WIX_LICENSE_RTF "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/LICENSE.rtf")
 set(CPACK_WIX_PRODUCT_ICON "${PROJECT_SOURCE_DIR}/icons/music-box.ico")
+
+# Installer UI language. Defaults to en-US for the existing single-MSI flow.
+# When CI builds per-language MSIs it overrides CPACK_WIX_CULTURES (and
+# CPACK_WIX_LICENSE_RTF) via `cpack -D`. The matching strings_<culture>.wxl
+# supplies localized strings referenced from WIX.template.in as !(loc.Id).
+if(NOT CPACK_WIX_CULTURES)
+    set(CPACK_WIX_CULTURES "en-US")
+endif()
+list(APPEND CPACK_WIX_LIGHT_EXTRA_FLAGS
+    "-loc" "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/strings_${CPACK_WIX_CULTURES}.wxl"
+)
 set(CPACK_WIX_UI_BANNER "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/installer_banner_wix.png")
 set(CPACK_WIX_UI_DIALOG "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/installer_background_wix.png")
 set(CPACK_WIX_PROGRAM_MENU_FOLDER "${MUSE_APP_TITLE_VERSION}")
