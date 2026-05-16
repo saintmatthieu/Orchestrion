@@ -84,6 +84,16 @@ if (OS_IS_LIN)
     )
 endif()
 
+if (OS_IS_WIN)
+    # Match the exe filename to MUSESCORE_EXECUTABLE_NAME used by the WiX installer,
+    # so the shortcut and "launch on finish" file references resolve correctly.
+    set_target_properties(Orchestrion PROPERTIES
+        OUTPUT_NAME "Orchestrion${MUSE_APP_VERSION_MAJOR}"
+    )
+    # Embed the application icon so shortcuts and the taskbar show it.
+    target_sources(Orchestrion PRIVATE src/App/app.rc)
+endif()
+
 target_link_libraries(Orchestrion PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -145,12 +155,19 @@ if (OS_IS_LIN)
     target_link_libraries(vst_sdk_3 PRIVATE sdk_common)
 endif()
 
-# Add QML files to the project (for IDEs and resource system)
+# Add QML files to the project (for IDEs and resource system).
+# Mark Theme.qml as a singleton BEFORE qt_add_qml_module consumes it —
+# qt_add_qml_module reads QT_QML_SINGLETON_TYPE at registration time.
+set_source_files_properties(src/qml/Theme.qml PROPERTIES
+    QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(Orchestrion
     URI Orchestrion
     VERSION 1.0
     QML_FILES "src/qml/Main.qml"
     QML_FILES "src/qml/PlaybackButton.qml"
+    QML_FILES "src/qml/Theme.qml"
 )
 
 qt_add_resources(RESOURCES resources.qrc)
@@ -179,17 +196,18 @@ add_subdirectory(MuseScore/share/instruments)
 
 add_subdirectory(DSPFilters/shared/DSPFilters)
 
+# Keep these RELATIVE — CPack rejects absolute install DESTINATIONs because
+# they'd escape the package staging directory.
 if (OS_IS_MAC)
     set(resource_install_dir "Orchestrion.app/Contents/Resources")
 elseif (OS_IS_LIN)
-    set(resource_install_dir "${CMAKE_INSTALL_PREFIX}/share")
+    set(resource_install_dir "share")
 elseif (OS_IS_WIN)
-    set(resource_install_dir ${CMAKE_INSTALL_PREFIX})
+    set(resource_install_dir ".")
 endif()
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resource_install_dir}/wallpapers)
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"               DESTINATION ${resource_install_dir})
-install(DIRECTORY ${QT_INSTALL_QML}                         DESTINATION ${resource_install_dir})
 
 install(TARGETS Orchestrion
         RUNTIME DESTINATION bin
@@ -198,10 +216,18 @@ install(TARGETS Orchestrion
 # Ensure all required Qt runtime DLLs/plugins are deployed into the install tree.
 # This prevents runtime failures on CI artifacts when new Qt runtime modules are introduced.
 if (OS_IS_WIN)
+    # NO_COMPILER_RUNTIME: skip vc_redist.x64.exe — InstallRequiredSystemLibraries
+    #   (included from SetupWindowsPackaging.cmake) already deploys the individual
+    #   msvcp140/vcruntime140/concrt140 DLLs into bin/.
+    # --no-opengl-sw: skip the 20 MB software OpenGL fallback. We rely on
+    #   hardware OpenGL / ANGLE; add back if users hit blank windows on machines
+    #   without a usable GPU driver.
     qt_generate_deploy_qml_app_script(
         TARGET Orchestrion
         OUTPUT_SCRIPT orchestrion_qt_deploy_script
         NO_UNSUPPORTED_PLATFORM_ERROR
+        NO_COMPILER_RUNTIME
+        DEPLOY_TOOL_OPTIONS "--no-opengl-sw"
     )
     install(SCRIPT ${orchestrion_qt_deploy_script})
 endif()
@@ -236,3 +262,11 @@ if (OS_IS_WIN)
         message(FATAL_ERROR "libsndfile is needed by fluidsynth to load soundfonts")
     endif()
 endif()
+
+# Added last so its cmake_install.cmake is included after every other
+# subdirectory's — only then can we strip vendored dev artifacts that those
+# subdirectories installed.
+add_subdirectory(buildscripts/packaging/Windows/post-install-cleanup)
+
+# Must be last: include(CPack) needs to see every install() rule above.
+include(buildscripts/packaging/Windows/SetupWindowsPackaging.cmake)

@@ -51,7 +51,7 @@
       "name": "Launch (Windows)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/Debug/install/bin/Orchestrion.exe",
+      "program": "${workspaceFolder}/build/Release/install/bin/Orchestrion.exe",
       // path to executable PDB file, in case a Github build must be debugged locally.
       // "symbolSearchPath": "...",
       "preLaunchTask": "CMake: install",
