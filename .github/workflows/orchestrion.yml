@@ -86,9 +86,22 @@ jobs:
           Write-Host "WiX bin: $wixBin"
           "$wixBin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
-      - name: Build MSI Installer
+      - name: Build MSI Installers
         working-directory: ${{github.workspace}}/${{env.BUILD_DIR}}
-        run: cpack -G WIX -C ${{env.BUILD_TYPE}} -B "${{github.workspace}}/${{env.BUILD_DIR}}/package"
+        shell: pwsh
+        run: |
+          $outDir = "${{github.workspace}}/${{env.BUILD_DIR}}/package"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          foreach ($lang in @('en-US','fr-FR','de-DE')) {
+            $stage = "${{github.workspace}}/${{env.BUILD_DIR}}/package-$lang"
+            cpack -G WIX -C $env:BUILD_TYPE -B $stage -D "CPACK_WIX_CULTURES=$lang"
+            if ($LASTEXITCODE -ne 0) { throw "cpack failed for $lang" }
+            $msi = Get-ChildItem "$stage/Orchestrion-*.msi" | Select-Object -First 1
+            if (-not $msi) { throw "No MSI produced for $lang" }
+            $target = Join-Path $outDir "$($msi.BaseName)-$lang$($msi.Extension)"
+            Move-Item -Force $msi.FullName $target
+            Write-Host "Produced $target"
+          }
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
