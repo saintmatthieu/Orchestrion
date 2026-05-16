@@ -2,7 +2,9 @@
 Version=1.0
 Type=Application
 Name=Orchestrion
-Comment=Music Composition & Notation
+Comment=Music practice and performance
+Comment[fr]=Pratique et performance musicale
+Comment[de]=Musizieren und musikalische Darstellung
 Exec=Orchestrion
 Icon=orchestrion
 Terminal=false
