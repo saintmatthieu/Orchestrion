@@ -7,6 +7,13 @@ on:
   pull_request:
     branches: [master]
 
+# When pushing a commit and a tag pointing at it together (i.e. cutting a
+# release), the branch and tag events would otherwise spawn two identical
+# builds. Group by SHA so the second run cancels the first.
+concurrency:
+  group: orchestrion-${{ github.sha }}
+  cancel-in-progress: true
+
 env:
   BUILD_TYPE: Release
   BUILD_DIR: build
