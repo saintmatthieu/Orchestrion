@@ -17,6 +17,9 @@ concurrency:
 env:
   BUILD_TYPE: Release
   BUILD_DIR: build
+  # User-facing version used in artifact filenames. Tag-triggered runs use
+  # the tag (e.g. v0.0.7); everything else gets a per-run dev marker.
+  RELEASE_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('dev-{0}', github.run_number) }}
 
 jobs:
   build_win:
@@ -98,7 +101,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "cpack failed for $lang" }
             $msi = Get-ChildItem "$stage/Orchestrion-*.msi" | Select-Object -First 1
             if (-not $msi) { throw "No MSI produced for $lang" }
-            $target = Join-Path $outDir "$($msi.BaseName)-$lang$($msi.Extension)"
+            $target = Join-Path $outDir "Orchestrion-${env:RELEASE_VERSION}-Windows-$lang.msi"
             Move-Item -Force $msi.FullName $target
             Write-Host "Produced $target"
           }
@@ -197,19 +200,19 @@ jobs:
         run: brew install create-dmg
 
       - name: Create DMG
-        run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" ${{env.BUILD_DIR}}/Orchestrion.app
+        run: create-dmg --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-macOS.dmg" ${{env.BUILD_DIR}}/Orchestrion.app
 
       - name: Notarize
         if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
         run: |
-          xcrun notarytool submit "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg" --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
-          xcrun stapler staple "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
+          xcrun notarytool submit "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-macOS.dmg" --apple-id saintmatthieu@mailbox.org --team-id 7JHUJWK5GF --password ${{secrets.ORCHESTRION_SPECIFIC_PWD}} --wait
+          xcrun stapler staple "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-macOS.dmg"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Orchestrion Mac
-          path: "${{env.BUILD_DIR}}/Orchestrion installer for Mac.dmg"
+          path: "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-macOS.dmg"
 
   build_linux:
     runs-on: ubuntu-22.04
@@ -316,14 +319,15 @@ jobs:
             exit 1
           fi
           echo "Found AppImage: $APPIMAGE_FILE"
-          mv "$APPIMAGE_FILE" "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
-          echo "AppImage created successfully: ${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+          OUTPUT="${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-Linux-x86_64.AppImage"
+          mv "$APPIMAGE_FILE" "$OUTPUT"
+          echo "AppImage created successfully: $OUTPUT"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Orchestrion Linux
-          path: "${{env.BUILD_DIR}}/Orchestrion-x86_64.AppImage"
+          path: "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-Linux-x86_64.AppImage"
 
   release:
     needs: [build_win, build_mac, build_linux]
