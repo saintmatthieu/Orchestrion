@@ -99,7 +99,9 @@ void OrchestrionNotationPaintView::OnTransitions(
     box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
     box.active = present != nullptr;
     box.opacity = box.active ? 0.9 : 0.4;
-    box.pen = QPen{Qt::darkCyan, 10, box.active ? Qt::SolidLine : Qt::DotLine};
+    constexpr auto mahogany = "#3D1F1A";
+    box.pen =
+        QPen{QColor(mahogany), 10, box.active ? Qt::SolidLine : Qt::DotLine};
   }
 }
 
