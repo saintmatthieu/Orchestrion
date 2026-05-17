@@ -333,12 +333,6 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
 
   const auto radius = 30. / currentScaling();
 
-  // Draw a rectangle of the viewport with a vertical line in its middle:
-  painter->setPen(Qt::black);
-  painter->drawRect(view.toQRectF());
-  painter->drawLine(view.left() + view.width() / 2, view.top(),
-                    view.left() + view.width() / 2, view.bottom());
-
   painter->setPen(Qt::NoPen);
   painter->setOpacity(0.1);
 
