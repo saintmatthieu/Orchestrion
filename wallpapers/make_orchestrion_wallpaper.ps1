@@ -51,38 +51,42 @@ for ($y = 0; $y -lt $H; $y++) {
     $rowPen.Dispose()
 }
 
-# --- Gold ornament near the bottom: thin centered rule with a small diamond accent ---
-# Positioned ~85% down, well inside the lower mahogany band.
-$ornY    = [int]($H * 0.85)
+# --- Gold ornaments: thin centered rule with a small diamond accent, mirrored top/bottom ---
 $ornW    = [int]($W * 0.32)
 $ornX1   = [int](($W - $ornW) / 2)
 $ornX2   = $ornX1 + $ornW
 $ornXMid = [int](($ornX1 + $ornX2) / 2)
 $gap     = 18
+$dHalf   = 6
 
-# Two short rules with a centered diamond between them
-$rulePen = New-Object System.Drawing.Pen $gold, 1.4
-$g.DrawLine($rulePen, $ornX1, $ornY, ($ornXMid - $gap), $ornY)
-$g.DrawLine($rulePen, ($ornXMid + $gap), $ornY, $ornX2, $ornY)
-$rulePen.Dispose()
+function Draw-Ornament($ornY) {
+    # Two short rules with a centered diamond between them
+    $rulePen = New-Object System.Drawing.Pen $gold, 1.4
+    $g.DrawLine($rulePen, $ornX1, $ornY, ($ornXMid - $gap), $ornY)
+    $g.DrawLine($rulePen, ($ornXMid + $gap), $ornY, $ornX2, $ornY)
+    $rulePen.Dispose()
 
-# Tiny diamond in the middle (rotated square, 8 px half-diagonal)
-$dHalf  = 6
-$diamondPts = @(
-    (New-Object System.Drawing.Point $ornXMid, ($ornY - $dHalf)),
-    (New-Object System.Drawing.Point ($ornXMid + $dHalf), $ornY),
-    (New-Object System.Drawing.Point $ornXMid, ($ornY + $dHalf)),
-    (New-Object System.Drawing.Point ($ornXMid - $dHalf), $ornY)
-)
-$goldBrush = New-Object System.Drawing.SolidBrush $gold
-$g.FillPolygon($goldBrush, $diamondPts)
-$goldBrush.Dispose()
+    # Tiny diamond in the middle (rotated square)
+    $diamondPts = @(
+        (New-Object System.Drawing.Point $ornXMid, ($ornY - $dHalf)),
+        (New-Object System.Drawing.Point ($ornXMid + $dHalf), $ornY),
+        (New-Object System.Drawing.Point $ornXMid, ($ornY + $dHalf)),
+        (New-Object System.Drawing.Point ($ornXMid - $dHalf), $ornY)
+    )
+    $goldBrush = New-Object System.Drawing.SolidBrush $gold
+    $g.FillPolygon($goldBrush, $diamondPts)
+    $goldBrush.Dispose()
 
-# Soft outer halo on the rule for a subtle glow (low alpha, slightly thicker, drawn under by re-stroking after — order doesn't matter at this alpha)
-$haloPen = New-Object System.Drawing.Pen $goldSoft, 3.5
-$g.DrawLine($haloPen, $ornX1, $ornY, ($ornXMid - $gap), $ornY)
-$g.DrawLine($haloPen, ($ornXMid + $gap), $ornY, $ornX2, $ornY)
-$haloPen.Dispose()
+    # Soft outer halo on the rule for a subtle glow
+    $haloPen = New-Object System.Drawing.Pen $goldSoft, 3.5
+    $g.DrawLine($haloPen, $ornX1, $ornY, ($ornXMid - $gap), $ornY)
+    $g.DrawLine($haloPen, ($ornXMid + $gap), $ornY, $ornX2, $ornY)
+    $haloPen.Dispose()
+}
+
+# Mirrored about the vertical center (15% and 85% of H).
+Draw-Ornament ([int]($H * 0.15))
+Draw-Ornament ([int]($H * 0.85))
 
 # --- Save as JPG ---
 $out = Join-Path $PSScriptRoot "orchestrion_parchment.jpg"
