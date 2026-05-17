@@ -38,12 +38,6 @@ jobs:
       - name: Pull LFS files
         run: git lfs pull
 
-      - name: Cache Qt
-        uses: actions/cache@v4
-        with:
-          path: C:\Qt
-          key: ${{ runner.os }}-qt
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -54,23 +48,25 @@ jobs:
           modules: qtnetworkauth qt5compat qtscxml qtshadertools
           cache: true
 
-      - name: Cache Ninja
-        uses: actions/cache@v4
-        with:
-          path: C:\ProgramData\chocolatey\bin\ninja.exe
-          key: ${{ runner.os }}-ninja
-
       - name: Install Ninja
         run: choco install ninja -y
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          variant: sccache
+          key: ${{ runner.os }}-sccache
+
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/build -G Ninja
           -DCMAKE_C_COMPILER=cl
           -DCMAKE_CXX_COMPILER=cl
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
           -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
@@ -153,12 +149,6 @@ jobs:
       - name: Pull LFS files
         run: git lfs pull
 
-      - name: Cache Qt
-        uses: actions/cache@v4
-        with:
-          path: "/usr/local/Qt"
-          key: ${{ runner.os }}-qt
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -168,23 +158,19 @@ jobs:
           modules: qtnetworkauth qt5compat qtscxml qtshadertools
           cache: true
 
-      - name: Cache Ninja
-        uses: actions/cache@v4
-        with:
-          path: "/usr/local/bin/ninja"
-          key: ${{ runner.os }}-ninja
-
       - name: Install Ninja
         run: brew install ninja
 
-      - name: Setup macOS
-        run: |
-          export PATH="/usr/local/opt/qt/bin:$PATH"
-          export PATH="/usr/local/opt/ninja/bin:$PATH"
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-ccache
 
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/build -G Ninja
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
           -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
@@ -276,12 +262,6 @@ jobs:
             fuse \
             file
 
-      - name: Cache Qt
-        uses: actions/cache@v4
-        with:
-          path: /opt/Qt
-          key: ${{ runner.os }}-qt-6.9.1-linux_gcc_64
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -292,9 +272,16 @@ jobs:
           modules: qtnetworkauth qt5compat qtscxml qtshadertools
           cache: true
 
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-ccache
+
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/${{env.BUILD_DIR}} -G Ninja
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
           -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
