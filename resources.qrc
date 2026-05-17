@@ -2,6 +2,7 @@
   <qresource prefix="/">
     <file>src/qml/Main.qml</file>
     <file>src/qml/OrchestrionIcon.qml</file>
+    <file>src/qml/FullscreenButton.qml</file>
     <file>src/qml/PlaybackButton.qml</file>
     <file>icons/music-box.ico</file>
     <file>icons/music-box.png</file>
@@ -10,5 +11,6 @@
     <file>icons/player/play.png</file>
     <file>icons/player/pause-button.png</file>
     <file>icons/player/stop-sign.png</file>
+    <file>icons/player/fullscreen.svg</file>
   </qresource>
 </RCC>

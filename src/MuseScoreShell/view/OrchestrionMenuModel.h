@@ -78,6 +78,7 @@ private:
 
   muse::uicomponents::MenuItem *makeFileMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeExampleScoresSubmenu();
+  muse::uicomponents::MenuItem *makeViewMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);

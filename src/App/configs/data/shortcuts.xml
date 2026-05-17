@@ -45,4 +45,9 @@
     <seq>Ctrl+L</seq>
     <autorepeat>0</autorepeat>
   </SC>
+  <SC>
+    <key>view-toggle-fullscreen</key>
+    <seq>F11</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
 </Shortcuts>

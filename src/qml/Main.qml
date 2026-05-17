@@ -46,6 +46,7 @@ ApplicationWindow {
     // provide a rectangle for the title bar to move the window
     Rectangle {
         id: titleMoveArea
+        visible: root.visibility !== Window.FullScreen
         width: parent.width
         height: 32
 
@@ -101,9 +102,10 @@ ApplicationWindow {
 
             id: titleBar
 
+            visible: root.visibility !== Window.FullScreen
             spacing: 0
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
+            Layout.preferredHeight: visible ? 30 : 0
 
             OrchestrionIcon {
                 id: orchestrionIcon
@@ -173,15 +175,24 @@ ApplicationWindow {
                     y: selectionPopup.y
                 }
 
-                PlaybackButton {
-                    id: playbackRow
+                Row {
+                    id: topRightControls
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.rightMargin: 8
                     anchors.topMargin: 8
+                    spacing: 16
                     visible: opacity > 0
                     opacity: notationPaintView.controlsVisible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    PlaybackButton {
+                        id: playbackRow
+                    }
+
+                    FullscreenButton {
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
             }
         }

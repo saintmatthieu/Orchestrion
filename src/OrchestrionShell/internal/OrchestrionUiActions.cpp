@@ -43,6 +43,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-recording",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction("view-toggle-fullscreen", mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
       muse::ui::UiAction("prev", mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("next", mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("rewind", mu::context::UiCtxAny,

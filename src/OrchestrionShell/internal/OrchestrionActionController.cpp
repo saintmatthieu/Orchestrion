@@ -56,6 +56,18 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
 
+  dispatcher()->reg(this, "view-toggle-fullscreen",
+                    [this]
+                    {
+                      QWindow *w = mainWindow()->qWindow();
+                      if (!w)
+                        return;
+                      if (w->visibility() == QWindow::FullScreen)
+                        w->showMaximized();
+                      else
+                        w->showFullScreen();
+                    });
+
   dispatcher()->reg(this, "prev",
                     [this]
                     {
