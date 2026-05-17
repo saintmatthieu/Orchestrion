@@ -47,6 +47,9 @@ public:
 
   Q_INVOKABLE void loadOrchestrionNotation();
 
+signals:
+  void mouseActivity();
+
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
   void onMatrixChanged(const muse::draw::Transform &oldMatrix,
@@ -87,5 +90,6 @@ private:
 
   std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
+  QPoint m_lastCursorPos{-1, -1};
 };
 } // namespace dgk

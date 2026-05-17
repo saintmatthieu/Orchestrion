@@ -145,10 +145,27 @@ ApplicationWindow {
                 id: notationPaintView
                 anchors.fill: parent
 
+                property bool controlsVisible: false
+
+                onMouseActivity: {
+                    notationPaintView.controlsVisible = true
+                    hideControlsTimer.restart()
+                }
+
+                Timer {
+                    id: hideControlsTimer
+                    interval: 2000
+                    repeat: false
+                    onTriggered: notationPaintView.controlsVisible = false
+                }
+
                 GestureControllerSelectionPopup {
                     x: 10
                     y: 10
                     id: selectionPopup
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
                 MidiDeviceActivityPopup {
@@ -162,6 +179,9 @@ ApplicationWindow {
                     anchors.top: parent.top
                     anchors.rightMargin: 8
                     anchors.topMargin: 8
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
             }
         }

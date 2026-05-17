@@ -155,6 +155,37 @@ void OrchestrionNotationPaintView::onLoadNotation(
 
 bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 {
+  const auto type = event->type();
+  if (type == QEvent::HoverMove || type == QEvent::MouseMove ||
+      type == QEvent::MouseButtonPress)
+  {
+    bool inScope = false;
+    for (QObject *o = watched; o; o = o->parent())
+      if (o == this)
+      {
+        inScope = true;
+        break;
+      }
+
+    if (inScope)
+    {
+      // Gate on real cursor movement: Qt synthesises hover events as the
+      // scene graph updates (e.g. when a child runs an infinite opacity
+      // animation), and those carry the unchanged cursor position.
+      if (type == QEvent::MouseButtonPress)
+        emit mouseActivity();
+      else
+      {
+        const QPoint pos = QCursor::pos();
+        if (pos != m_lastCursorPos)
+        {
+          m_lastCursorPos = pos;
+          emit mouseActivity();
+        }
+      }
+    }
+  }
+
   if (watched == this)
   {
     if (event->type() == QEvent::MouseButtonPress)
