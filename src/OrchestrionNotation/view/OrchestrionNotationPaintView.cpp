@@ -284,12 +284,20 @@ void OrchestrionNotationPaintView::initTouchpadMidiController()
       });
 }
 
+void OrchestrionNotationPaintView::onMatrixChanged(
+    const muse::draw::Transform &oldMatrix,
+    const muse::draw::Transform &newMatrix, bool overrideZoomType)
+{
+  NotationPaintView::onMatrixChanged(oldMatrix, newMatrix, overrideZoomType);
+  constrainScorePosition();
+}
+
 void OrchestrionNotationPaintView::updateNotation()
 {
   if (globalContext()->currentNotation())
   {
     setViewMode(mu::notation::ViewMode::LINE);
-    alignVertically();
+    constrainScorePosition();
   }
   m_boxes.clear();
   update();
@@ -304,12 +312,31 @@ void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
   notation->painting()->setViewMode(mode);
 }
 
-void OrchestrionNotationPaintView::alignVertically()
+void OrchestrionNotationPaintView::constrainScorePosition()
 {
-  const auto canvasRect = fromLogical(notationContentRect());
-  const auto y = (height() - canvasRect.height()) / 2.;
-  // Don't know why we need to negate.
-  moveCanvasToPosition(toLogical(muse::PointF{-y, -y}));
+  const auto content = notationContentRect(); // logical
+  const auto scaling = currentScaling();
+  const auto emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
+  const auto topLogicalY = content.top() - emptyAbovePhysical / scaling;
+
+  // two horizontal rules:
+  // 1. not more than 100 empty pixels left or right
+  // 2. if the score is narrower than the view, it stays centered
+  constexpr double maxEmptyPhysical = 100.;
+  const auto contentWidthPhysical = content.width() * scaling;
+  double leftLogicalX;
+  if (contentWidthPhysical < width())
+    leftLogicalX =
+        content.left() - (width() - contentWidthPhysical) / (2 * scaling);
+  else
+  {
+    const auto minLeft = content.left() - maxEmptyPhysical / scaling;
+    const auto maxLeft =
+        content.right() + maxEmptyPhysical / scaling - width() / scaling;
+    leftLogicalX = std::clamp(viewport().left(), minLeft, maxLeft);
+  }
+
+  moveCanvasToPosition(muse::PointF{leftLogicalX, topLogicalY});
 }
 
 void OrchestrionNotationPaintView::paint(QPainter *painter)

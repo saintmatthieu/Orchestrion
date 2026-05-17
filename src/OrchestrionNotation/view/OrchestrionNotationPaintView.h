@@ -49,8 +49,12 @@ public:
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
-  void subscribe(const IOrchestrionSequencer &sequencer, const IModifiableItemRegistry &registry);
-  void alignVertically();
+  void onMatrixChanged(const muse::draw::Transform &oldMatrix,
+                       const muse::draw::Transform &newMatrix,
+                       bool overrideZoomType = true) override;
+  void subscribe(const IOrchestrionSequencer &sequencer,
+                 const IModifiableItemRegistry &registry);
+  void constrainScorePosition();
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
@@ -82,5 +86,6 @@ private:
   };
 
   std::unordered_map<int, Contact> m_contacts;
+  bool m_constrainingScorePosition = false;
 };
 } // namespace dgk
