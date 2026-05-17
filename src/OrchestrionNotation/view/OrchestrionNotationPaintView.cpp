@@ -325,9 +325,16 @@ void OrchestrionNotationPaintView::onMatrixChanged(
 
 void OrchestrionNotationPaintView::updateNotation()
 {
-  if (globalContext()->currentNotation())
+  if (const auto notation = globalContext()->currentNotation())
   {
     setViewMode(mu::notation::ViewMode::LINE);
+    auto config = notation->interaction()->scoreConfig();
+    config.isShowInvisibleElements = false;
+    config.isShowUnprintableElements = false;
+    config.isShowFrames = false;
+    config.isShowPageMargins = false;
+    config.isShowSoundFlags = false;
+    notation->interaction()->setScoreConfig(config);
     constrainScorePosition();
   }
   m_boxes.clear();
