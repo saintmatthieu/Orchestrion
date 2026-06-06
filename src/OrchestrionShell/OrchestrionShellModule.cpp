@@ -23,6 +23,7 @@
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
+#include "internal/SleepInhibitor.h"
 #include "internal/SynthesizerMenuManager.h"
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
@@ -46,7 +47,8 @@ OrchestrionShellModule::OrchestrionShellModule()
       m_orchestrionActionController{
           std::make_shared<OrchestrionActionController>()},
       m_orchestrionStartupScenario{
-          std::make_shared<OrchestrionStartupScenario>()}
+          std::make_shared<OrchestrionStartupScenario>()},
+      m_sleepInhibitor{std::make_shared<SleepInhibitor>()}
 {
 }
 
@@ -96,6 +98,7 @@ void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
   m_orchestrionActionController->init();
   m_midiControllerMenuManager->init();
   m_orchestrionStartupScenario->init();
+  m_sleepInhibitor->init();
 }
 
 void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &) {}

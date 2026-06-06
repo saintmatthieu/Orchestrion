@@ -17,6 +17,8 @@ set(MODULE_SRC
   internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
+  internal/SleepInhibitor.cpp
+  internal/SleepInhibitor.h
   internal/SynthesizerMenuManager.cpp
   internal/SynthesizerMenuManager.h
   view/NotationPaintViewLoaderModel.cpp
@@ -35,5 +37,12 @@ set(MODULE_SRC
 set(MODULE_INCLUDE
   ${vst3sdk_SOURCE_DIR}
 )
+
+if (OS_IS_LIN)
+  find_package(Qt6 REQUIRED COMPONENTS DBus)
+  set(MODULE_LINK Qt6::DBus)
+elseif (OS_IS_MAC)
+  set(MODULE_LINK "-framework IOKit")
+endif()
 
 setup_module()
