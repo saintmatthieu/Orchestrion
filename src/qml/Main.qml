@@ -194,6 +194,13 @@ ApplicationWindow {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
+
+                // Beginner help: number-key tooltip + "Show me!" animation.
+                // Stays put (not tied to the fading controls overlay).
+                NumberKeysHelp {
+                    anchors.fill: parent
+                    z: 100
+                }
             }
         }
     }

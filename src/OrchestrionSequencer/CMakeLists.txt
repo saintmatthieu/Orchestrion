@@ -34,6 +34,8 @@ set(MODULE_SRC
     view/GestureControllerSelectionModel.h
     view/MidiDeviceActivityPopupModel.cpp
     view/MidiDeviceActivityPopupModel.h
+    view/NumberKeysHelpModel.cpp
+    view/NumberKeysHelpModel.h
 
     IChord.h
     IMelodySegment.h

@@ -33,5 +33,10 @@ public:
   virtual bool velocityRecordingEnabled() const = 0;
   virtual void setVelocityRecordingEnabled(bool) = 0;
   virtual muse::async::Notification velocityRecordingEnabledChanged() const = 0;
+
+  //! Whether the beginner "use your number keys" help has been dismissed.
+  //! Persisted so the tip auto-shows only until the user closes it.
+  virtual bool keyboardHelpDismissed() const = 0;
+  virtual void setKeyboardHelpDismissed(bool) = 0;
 };
 } // namespace dgk

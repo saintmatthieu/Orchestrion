@@ -248,6 +248,12 @@ OrchestrionSequencer::ChordTransitions() const
   return m_transitions.ch;
 }
 
+muse::async::Channel<AutoPlayEvent>
+OrchestrionSequencer::HandNoteEvents() const
+{
+  return m_handNoteEvent;
+}
+
 muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
 {
   return m_outputEvent;
@@ -371,6 +377,11 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                         if (doRewind)
                           GoToTick(0);
                       }};
+
+  // Notify which hand just played, for the beginner-help key animation. Reached
+  // only after the press/release bookkeeping confirmed a genuine event, so it
+  // fires exactly once per processed note-on/note-off.
+  m_handNoteEvent.send(AutoPlayEvent{type, isLeftHand});
 
   SendTransitions(transitions, std::move(velocity), isLeftHand);
 

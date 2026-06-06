@@ -27,6 +27,8 @@ namespace
 const std::string module_name("OrchestrionSequencer");
 const muse::Settings::Key
     VELOCITY_RECORDING_ENABLED(module_name, "VELOCITY_RECORDING_ENABLED");
+const muse::Settings::Key
+    KEYBOARD_HELP_DISMISSED(module_name, "KEYBOARD_HELP_DISMISSED");
 } // namespace
 
 void OrchestrionSequencerConfiguration::init()
@@ -37,6 +39,9 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(VELOCITY_RECORDING_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_velocityRecordingEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED,
+                                    muse::Val{false});
 }
 
 bool OrchestrionSequencerConfiguration::velocityRecordingEnabled() const
@@ -55,6 +60,17 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::velocityRecordingEnabledChanged() const
 {
   return m_velocityRecordingEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const
+{
+  return muse::settings()->value(KEYBOARD_HELP_DISMISSED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setKeyboardHelpDismissed(bool dismissed)
+{
+  muse::settings()->setSharedValue(KEYBOARD_HELP_DISMISSED,
+                                   muse::Val{dismissed});
 }
 
 } // namespace dgk

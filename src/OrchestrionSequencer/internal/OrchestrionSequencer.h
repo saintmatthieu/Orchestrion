@@ -67,6 +67,7 @@ public:
   std::vector<TrackIndex> GetAllVoices() const override;
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
+  muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
   muse::async::Channel<int> AboutToJumpPosition() const override;
   void GoToTick(int tick) override;
@@ -135,6 +136,7 @@ private:
   std::uniform_int_distribution<int> m_velocityDist{90, 110}; // percents
 
   muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
+  muse::async::Channel<AutoPlayEvent> m_handNoteEvent;
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/> m_aboutToJumpPosition;
   int m_autoPlayTick = 0;

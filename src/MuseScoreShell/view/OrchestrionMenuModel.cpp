@@ -56,7 +56,8 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   setItems({makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-            makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled)});
+            makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled),
+            makeHelpMenu()});
 }
 
 void OrchestrionMenuModel::load()
@@ -197,6 +198,16 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
       muse::TranslatableString("appshell/menu/view", "Toggle &fullscreen"))};
   return makeMenu(muse::TranslatableString("appshell/menu/view", "&View"), menu,
                   "menu-orchestrion-view");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeHelpMenu()
+{
+  QList<muse::uicomponents::MenuItem *> menu{makeMenuItem(
+      "orchestrion-help-number-keys",
+      muse::TranslatableString("appshell/menu/help",
+                               "How to play with the &keyboard"))};
+  return makeMenu(muse::TranslatableString("appshell/menu/help", "&Help"), menu,
+                  "menu-orchestrion-help");
 }
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeExampleScoresSubmenu()

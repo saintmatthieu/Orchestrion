@@ -51,6 +51,10 @@ public:
                             std::optional<float> velocity) = 0;
   virtual muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const = 0;
+  //! Fires once per processed hand note event (both manual and automatic play),
+  //! carrying the event type and which hand it belongs to. Used by the beginner
+  //! help animation to press the matching key.
+  virtual muse::async::Channel<AutoPlayEvent> HandNoteEvents() const = 0;
   virtual const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const = 0;
   virtual std::vector<TrackIndex> GetAllVoices() const = 0;
