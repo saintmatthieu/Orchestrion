@@ -30,6 +30,7 @@
 #include "view/NotationPaintViewLoaderModel.h"
 #include "view/OrchestrionWindowTitleProvider.h"
 #include "view/PlaybackButtonModel.h"
+#include "view/ScoreAttributionModel.h"
 #include <QQmlEngine>
 
 namespace dgk
@@ -80,6 +81,8 @@ void OrchestrionShellModule::registerUiTypes()
       "Orchestrion.OrchestrionShell", 1, 0, "OrchestrionWindowTitleProvider");
   qmlRegisterType<PlaybackButtonModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "PlaybackButtonModel");
+  qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                         "ScoreAttributionModel");
 }
 
 void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &)

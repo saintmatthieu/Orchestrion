@@ -201,6 +201,13 @@ ApplicationWindow {
                     anchors.fill: parent
                     z: 100
                 }
+
+                // Transient credit shown when a score that must be attributed
+                // (e.g. a Creative-Commons transcription) is opened.
+                AttributionToast {
+                    anchors.fill: parent
+                    z: 101
+                }
             }
         }
     }

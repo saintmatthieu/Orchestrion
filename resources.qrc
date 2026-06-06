@@ -4,6 +4,7 @@
     <file>src/qml/OrchestrionIcon.qml</file>
     <file>src/qml/FullscreenButton.qml</file>
     <file>src/qml/PlaybackButton.qml</file>
+    <file>src/qml/AttributionToast.qml</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>
     <file>icons/player/rewind-button.png</file>

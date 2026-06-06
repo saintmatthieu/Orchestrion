@@ -27,6 +27,8 @@ set(MODULE_SRC
   view/OrchestrionWindowTitleProvider.h
   view/PlaybackButtonModel.cpp
   view/PlaybackButtonModel.h
+  view/ScoreAttributionModel.cpp
+  view/ScoreAttributionModel.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   OrchestrionShellModule.cpp

@@ -1,0 +1,9 @@
+{
+  "_comment": "Maps a bundled score's file name to the attribution that must be shown when it is opened. To mark a score as needing attribution, add an entry keyed by its file name (as it appears in the scores/ directory). 'author' is required; 'license' and 'url' are optional.",
+
+  "comptine-dun-autre-ete-lapres-midi-yann-tiersen.mxl": {
+    "author": "Felix Rivera",
+    "license": "Creative Commons",
+    "url": "https://musescore.com/user/73423858"
+  }
+}
