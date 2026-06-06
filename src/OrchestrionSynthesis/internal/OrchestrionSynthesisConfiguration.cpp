@@ -25,6 +25,7 @@ namespace
 {
 const std::string module_name("OrchestrionSynthesis");
 const muse::Settings::Key SYNTH(module_name, "SYNTH");
+const muse::Settings::Key REVERB(module_name, "REVERB");
 } // namespace
 
 void OrchestrionSynthesisConfiguration::init()
@@ -38,6 +39,41 @@ void OrchestrionSynthesisConfiguration::init()
         const auto deviceId = synthManager()->selectedSynth();
         muse::settings()->setLocalValue(SYNTH, muse::Val{deviceId});
       });
+
+  muse::settings()->setDefaultValue(
+      REVERB, muse::Val{static_cast<int>(ReverbPreset::Hall)});
+  m_reverbPreset->store(muse::settings()->value(REVERB).toInt());
+  muse::settings()
+      ->valueChanged(REVERB)
+      .onReceive(this,
+                 [this](const muse::Val &val)
+                 {
+                   m_reverbPreset->store(val.toInt());
+                   m_reverbPresetChanged.notify();
+                 });
+}
+
+ReverbPreset OrchestrionSynthesisConfiguration::reverbPreset() const
+{
+  return static_cast<ReverbPreset>(muse::settings()->value(REVERB).toInt());
+}
+
+void OrchestrionSynthesisConfiguration::setReverbPreset(ReverbPreset preset)
+{
+  muse::settings()->setSharedValue(REVERB,
+                                   muse::Val{static_cast<int>(preset)});
+}
+
+muse::async::Notification
+OrchestrionSynthesisConfiguration::reverbPresetChanged() const
+{
+  return m_reverbPresetChanged;
+}
+
+std::shared_ptr<const std::atomic<int>>
+OrchestrionSynthesisConfiguration::reverbPresetForAudioThread() const
+{
+  return m_reverbPreset;
 }
 
 void OrchestrionSynthesisConfiguration::postInit()

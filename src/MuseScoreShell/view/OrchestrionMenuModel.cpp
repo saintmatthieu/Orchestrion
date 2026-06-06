@@ -75,6 +75,13 @@ void OrchestrionMenuModel::load()
         createMenus(recordingEnabled);
       });
 
+  synthesisConfiguration()->reverbPresetChanged().onNotify(
+      this,
+      [this]
+      {
+        createMenus(sequencerConfiguration()->velocityRecordingEnabled());
+      });
+
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -292,10 +299,46 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
                                             "&Toggle velocity recording"));
   item->setSelectable(true);
   item->setSelected(velocityRecordingEnabled);
-  const QList<MenuItem *> menu{item};
+  const QList<MenuItem *> menu{
+      item, makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
+}
+
+muse::uicomponents::MenuItem *
+OrchestrionMenuModel::makeReverbSubmenu(ReverbPreset current)
+{
+  using namespace muse::uicomponents;
+  QList<MenuItem *> items;
+  const auto addItem =
+      [this, &items, current](const char *actionCode,
+                              const muse::TranslatableString &title,
+                              ReverbPreset preset)
+  {
+    auto *const item = makeMenuItem(actionCode, title);
+    IF_ASSERT_FAILED(item) return;
+    item->setSelectable(true);
+    item->setSelected(preset == current);
+    items.append(item);
+  };
+
+  addItem(actionIds::reverbOff,
+          muse::TranslatableString("appshell/menu/advanced", "Off"),
+          ReverbPreset::Off);
+  addItem(actionIds::reverbRoom,
+          muse::TranslatableString("appshell/menu/advanced", "Room"),
+          ReverbPreset::Room);
+  addItem(actionIds::reverbHall,
+          muse::TranslatableString("appshell/menu/advanced", "Hall"),
+          ReverbPreset::Hall);
+  addItem(actionIds::reverbCathedral,
+          muse::TranslatableString("appshell/menu/advanced", "Cathedral"),
+          ReverbPreset::Cathedral);
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/advanced", "&Reverb"), items,
+      "menu-orchestrion-reverb");
 }
 
 QList<muse::uicomponents::MenuItem *>

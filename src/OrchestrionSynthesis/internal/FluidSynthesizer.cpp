@@ -41,6 +41,28 @@ constexpr unsigned int audioChannelPairs = 1;
 constexpr unsigned int audioChannelCount = audioChannelPairs * 2;
 static_assert(audioChannelCount == IOrchestrionSynthesizer::numChannels,
               "Assumption is made in other IOrchestrionSynthesizer impls.");
+
+// FluidSynth 2.3.3 reverb parameter ranges: room-size/damp/level 0..1,
+// width 0..100. The presets below are tuned for a piano, from a small dry
+// room to a wet cathedral.
+struct ReverbParams
+{
+  double roomSize, damp, width, level;
+};
+
+ReverbParams reverbParamsFor(ReverbPreset preset)
+{
+  switch (preset)
+  {
+  case ReverbPreset::Room:
+    return {0.3, 0.4, 0.8, 0.5};
+  case ReverbPreset::Cathedral:
+    return {0.9, 0.2, 1.0, 0.85};
+  case ReverbPreset::Hall:
+  default:
+    return {0.6, 0.3, 1.0, 0.7};
+  }
+}
 } // namespace
 
 FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
@@ -56,7 +78,10 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
   fluid_settings_setint(m_fluidSettings, "synth.polyphony", 512);
   fluid_settings_setint(m_fluidSettings, "synth.min-note-length", minNoteLenMs);
   fluid_settings_setint(m_fluidSettings, "synth.chorus.active", 0);
-  fluid_settings_setint(m_fluidSettings, "synth.reverb.active", 0);
+  // Allocate FluidSynth's reverb unit so it can be (de)activated and tuned at
+  // runtime; the actual user-selected preset is applied via applyReverb()
+  // once the synth exists.
+  fluid_settings_setint(m_fluidSettings, "synth.reverb.active", 1);
   fluid_settings_setstr(m_fluidSettings, "audio.sample-format", "float");
   fluid_settings_setnum(m_fluidSettings, "synth.sample-rate",
                         static_cast<double>(m_sampleRate));
@@ -76,7 +101,27 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
 
   fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
 
+  m_reverbPreset = synthesisConfiguration()->reverbPresetForAudioThread();
+  m_appliedReverbPreset = m_reverbPreset->load();
+  applyReverb(m_appliedReverbPreset);
+
   PolyphonicSynthesizerImpl::Initialize();
+}
+
+void FluidSynthesizer::applyReverb(int preset)
+{
+  constexpr int allGroups = -1;
+  if (preset == static_cast<int>(ReverbPreset::Off))
+  {
+    fluid_synth_reverb_on(m_fluidSynth, allGroups, 0);
+    return;
+  }
+  const ReverbParams p = reverbParamsFor(static_cast<ReverbPreset>(preset));
+  fluid_synth_reverb_on(m_fluidSynth, allGroups, 1);
+  fluid_synth_set_reverb_group_roomsize(m_fluidSynth, allGroups, p.roomSize);
+  fluid_synth_set_reverb_group_damp(m_fluidSynth, allGroups, p.damp);
+  fluid_synth_set_reverb_group_width(m_fluidSynth, allGroups, p.width);
+  fluid_synth_set_reverb_group_level(m_fluidSynth, allGroups, p.level);
 }
 
 FluidSynthesizer::~FluidSynthesizer()
@@ -116,6 +161,12 @@ size_t FluidSynthesizer::process(float *buffer, size_t samplesPerChannel)
 {
   if (!m_allSet)
     return 0;
+  if (const int desired = m_reverbPreset->load(std::memory_order_relaxed);
+      desired != m_appliedReverbPreset)
+  {
+    applyReverb(desired);
+    m_appliedReverbPreset = desired;
+  }
   const auto result =
       fluid_synth_write_float(m_fluidSynth, (int)samplesPerChannel, buffer, 0,
                               audioChannelCount, buffer, 1, audioChannelCount);

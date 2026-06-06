@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionActionController.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 #include <engraving/dom/masterscore.h>
 #include <notation/imasternotation.h>
 
@@ -55,6 +56,18 @@ void OrchestrionActionController::init()
       });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
+
+  dispatcher()->reg(this, actionIds::reverbOff, [this]
+                    { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
+  dispatcher()->reg(
+      this, actionIds::reverbRoom,
+      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Room); });
+  dispatcher()->reg(
+      this, actionIds::reverbHall,
+      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Hall); });
+  dispatcher()->reg(this, actionIds::reverbCathedral, [this] {
+    synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral);
+  });
 
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]

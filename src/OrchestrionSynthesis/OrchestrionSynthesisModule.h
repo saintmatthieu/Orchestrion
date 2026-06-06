@@ -41,7 +41,7 @@ private:
 
   const std::shared_ptr<SynthesizerConnector> m_synthesizerConnector;
   const std::shared_ptr<SynthesizerManager> m_synthesizerManager;
-  const std::unique_ptr<OrchestrionSynthesisConfiguration> m_configuration;
+  const std::shared_ptr<OrchestrionSynthesisConfiguration> m_configuration;
 };
 
 } // namespace dgk

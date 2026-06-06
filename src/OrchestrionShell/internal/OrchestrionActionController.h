@@ -20,6 +20,7 @@
 
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
+#include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
 
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
@@ -41,6 +42,7 @@ class OrchestrionActionController : public muse::actions::Actionable,
 {
   muse::Inject<IOrchestrion> orchestrion;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
+  muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfig;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;

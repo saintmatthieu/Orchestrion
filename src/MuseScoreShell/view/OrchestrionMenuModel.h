@@ -21,6 +21,7 @@
 #include "ExternalDevices/IMidiDeviceService.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
+#include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
@@ -47,6 +48,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
   muse::Inject<IMidiDeviceService> midiDeviceService;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
+  muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration;
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);
@@ -82,6 +84,7 @@ private:
   muse::uicomponents::MenuItem *makeHelpMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
+  muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
 
   void createMenus(bool withSaveItem);

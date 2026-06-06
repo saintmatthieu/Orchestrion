@@ -31,6 +31,7 @@ set(MODULE_SRC
     ITrackChannelMapper.h
     ISynthesizerConnector.h
     ISynthesizerManager.h
+    IOrchestrionSynthesisConfiguration.h
     OrchestrionSynthesisModule.cpp
     OrchestrionSynthesisModule.h
 )

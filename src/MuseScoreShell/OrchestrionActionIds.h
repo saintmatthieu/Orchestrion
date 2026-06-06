@@ -27,4 +27,10 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
     {{DeviceType::MidiController, "chooseMidiControllerSubmenu"},
      {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
+
+static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
+static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
+static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
+static constexpr const char *reverbCathedral =
+    "orchestrion-advanced-reverb-cathedral";
 } // namespace dgk::actionIds

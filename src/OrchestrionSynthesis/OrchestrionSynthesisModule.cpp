@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSynthesisModule.h"
+#include "IOrchestrionSynthesisConfiguration.h"
 #include "internal/OrchestrionSynthesisConfiguration.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
@@ -27,7 +28,7 @@ namespace dgk
 OrchestrionSynthesisModule::OrchestrionSynthesisModule()
     : m_synthesizerConnector{std::make_shared<SynthesizerConnector>()},
       m_synthesizerManager{std::make_shared<SynthesizerManager>()},
-      m_configuration{std::make_unique<OrchestrionSynthesisConfiguration>()}
+      m_configuration{std::make_shared<OrchestrionSynthesisConfiguration>()}
 {
 }
 
@@ -44,6 +45,8 @@ void OrchestrionSynthesisModule::registerExports()
                                              new TrackChannelMapper);
   ioc()->registerExport<ISynthesizerManager>(moduleName(),
                                              m_synthesizerManager);
+  ioc()->registerExport<IOrchestrionSynthesisConfiguration>(moduleName(),
+                                                           m_configuration);
 }
 
 void OrchestrionSynthesisModule::onInit(const muse::IApplication::RunMode &)
