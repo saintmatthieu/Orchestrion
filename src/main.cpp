@@ -189,7 +189,7 @@ int main(int argc, char **argv)
     qapp = new QCoreApplication(argc, argv);
   else {
     auto app = new QApplication(argc, argv);
-    app->setWindowIcon(QIcon(":/icons/music-box.ico"));
+    app->setWindowIcon(QIcon(":/icons/orchestrion.png"));
     qapp = app;
   }
 

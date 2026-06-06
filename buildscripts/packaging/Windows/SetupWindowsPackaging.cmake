@@ -106,7 +106,7 @@ endif()
 message(STATUS "[SetupWindowsPackaging.cmake] CPACK_WIX_UPGRADE_GUID: ${CPACK_WIX_UPGRADE_GUID}")
 
 set(CPACK_WIX_LICENSE_RTF "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/LICENSE.rtf")
-set(CPACK_WIX_PRODUCT_ICON "${PROJECT_SOURCE_DIR}/icons/music-box.ico")
+set(CPACK_WIX_PRODUCT_ICON "${PROJECT_SOURCE_DIR}/icons/orchestrion.ico")
 
 # Installer UI language. Defaults to en-US for the existing single-MSI flow.
 # When CI builds per-language MSIs it overrides CPACK_WIX_CULTURES (and

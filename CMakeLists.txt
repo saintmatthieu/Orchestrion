@@ -56,7 +56,7 @@ add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
 add_subdirectory(src/stubs/audioplugins)
 
-set(MACOSX_BUNDLE_ICON_FILE icons/music-box.icns)
+set(MACOSX_BUNDLE_ICON_FILE icons/orchestrion.icns)
 
 qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/main.cpp

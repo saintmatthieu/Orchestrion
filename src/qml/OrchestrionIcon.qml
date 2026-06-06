@@ -28,39 +28,12 @@ Rectangle {
     color: appIconMouseArea.containsMouse ? ui.theme.backgroundSecondaryColor : ui.theme.backgroundPrimaryColor
     Image {
         id: appIcon
-        source: "qrc:/icons/music-box.ico"
+        source: "qrc:/icons/orchestrion.png"
         anchors.fill: parent
         anchors.leftMargin: leftPadding + 5
         anchors.topMargin: 5
         anchors.rightMargin: 5
         anchors.bottomMargin: 5
         fillMode: Image.PreserveAspectFit
-    }
-
-    MouseArea {
-        id: appIconMouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        onClicked: toolTip.visible = !toolTip.visible
-    }
-
-    ToolTip {
-        id: toolTip
-        x: 0
-        y: titleBar.height + leftPadding
-        timeout: 10000
-        background: Rectangle {
-            color: appTitleBar.color
-            radius: 2
-        }
-        contentItem: Text {
-            text: "<a href='https://www.flaticon.com/free-icons/music-box' title='music box icons'>Music box icons created by iconixar - Flaticon</a>"
-            font.pointSize: 10
-            verticalAlignment: Text.AlignTop
-            textFormat: Text.RichText
-            onLinkActivated: function(link) {
-                Qt.openUrlExternally(link);
-            }
-        }
     }
 }
