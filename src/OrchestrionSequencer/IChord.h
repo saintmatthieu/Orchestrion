@@ -20,6 +20,8 @@
 
 #include "IMelodySegment.h"
 
+#include <optional>
+
 namespace dgk
 {
 class IChord : public IMelodySegment
@@ -29,5 +31,10 @@ public:
   virtual std::vector<int> GetPitches() const = 0;
   virtual float GetVelocity() const = 0;
   virtual void SetVelocity(float) = 0;
+
+  //! The playback velocity (0..1) implied by the score's dynamic markings
+  //! (p, mf, f, …) in effect at this chord, or std::nullopt if no dynamic
+  //! applies. Pre-recorded note velocities take precedence over this.
+  virtual std::optional<float> GetDynamicVelocity() const = 0;
 };
 } // namespace dgk

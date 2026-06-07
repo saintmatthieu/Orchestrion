@@ -59,6 +59,7 @@ private:
 private:
   float GetVelocity() const override;
   void SetVelocity(float) override;
+  std::optional<float> GetDynamicVelocity() const override;
 
   // IModifiableItem
 private:

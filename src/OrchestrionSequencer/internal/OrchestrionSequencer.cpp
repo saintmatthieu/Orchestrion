@@ -217,9 +217,16 @@ void OrchestrionSequencer::SendTransitions(
       if (!velocity.has_value())
       {
         if (present->GetVelocity() > 0.f)
+          // A pre-recorded velocity takes precedence over everything else.
           velocity = present->GetVelocity();
         else
-          velocity = isLeftHand ? 0.3f : 0.5f;
+        {
+          // Otherwise derive the base loudness from the score's dynamic
+          // markings (p, mf, f, …) if any, falling back to a neutral default.
+          // The left hand is then attenuated, as before.
+          const float base = present->GetDynamicVelocity().value_or(0.5f);
+          velocity = isLeftHand ? base * 0.7f : base;
+        }
       }
       else if (m_velocityRecordingEnabled)
         present->SetVelocity(*velocity);
@@ -248,8 +255,7 @@ OrchestrionSequencer::ChordTransitions() const
   return m_transitions.ch;
 }
 
-muse::async::Channel<AutoPlayEvent>
-OrchestrionSequencer::HandNoteEvents() const
+muse::async::Channel<AutoPlayEvent> OrchestrionSequencer::HandNoteEvents() const
 {
   return m_handNoteEvent;
 }
