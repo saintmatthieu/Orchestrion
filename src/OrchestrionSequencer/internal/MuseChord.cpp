@@ -18,9 +18,14 @@
  */
 #include "MuseChord.h"
 #include "engraving/dom/chord.h"
+#include "engraving/dom/dynamic.h"
+#include "engraving/dom/mscore.h"
 #include "engraving/dom/note.h"
+#include "engraving/dom/part.h"
 #include "engraving/dom/rest.h"
+#include "engraving/dom/score.h"
 #include "engraving/dom/segment.h"
+#include "engraving/dom/staff.h"
 #include "engraving/dom/tie.h"
 #include <cassert>
 
@@ -140,6 +145,64 @@ float MuseChord::GetVelocity() const
   if (notes.empty())
     return 0.f;
   return static_cast<float>(notes.front()->userVelocity()) / 127.f;
+}
+
+namespace
+{
+// The "nuance" dynamics that set a sustained playback level (pppppp … ffffff),
+// as opposed to momentary accents (sf, fp, …) which we don't treat as a level.
+bool IsOrdinaryDynamic(me::DynamicType type)
+{
+  return type >= me::DynamicType::PPPPPP && type <= me::DynamicType::FFFFFF;
+}
+
+bool DynamicAppliesTo(const me::Dynamic &dynamic, me::staff_idx_t staffIdx,
+                      const me::Part *part)
+{
+  switch (dynamic.dynRange())
+  {
+  case me::DynamicRange::STAFF:
+    return dynamic.staffIdx() == staffIdx;
+  case me::DynamicRange::PART:
+  case me::DynamicRange::SYSTEM:
+    return dynamic.part() == part;
+  }
+  return false;
+}
+} // namespace
+
+std::optional<float> MuseChord::GetDynamicVelocity() const
+{
+  const auto score = m_segment.score();
+  if (!score)
+    return std::nullopt;
+
+  const auto staffIdx = me::track2staff(m_track.value);
+  const auto staff = score->staff(staffIdx);
+  const auto part = staff ? staff->part() : nullptr;
+
+  // Walk backwards from this chord's segment to find the most recent ordinary
+  // dynamic ("nuance") that applies to this staff/part. The MIDI velocity of
+  // the dynamic comes from MuseScore's standard dynamics-to-velocity table
+  // (Dynamic::velocity(), e.g. p=49, mf=80, f=96).
+  for (const me::Segment *seg = &m_segment; seg; seg = seg->prev1())
+  {
+    const me::Dynamic *applicable = nullptr;
+    for (me::EngravingItem *annotation : seg->annotations())
+    {
+      if (!annotation || !annotation->isDynamic())
+        continue;
+      const auto dynamic = me::toDynamic(annotation);
+      if (!dynamic->playDynamic() ||
+          !IsOrdinaryDynamic(dynamic->dynamicType()))
+        continue;
+      if (DynamicAppliesTo(*dynamic, staffIdx, part))
+        applicable = dynamic;
+    }
+    if (applicable)
+      return static_cast<float>(applicable->velocity()) / 127.f;
+  }
+  return std::nullopt;
 }
 
 void MuseChord::SetVelocity(float velocity)
