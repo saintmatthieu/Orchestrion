@@ -38,9 +38,148 @@ namespace dgk
 {
 namespace me = mu::engraving;
 
+namespace
+{
+// The "nuance" dynamics that set a sustained playback level (pppppp … ffffff),
+// as opposed to momentary accents (sf, fp, …) which we don't treat as a level.
+bool IsOrdinaryDynamic(me::DynamicType type)
+{
+  return type >= me::DynamicType::PPPPPP && type <= me::DynamicType::FFFFFF;
+}
+
+// Whether a dynamic / hairpin (both expose dynRange(), staffIdx() and part())
+// applies to the given staff/part of the chord we're voicing.
+template <typename T>
+bool AppliesTo(const T &item, me::staff_idx_t staffIdx, const me::Part *part)
+{
+  switch (item.dynRange())
+  {
+  case me::DynamicRange::STAFF:
+    return item.staffIdx() == staffIdx;
+  case me::DynamicRange::PART:
+  case me::DynamicRange::SYSTEM:
+    return item.part() == part;
+  }
+  return false;
+}
+
+// The most recent ordinary dynamic at or before `chordSeg` that applies to this
+// staff/part. The MIDI velocity comes from MuseScore's standard
+// dynamics-to-velocity table (Dynamic::velocity(), e.g. p=49, mf=80, f=96).
+std::optional<int> NominalDynamic(const me::Segment &chordSeg,
+                                  me::staff_idx_t staffIdx,
+                                  const me::Part *part)
+{
+  for (const me::Segment *seg = &chordSeg; seg; seg = seg->prev1())
+  {
+    const me::Dynamic *applicable = nullptr;
+    for (me::EngravingItem *annotation : seg->annotations())
+    {
+      if (!annotation || !annotation->isDynamic())
+        continue;
+      const auto dynamic = me::toDynamic(annotation);
+      if (dynamic->playDynamic() && IsOrdinaryDynamic(dynamic->dynamicType()) &&
+          AppliesTo(*dynamic, staffIdx, part))
+        applicable = dynamic;
+    }
+    if (applicable)
+      return applicable->velocity();
+  }
+  return std::nullopt;
+}
+
+// If a crescendo/diminuendo "swell" covers this chord, return the MIDI velocity
+// interpolated along the hairpin between the level it starts from (`levelFrom`)
+// and the level it leads to; std::nullopt if no hairpin applies here.
+std::optional<int> SwellVelocity(const me::Segment &chordSeg,
+                                 me::staff_idx_t staffIdx, const me::Part *part,
+                                 int levelFrom)
+{
+  const auto score = chordSeg.score();
+  const int chordTick = chordSeg.tick().ticks();
+
+  const me::Hairpin *hairpin = nullptr;
+  for (const auto &interval :
+       score->spannerMap().findOverlapping(chordTick, chordTick))
+  {
+    const auto spanner = interval.value;
+    if (!spanner || !spanner->isHairpin() || !spanner->playSpanner())
+      continue;
+    const auto candidate = me::toHairpin(spanner);
+    if (AppliesTo(*candidate, staffIdx, part))
+    {
+      hairpin = candidate;
+      break;
+    }
+  }
+  if (!hairpin)
+    return std::nullopt;
+
+  const int from = hairpin->tick().ticks();
+  const int to = from + std::abs(hairpin->ticks().ticks());
+  // A chord exactly at the hairpin's end already gets the target dynamic
+  // through the discrete path, so only interpolate strictly inside.
+  if (chordTick < from || chordTick >= to)
+    return std::nullopt;
+
+  const bool crescendo = hairpin->isCrescendo();
+
+  // The level the hairpin leads to: the ordinary dynamic placed at (or before)
+  // its end tick, if it agrees with the hairpin's direction.
+  std::optional<int> levelTo;
+  for (const me::Segment *seg = chordSeg.next1();
+       seg && seg->tick().ticks() <= to; seg = seg->next1())
+    for (me::EngravingItem *annotation : seg->annotations())
+    {
+      if (!annotation || !annotation->isDynamic())
+        continue;
+      const auto dynamic = me::toDynamic(annotation);
+      if (dynamic->playDynamic() && IsOrdinaryDynamic(dynamic->dynamicType()) &&
+          AppliesTo(*dynamic, staffIdx, part))
+        levelTo = dynamic->velocity(); // keep the latest (closest to the end)
+    }
+
+  // No usable end dynamic (or one that contradicts the hairpin direction):
+  // swell by a single dynamic "notch", as MuseScore does for open hairpins.
+  constexpr int kOpenHairpinStep = 16;
+  if (!levelTo || (crescendo ? *levelTo <= levelFrom : *levelTo >= levelFrom))
+    levelTo = std::clamp(
+        levelFrom + (crescendo ? kOpenHairpinStep : -kOpenHairpinStep), 0, 127);
+
+  const float fraction =
+      static_cast<float>(chordTick - from) / static_cast<float>(to - from);
+  return static_cast<int>(levelFrom + fraction * (*levelTo - levelFrom) + 0.5f);
+}
+
+// The playback velocity (0..1) implied by the score's dynamic markings at this
+// chord, or 0 if none applies. The score is fully built by the time a MuseChord
+// is constructed and the chord's position is fixed, so this never changes — it
+// is computed once and cached.
+float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
+{
+  const auto score = segment.score();
+  if (!score)
+    return 0.f;
+
+  const auto staffIdx = me::track2staff(track.value);
+  const auto staff = score->staff(staffIdx);
+  const auto part = staff ? staff->part() : nullptr;
+
+  const auto nominal = NominalDynamic(segment, staffIdx, part);
+  if (!nominal)
+    return 0.f;
+
+  if (const auto swell = SwellVelocity(segment, staffIdx, part, *nominal))
+    return static_cast<float>(*swell) / 127.f;
+
+  return static_cast<float>(*nominal) / 127.f;
+}
+} // namespace
+
 MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
-    : MuseMelodySegment(segment, track, measurePlaybackTick)
+    : MuseMelodySegment{segment, track, measurePlaybackTick},
+      m_dynamicVelocity{ComputeDynamicVelocity(segment, track)}
 {
 }
 
@@ -152,138 +291,11 @@ float MuseChord::GetVelocity() const
   return static_cast<float>(notes.front()->userVelocity()) / 127.f;
 }
 
-namespace
-{
-// The "nuance" dynamics that set a sustained playback level (pppppp … ffffff),
-// as opposed to momentary accents (sf, fp, …) which we don't treat as a level.
-bool IsOrdinaryDynamic(me::DynamicType type)
-{
-  return type >= me::DynamicType::PPPPPP && type <= me::DynamicType::FFFFFF;
-}
-
-// Whether a dynamic / hairpin (both expose dynRange(), staffIdx() and part())
-// applies to the given staff/part of the chord we're voicing.
-template <typename T>
-bool AppliesTo(const T &item, me::staff_idx_t staffIdx, const me::Part *part)
-{
-  switch (item.dynRange())
-  {
-  case me::DynamicRange::STAFF:
-    return item.staffIdx() == staffIdx;
-  case me::DynamicRange::PART:
-  case me::DynamicRange::SYSTEM:
-    return item.part() == part;
-  }
-  return false;
-}
-
-// The most recent ordinary dynamic at or before `chordSeg` that applies to this
-// staff/part. The MIDI velocity comes from MuseScore's standard
-// dynamics-to-velocity table (Dynamic::velocity(), e.g. p=49, mf=80, f=96).
-std::optional<int> NominalDynamic(const me::Segment &chordSeg,
-                                  me::staff_idx_t staffIdx, const me::Part *part)
-{
-  for (const me::Segment *seg = &chordSeg; seg; seg = seg->prev1())
-  {
-    const me::Dynamic *applicable = nullptr;
-    for (me::EngravingItem *annotation : seg->annotations())
-    {
-      if (!annotation || !annotation->isDynamic())
-        continue;
-      const auto dynamic = me::toDynamic(annotation);
-      if (dynamic->playDynamic() && IsOrdinaryDynamic(dynamic->dynamicType()) &&
-          AppliesTo(*dynamic, staffIdx, part))
-        applicable = dynamic;
-    }
-    if (applicable)
-      return applicable->velocity();
-  }
-  return std::nullopt;
-}
-
-// If a crescendo/diminuendo "swell" covers this chord, return the MIDI velocity
-// interpolated along the hairpin between the level it starts from (`levelFrom`)
-// and the level it leads to; std::nullopt if no hairpin applies here.
-std::optional<int> SwellVelocity(const me::Segment &chordSeg,
-                                 me::staff_idx_t staffIdx, const me::Part *part,
-                                 int levelFrom)
-{
-  const auto score = chordSeg.score();
-  const int chordTick = chordSeg.tick().ticks();
-
-  const me::Hairpin *hairpin = nullptr;
-  for (const auto &interval :
-       score->spannerMap().findOverlapping(chordTick, chordTick))
-  {
-    const auto spanner = interval.value;
-    if (!spanner || !spanner->isHairpin() || !spanner->playSpanner())
-      continue;
-    const auto candidate = me::toHairpin(spanner);
-    if (AppliesTo(*candidate, staffIdx, part))
-    {
-      hairpin = candidate;
-      break;
-    }
-  }
-  if (!hairpin)
-    return std::nullopt;
-
-  const int from = hairpin->tick().ticks();
-  const int to = from + std::abs(hairpin->ticks().ticks());
-  // A chord exactly at the hairpin's end already gets the target dynamic
-  // through the discrete path, so only interpolate strictly inside.
-  if (chordTick < from || chordTick >= to)
-    return std::nullopt;
-
-  const bool crescendo = hairpin->isCrescendo();
-
-  // The level the hairpin leads to: the ordinary dynamic placed at (or before)
-  // its end tick, if it agrees with the hairpin's direction.
-  std::optional<int> levelTo;
-  for (const me::Segment *seg = chordSeg.next1();
-       seg && seg->tick().ticks() <= to; seg = seg->next1())
-    for (me::EngravingItem *annotation : seg->annotations())
-    {
-      if (!annotation || !annotation->isDynamic())
-        continue;
-      const auto dynamic = me::toDynamic(annotation);
-      if (dynamic->playDynamic() && IsOrdinaryDynamic(dynamic->dynamicType()) &&
-          AppliesTo(*dynamic, staffIdx, part))
-        levelTo = dynamic->velocity(); // keep the latest (closest to the end)
-    }
-
-  // No usable end dynamic (or one that contradicts the hairpin direction):
-  // swell by a single dynamic "notch", as MuseScore does for open hairpins.
-  constexpr int kOpenHairpinStep = 16;
-  if (!levelTo || (crescendo ? *levelTo <= levelFrom : *levelTo >= levelFrom))
-    levelTo = std::clamp(
-        levelFrom + (crescendo ? kOpenHairpinStep : -kOpenHairpinStep), 0, 127);
-
-  const float fraction =
-      static_cast<float>(chordTick - from) / static_cast<float>(to - from);
-  return static_cast<int>(levelFrom + fraction * (*levelTo - levelFrom) + 0.5f);
-}
-} // namespace
-
 std::optional<float> MuseChord::GetDynamicVelocity() const
 {
-  const auto score = m_segment.score();
-  if (!score)
-    return std::nullopt;
-
-  const auto staffIdx = me::track2staff(m_track.value);
-  const auto staff = score->staff(staffIdx);
-  const auto part = staff ? staff->part() : nullptr;
-
-  const auto nominal = NominalDynamic(m_segment, staffIdx, part);
-  if (!nominal)
-    // No dynamic context at all; the caller falls back to its neutral default.
-    return std::nullopt;
-
-  if (const auto swell = SwellVelocity(m_segment, staffIdx, part, *nominal))
-    return static_cast<float>(*swell) / 127.f;
-
-  return static_cast<float>(*nominal) / 127.f;
+  if (m_dynamicVelocity > 0.f)
+    return m_dynamicVelocity;
+  return std::nullopt;
 }
 
 void MuseChord::SetVelocity(float velocity)

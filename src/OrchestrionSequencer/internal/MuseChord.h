@@ -68,6 +68,9 @@ private:
   void RevertChanges() override;
   muse::async::Notification ModifiedChanged() override;
 
+  // Playback velocity (0..1) implied by the score's dynamics at this chord,
+  // resolved once at construction; 0 if the score carries no dynamic here.
+  const float m_dynamicVelocity;
   std::optional<float> m_unsavedVelocity;
   muse::async::Notification m_modifiedChanged;
 };
