@@ -23,6 +23,7 @@
 #include "OrchestrionSequencer/IRest.h"
 #include <QApplication>
 #include <QPainter>
+#include <QWheelEvent>
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/tie.h>
 
@@ -218,6 +219,41 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 float OrchestrionNotationPaintView::hitWidth() const
 {
   return configuration()->selectionProximity() * 0.5f / currentScaling();
+}
+
+void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
+{
+  // The base class swallows wheel events (zoom + 2D scroll) because the
+  // Orchestrion view controls its own scaling and keeps the single LINE-mode
+  // system vertically centered. We re-enable just the one gesture we want:
+  // a horizontal trackpad swipe pans the viewport left/right. Vertical scroll
+  // is ignored (there is nothing to scroll vertically), and the resulting
+  // position is clamped by constrainScorePosition() via onMatrixChanged().
+  QPoint pixels = event->pixelDelta();
+  const QPoint angle = event->angleDelta();
+
+#ifdef Q_OS_LINUX
+  // pixelDelta is unreliable on X11; only trust it under Wayland (same caveat
+  // as MuseScore's NotationViewInputController::wheelEvent).
+  if (qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))
+    pixels = QPoint{};
+#endif
+
+  qreal dx = 0.;
+  if (pixels.x() != 0)
+    dx = pixels.x();
+  else if (angle.x() != 0)
+    dx = angle.x() * qMax(2.0, width() / 10.0) /
+         QWheelEvent::DefaultDeltasPerStep;
+
+  if (qFuzzyIsNull(dx))
+  {
+    event->ignore();
+    return;
+  }
+
+  moveCanvasHorizontal(dx / currentScaling());
+  event->accept();
 }
 
 void OrchestrionNotationPaintView::loadOrchestrionNotation()

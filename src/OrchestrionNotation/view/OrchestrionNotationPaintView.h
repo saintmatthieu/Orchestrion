@@ -68,7 +68,7 @@ private:
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   void updateNotation();
-  void wheelEvent(QWheelEvent *) override {}
+  void wheelEvent(QWheelEvent *event) override;
   void initTouchpadMidiController();
   float hitWidth() const;
 
