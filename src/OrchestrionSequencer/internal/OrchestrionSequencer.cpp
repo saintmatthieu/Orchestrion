@@ -57,15 +57,6 @@ auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
                     { return a->GetFinalTick() < b->GetFinalTick(); }))
                    ->GetFinalTick();
 }
-
-// Velocity (0..1) used when a note has neither a controller-provided nor a
-// pre-recorded velocity, and the score carries no dynamic marking either.
-constexpr float kDefaultVelocity = 0.5f;
-
-// The left hand is played back quieter than the right; this factor reproduces
-// the previous left/right defaults (0.3 / 0.5) and is applied on top of
-// whatever base velocity (default or dynamic-derived) we end up with.
-constexpr float kLeftHandVelocityFactor = 0.6f;
 } // namespace
 
 template <typename EventType>
@@ -233,9 +224,8 @@ void OrchestrionSequencer::SendTransitions(
           // Otherwise derive the base loudness from the score's dynamic
           // markings (p, mf, f, …) if any, falling back to a neutral default.
           // The left hand is then attenuated, as before.
-          const float base =
-              present->GetDynamicVelocity().value_or(kDefaultVelocity);
-          velocity = isLeftHand ? base * kLeftHandVelocityFactor : base;
+          const float base = present->GetDynamicVelocity().value_or(0.5f);
+          velocity = isLeftHand ? base * 0.7f : base;
         }
       }
       else if (m_velocityRecordingEnabled)
@@ -265,8 +255,7 @@ OrchestrionSequencer::ChordTransitions() const
   return m_transitions.ch;
 }
 
-muse::async::Channel<AutoPlayEvent>
-OrchestrionSequencer::HandNoteEvents() const
+muse::async::Channel<AutoPlayEvent> OrchestrionSequencer::HandNoteEvents() const
 {
   return m_handNoteEvent;
 }
