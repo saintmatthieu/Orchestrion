@@ -100,6 +100,28 @@ bool KineticScroller::handleWheelEvent(const QWheelEvent &event, qreal viewWidth
   return consumed;
 }
 
+void KineticScroller::beginDrag()
+{
+  if (!m_clock.isValid())
+    m_clock.start();
+  m_flingTimer.stop(); // a fresh gesture interrupts any glide
+  m_idleTimer.stop();
+  m_samples.clear();
+}
+
+void KineticScroller::addDragSample(qreal physicalDx)
+{
+  // Sample only: during a drag the owner already moves the view, so moving here
+  // too would double the motion. We just measure it for the release velocity.
+  if (qFuzzyIsNull(physicalDx))
+    return;
+  if (!m_clock.isValid())
+    m_clock.start();
+  m_samples.emplace_back(physicalDx, m_clock.elapsed());
+}
+
+void KineticScroller::endDrag() { startFling(); }
+
 qreal KineticScroller::sampledVelocity()
 {
   // Average velocity (physical px/s) over motion in the window ending at *now*

@@ -52,6 +52,14 @@ public:
   //! horizontal motion (and was therefore consumed).
   bool handleWheelEvent(const QWheelEvent &event, qreal viewWidth);
 
+  //! Mouse-drag path, for when the owner pans the view itself (e.g. the base
+  //! class already drags the canvas): these only *sample* the motion so the
+  //! release can add a throw. Call beginDrag() on press, addDragSample() for
+  //! each move, endDrag() on release.
+  void beginDrag();
+  void addDragSample(qreal physicalDx);
+  void endDrag();
+
   //! Abort any in-progress glide (e.g. on a click, score jump, notation reload).
   void stop();
 

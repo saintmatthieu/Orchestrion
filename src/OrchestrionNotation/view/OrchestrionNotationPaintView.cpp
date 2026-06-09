@@ -22,6 +22,7 @@
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include "OrchestrionSequencer/IRest.h"
 #include <QApplication>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QWheelEvent>
 #include <engraving/dom/masterscore.h>
@@ -191,26 +192,69 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 
   if (watched == this)
   {
-    if (event->type() == QEvent::MouseButtonPress)
+    const auto mouseEvent = static_cast<QMouseEvent *>(event);
+    switch (event->type())
     {
-      const auto mouseEvent = static_cast<QMouseEvent *>(event);
-      onMousePressed(mouseEvent->position());
-    }
-    else if (event->type() == QEvent::HoverMove)
-    {
-      const auto mouseEvent = static_cast<QMouseEvent *>(event);
+    case QEvent::MouseButtonPress:
+      onMousePressed(mouseEvent->position(), mouseEvent->modifiers(),
+                     mouseEvent->button());
+      break;
+    case QEvent::MouseMove:
+      onMouseDragged(mouseEvent->position(), mouseEvent->buttons());
+      break;
+    case QEvent::MouseButtonRelease:
+      onMouseReleased(mouseEvent->button());
+      break;
+    case QEvent::HoverMove:
       onMouseMoved(mouseEvent->position());
+      break;
+    default:
+      break;
     }
   }
 
   return mu::notation::NotationPaintView::eventFilter(watched, event);
 }
 
-void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
+void OrchestrionNotationPaintView::onMousePressed(
+    const QPointF &pos, Qt::KeyboardModifiers modifiers, Qt::MouseButton button)
 {
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   const muse::PointF logicPos = toLogical(pos);
+  const auto interaction = notationInteraction();
+  const bool onElement =
+      interaction && interaction->hitElement(logicPos, hitWidth());
   interactionProcessor()->onMousePressed(logicPos, hitWidth());
+
+  // A plain left-drag starting on empty background pans the canvas (the base
+  // view does the panning); track it so the release can add a kinetic throw.
+  // Pressing an element, or holding a modifier, is selection — not panning.
+  m_canvasDragging =
+      button == Qt::LeftButton && modifiers == Qt::NoModifier && !onElement;
+  if (m_canvasDragging)
+  {
+    m_lastDragPos = pos;
+    m_kineticScroller.beginDrag();
+  }
+}
+
+void OrchestrionNotationPaintView::onMouseDragged(const QPointF &pos,
+                                                  Qt::MouseButtons buttons)
+{
+  if (!m_canvasDragging || !(buttons & Qt::LeftButton))
+    return;
+  // The base view pans the canvas to follow the cursor; we only feed the
+  // horizontal cursor delta to the scroller so it can throw on release.
+  m_kineticScroller.addDragSample(pos.x() - m_lastDragPos.x());
+  m_lastDragPos = pos;
+}
+
+void OrchestrionNotationPaintView::onMouseReleased(Qt::MouseButton button)
+{
+  if (button != Qt::LeftButton || !m_canvasDragging)
+    return;
+  m_canvasDragging = false;
+  m_kineticScroller.endDrag();
 }
 
 void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)

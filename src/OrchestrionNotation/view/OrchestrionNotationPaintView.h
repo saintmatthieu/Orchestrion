@@ -62,7 +62,10 @@ private:
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
-  void onMousePressed(const QPointF &pos);
+  void onMousePressed(const QPointF &pos, Qt::KeyboardModifiers modifiers,
+                      Qt::MouseButton button);
+  void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
+  void onMouseReleased(Qt::MouseButton button);
   void onMouseMoved(const QPointF &pos);
   std::vector<mu::engraving::EngravingItem *>
   getRelevantItems(TrackIndex track,
@@ -95,6 +98,11 @@ private:
   std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
+
+  // Background left-drag pans the canvas (done by the base view); we sample the
+  // drag so releasing it adds a kinetic throw via m_kineticScroller.
+  bool m_canvasDragging = false;
+  QPointF m_lastDragPos;
 
   // Kinetic ("flick") horizontal scrolling: a trackpad swipe can be "thrown"
   // and the viewport keeps gliding until it slows to a stop or hits the edge.
