@@ -30,6 +30,7 @@ namespace
 constexpr auto audioMidiMenuId = "menu-audio-midi";
 constexpr auto keyboardMenuId = "menu-keyboard";
 constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
+constexpr auto toggleNoteInfoMenuId = "orchestrion-advanced-toggle-note-info";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -76,11 +77,12 @@ void OrchestrionMenuModel::load()
       });
 
   synthesisConfiguration()->reverbPresetChanged().onNotify(
-      this,
-      [this]
-      {
-        createMenus(sequencerConfiguration()->velocityRecordingEnabled());
-      });
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->noteInfoTooltipEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
@@ -209,10 +211,10 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeHelpMenu()
 {
-  QList<muse::uicomponents::MenuItem *> menu{makeMenuItem(
-      "orchestrion-help-number-keys",
-      muse::TranslatableString("appshell/menu/help",
-                               "How to play with the &keyboard"))};
+  QList<muse::uicomponents::MenuItem *> menu{
+      makeMenuItem("orchestrion-help-number-keys",
+                   muse::TranslatableString("appshell/menu/help",
+                                            "How to play with the &keyboard"))};
   return makeMenu(muse::TranslatableString("appshell/menu/help", "&Help"), menu,
                   "menu-orchestrion-help");
 }
@@ -299,8 +301,17 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
                                             "&Toggle velocity recording"));
   item->setSelectable(true);
   item->setSelected(velocityRecordingEnabled);
+
+  muse::uicomponents::MenuItem *const noteInfoItem =
+      makeMenuItem(toggleNoteInfoMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Show &note info on hover"));
+  noteInfoItem->setSelectable(true);
+  noteInfoItem->setSelected(sequencerConfiguration()->noteInfoTooltipEnabled());
+
   const QList<MenuItem *> menu{
-      item, makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
+      item, noteInfoItem,
+      makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
@@ -336,9 +347,8 @@ OrchestrionMenuModel::makeReverbSubmenu(ReverbPreset current)
           muse::TranslatableString("appshell/menu/advanced", "Cathedral"),
           ReverbPreset::Cathedral);
 
-  return makeMenu(
-      muse::TranslatableString("appshell/menu/advanced", "&Reverb"), items,
-      "menu-orchestrion-reverb");
+  return makeMenu(muse::TranslatableString("appshell/menu/advanced", "&Reverb"),
+                  items, "menu-orchestrion-reverb");
 }
 
 QList<muse::uicomponents::MenuItem *>

@@ -39,9 +39,14 @@ private:
   void setVelocityRecordingEnabled(bool) override;
   muse::async::Notification velocityRecordingEnabledChanged() const override;
 
+  bool noteInfoTooltipEnabled() const override;
+  void setNoteInfoTooltipEnabled(bool) override;
+  muse::async::Notification noteInfoTooltipEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
   muse::async::Notification m_velocityRecordingEnabledChanged;
+  muse::async::Notification m_noteInfoTooltipEnabledChanged;
 };
 } // namespace dgk

@@ -25,14 +25,17 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QWheelEvent>
+#include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
+#include <engraving/dom/note.h>
 #include <engraving/dom/tie.h>
 
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent),
-      m_kineticScroller([this](qreal physicalDx) { return moveCanvasBy(physicalDx); })
+      m_kineticScroller([this](qreal physicalDx)
+                        { return moveCanvasBy(physicalDx); })
 {
 }
 
@@ -261,6 +264,78 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 {
   const muse::PointF logicPos = toLogical(pos);
   interactionProcessor()->onMouseMoved(logicPos, hitWidth());
+
+  if (sequencerConfiguration()->noteInfoTooltipEnabled())
+    updateHoveredNoteInfo(pos);
+  else if (!m_hoveredNoteInfo.isEmpty())
+    setHoveredNoteInfo({}, pos);
+}
+
+void OrchestrionNotationPaintView::updateHoveredNoteInfo(const QPointF &itemPos)
+{
+  const auto interaction = notationInteraction();
+  if (!interaction)
+  {
+    setHoveredNoteInfo({}, itemPos);
+    return;
+  }
+
+  const mu::engraving::EngravingItem *const hitElement =
+      interaction->hitElement(toLogical(itemPos), hitWidth());
+
+  const mu::engraving::Chord *chord = nullptr;
+  if (const auto note = dynamic_cast<const mu::engraving::Note *>(hitElement))
+    chord = note->chord();
+  else
+    chord = dynamic_cast<const mu::engraving::Chord *>(hitElement);
+
+  if (!chord)
+  {
+    setHoveredNoteInfo({}, itemPos);
+    return;
+  }
+
+  // Map the hovered engraving chord back to its MuseChord. Matching on the
+  // engraving-chord pointer disambiguates voices/staves sharing a segment.
+  const IChord *museChord = nullptr;
+  for (IMelodySegment *const segment : chordRegistry()->GetMelodySegments())
+    if (IChord *const candidate = segment->AsChord();
+        candidate && candidate->GetEngravingChord() == chord)
+    {
+      museChord = candidate;
+      break;
+    }
+
+  if (!museChord)
+  {
+    setHoveredNoteInfo({}, itemPos);
+    return;
+  }
+
+  const float dynamicVelocity = museChord->GetDynamicVelocity().value_or(0.f);
+  setHoveredNoteInfo(
+      QStringLiteral("dynamicVelocity: %1").arg(dynamicVelocity, 0, 'f', 3),
+      itemPos);
+}
+
+void OrchestrionNotationPaintView::setHoveredNoteInfo(const QString &info,
+                                                      const QPointF &itemPos)
+{
+  if (m_hoveredNoteInfo == info && m_hoveredNoteInfoPos == itemPos)
+    return;
+  m_hoveredNoteInfo = info;
+  m_hoveredNoteInfoPos = itemPos;
+  emit hoveredNoteInfoChanged();
+}
+
+QString OrchestrionNotationPaintView::hoveredNoteInfo() const
+{
+  return m_hoveredNoteInfo;
+}
+
+QPointF OrchestrionNotationPaintView::hoveredNoteInfoPos() const
+{
+  return m_hoveredNoteInfoPos;
 }
 
 float OrchestrionNotationPaintView::hitWidth() const
@@ -322,6 +397,14 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   gestureControllerSelector()->touchpadControllerChanged().onNotify(
       this, [this] { initTouchpadMidiController(); });
   initTouchpadMidiController();
+
+  sequencerConfiguration()->noteInfoTooltipEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        if (!sequencerConfiguration()->noteInfoTooltipEnabled())
+          setHoveredNoteInfo({}, m_hoveredNoteInfoPos);
+      });
 
   load();
   updateNotation();

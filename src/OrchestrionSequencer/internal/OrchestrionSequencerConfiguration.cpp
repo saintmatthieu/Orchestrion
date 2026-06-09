@@ -28,6 +28,8 @@ const std::string module_name("OrchestrionSequencer");
 const muse::Settings::Key
     VELOCITY_RECORDING_ENABLED(module_name, "VELOCITY_RECORDING_ENABLED");
 const muse::Settings::Key
+    NOTE_INFO_TOOLTIP_ENABLED(module_name, "NOTE_INFO_TOOLTIP_ENABLED");
+const muse::Settings::Key
     KEYBOARD_HELP_DISMISSED(module_name, "KEYBOARD_HELP_DISMISSED");
 } // namespace
 
@@ -39,6 +41,13 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(VELOCITY_RECORDING_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_velocityRecordingEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(NOTE_INFO_TOOLTIP_ENABLED,
+                                    muse::Val{false});
+  muse::settings()
+      ->valueChanged(NOTE_INFO_TOOLTIP_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_noteInfoTooltipEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED,
                                     muse::Val{false});
@@ -60,6 +69,23 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::velocityRecordingEnabledChanged() const
 {
   return m_velocityRecordingEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::noteInfoTooltipEnabled() const
+{
+  return muse::settings()->value(NOTE_INFO_TOOLTIP_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setNoteInfoTooltipEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(NOTE_INFO_TOOLTIP_ENABLED,
+                                   muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::noteInfoTooltipEnabledChanged() const
+{
+  return m_noteInfoTooltipEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

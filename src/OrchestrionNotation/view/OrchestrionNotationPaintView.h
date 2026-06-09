@@ -22,6 +22,7 @@
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include "KineticScroller.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include <actions/iactionsdispatcher.h>
@@ -35,6 +36,13 @@ namespace dgk
 class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
 {
   Q_OBJECT
+  // Debug tooltip shown when hovering a note (see noteInfoTooltipEnabled).
+  // Empty when nothing relevant is hovered, which hides the tooltip.
+  Q_PROPERTY(QString hoveredNoteInfo READ hoveredNoteInfo NOTIFY
+                 hoveredNoteInfoChanged)
+  Q_PROPERTY(QPointF hoveredNoteInfoPos READ hoveredNoteInfoPos NOTIFY
+                 hoveredNoteInfoChanged)
+
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<mu::notation::INotationConfiguration> configuration;
   muse::Inject<mu::context::IGlobalContext> globalContext;
@@ -42,14 +50,19 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<ISegmentRegistry> chordRegistry;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
 
   Q_INVOKABLE void loadOrchestrionNotation();
 
+  QString hoveredNoteInfo() const;
+  QPointF hoveredNoteInfoPos() const;
+
 signals:
   void mouseActivity();
+  void hoveredNoteInfoChanged();
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -67,6 +80,8 @@ private:
   void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
   void onMouseReleased(Qt::MouseButton button);
   void onMouseMoved(const QPointF &pos);
+  void updateHoveredNoteInfo(const QPointF &itemPos);
+  void setHoveredNoteInfo(const QString &info, const QPointF &itemPos);
   std::vector<mu::engraving::EngravingItem *>
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
@@ -107,5 +122,7 @@ private:
   // Kinetic ("flick") horizontal scrolling: a trackpad swipe can be "thrown"
   // and the viewport keeps gliding until it slows to a stop or hits the edge.
   KineticScroller m_kineticScroller;
+  QString m_hoveredNoteInfo;
+  QPointF m_hoveredNoteInfoPos;
 };
 } // namespace dgk

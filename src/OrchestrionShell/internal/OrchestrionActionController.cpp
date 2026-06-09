@@ -56,6 +56,12 @@ void OrchestrionActionController::init()
       });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-note-info",
+                    [this]
+                    {
+                      sequencerConfig()->setNoteInfoTooltipEnabled(
+                          !sequencerConfig()->noteInfoTooltipEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });

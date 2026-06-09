@@ -60,6 +60,7 @@ private:
   float GetVelocity() const override;
   void SetVelocity(float) override;
   std::optional<float> GetDynamicVelocity() const override;
+  const mu::engraving::Chord *GetEngravingChord() const override;
 
   // IModifiableItem
 private:

@@ -298,6 +298,11 @@ std::optional<float> MuseChord::GetDynamicVelocity() const
   return std::nullopt;
 }
 
+const me::Chord *MuseChord::GetEngravingChord() const
+{
+  return dynamic_cast<const me::Chord *>(m_segment.element(m_track.value));
+}
+
 void MuseChord::SetVelocity(float velocity)
 {
   const auto wasModified = m_unsavedVelocity.has_value();

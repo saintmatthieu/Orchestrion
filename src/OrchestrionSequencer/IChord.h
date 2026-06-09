@@ -22,6 +22,11 @@
 
 #include <optional>
 
+namespace mu::engraving
+{
+class Chord;
+} // namespace mu::engraving
+
 namespace dgk
 {
 class IChord : public IMelodySegment
@@ -36,5 +41,10 @@ public:
   //! (p, mf, f, …) in effect at this chord, or std::nullopt if no dynamic
   //! applies. Pre-recorded note velocities take precedence over this.
   virtual std::optional<float> GetDynamicVelocity() const = 0;
+
+  //! The underlying engraving chord this represents (e.g. to map a hovered
+  //! on-screen element back to its chord), or nullptr if it no longer
+  //! resolves.
+  virtual const mu::engraving::Chord *GetEngravingChord() const = 0;
 };
 } // namespace dgk

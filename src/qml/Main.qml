@@ -208,6 +208,20 @@ ApplicationWindow {
                     anchors.fill: parent
                     z: 101
                 }
+
+                // Debug aid: note info shown on hover, toggled from the
+                // Advanced menu ("Show note info on hover"). The paint view
+                // leaves hoveredNoteInfo empty unless the feature is enabled
+                // and a note is under the cursor.
+                ToolTip {
+                    id: noteInfoToolTip
+                    z: 102
+                    delay: 0
+                    visible: notationPaintView.hoveredNoteInfo.length > 0
+                    text: notationPaintView.hoveredNoteInfo
+                    x: notationPaintView.hoveredNoteInfoPos.x + 16
+                    y: notationPaintView.hoveredNoteInfoPos.y + 16
+                }
             }
         }
     }
