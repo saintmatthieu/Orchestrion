@@ -20,6 +20,7 @@
 
 #include "GestureControllers/IGestureControllerSelector.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
+#include "KineticScroller.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
@@ -69,6 +70,9 @@ private:
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   void updateNotation();
   void wheelEvent(QWheelEvent *event) override;
+  //! Pan the canvas by \p physicalDx physical pixels; returns whether it moved
+  //! (false ⇒ clamped at an edge). Drives the KineticScroller.
+  bool moveCanvasBy(qreal physicalDx);
   void initTouchpadMidiController();
   float hitWidth() const;
 
@@ -91,5 +95,9 @@ private:
   std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
+
+  // Kinetic ("flick") horizontal scrolling: a trackpad swipe can be "thrown"
+  // and the viewport keeps gliding until it slows to a stop or hits the edge.
+  KineticScroller m_kineticScroller;
 };
 } // namespace dgk

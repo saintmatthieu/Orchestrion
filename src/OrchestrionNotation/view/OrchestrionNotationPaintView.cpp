@@ -30,7 +30,8 @@
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
-    : mu::notation::NotationPaintView(parent)
+    : mu::notation::NotationPaintView(parent),
+      m_kineticScroller([this](qreal physicalDx) { return moveCanvasBy(physicalDx); })
 {
 }
 
@@ -55,6 +56,7 @@ void OrchestrionNotationPaintView::subscribe(
   sequencer.AboutToJumpPosition().onReceive(this,
                                             [this](auto)
                                             {
+                                              m_kineticScroller.stop();
                                               m_boxes.clear();
                                               update();
                                             });
@@ -206,6 +208,7 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 
 void OrchestrionNotationPaintView::onMousePressed(const QPointF &pos)
 {
+  m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   const muse::PointF logicPos = toLogical(pos);
   interactionProcessor()->onMousePressed(logicPos, hitWidth());
 }
@@ -226,34 +229,23 @@ void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
   // The base class swallows wheel events (zoom + 2D scroll) because the
   // Orchestrion view controls its own scaling and keeps the single LINE-mode
   // system vertically centered. We re-enable just the one gesture we want:
-  // a horizontal trackpad swipe pans the viewport left/right. Vertical scroll
-  // is ignored (there is nothing to scroll vertically), and the resulting
-  // position is clamped by constrainScorePosition() via onMatrixChanged().
-  QPoint pixels = event->pixelDelta();
-  const QPoint angle = event->angleDelta();
-
-#ifdef Q_OS_LINUX
-  // pixelDelta is unreliable on X11; only trust it under Wayland (same caveat
-  // as MuseScore's NotationViewInputController::wheelEvent).
-  if (qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))
-    pixels = QPoint{};
-#endif
-
-  qreal dx = 0.;
-  if (pixels.x() != 0)
-    dx = pixels.x();
-  else if (angle.x() != 0)
-    dx = angle.x() * qMax(2.0, width() / 10.0) /
-         QWheelEvent::DefaultDeltasPerStep;
-
-  if (qFuzzyIsNull(dx))
-  {
+  // a horizontal trackpad swipe pans the viewport left/right (with a kinetic
+  // "throw"). Vertical scroll is ignored — there is nothing to scroll there.
+  if (m_kineticScroller.handleWheelEvent(*event, width()))
+    event->accept();
+  else
     event->ignore();
-    return;
-  }
+}
 
-  moveCanvasHorizontal(dx / currentScaling());
-  event->accept();
+bool OrchestrionNotationPaintView::moveCanvasBy(qreal physicalDx)
+{
+  // The KineticScroller works in physical pixels; convert to the score's
+  // logical units. constrainScorePosition() (via onMatrixChanged) clamps the
+  // result, so at an edge the viewport doesn't move and we report that back to
+  // stop the glide.
+  const qreal before = viewport().left();
+  moveCanvasHorizontal(physicalDx / currentScaling());
+  return qAbs(viewport().left() - before) > 1e-3;
 }
 
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
@@ -361,6 +353,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
 
 void OrchestrionNotationPaintView::updateNotation()
 {
+  m_kineticScroller.stop(); // the score changed under us; cancel any glide
   if (const auto notation = globalContext()->currentNotation())
   {
     setViewMode(mu::notation::ViewMode::LINE);
