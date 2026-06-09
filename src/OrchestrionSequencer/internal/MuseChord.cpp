@@ -63,12 +63,19 @@ bool AppliesTo(const T &item, me::staff_idx_t staffIdx, const me::Part *part)
   return false;
 }
 
+// An explicit dynamic marking with the tick it sits at.
+struct DynamicAnchor
+{
+  int tick;     // the dynamic's tick
+  int velocity; // MIDI 0..127
+};
+
 // The most recent ordinary dynamic at or before `chordSeg` that applies to this
 // staff/part. The MIDI velocity comes from MuseScore's standard
 // dynamics-to-velocity table (Dynamic::velocity(), e.g. p=49, mf=80, f=96).
-std::optional<int> NominalDynamic(const me::Segment &chordSeg,
-                                  me::staff_idx_t staffIdx,
-                                  const me::Part *part)
+std::optional<DynamicAnchor> NominalDynamic(const me::Segment &chordSeg,
+                                            me::staff_idx_t staffIdx,
+                                            const me::Part *part)
 {
   for (const me::Segment *seg = &chordSeg; seg; seg = seg->prev1())
   {
@@ -83,52 +90,21 @@ std::optional<int> NominalDynamic(const me::Segment &chordSeg,
         applicable = dynamic;
     }
     if (applicable)
-      return applicable->velocity();
+      return DynamicAnchor{seg->tick().ticks(), applicable->velocity()};
   }
   return std::nullopt;
 }
 
-// If a crescendo/diminuendo "swell" covers this chord, return the MIDI velocity
-// interpolated along the hairpin between the level it starts from (`levelFrom`)
-// and the level it leads to; std::nullopt if no hairpin applies here.
-std::optional<int> SwellVelocity(const me::Segment &chordSeg,
-                                 me::staff_idx_t staffIdx, const me::Part *part,
-                                 int levelFrom)
+// The ordinary dynamic an active hairpin leads to: the latest one placed after
+// this chord and at or before the hairpin's end `toTick`, if any. Used to aim a
+// crescendo/diminuendo at its written target (e.g. the f in p < f).
+std::optional<int> EndDynamic(const me::Segment &chordSeg,
+                              me::staff_idx_t staffIdx, const me::Part *part,
+                              int toTick)
 {
-  const auto score = chordSeg.score();
-  const int chordTick = chordSeg.tick().ticks();
-
-  const me::Hairpin *hairpin = nullptr;
-  for (const auto &interval :
-       score->spannerMap().findOverlapping(chordTick, chordTick))
-  {
-    const auto spanner = interval.value;
-    if (!spanner || !spanner->isHairpin() || !spanner->playSpanner())
-      continue;
-    const auto candidate = me::toHairpin(spanner);
-    if (AppliesTo(*candidate, staffIdx, part))
-    {
-      hairpin = candidate;
-      break;
-    }
-  }
-  if (!hairpin)
-    return std::nullopt;
-
-  const int from = hairpin->tick().ticks();
-  const int to = from + std::abs(hairpin->ticks().ticks());
-  // A chord exactly at the hairpin's end already gets the target dynamic
-  // through the discrete path, so only interpolate strictly inside.
-  if (chordTick < from || chordTick >= to)
-    return std::nullopt;
-
-  const bool crescendo = hairpin->isCrescendo();
-
-  // The level the hairpin leads to: the ordinary dynamic placed at (or before)
-  // its end tick, if it agrees with the hairpin's direction.
   std::optional<int> levelTo;
   for (const me::Segment *seg = chordSeg.next1();
-       seg && seg->tick().ticks() <= to; seg = seg->next1())
+       seg && seg->tick().ticks() <= toTick; seg = seg->next1())
     for (me::EngravingItem *annotation : seg->annotations())
     {
       if (!annotation || !annotation->isDynamic())
@@ -138,17 +114,7 @@ std::optional<int> SwellVelocity(const me::Segment &chordSeg,
           AppliesTo(*dynamic, staffIdx, part))
         levelTo = dynamic->velocity(); // keep the latest (closest to the end)
     }
-
-  // No usable end dynamic (or one that contradicts the hairpin direction):
-  // swell by a single dynamic "notch", as MuseScore does for open hairpins.
-  constexpr int kOpenHairpinStep = 16;
-  if (!levelTo || (crescendo ? *levelTo <= levelFrom : *levelTo >= levelFrom))
-    levelTo = std::clamp(
-        levelFrom + (crescendo ? kOpenHairpinStep : -kOpenHairpinStep), 0, 127);
-
-  const float fraction =
-      static_cast<float>(chordTick - from) / static_cast<float>(to - from);
-  return static_cast<int>(levelFrom + fraction * (*levelTo - levelFrom) + 0.5f);
+  return levelTo;
 }
 
 // The playback velocity (0..1) implied by the score's dynamic markings at this
@@ -165,14 +131,72 @@ float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
   const auto staff = score->staff(staffIdx);
   const auto part = staff ? staff->part() : nullptr;
 
-  const auto nominal = NominalDynamic(segment, staffIdx, part);
-  if (!nominal)
+  const auto anchor = NominalDynamic(segment, staffIdx, part);
+  if (!anchor)
+    // No dynamic context at all; the caller falls back to its neutral default.
     return 0.f;
 
-  if (const auto swell = SwellVelocity(segment, staffIdx, part, *nominal))
-    return static_cast<float>(*swell) / 127.f;
+  const int chordTick = segment.tick().ticks();
 
-  return static_cast<float>(*nominal) / 127.f;
+  // Crescendo/diminuendo hairpins that start at or after the anchor dynamic and
+  // reach up to this chord, in start order. A hairpin starting before the
+  // anchor is superseded by it. We replay them so that the level a swell
+  // reaches *persists* past its end, instead of snapping back to the anchor.
+  std::vector<const me::Hairpin *> hairpins;
+  for (const auto &interval :
+       score->spannerMap().findOverlapping(anchor->tick, chordTick))
+  {
+    const auto spanner = interval.value;
+    if (!spanner || !spanner->isHairpin() || !spanner->playSpanner())
+      continue;
+    const auto hairpin = me::toHairpin(spanner);
+    if (hairpin->tick().ticks() >= anchor->tick &&
+        AppliesTo(*hairpin, staffIdx, part))
+      hairpins.push_back(hairpin);
+  }
+  std::sort(hairpins.begin(), hairpins.end(),
+            [](const me::Hairpin *a, const me::Hairpin *b)
+            { return a->tick().ticks() < b->tick().ticks(); });
+
+  // Each open hairpin (no written terminal dynamic) shifts the running level by
+  // one dynamic "notch", as MuseScore does, and that shift persists afterwards.
+  constexpr int kOpenHairpinStep = 16;
+  int level = anchor->velocity;
+  for (const me::Hairpin *hairpin : hairpins)
+  {
+    const int from = hairpin->tick().ticks();
+    const int to = from + std::abs(hairpin->ticks().ticks());
+    if (to <= from)
+      continue;
+    const bool crescendo = hairpin->isCrescendo();
+    const int openTarget = std::clamp(
+        level + (crescendo ? kOpenHairpinStep : -kOpenHairpinStep), 0, 127);
+
+    if (chordTick >= to)
+    {
+      // Completed before this chord: persist its end level. (A hairpin with a
+      // written terminal dynamic surfaces that dynamic as the anchor, so any
+      // hairpin reaching here is open.)
+      level = openTarget;
+    }
+    else if (chordTick >= from)
+    {
+      // Active over this chord: interpolate toward its terminal dynamic if it
+      // agrees with the hairpin's direction, else toward the open target.
+      const auto endLevel = EndDynamic(segment, staffIdx, part, to);
+      const int target =
+          endLevel && (crescendo ? *endLevel > level : *endLevel < level)
+              ? *endLevel
+              : openTarget;
+      const float fraction =
+          static_cast<float>(chordTick - from) / static_cast<float>(to - from);
+      level = static_cast<int>(level + fraction * (target - level) + 0.5f);
+      break; // the active hairpin determines the final level
+    }
+    // Hairpin entirely after this chord: nothing to apply.
+  }
+
+  return static_cast<float>(level) / 127.f;
 }
 } // namespace
 
