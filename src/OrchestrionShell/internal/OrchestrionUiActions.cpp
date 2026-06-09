@@ -53,6 +53,13 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::reverbCathedral, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
+      muse::ui::UiAction(
+          actionIds::debugToggleNoteLabeling, mu::context::UiCtxAny,
+          mu::context::CTX_ANY,
+          muse::TranslatableString("appshell/menu/debug",
+                                   "Toggle note labeling"),
+          muse::TranslatableString("appshell/menu/debug",
+                                   "Right-click a note to add a label")),
       muse::ui::UiAction("view-toggle-fullscreen", mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction("prev", mu::context::UiCtxAny, mu::context::CTX_ANY),

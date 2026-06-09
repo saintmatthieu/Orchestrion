@@ -22,6 +22,18 @@
 
 namespace dgk
 {
+namespace
+{
+// True while the user is typing in a text field (e.g. the note-label editor),
+// so the 't' touchpad-toggle shortcut shouldn't swallow the keystroke.
+bool isEditingText()
+{
+  const QObject *const focus = qApp->focusObject();
+  return focus && (focus->inherits("QQuickTextInput") ||
+                   focus->inherits("QQuickTextEdit"));
+}
+} // namespace
+
 ControllerInfo::ControllerInfo(bool isWorking, QString icon,
                                GestureControllerType type)
     : isWorking(isWorking), icon(std::move(icon)), type(type)
@@ -177,7 +189,7 @@ bool GestureControllerSelectionModel::eventFilter(QObject *watched,
   if (event->type() == QEvent::KeyPress)
   {
     const auto keyEvent = static_cast<QKeyEvent *>(event);
-    if (keyEvent->key() == Qt::Key_T)
+    if (keyEvent->key() == Qt::Key_T && !isEditingText())
     {
       updateControllerIsSelected(
           static_cast<int>(GestureControllerType::Touchpad),

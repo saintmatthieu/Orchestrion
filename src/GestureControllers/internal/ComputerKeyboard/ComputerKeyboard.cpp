@@ -25,6 +25,18 @@
 
 namespace dgk
 {
+namespace
+{
+// True while the user is typing in a text field (e.g. the note-label editor),
+// so computer-keyboard note keys shouldn't fire and steal the keystrokes.
+bool isEditingText()
+{
+  const QObject *const focus = qApp->focusObject();
+  return focus && (focus->inherits("QQuickTextInput") ||
+                   focus->inherits("QQuickTextEdit"));
+}
+} // namespace
+
 ComputerKeyboardImpl::ComputerKeyboardImpl(ComputerKeyboard &owner)
     : QObject{nullptr}, m_owner(owner)
 {
@@ -39,7 +51,7 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
       modifiers & Qt::KeyboardModifier::ControlModifier ||
       modifiers & Qt::KeyboardModifier::AltModifier ||
       modifiers & Qt::KeyboardModifier::ShiftModifier;
-  if (!isKeyModifierPressed)
+  if (!isKeyModifierPressed && !isEditingText())
   {
     if (event->type() == QEvent::KeyPress)
     {

@@ -21,6 +21,7 @@
 #include "GestureControllers/IGestureControllerSelector.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include <actions/iactionsdispatcher.h>
@@ -41,14 +42,23 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
   muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<ISegmentRegistry> chordRegistry;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
 
   Q_INVOKABLE void loadOrchestrionNotation();
 
+  //! Developer note-labeling feature: called back from the QML label editor
+  //! shown after a right-click on a note (see onRightClicked).
+  Q_INVOKABLE void commitNoteLabel(const QString &text);
+  Q_INVOKABLE void cancelNoteLabel();
+
 signals:
   void mouseActivity();
+  //! Emitted on right-clicking a note while note-labeling mode is enabled.
+  //! \a rect is the note's bounding rect in view coordinates.
+  void noteLabelRequested(const QRectF &rect, const QString &currentText);
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -63,6 +73,7 @@ private:
   void paint(QPainter *painter) override;
   void onMousePressed(const QPointF &pos);
   void onMouseMoved(const QPointF &pos);
+  void onRightClicked(const QPointF &pos);
   std::vector<mu::engraving::EngravingItem *>
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
@@ -91,5 +102,9 @@ private:
   std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
+
+  // Note under the cursor when the label editor was opened (note-labeling
+  // feature). Valid only between onRightClicked and commit/cancel.
+  const mu::notation::EngravingItem *m_labelTarget = nullptr;
 };
 } // namespace dgk

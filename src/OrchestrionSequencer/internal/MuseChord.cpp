@@ -17,8 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "MuseChord.h"
+#include "NoteLabel.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/dynamic.h"
+#include "engraving/dom/fingering.h"
 #include "engraving/dom/hairpin.h"
 #include "engraving/dom/mscore.h"
 #include "engraving/dom/note.h"
@@ -174,11 +176,39 @@ float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
 
   return static_cast<float>(*nominal) / 127.f;
 }
+
+// The debug label(s) on this chord's notes, joined. Only fingerings tagged by
+// the note-labeling feature (i.e. carrying the marker) count — ordinary
+// fingerings already in the score are ignored, so this stays empty unless we
+// actually labelled the chord. The score is fully built by the time a MuseChord
+// is constructed, so this is read once.
+std::string ReadLabel(const me::Segment &segment, TrackIndex track)
+{
+  const auto chord =
+      dynamic_cast<const me::Chord *>(segment.element(track.value));
+  if (!chord)
+    return {};
+  std::string label;
+  for (const me::Note *note : chord->notes())
+    for (const me::EngravingItem *e : note->el())
+      if (e->type() == me::ElementType::FINGERING)
+      {
+        const QString text =
+            noteLabelFromFingering(me::toFingering(e)->plainText().toQString());
+        if (text.isEmpty())
+          continue;
+        if (!label.empty())
+          label += ", ";
+        label += text.toStdString();
+      }
+  return label;
+}
 } // namespace
 
 MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                      int measurePlaybackTick)
     : MuseMelodySegment{segment, track, measurePlaybackTick},
+      m_label{ReadLabel(segment, track)},
       m_dynamicVelocity{ComputeDynamicVelocity(segment, track)}
 {
 }

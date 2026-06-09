@@ -28,6 +28,8 @@ const std::string module_name("OrchestrionSequencer");
 const muse::Settings::Key
     VELOCITY_RECORDING_ENABLED(module_name, "VELOCITY_RECORDING_ENABLED");
 const muse::Settings::Key
+    NOTE_LABELING_ENABLED(module_name, "NOTE_LABELING_ENABLED");
+const muse::Settings::Key
     KEYBOARD_HELP_DISMISSED(module_name, "KEYBOARD_HELP_DISMISSED");
 } // namespace
 
@@ -39,6 +41,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(VELOCITY_RECORDING_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_velocityRecordingEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(NOTE_LABELING_ENABLED, muse::Val{false});
+  muse::settings()
+      ->valueChanged(NOTE_LABELING_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_noteLabelingEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED,
                                     muse::Val{false});
@@ -60,6 +68,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::velocityRecordingEnabledChanged() const
 {
   return m_velocityRecordingEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::noteLabelingEnabled() const
+{
+  return muse::settings()->value(NOTE_LABELING_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setNoteLabelingEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(NOTE_LABELING_ENABLED, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::noteLabelingEnabledChanged() const
+{
+  return m_noteLabelingEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

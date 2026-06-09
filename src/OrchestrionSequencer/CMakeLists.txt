@@ -41,6 +41,7 @@ set(MODULE_SRC
     IMelodySegment.h
     IModifiableItem.h
     IModifiableItemRegistry.h
+    NoteLabel.h
     OrchestrionTypes.h
     IOrchestrion.h
     IOrchestrionSequencer.h

@@ -191,7 +191,16 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::MouseButtonPress)
     {
       const auto mouseEvent = static_cast<QMouseEvent *>(event);
-      onMousePressed(mouseEvent->position());
+      if (mouseEvent->button() == Qt::RightButton &&
+          sequencerConfiguration()->noteLabelingEnabled())
+      {
+        onRightClicked(mouseEvent->position());
+        // Consume it: don't let the base notation view also handle the
+        // right-click (selection / context menu).
+        return true;
+      }
+      else
+        onMousePressed(mouseEvent->position());
     }
     else if (event->type() == QEvent::HoverMove)
     {
@@ -214,6 +223,29 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
   const muse::PointF logicPos = toLogical(pos);
   interactionProcessor()->onMouseMoved(logicPos, hitWidth());
 }
+
+void OrchestrionNotationPaintView::onRightClicked(const QPointF &pos)
+{
+  const muse::PointF logicPos = toLogical(pos);
+  const mu::notation::EngravingItem *const note =
+      interactionProcessor()->hitNoteAt(logicPos, hitWidth());
+  if (!note)
+    return;
+  m_labelTarget = note;
+  const QRectF viewRect = fromLogical(note->pageBoundingRect()).toQRectF();
+  emit noteLabelRequested(viewRect, interactionProcessor()->noteLabel(note));
+}
+
+void OrchestrionNotationPaintView::commitNoteLabel(const QString &text)
+{
+  if (!m_labelTarget)
+    return;
+  interactionProcessor()->setNoteLabel(m_labelTarget, text);
+  m_labelTarget = nullptr;
+  update();
+}
+
+void OrchestrionNotationPaintView::cancelNoteLabel() { m_labelTarget = nullptr; }
 
 float OrchestrionNotationPaintView::hitWidth() const
 {

@@ -208,6 +208,56 @@ ApplicationWindow {
                     anchors.fill: parent
                     z: 101
                 }
+
+                // Developer note-labeling editor (debug menu feature): a small
+                // text box shown over a note after right-clicking it. The label
+                // is stored on the note as a Fingering.
+                onNoteLabelRequested: function(rect, currentText) {
+                    noteLabelEditor.openAt(rect, currentText)
+                }
+
+                Rectangle {
+                    id: noteLabelEditor
+                    visible: false
+                    z: 200
+                    width: 140
+                    height: labelField.implicitHeight + 8
+                    color: "white"
+                    border.width: 1
+                    border.color: "#888888"
+                    radius: 3
+
+                    function openAt(rect, currentText) {
+                        x = Math.max(2, Math.min(rect.x + rect.width / 2 - width / 2,
+                                                 notationPaintView.width - width - 2))
+                        y = Math.max(2, rect.y - height - 6)
+                        labelField.text = currentText
+                        visible = true
+                        labelField.forceActiveFocus()
+                        labelField.selectAll()
+                    }
+
+                    TextField {
+                        id: labelField
+                        anchors.centerIn: parent
+                        width: parent.width - 8
+                        placeholderText: qsTr("Label")
+                        onAccepted: {
+                            notationPaintView.commitNoteLabel(text)
+                            noteLabelEditor.visible = false
+                        }
+                        Keys.onEscapePressed: {
+                            notationPaintView.cancelNoteLabel()
+                            noteLabelEditor.visible = false
+                        }
+                        onActiveFocusChanged: {
+                            if (!activeFocus && noteLabelEditor.visible) {
+                                notationPaintView.cancelNoteLabel()
+                                noteLabelEditor.visible = false
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -34,6 +34,14 @@ public:
   virtual void setVelocityRecordingEnabled(bool) = 0;
   virtual muse::async::Notification velocityRecordingEnabledChanged() const = 0;
 
+  //! Developer-only: when enabled, right-clicking a note opens an editor that
+  //! writes a free-text label (stored as a Fingering, so it persists in the
+  //! score and round-trips through MusicXML). Exposed via the debug menu in
+  //! unstable builds only.
+  virtual bool noteLabelingEnabled() const = 0;
+  virtual void setNoteLabelingEnabled(bool) = 0;
+  virtual muse::async::Notification noteLabelingEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

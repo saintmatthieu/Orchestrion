@@ -24,6 +24,8 @@
 
 #include "engraving/types/types.h"
 
+#include <string>
+
 namespace mu::engraving
 {
 class Note;
@@ -53,7 +55,7 @@ private:
   std::vector<int> GetPitches() const override;
   std::vector<mu::engraving::Note *> GetNotes() const;
   void SetModified();
-  void ResetNoteColors(const std::vector<mu::engraving::Note *>& notes);
+  void ResetNoteColors(const std::vector<mu::engraving::Note *> &notes);
 
   // IChord
 private:
@@ -68,6 +70,10 @@ private:
   void RevertChanges() override;
   muse::async::Notification ModifiedChanged() override;
 
+  // Free-text label(s) on this chord's notes (stored as Fingering), captured
+  // at construction. Debug aid: lets a labelled chord be spotted when
+  // inspecting the sequencer model in a debugger.
+  [[maybe_unused]] const std::string m_label;
   // Playback velocity (0..1) implied by the score's dynamics at this chord,
   // resolved once at construction; 0 if the score carries no dynamic here.
   const float m_dynamicVelocity;

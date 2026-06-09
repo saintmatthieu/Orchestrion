@@ -38,6 +38,13 @@ public:
   muse::async::Channel<const mu::notation::EngravingItem *>
   itemClicked() const override;
 
+  const mu::notation::EngravingItem *
+  hitNoteAt(const muse::PointF &logicalPosition,
+            float hitWidth) const override;
+  QString noteLabel(const mu::notation::EngravingItem *note) const override;
+  void setNoteLabel(const mu::notation::EngravingItem *note,
+                    const QString &text) override;
+
 private:
   mu::notation::INotationInteractionPtr muInteraction() const;
   muse::async::Channel<const mu::notation::EngravingItem *> m_itemClicked;

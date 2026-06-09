@@ -69,6 +69,12 @@ void OrchestrionActionController::init()
     synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral);
   });
 
+  dispatcher()->reg(this, actionIds::debugToggleNoteLabeling,
+                    [this] {
+                      sequencerConfig()->setNoteLabelingEnabled(
+                          !sequencerConfig()->noteLabelingEnabled());
+                    });
+
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
                     {

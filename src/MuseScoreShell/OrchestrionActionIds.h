@@ -33,4 +33,8 @@ static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
 static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
 static constexpr const char *reverbCathedral =
     "orchestrion-advanced-reverb-cathedral";
+
+//! Developer-only (debug menu): toggles note-labeling mode.
+static constexpr const char *debugToggleNoteLabeling =
+    "orchestrion-debug-toggle-note-labeling";
 } // namespace dgk::actionIds

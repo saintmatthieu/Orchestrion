@@ -23,6 +23,8 @@
 #include <modularity/imoduleinterface.h>
 #include <notation/notationtypes.h>
 
+#include <QString>
+
 namespace dgk
 {
 class IOrchestrionNotationInteractionProcessor : MODULE_EXPORT_INTERFACE
@@ -38,5 +40,18 @@ public:
                             float hitWidth) = 0;
   virtual muse::async::Channel<const mu::notation::EngravingItem *>
   itemClicked() const = 0;
+
+  //! Returns the note under the given position, or nullptr if there is none
+  //! (used by the developer note-labeling feature).
+  virtual const mu::notation::EngravingItem *
+  hitNoteAt(const muse::PointF &logicalPosition, float hitWidth) const = 0;
+
+  //! Current free-text label (Fingering text) of the given note, or empty.
+  virtual QString noteLabel(const mu::notation::EngravingItem *note) const = 0;
+
+  //! Adds/replaces (empty text removes) the note's free-text label, stored as
+  //! a Fingering so it persists in the score and exports to MusicXML.
+  virtual void setNoteLabel(const mu::notation::EngravingItem *note,
+                            const QString &text) = 0;
 };
 } // namespace dgk

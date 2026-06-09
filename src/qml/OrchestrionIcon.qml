@@ -36,4 +36,10 @@ Rectangle {
         anchors.bottomMargin: 5
         fillMode: Image.PreserveAspectFit
     }
+
+    MouseArea {
+        id: appIconMouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+    }
 }

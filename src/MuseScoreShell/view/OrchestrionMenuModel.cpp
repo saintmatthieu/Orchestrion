@@ -19,6 +19,7 @@
 #include "OrchestrionMenuModel.h"
 #include "OrchestrionActionIds.h"
 #include "log.h"
+#include "muse_framework_config.h"
 #include "types/translatablestring.h"
 
 #include <QDir>
@@ -55,9 +56,14 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
-  setItems({makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-            makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled),
-            makeHelpMenu()});
+  QList<muse::uicomponents::MenuItem *> menus{
+      makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
+      makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled)};
+#ifdef MUSE_APP_UNSTABLE
+  menus.append(makeDebugMenu());
+#endif
+  menus.append(makeHelpMenu());
+  setItems(menus);
 }
 
 void OrchestrionMenuModel::load()
@@ -76,6 +82,13 @@ void OrchestrionMenuModel::load()
       });
 
   synthesisConfiguration()->reverbPresetChanged().onNotify(
+      this,
+      [this]
+      {
+        createMenus(sequencerConfiguration()->velocityRecordingEnabled());
+      });
+
+  sequencerConfiguration()->noteLabelingEnabledChanged().onNotify(
       this,
       [this]
       {
@@ -304,6 +317,33 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDebugMenu()
+{
+  using namespace muse::uicomponents;
+
+  MenuItem *const toggle =
+      makeMenuItem(actionIds::debugToggleNoteLabeling,
+                   muse::TranslatableString("appshell/menu/debug",
+                                            "Toggle note labeling"));
+  toggle->setSelectable(true);
+  toggle->setSelected(sequencerConfiguration()->noteLabelingEnabled());
+
+  // The app menu doesn't render an item's description as a tooltip, so spell
+  // the instruction out as a disabled (non-clickable) hint line.
+  auto *const hint = new MenuItem(this);
+  hint->setId("orchestrion-debug-note-labeling-hint");
+  muse::ui::UiAction hintAction;
+  hintAction.title = muse::TranslatableString(
+      "appshell/menu/debug", "↳ Right-click a note to add a label");
+  hint->setAction(hintAction);
+  muse::ui::UiActionState hintState;
+  hintState.enabled = false;
+  hint->setState(hintState);
+
+  return makeMenu(muse::TranslatableString("appshell/menu/debug", "&Debug"),
+                  {toggle, hint}, "menu-orchestrion-debug");
 }
 
 muse::uicomponents::MenuItem *
