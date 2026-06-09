@@ -30,6 +30,8 @@
 #include <engraving/dom/note.h>
 #include <engraving/dom/tie.h>
 
+#include <cmath>
+
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
@@ -345,6 +347,15 @@ float OrchestrionNotationPaintView::hitWidth() const
 
 void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
 {
+  // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
+  // Ctrl-modified wheel event) zooms the score in/out about the cursor.
+  if (event->modifiers() & Qt::ControlModifier)
+  {
+    zoomBy(*event);
+    event->accept();
+    return;
+  }
+
   // The base class swallows wheel events (zoom + 2D scroll) because the
   // Orchestrion view controls its own scaling and keeps the single LINE-mode
   // system vertically centered. We re-enable just the one gesture we want:
@@ -354,6 +365,60 @@ void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
     event->accept();
   else
     event->ignore();
+}
+
+void OrchestrionNotationPaintView::zoomBy(const QWheelEvent &event)
+{
+  // Mirrors mu::notation::NotationViewInputController::wheelEvent: turn the
+  // wheel delta into "steps", then scale by zoomSpeed^steps about the cursor.
+  // setScaling() runs constrainScorePosition() (via onMatrixChanged), so the
+  // single LINE-mode system stays vertically centered after the zoom.
+  QPoint pixels = event.pixelDelta();
+  const QPoint angle = event.angleDelta();
+
+#ifdef Q_OS_LINUX
+  // pixelDelta is unreliable on X11; only trust it under Wayland (same caveat
+  // as the base class and the KineticScroller).
+  if (qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))
+    pixels = QPoint{};
+#endif
+
+  // A mouse notch is one step; a trackpad reports finer pixel deltas.
+  constexpr int pixelsPerStep = 5;
+  qreal stepsX = 0.;
+  qreal stepsY = 0.;
+  if (!pixels.isNull())
+  {
+    stepsX = pixels.x() / static_cast<qreal>(pixelsPerStep);
+    stepsY = pixels.y() / static_cast<qreal>(pixelsPerStep);
+  }
+  else if (!angle.isNull())
+  {
+    stepsX = angle.x() / static_cast<qreal>(QWheelEvent::DefaultDeltasPerStep);
+    stepsY = angle.y() / static_cast<qreal>(QWheelEvent::DefaultDeltasPerStep);
+  }
+
+  const qreal steps = std::sqrt(stepsX * stepsX + stepsY * stepsY) *
+                      (stepsY > -stepsX ? 1 : -1);
+  if (qFuzzyIsNull(steps))
+    return;
+
+  const qreal zoomSpeed =
+      std::pow(2.0, 1.0 / configuration()->mouseZoomPrecision());
+  qreal scaling = currentScaling() * std::pow(zoomSpeed, steps);
+
+  // Clamp to the zoom range MuseScore allows (its 5%–1600% list).
+  const QList<int> zooms = configuration()->possibleZoomPercentageList();
+  if (!zooms.isEmpty())
+  {
+    const qreal minScaling =
+        configuration()->scalingFromZoomPercentage(zooms.first());
+    const qreal maxScaling =
+        configuration()->scalingFromZoomPercentage(zooms.last());
+    scaling = std::clamp(scaling, minScaling, maxScaling);
+  }
+
+  setScaling(scaling, muse::PointF::fromQPointF(event.position()));
 }
 
 bool OrchestrionNotationPaintView::moveCanvasBy(qreal physicalDx)
@@ -508,6 +573,15 @@ void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
 
 void OrchestrionNotationPaintView::constrainScorePosition()
 {
+  // moveCanvasToPosition() below feeds back into this function via
+  // onMatrixChanged(). Usually that re-entrant call lands on the same position
+  // and stops, but at very low zoom our constraint and the base class's canvas
+  // constraint disagree and never reach a common fixed point, so the recursion
+  // overflows the stack. Guard against re-entry — a single pass is enough.
+  if (m_constrainingScorePosition)
+    return;
+  m_constrainingScorePosition = true;
+
   const auto content = notationContentRect(); // logical
   const auto scaling = currentScaling();
   const auto emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
@@ -531,6 +605,8 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   }
 
   moveCanvasToPosition(muse::PointF{leftLogicalX, topLogicalY});
+
+  m_constrainingScorePosition = false;
 }
 
 void OrchestrionNotationPaintView::paint(QPainter *painter)

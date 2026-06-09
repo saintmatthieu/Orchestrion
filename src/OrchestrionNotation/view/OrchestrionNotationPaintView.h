@@ -88,6 +88,9 @@ private:
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   void updateNotation();
   void wheelEvent(QWheelEvent *event) override;
+  //! Zoom the score in/out about the cursor in response to a Ctrl-modified
+  //! wheel event (mouse wheel or two-finger trackpad swipe).
+  void zoomBy(const QWheelEvent &event);
   //! Pan the canvas by \p physicalDx physical pixels; returns whether it moved
   //! (false ⇒ clamped at an edge). Drives the KineticScroller.
   bool moveCanvasBy(qreal physicalDx);
