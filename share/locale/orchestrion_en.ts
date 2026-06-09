@@ -2,9 +2,32 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en_US">
 <context>
+    <name>AttributionToast</name>
+    <message>
+        <location filename="../../src/qml/AttributionToast.qml" line="96"/>
+        <source>Sheet music by %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/AttributionToast.qml" line="104"/>
+        <source>Licensed under %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/AttributionToast.qml" line="112"/>
+        <source>View source</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>GestureControllerSelectionPopup</name>
     <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="42"/>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="21"/>
+        <source>Controllers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="60"/>
         <source>No active controller, click to select</source>
         <translation type="unfinished"></translation>
     </message>
@@ -28,69 +51,21 @@
     </message>
 </context>
 <context>
-    <name>appshell</name>
+    <name>NumberKeysHelp</name>
     <message>
-        <location filename="../../src/OrchestrionShell/view/OrchestrionWindowTitleProvider.cpp" line="102"/>
-        <source>Orchestrion</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>appshell/menu/audio-midi</name>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="190"/>
-        <source>&amp;MIDI controller</source>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="81"/>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="153"/>
+        <source>Use your number keys to play.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="193"/>
-        <source>MIDI &amp;synthesizer</source>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="88"/>
+        <source>Show me!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="195"/>
-        <source>&amp;Playback device</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="225"/>
-        <source>&amp;Audio/MIDI</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>appshell/menu/file</name>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="168"/>
-        <source>&amp;From computer…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="171"/>
-        <source>&amp;Example file…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="174"/>
-        <source>Search on &amp;Musescore.com</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="178"/>
-        <source>&amp;Help…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="179"/>
-        <source>&amp;Open</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>appshell/menu/keyboard</name>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="217"/>
-        <source>&amp;Keyboard</source>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="303"/>
+        <source>Left hand: keys 1 to 5   •   Right hand: keys 6 to 0</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -114,43 +89,6 @@
     <message>
         <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="106"/>
         <source>Computer Keyboard</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>midi</name>
-    <message>
-        <location filename="../../src/OrchestrionShell/internal/ControllerMenuManager.cpp" line="134"/>
-        <source>Could not connect to MIDI controller </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionShell/internal/ControllerMenuManager.cpp" line="136"/>
-        <source>You may check that it is not used by another application,
-select another controller or use the computer keyboard.</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>project</name>
-    <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="69"/>
-        <source>All supported files</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="70"/>
-        <source>MuseScore files</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="71"/>
-        <source>MusicXML files</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="74"/>
-        <source>Open</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

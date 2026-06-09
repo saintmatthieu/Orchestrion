@@ -2,9 +2,32 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="fr">
 <context>
+    <name>AttributionToast</name>
+    <message>
+        <location filename="../../src/qml/AttributionToast.qml" line="96"/>
+        <source>Sheet music by %1</source>
+        <translation>Partition de %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/AttributionToast.qml" line="104"/>
+        <source>Licensed under %1</source>
+        <translation>Sous licence %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/AttributionToast.qml" line="112"/>
+        <source>View source</source>
+        <translation>Voir la source</translation>
+    </message>
+</context>
+<context>
     <name>GestureControllerSelectionPopup</name>
     <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="42"/>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="21"/>
+        <source>Controllers</source>
+        <translation>Contrôleurs</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="60"/>
         <source>No active controller, click to select</source>
         <translation>Aucun contrôleur actif, cliquez pour en sélectionner un</translation>
     </message>
@@ -14,7 +37,7 @@
     <message>
         <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/MidiDeviceActivityPopup.qml" line="26"/>
         <source>Activity detected on MIDI device. Use it as controller?</source>
-        <translation>Activité détectée sur le périphérique MIDI. L'utiliser comme contrôleur ?</translation>
+        <translation>Activité détectée sur le périphérique MIDI. L&apos;utiliser comme contrôleur&#x2009;?</translation>
     </message>
     <message>
         <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/MidiDeviceActivityPopup.qml" line="38"/>
@@ -28,70 +51,78 @@
     </message>
 </context>
 <context>
+    <name>NumberKeysHelp</name>
+    <message>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="81"/>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="153"/>
+        <source>Use your number keys to play.</source>
+        <translation>Utilisez vos touches numériques pour jouer.</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="88"/>
+        <source>Show me!</source>
+        <translation>Montre-moi&#x2009;!</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="303"/>
+        <source>Left hand: keys 1 to 5   •   Right hand: keys 6 to 0</source>
+        <translation>Main gauche&#x2009;: touches 1 à 5   •   Main droite&#x2009;: touches 6 à 0</translation>
+    </message>
+</context>
+<context>
     <name>appshell</name>
     <message>
-        <location filename="../../src/OrchestrionShell/view/OrchestrionWindowTitleProvider.cpp" line="102"/>
         <source>Orchestrion</source>
-        <translation>Orchestrion</translation>
+        <translation type="vanished">Orchestrion</translation>
     </message>
 </context>
 <context>
     <name>appshell/menu/audio-midi</name>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="190"/>
         <source>&amp;MIDI controller</source>
-        <translation>Contrôleur &amp;MIDI</translation>
+        <translation type="vanished">Contrôleur &amp;MIDI</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="193"/>
         <source>MIDI &amp;synthesizer</source>
-        <translation>&amp;Synthétiseur MIDI</translation>
+        <translation type="vanished">&amp;Synthétiseur MIDI</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="195"/>
         <source>&amp;Playback device</source>
-        <translation>Périphérique de &amp;lecture</translation>
+        <translation type="vanished">Périphérique de &amp;lecture</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="225"/>
         <source>&amp;Audio/MIDI</source>
-        <translation>&amp;Audio/MIDI</translation>
+        <translation type="vanished">&amp;Audio/MIDI</translation>
     </message>
 </context>
 <context>
     <name>appshell/menu/file</name>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="168"/>
         <source>&amp;From computer…</source>
-        <translation>D&amp;u PC…</translation>
+        <translation type="vanished">D&amp;u PC…</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="171"/>
         <source>&amp;Example file…</source>
-        <translation>F&amp;ichier d’exemple…</translation>
+        <translation type="vanished">F&amp;ichier d’exemple…</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="174"/>
         <source>Search on &amp;Musescore.com</source>
-        <translation>Rechercher sur &amp;Musescore.com</translation>
+        <translation type="vanished">Rechercher sur &amp;Musescore.com</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="178"/>
         <source>&amp;Help…</source>
-        <translation>&amp;Aide…</translation>
+        <translation type="vanished">&amp;Aide…</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="179"/>
         <source>&amp;Open</source>
-        <translation>&amp;Ouvrir</translation>
+        <translation type="vanished">&amp;Ouvrir</translation>
     </message>
 </context>
 <context>
     <name>appshell/menu/keyboard</name>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="217"/>
         <source>&amp;Keyboard</source>
-        <translation>C&amp;lavier</translation>
+        <translation type="vanished">C&amp;lavier</translation>
     </message>
 </context>
 <context>
@@ -104,7 +135,7 @@
     <message>
         <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="102"/>
         <source>Touchpad (press &quot;T&quot; to toggle)</source>
-        <translation>Pavé tactile (appuyez sur « T » pour basculer)</translation>
+        <translation>Pavé tactile (appuyez sur «&#x2009;T&#x2009;» pour basculer)</translation>
     </message>
     <message>
         <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="104"/>
@@ -114,45 +145,39 @@
     <message>
         <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="106"/>
         <source>Computer Keyboard</source>
-        <translation>Clavier de l'ordinateur</translation>
+        <translation>Clavier de l&apos;ordinateur</translation>
     </message>
 </context>
 <context>
     <name>midi</name>
     <message>
-        <location filename="../../src/OrchestrionShell/internal/ControllerMenuManager.cpp" line="134"/>
         <source>Could not connect to MIDI controller </source>
-        <translation>Impossible de se connecter au contrôleur MIDI</translation>
+        <translation type="vanished">Impossible de se connecter au contrôleur MIDI</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionShell/internal/ControllerMenuManager.cpp" line="136"/>
         <source>You may check that it is not used by another application,
 select another controller or use the computer keyboard.</source>
-        <translation>Vérifiez qu'il n'est pas utilisé par une autre application,
-sélectionnez un autre contrôleur ou utilisez le clavier de l'ordinateur.</translation>
+        <translation type="vanished">Vérifiez qu&apos;il n&apos;est pas utilisé par une autre application,
+sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.</translation>
     </message>
 </context>
 <context>
     <name>project</name>
     <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="69"/>
         <source>All supported files</source>
-        <translation>Tous les fichiers supportés</translation>
+        <translation type="vanished">Tous les fichiers supportés</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="70"/>
         <source>MuseScore files</source>
-        <translation>Fichiers MuseScore</translation>
+        <translation type="vanished">Fichiers MuseScore</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="71"/>
         <source>MusicXML files</source>
-        <translation>Fichiers MusicXML</translation>
+        <translation type="vanished">Fichiers MusicXML</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="74"/>
         <source>Open</source>
-        <translation>Ouvrir</translation>
+        <translation type="vanished">Ouvrir</translation>
     </message>
 </context>
 <context>
