@@ -119,6 +119,9 @@ private:
 
   Hand m_rightHand;
   Hand m_leftHand;
+  //! The right hand's top (melody) voice, set only when the right hand has
+  //! several voices. Lower voices are then attenuated so the melody stands out.
+  const std::optional<TrackIndex> m_rightHandUpperVoice;
   const std::vector<const VoiceSequencer *> m_allVoices;
   const Tick m_finalTick;
   const PedalSequence m_pedalSequence;

@@ -47,6 +47,21 @@ auto MakeAllVoices(const OrchestrionSequencer::HandVoices &rightHand,
   return allVoices;
 }
 
+//! When the right hand has several voices, returns its top (melody) voice —
+//! the one with the lowest voice index, MuseScore's stems-up convention.
+//! Returns nullopt for a single-voice right hand (nothing to bring out).
+std::optional<TrackIndex>
+GetUpperRightHandVoice(const OrchestrionSequencer::HandVoices &rightHand)
+{
+  if (rightHand.size() < 2)
+    return std::nullopt;
+  const VoiceSequencer *upper = nullptr;
+  for (const auto &voice : rightHand)
+    if (!upper || voice->track.voiceIndex() < upper->track.voiceIndex())
+      upper = voice.get();
+  return upper ? std::make_optional(upper->track) : std::nullopt;
+}
+
 auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
 {
   return voices.empty()
@@ -99,6 +114,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
       m_leftHand{std::move(leftHand), std::nullopt},
+      m_rightHandUpperVoice{GetUpperRightHandVoice(m_rightHand.voices)},
       m_allVoices{MakeAllVoices(m_rightHand.voices, m_leftHand.voices)},
       m_finalTick{GetFinalTick(m_allVoices)},
       m_pedalSequence{std::move(pedalSequence)},
@@ -223,9 +239,18 @@ void OrchestrionSequencer::SendTransitions(
         {
           // Otherwise derive the base loudness from the score's dynamic
           // markings (p, mf, f, …) if any, falling back to a neutral default.
-          // The left hand is then attenuated, as before.
+          // Accompaniment is then attenuated so the melody stands out: the
+          // left hand, and — when the right hand has several voices — every
+          // right-hand voice below the top (melody) one.
+          constexpr float accompanimentGain = 0.7f;
           const float base = present->GetDynamicVelocity().value_or(0.5f);
-          velocity = isLeftHand ? base * 0.7f : base;
+          const bool isInnerRightHandVoice =
+              m_rightHandUpperVoice.has_value() &&
+              track.staffIndex() == m_rightHandUpperVoice->staffIndex() &&
+              track.voiceIndex() != m_rightHandUpperVoice->voiceIndex();
+          velocity =
+              isLeftHand || isInnerRightHandVoice ? base * accompanimentGain
+                                                  : base;
         }
       }
       else if (m_velocityRecordingEnabled)
