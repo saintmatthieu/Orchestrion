@@ -181,10 +181,11 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
       makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
                    muse::TranslatableString("appshell/menu/file",
-                                            "Search on &Musescore.com")),
+                                            "Search on &musescore.com")),
       makeSeparator(),
       makeMenuItem("orchestrion-file-help",
-                   muse::TranslatableString("appshell/menu/file", "&Help…"))};
+                   muse::TranslatableString("appshell/menu/file",
+                                            "&Help me find scores…"))};
 
   if (withSaveItem)
   {
@@ -204,7 +205,7 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
 {
   QList<muse::uicomponents::MenuItem *> menu{makeMenuItem(
       "view-toggle-fullscreen",
-      muse::TranslatableString("appshell/menu/view", "Toggle &fullscreen"))};
+      muse::TranslatableString("appshell/menu/view", "&Fullscreen"))};
   return makeMenu(muse::TranslatableString("appshell/menu/view", "&View"), menu,
                   "menu-orchestrion-view");
 }

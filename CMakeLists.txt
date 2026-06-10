@@ -240,6 +240,23 @@ file(GLOB TS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/share/locale/*.ts)
 add_custom_target(translations ALL COMMENT "Generating .qm files" VERBATIM)
 qt_add_lrelease(translations TS_FILES ${TS_FILES} NO_GLOBAL_TARGET QM_FILES_OUTPUT_VARIABLE QM_FILES)
 
+# Run with: cmake --build <build_dir> --target lupdate
+# muse::TranslatableString(context, str) maps to QT_TRANSLATE_NOOP(context, str) semantics.
+find_program(LUPDATE_EXECUTABLE lupdate HINTS "${QT_INSTALL_PREFIX}/bin" REQUIRED)
+add_custom_target(lupdate
+    COMMAND ${LUPDATE_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/MuseScore/src/framework
+            -tr-function-alias QT_TRANSLATE_NOOP+=TranslatableString
+            -tr-function-alias translate+=trc
+            -tr-function-alias translate+=qtrc
+            -tr-function-alias translate+=mtrc
+            -ts ${TS_FILES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Updating .ts translation files"
+    VERBATIM
+)
+
 install(
     FILES ${CMAKE_SOURCE_DIR}/share/locale/languages.json ${QM_FILES}
     DESTINATION ${resource_install_dir}/locale
