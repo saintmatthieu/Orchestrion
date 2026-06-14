@@ -32,12 +32,14 @@
 #include <engraving/dom/tie.h>
 
 #include <cmath>
+#include <optional>
 
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent),
       m_fader([this] { update(); }),
+      m_follower(*this),
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
 {
@@ -61,19 +63,30 @@ void OrchestrionNotationPaintView::subscribe(
       !transitions.empty())
     OnTransitions(transitions);
 
-  sequencer.AboutToJumpPosition().onReceive(this,
-                                            [this](auto)
-                                            {
-                                              m_kineticScroller.stop();
-                                              m_boxes.clear();
-                                              m_fader.clear();
-                                              update();
-                                            });
+  sequencer.AboutToJumpPosition().onReceive(
+      this,
+      [this](auto)
+      {
+        m_kineticScroller.stop();
+        // The position jumps: forget the tempo estimate and re-frame at the
+        // new location on the next transitions.
+        m_follower.reset();
+        m_boxes.clear();
+        m_fader.clear();
+        update();
+      });
 }
 
 void OrchestrionNotationPaintView::OnTransitions(
     const std::map<TrackIndex, ChordTransition> &transitions)
 {
+  // Onsets driving the follow: the leading *sounding* onset becomes a tempo
+  // observation; the leading/trailing of all onsets (sounding or upcoming) feed
+  // the one-shot initial framing.
+  std::optional<double> leadingPresentX;
+  std::optional<double> leadingAnyX;
+  std::optional<double> trailingAnyX;
+
   for (const auto &[track, transition] : transitions)
   {
     if (GetPastChord(transition))
@@ -127,7 +140,52 @@ void OrchestrionNotationPaintView::OnTransitions(
 
     box.color = QColor(mahogany);
     box.intensity = active ? 1.0 : 0.3;
+
+    // Onset x of this track's note (page-logical), for the follow. Use the
+    // segment element rather than the hugging box, whose width includes ties.
+    if (const auto el = segment->element(track.value))
+    {
+      const double onsetX = el->pageBoundingRect().center().x();
+      leadingAnyX = leadingAnyX ? std::max(*leadingAnyX, onsetX) : onsetX;
+      trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
+      if (active)
+        leadingPresentX =
+            leadingPresentX ? std::max(*leadingPresentX, onsetX) : onsetX;
+    }
   }
+
+  m_follower.onOnsets(leadingAnyX, trailingAnyX, leadingPresentX);
+}
+
+double OrchestrionNotationPaintView::minScaling() const
+{
+  const QList<int> zooms = configuration()->possibleZoomPercentageList();
+  if (zooms.isEmpty())
+    return currentScaling() * 0.1;
+  return configuration()->scalingFromZoomPercentage(zooms.first());
+}
+
+void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
+{
+  // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
+  // viewport back to hug the content; yield to us while we place the canvas.
+  m_drivingScroll = true;
+
+  if (!qFuzzyCompare(currentScaling(), scaling))
+    setScaling(scaling, muse::PointF{0., 0.});
+
+  constexpr double playheadFrac = 0.5;
+  const double logicalWidth = width() / scaling;
+  const double leftX = logicalX - playheadFrac * logicalWidth;
+
+  const auto content = notationContentRect();
+  const double emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
+  const double topY = content.top() - emptyAbovePhysical / scaling;
+
+  moveCanvasToPosition(muse::PointF{leftX, topY});
+
+  m_drivingScroll = false;
+  update();
 }
 
 std::vector<mu::engraving::EngravingItem *>
@@ -707,6 +765,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
 void OrchestrionNotationPaintView::updateNotation()
 {
   m_kineticScroller.stop(); // the score changed under us; cancel any glide
+  m_follower.reset();       // and the tempo estimate / follow state
   if (const auto notation = globalContext()->currentNotation())
   {
     setViewMode(mu::notation::ViewMode::LINE);
@@ -735,6 +794,11 @@ void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
 
 void OrchestrionNotationPaintView::constrainScorePosition()
 {
+  // While the follow logic is placing the canvas it owns the position (and
+  // centers the system vertically itself); don't fight it.
+  if (m_drivingScroll)
+    return;
+
   // moveCanvasToPosition() below feeds back into this function via
   // onMatrixChanged(). Usually that re-entrant call lands on the same position
   // and stops, but at very low zoom our constraint and the base class's canvas
