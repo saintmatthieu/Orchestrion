@@ -41,6 +41,16 @@ void TempoFollower::onOnsets(std::optional<double> leadingAny,
                              std::optional<double> trailingAny,
                              std::optional<double> leadingPresent)
 {
+  if (_suspended)
+  {
+    // A manual click/swipe suspended us; resume only when a note is actually
+    // played again. Start fresh so we re-frame at the current position and
+    // rebuild the tempo estimate (the timestamps from while paused are stale).
+    if (!leadingPresent)
+      return;
+    reset();
+  }
+
   // One-shot framing once we have a laid-out viewport and a position.
   if (!_framed && leadingAny && _canvas.viewWidth() > 1.0)
     frame(*leadingAny, trailingAny.value_or(*leadingAny));
@@ -86,11 +96,18 @@ void TempoFollower::tick()
   _canvas.centerOn(x, scaling);
 }
 
+void TempoFollower::suspend()
+{
+  _suspended = true;
+  _timer.stop();
+}
+
 void TempoFollower::reset()
 {
   _tracker.reset();
   _timer.stop();
   _framed = false;
+  _suspended = false;
   _scaling = 0.0;
   _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 }
