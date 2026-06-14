@@ -19,6 +19,7 @@
 #pragma once
 
 #include "GestureControllers/IGestureControllerSelector.h"
+#include "HighlightFader.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include "KineticScroller.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
@@ -30,6 +31,7 @@
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
 #include <unordered_map>
+#include <vector>
 
 namespace dgk
 {
@@ -98,15 +100,10 @@ private:
   void initTouchpadMidiController();
   float hitWidth() const;
 
-  struct Box
-  {
-    QRectF rect;
-    QColor color;
-    double spatium = 1.0; // score-derived glow scale (logical units)
-    double intensity = 1.0; // 0..1 overall glow strength (bright = ringing)
-    bool active = false;
-  };
-  std::unordered_map<int, Box> m_boxes;
+  // Live highlight per track (ringing or upcoming note).
+  std::unordered_map<int, Highlight> m_boxes;
+  // Highlights of just-ended notes, fading out (owns its own timer/clock).
+  HighlightFader m_fader;
 
   struct Contact
   {

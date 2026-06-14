@@ -36,6 +36,7 @@ namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent),
+      m_fader([this] { update(); }),
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
 {
@@ -64,6 +65,7 @@ void OrchestrionNotationPaintView::subscribe(
                                             {
                                               m_kineticScroller.stop();
                                               m_boxes.clear();
+                                              m_fader.clear();
                                               update();
                                             });
 }
@@ -74,7 +76,16 @@ void OrchestrionNotationPaintView::OnTransitions(
   for (const auto &[track, transition] : transitions)
   {
     if (GetPastChord(transition))
-      m_boxes.erase(track.value);
+    {
+      // The note on this track just ended. Instead of dropping its highlight
+      // instantly, hand it to the fader so it fades out (while any new note
+      // below lights up at full strength).
+      if (const auto it = m_boxes.find(track.value); it != m_boxes.end())
+      {
+        m_fader.add(it->second);
+        m_boxes.erase(it);
+      }
+    }
 
     const IMelodySegment *present = GetPresentThing(transition);
     const IChord *future = GetFutureChord(transition);
@@ -104,9 +115,9 @@ void OrchestrionNotationPaintView::OnTransitions(
       huggingBox = huggingBox.united(item->pageBoundingRect());
     const auto huggingRect = huggingBox.toQRectF();
     const auto spatium = items.front()->spatium();
-    Box &box = m_boxes[track.value];
+    const bool active = present != nullptr;
+    Highlight &box = m_boxes[track.value];
     box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
-    box.active = present != nullptr;
     box.spatium = spatium;
     // Mahogany theme color; a ringing note is highlighted at full strength,
     // the next note sits faintly pre-lit. (Decaying the intensity over the
@@ -114,7 +125,7 @@ void OrchestrionNotationPaintView::OnTransitions(
     constexpr auto mahogany = "#5A2B25";
 
     box.color = QColor(mahogany);
-    box.intensity = box.active ? 1.0 : 0.3;
+    box.intensity = active ? 1.0 : 0.3;
   }
 }
 
@@ -563,6 +574,7 @@ void OrchestrionNotationPaintView::updateNotation()
     constrainScorePosition();
   }
   m_boxes.clear();
+  m_fader.clear();
   update();
 }
 
@@ -594,7 +606,7 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   // two horizontal rules:
   // 1. not more than 100 empty pixels left or right
   // 2. if the score is narrower than the view, it stays centered
-  constexpr double maxEmptyPhysical = 100.;
+  constexpr double maxEmptyPhysical = 200.;
   const auto contentWidthPhysical = content.width() * scaling;
   double leftLogicalX;
   if (contentWidthPhysical < width())
@@ -619,7 +631,7 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // transform and before the notation is drawn — so the highlight sits behind
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
-  if (m_boxes.empty())
+  if (m_boxes.empty() && m_fader.empty())
     return;
 
   painter->save();
@@ -627,24 +639,25 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   painter->setPen(Qt::NoPen);
   painter->setOpacity(1.0);
 
-  std::for_each(m_boxes.begin(), m_boxes.end(),
-                [painter](const auto &entry)
-                {
-                  const Box &box = entry.second;
-                  const QRectF &rect = box.rect;
+  // Soft highlighter-style fill: a translucent rounded block behind the notes.
+  // `opacity` scales the strength (1 while ringing/upcoming, ramping to 0 as a
+  // just-ended note's highlight fades out).
+  const auto fillBox = [painter](const Highlight &box, double opacity)
+  {
+    const QRectF &rect = box.rect;
+    QColor fill = box.color;
+    fill.setAlphaF(box.intensity * 0.3 * opacity);
+    painter->setBrush(fill);
+    qreal r = box.spatium * 1.5;
+    r = std::min(r, rect.width() / 2);
+    r = std::min(r, rect.height() / 2);
+    painter->drawRoundedRect(rect, r, r);
+  };
 
-                  // Soft highlighter-style fill: a translucent rounded block
-                  // behind the notes, stronger for a ringing note, faint for
-                  // the upcoming one.
-                  QColor fill = box.color;
-                  fill.setAlphaF(box.intensity * 0.3);
-                  painter->setBrush(fill);
+  for (const auto &entry : m_boxes)
+    fillBox(entry.second, 1.0);
 
-                  qreal r = box.spatium * 1.5;
-                  r = std::min(r, rect.width() / 2);
-                  r = std::min(r, rect.height() / 2);
-                  painter->drawRoundedRect(rect, r, r);
-                });
+  m_fader.forEach(fillBox);
   painter->restore();
 }
 
