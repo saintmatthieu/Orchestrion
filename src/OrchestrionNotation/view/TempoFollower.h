@@ -51,6 +51,8 @@ public:
     virtual double viewWidth() const = 0;
     //! Current zoom (physical pixels per logical unit).
     virtual double viewScaling() const = 0;
+    //! The user's chosen zoom — the most zoomed-in the auto-zoom will ever go.
+    virtual double defaultScaling() const = 0;
     //! Smallest zoom the auto zoom-out may reach.
     virtual double minScaling() const = 0;
     //! Place logical x \p logicalX at the horizontal playhead at \p scaling,
@@ -66,10 +68,13 @@ public:
   //! Feed one transition batch's onset extents, all in page-logical x:
   //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset that is
   //! sounding *or* upcoming (used once, to frame the start); \p leadingPresent
-  //! is the rightmost *sounding* onset, recorded as a tempo observation.
+  //! is the rightmost *sounding* onset, recorded as a tempo observation;
+  //! \p trailingActive is the leftmost onset of any *recently-played* voice,
+  //! which the zoom keeps in view (zooming out only as far as needed).
   void onOnsets(std::optional<double> leadingAny,
                 std::optional<double> trailingAny,
-                std::optional<double> leadingPresent);
+                std::optional<double> leadingPresent,
+                std::optional<double> trailingActive);
 
   //! Stop following and hand control back to the user — a "panic" for a manual
   //! click or swipe. Stays suspended until the next played note (which resumes
@@ -91,7 +96,10 @@ private:
   bool _framed = false;
   bool _suspended =
       false;             // user took manual control; ignore onsets until reset
-  double _scaling = 0.0; // zoom chosen at framing and then held (0 = unset)
+  double _scaling = 0.0; // current (eased) zoom; 0 = unset
+  qint64 _lastTickMs = 0; // for zoom-easing dt
+  // Leftmost recently-played onset (display x); the zoom keeps it in view.
+  std::optional<double> _trailingX;
   // Accumulated leftward jump of repeated bars: added to observations to keep
   // the tracked coordinate monotonic across repeats, subtracted again for
   // display.

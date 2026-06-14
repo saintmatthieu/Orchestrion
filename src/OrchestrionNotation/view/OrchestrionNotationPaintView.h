@@ -28,6 +28,7 @@
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "TempoFollower.h"
+#include <QElapsedTimer>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
 #include <notation/inotationconfiguration.h>
@@ -91,6 +92,10 @@ private:
   void subscribe(const IOrchestrionSequencer &sequencer,
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
+  //! Clamp a desired viewport-left (logical) so the empty space past either end
+  //! of the system never exceeds the max padding (and a system narrower than the
+  //! view stays centered). Shared by manual constraint and auto-follow.
+  double clampLeftX(double desiredLeftX, double scaling) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
@@ -121,6 +126,10 @@ private:
   // TempoFollower::Canvas
   double viewWidth() const override { return width(); }
   double viewScaling() const override { return currentScaling(); }
+  double defaultScaling() const override
+  {
+    return m_userDefaultScaling > 0.0 ? m_userDefaultScaling : currentScaling();
+  }
   double minScaling() const override;
   void centerOn(double logicalX, double scaling) override;
   void wheelEvent(QWheelEvent *event) override;
@@ -149,11 +158,21 @@ private:
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
 
-  // Constant-speed score following (single-hand, first pass): turns played
-  // onsets into a smooth scroll. While it drives the canvas (centerOn),
-  // m_drivingScroll makes constrainScorePosition() yield so it isn't undone.
+  // Constant-speed score following: turns played onsets into a smooth scroll,
+  // centering the leading voice and zooming out to keep a lagging voice in
+  // view. While it drives the canvas (centerOn), m_drivingScroll makes
+  // constrainScorePosition() yield so it isn't undone.
   TempoFollower m_follower;
   bool m_drivingScroll = false;
+  // The user's chosen zoom (fit at load, updated on manual zoom): the auto-zoom
+  // never zooms in past it.
+  double m_userDefaultScaling = 0.0;
+  // Per-voice latest sounding onset x and when it sounded, for the zoom's
+  // "recently played" window (so the trailing voice persists between its notes
+  // but is dropped once abandoned).
+  std::unordered_map<int, double> m_trackOnsetX;
+  std::unordered_map<int, qint64> m_trackLastMs;
+  QElapsedTimer m_activeClock;
 
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.

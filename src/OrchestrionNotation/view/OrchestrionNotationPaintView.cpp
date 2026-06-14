@@ -43,6 +43,7 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
 {
+  m_activeClock.start();
 }
 
 void OrchestrionNotationPaintView::subscribe(
@@ -71,6 +72,8 @@ void OrchestrionNotationPaintView::subscribe(
         // The position jumps: forget the tempo estimate and re-frame at the
         // new location on the next transitions.
         m_follower.reset();
+        m_trackOnsetX.clear();
+        m_trackLastMs.clear();
         m_boxes.clear();
         m_fader.clear();
         update();
@@ -86,6 +89,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   std::optional<double> leadingPresentX;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
+  const qint64 nowMs = m_activeClock.elapsed();
 
   for (const auto &[track, transition] : transitions)
   {
@@ -149,12 +153,31 @@ void OrchestrionNotationPaintView::OnTransitions(
       leadingAnyX = leadingAnyX ? std::max(*leadingAnyX, onsetX) : onsetX;
       trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
       if (active)
+      {
         leadingPresentX =
             leadingPresentX ? std::max(*leadingPresentX, onsetX) : onsetX;
+        // Remember this voice's position for the zoom's "recently played"
+        // window.
+        m_trackOnsetX[track.value] = onsetX;
+        m_trackLastMs[track.value] = nowMs;
+      }
     }
   }
 
-  m_follower.onOnsets(leadingAnyX, trailingAnyX, leadingPresentX);
+  // Trailing onset across voices that played within the recent window: the zoom
+  // keeps it in view. A voice quiet longer than the window is dropped, so an
+  // abandoned hand stops holding the zoom out.
+  constexpr qint64 activeWindowMs = 2000;
+  std::optional<double> trailingActiveX;
+  for (const auto &[trk, ms] : m_trackLastMs)
+    if (nowMs - ms <= activeWindowMs)
+    {
+      const double x = m_trackOnsetX[trk];
+      trailingActiveX = trailingActiveX ? std::min(*trailingActiveX, x) : x;
+    }
+
+  m_follower.onOnsets(leadingAnyX, trailingAnyX, leadingPresentX,
+                      trailingActiveX);
 }
 
 double OrchestrionNotationPaintView::minScaling() const
@@ -176,7 +199,10 @@ void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
 
   constexpr double playheadFrac = 0.5;
   const double logicalWidth = width() / scaling;
-  const double leftX = logicalX - playheadFrac * logicalWidth;
+  // Center the leading position, but never past the max-padding limit (so near
+  // the start/end of the score the leading note drifts off-center rather than
+  // opening a gap wider than a manual zoom-out would allow).
+  const double leftX = clampLeftX(logicalX - playheadFrac * logicalWidth, scaling);
 
   const auto content = notationContentRect();
   const double emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
@@ -643,6 +669,7 @@ void OrchestrionNotationPaintView::zoomBy(const QWheelEvent &event)
   }
 
   setScaling(scaling, muse::PointF::fromQPointF(event.position()));
+  // onMatrixChanged() records this as the user's new default zoom.
 }
 
 bool OrchestrionNotationPaintView::moveCanvasBy(qreal physicalDx)
@@ -764,6 +791,16 @@ void OrchestrionNotationPaintView::onMatrixChanged(
     const muse::draw::Transform &newMatrix, bool overrideZoomType)
 {
   NotationPaintView::onMatrixChanged(oldMatrix, newMatrix, overrideZoomType);
+
+  // A zoom we didn't drive ourselves (wheel, pinch, keyboard, toolbar, ...) is
+  // the user's choice: adopt it as the new default the auto-zoom won't exceed,
+  // and hand control back until they play again.
+  if (!m_drivingScroll && !qFuzzyCompare(oldMatrix.m11(), newMatrix.m11()))
+  {
+    m_userDefaultScaling = newMatrix.m11();
+    m_follower.suspend();
+  }
+
   constrainScorePosition();
 }
 
@@ -782,7 +819,11 @@ void OrchestrionNotationPaintView::updateNotation()
     config.isShowSoundFlags = false;
     notation->interaction()->setScoreConfig(config);
     constrainScorePosition();
+    // The fit zoom after layout is the user's default until they change it.
+    m_userDefaultScaling = currentScaling();
   }
+  m_trackOnsetX.clear();
+  m_trackLastMs.clear();
   m_boxes.clear();
   m_fader.clear();
   update();
@@ -818,26 +859,28 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   const auto emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
   const auto topLogicalY = content.top() - emptyAbovePhysical / scaling;
 
-  // two horizontal rules:
-  // 1. not more than 100 empty pixels left or right
-  // 2. if the score is narrower than the view, it stays centered
-  constexpr double maxEmptyPhysical = 200.;
-  const auto contentWidthPhysical = content.width() * scaling;
-  double leftLogicalX;
-  if (contentWidthPhysical < width())
-    leftLogicalX =
-        content.left() - (width() - contentWidthPhysical) / (2 * scaling);
-  else
-  {
-    const auto minLeft = content.left() - maxEmptyPhysical / scaling;
-    const auto maxLeft =
-        content.right() + maxEmptyPhysical / scaling - width() / scaling;
-    leftLogicalX = std::clamp(viewport().left(), minLeft, maxLeft);
-  }
+  const double leftLogicalX = clampLeftX(viewport().left(), scaling);
 
   moveCanvasToPosition(muse::PointF{leftLogicalX, topLogicalY});
 
   m_constrainingScorePosition = false;
+}
+
+double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
+                                                double scaling) const
+{
+  // Two horizontal rules (shared by the manual constraint and the auto-follow):
+  // 1. not more than maxEmptyPhysical empty pixels past either end of the system;
+  // 2. if the system is narrower than the view, it stays centered.
+  const auto content = notationContentRect();
+  constexpr double maxEmptyPhysical = 200.;
+  const double contentWidthPhysical = content.width() * scaling;
+  if (contentWidthPhysical < width())
+    return content.left() - (width() - contentWidthPhysical) / (2 * scaling);
+  const double minLeft = content.left() - maxEmptyPhysical / scaling;
+  const double maxLeft =
+      content.right() + maxEmptyPhysical / scaling - width() / scaling;
+  return std::clamp(desiredLeftX, minLeft, maxLeft);
 }
 
 void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
