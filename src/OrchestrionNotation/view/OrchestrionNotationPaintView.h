@@ -27,6 +27,7 @@
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
+#include "TempoFollower.h"
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
 #include <notation/inotationconfiguration.h>
@@ -36,7 +37,8 @@
 
 namespace dgk
 {
-class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
+class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
+                                     public TempoFollower::Canvas
 {
   Q_OBJECT
   // Debug tooltip shown when hovering a note (see noteInfoTooltipEnabled).
@@ -115,6 +117,12 @@ private:
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   void updateNotation();
+
+  // TempoFollower::Canvas
+  double viewWidth() const override { return width(); }
+  double viewScaling() const override { return currentScaling(); }
+  double minScaling() const override;
+  void centerOn(double logicalX, double scaling) override;
   void wheelEvent(QWheelEvent *event) override;
   //! Zoom the score in/out about the cursor in response to a Ctrl-modified
   //! wheel event (mouse wheel or two-finger trackpad swipe).
@@ -140,6 +148,12 @@ private:
   std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
+
+  // Constant-speed score following (single-hand, first pass): turns played
+  // onsets into a smooth scroll. While it drives the canvas (centerOn),
+  // m_drivingScroll makes constrainScorePosition() yield so it isn't undone.
+  TempoFollower m_follower;
+  bool m_drivingScroll = false;
 
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.

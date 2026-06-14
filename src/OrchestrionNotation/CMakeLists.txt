@@ -14,11 +14,13 @@ set(MODULE_SRC
   view/OrchestrionNotationPaintView.cpp
   view/OrchestrionNotationPaintView.h
   ILoopBoundariesController.h
+  view/TempoFollower.cpp
+  view/TempoFollower.h
   IOrchestrionNotationInteractionProcessor.h
   OrchestrionNotationModule.cpp
   OrchestrionNotationModule.h
 )
 
-set(MODULE_LINK notation)
+set(MODULE_LINK notation TempoTracking)
 
 setup_module()
