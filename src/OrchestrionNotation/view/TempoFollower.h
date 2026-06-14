@@ -89,8 +89,13 @@ private:
   QElapsedTimer _clock; // wall clock for observations (ms)
   QTimer _timer;        // ~60 fps follow tick
   bool _framed = false;
-  bool _suspended = false; // user took manual control; ignore onsets until reset
+  bool _suspended =
+      false;             // user took manual control; ignore onsets until reset
   double _scaling = 0.0; // zoom chosen at framing and then held (0 = unset)
+  // Accumulated leftward jump of repeated bars: added to observations to keep
+  // the tracked coordinate monotonic across repeats, subtracted again for
+  // display.
+  double _xOffset = 0.0;
   double _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 };
 } // namespace dgk
