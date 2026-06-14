@@ -307,6 +307,7 @@ void OrchestrionNotationPaintView::onMousePressed(
     const QPointF &pos, Qt::KeyboardModifiers modifiers, Qt::MouseButton button)
 {
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
+  m_follower.suspend();     // ...and hands auto-scroll control back to the user
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
   const mu::notation::EngravingItem *hitElement =
@@ -566,6 +567,10 @@ float OrchestrionNotationPaintView::hitWidth() const
 
 void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
 {
+  // A wheel/trackpad swipe (zoom or pan) is manual navigation: hand auto-scroll
+  // control back to the user.
+  m_follower.suspend();
+
   // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
   // Ctrl-modified wheel event) zooms the score in/out about the cursor.
   if (event->modifiers() & Qt::ControlModifier)

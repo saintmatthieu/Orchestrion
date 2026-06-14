@@ -71,8 +71,13 @@ public:
                 std::optional<double> trailingAny,
                 std::optional<double> leadingPresent);
 
+  //! Stop following and hand control back to the user — a "panic" for a manual
+  //! click or swipe. Stays suspended until the next played note (which resumes
+  //! following fresh) or a reset().
+  void suspend();
+
   //! Forget the tempo estimate and framing and stop following (e.g. a position
-  //! jump or a new score).
+  //! jump or a new score). Also clears a suspend(), re-arming the follower.
   void reset();
 
 private:
@@ -84,6 +89,7 @@ private:
   QElapsedTimer _clock; // wall clock for observations (ms)
   QTimer _timer;        // ~60 fps follow tick
   bool _framed = false;
+  bool _suspended = false; // user took manual control; ignore onsets until reset
   double _scaling = 0.0; // zoom chosen at framing and then held (0 = unset)
   double _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 };
