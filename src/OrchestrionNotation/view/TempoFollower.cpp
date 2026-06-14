@@ -19,6 +19,7 @@
 #include "TempoFollower.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace dgk
 {
@@ -59,9 +60,17 @@ void TempoFollower::onOnsets(std::optional<double> leadingAny,
   // while playing.
   if (leadingPresent && *leadingPresent != _lastOnsetX)
   {
-    _lastOnsetX = *leadingPresent;
+    const double actualX = *leadingPresent;
+    // A repeat replays earlier bars: the onset x jumps backward with no
+    // position-jump signal. Fold each backward jump into an accumulating offset
+    // so the tracked coordinate stays monotonic (the tempo estimate carries
+    // straight through), and subtract the same offset for display so the view
+    // snaps back to the repeated bars.
+    if (!std::isnan(_lastOnsetX) && actualX < _lastOnsetX)
+      _xOffset += _lastOnsetX - actualX;
+    _lastOnsetX = actualX;
     _tracker.addObservation(static_cast<double>(_clock.elapsed()),
-                            *leadingPresent);
+                            actualX + _xOffset);
     if (!_timer.isActive())
       _timer.start();
   }
@@ -75,7 +84,8 @@ void TempoFollower::frame(double leadingX, double trailingX)
   {
     // Zoom out (never in) so the trailing onset fits to the left of the
     // centered leading onset, past a small edge margin.
-    const double availLeftPx = playheadFrac * _canvas.viewWidth() - edgeMarginPx;
+    const double availLeftPx =
+        playheadFrac * _canvas.viewWidth() - edgeMarginPx;
     const double spanLogical = leadingX - trailingX;
     if (availLeftPx > 0.0 && spanLogical > 1e-6)
       scale = std::min(userScale, availLeftPx / spanLogical);
@@ -91,8 +101,10 @@ void TempoFollower::tick()
   if (!_tracker.ready())
     return;
   const double scaling = _scaling > 0.0 ? _scaling : _canvas.viewScaling();
+  // The tracker works in the monotonic (repeat-unrolled) coordinate; subtract
+  // the accumulated repeat offset to get back to the on-screen layout x.
   const double x =
-      _tracker.positionAt(static_cast<double>(_clock.elapsed()));
+      _tracker.positionAt(static_cast<double>(_clock.elapsed())) - _xOffset;
   _canvas.centerOn(x, scaling);
 }
 
@@ -109,6 +121,7 @@ void TempoFollower::reset()
   _framed = false;
   _suspended = false;
   _scaling = 0.0;
+  _xOffset = 0.0;
   _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 }
 } // namespace dgk
