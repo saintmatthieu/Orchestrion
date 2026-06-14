@@ -26,9 +26,11 @@ namespace dgk
 namespace
 {
 // The leading note rests mid-viewport; a lagging onset must stay this many
-// physical pixels clear of the left edge for the initial framing to fit it.
+// physical pixels clear of the left edge to count as "fitting".
 constexpr double playheadFrac = 0.5;
 constexpr double edgeMarginPx = 48.0;
+// Zoom-easing time constant (s): the zoom adapts gently, never snappily.
+constexpr double tauZoom = 0.35;
 } // namespace
 
 TempoFollower::TempoFollower(Canvas &canvas) : _canvas(canvas)
@@ -40,7 +42,8 @@ TempoFollower::TempoFollower(Canvas &canvas) : _canvas(canvas)
 
 void TempoFollower::onOnsets(std::optional<double> leadingAny,
                              std::optional<double> trailingAny,
-                             std::optional<double> leadingPresent)
+                             std::optional<double> leadingPresent,
+                             std::optional<double> trailingActive)
 {
   if (_suspended)
   {
@@ -51,6 +54,9 @@ void TempoFollower::onOnsets(std::optional<double> leadingAny,
       return;
     reset();
   }
+
+  // Latest trailing-voice position drives the zoom (read each frame in tick()).
+  _trailingX = trailingActive;
 
   // One-shot framing once we have a laid-out viewport and a position.
   if (!_framed && leadingAny && _canvas.viewWidth() > 1.0)
@@ -78,7 +84,7 @@ void TempoFollower::onOnsets(std::optional<double> leadingAny,
 
 void TempoFollower::frame(double leadingX, double trailingX)
 {
-  const double userScale = _canvas.viewScaling();
+  const double userScale = _canvas.defaultScaling();
   double scale = userScale;
   if (trailingX < leadingX)
   {
@@ -100,12 +106,37 @@ void TempoFollower::tick()
 {
   if (!_tracker.ready())
     return;
-  const double scaling = _scaling > 0.0 ? _scaling : _canvas.viewScaling();
+
+  const double now = static_cast<double>(_clock.elapsed());
   // The tracker works in the monotonic (repeat-unrolled) coordinate; subtract
-  // the accumulated repeat offset to get back to the on-screen layout x.
-  const double x =
-      _tracker.positionAt(static_cast<double>(_clock.elapsed())) - _xOffset;
-  _canvas.centerOn(x, scaling);
+  // the accumulated repeat offset to get back to the on-screen layout x. This
+  // leading position is always centered.
+  const double leadingX = _tracker.positionAt(now) - _xOffset;
+
+  // Zoom as far in as the user's default allows, but far enough out that the
+  // trailing voice stays just inside the left edge.
+  const double userScale = _canvas.defaultScaling();
+  double targetScale = userScale;
+  if (_trailingX && *_trailingX < leadingX)
+  {
+    const double availLeftPx = playheadFrac * _canvas.viewWidth() - edgeMarginPx;
+    const double spanLogical = leadingX - *_trailingX;
+    if (availLeftPx > 0.0 && spanLogical > 1e-6)
+      targetScale = std::min(userScale, availLeftPx / spanLogical);
+    targetScale = std::clamp(targetScale, _canvas.minScaling(), userScale);
+  }
+
+  // Ease the zoom gently (the pan is already smooth via the tracker).
+  if (_scaling <= 0.0)
+    _scaling = targetScale;
+  else
+  {
+    const double dt = _lastTickMs > 0 ? (now - _lastTickMs) / 1000.0 : 0.016;
+    _scaling += (targetScale - _scaling) * (1.0 - std::exp(-dt / tauZoom));
+  }
+  _lastTickMs = static_cast<qint64>(now);
+
+  _canvas.centerOn(leadingX, _scaling);
 }
 
 void TempoFollower::suspend()
@@ -121,6 +152,8 @@ void TempoFollower::reset()
   _framed = false;
   _suspended = false;
   _scaling = 0.0;
+  _lastTickMs = 0;
+  _trailingX.reset();
   _xOffset = 0.0;
   _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 }
