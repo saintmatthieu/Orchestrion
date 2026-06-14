@@ -75,6 +75,7 @@ private:
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
+  void paintNotationUnderlay(QPainter *painter) override;
   void onMousePressed(const QPointF &pos, Qt::KeyboardModifiers modifiers,
                       Qt::MouseButton button);
   void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
@@ -100,8 +101,9 @@ private:
   struct Box
   {
     QRectF rect;
-    QPen pen;
-    double opacity = 1.0;
+    QColor color;
+    double spatium = 1.0; // score-derived glow scale (logical units)
+    double intensity = 1.0; // 0..1 overall glow strength (bright = ringing)
     bool active = false;
   };
   std::unordered_map<int, Box> m_boxes;

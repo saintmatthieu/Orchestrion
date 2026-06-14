@@ -107,10 +107,14 @@ void OrchestrionNotationPaintView::OnTransitions(
     Box &box = m_boxes[track.value];
     box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
     box.active = present != nullptr;
-    box.opacity = box.active ? 0.9 : 0.4;
-    constexpr auto mahogany = "#3D1F1A";
-    box.pen =
-        QPen{QColor(mahogany), 10, box.active ? Qt::SolidLine : Qt::DotLine};
+    box.spatium = spatium;
+    // Mahogany theme color; a ringing note is highlighted at full strength,
+    // the next note sits faintly pre-lit. (Decaying the intensity over the
+    // note's ring would need a render timer feeding a ring level here.)
+    constexpr auto mahogany = "#5A2B25";
+
+    box.color = QColor(mahogany);
+    box.intensity = box.active ? 1.0 : 0.3;
   }
 }
 
@@ -609,24 +613,50 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   m_constrainingScorePosition = false;
 }
 
-void OrchestrionNotationPaintView::paint(QPainter *painter)
+void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
 {
-  NotationPaintView::paint(painter);
+  // Called by the base view once the painter carries the score's world
+  // transform and before the notation is drawn — so the highlight sits behind
+  // the notes (but on top of the background), and we draw in logical
+  // coordinates.
+  if (m_boxes.empty())
+    return;
 
-  painter->restore();
+  painter->save();
   painter->setRenderHint(QPainter::Antialiasing);
-  painter->setBrush(Qt::NoBrush);
+  painter->setPen(Qt::NoPen);
+  painter->setOpacity(1.0);
 
   std::for_each(m_boxes.begin(), m_boxes.end(),
                 [painter](const auto &entry)
                 {
                   const Box &box = entry.second;
                   const QRectF &rect = box.rect;
-                  painter->setPen(box.pen);
-                  painter->setOpacity(box.opacity);
-                  painter->drawRoundedRect(rect, rect.width() * .45,
-                                           rect.height() * .45);
+
+                  // Soft highlighter-style fill: a translucent rounded block
+                  // behind the notes, stronger for a ringing note, faint for
+                  // the upcoming one.
+                  QColor fill = box.color;
+                  fill.setAlphaF(box.intensity * 0.3);
+                  painter->setBrush(fill);
+
+                  qreal r = box.spatium * 1.5;
+                  r = std::min(r, rect.width() / 2);
+                  r = std::min(r, rect.height() / 2);
+                  painter->drawRoundedRect(rect, r, r);
                 });
+  painter->restore();
+}
+
+void OrchestrionNotationPaintView::paint(QPainter *painter)
+{
+  NotationPaintView::paint(painter);
+
+  painter->restore();
+  // Touch contacts stay on top of everything.
+  painter->setRenderHint(QPainter::Antialiasing);
+  painter->setBrush(Qt::NoBrush);
+  painter->setOpacity(1.0);
 
   const auto view = viewport();
 
