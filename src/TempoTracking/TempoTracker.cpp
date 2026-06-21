@@ -27,6 +27,15 @@ namespace
 {
 constexpr double pi = 3.14159265358979323846;
 
+// Coast (deceleration) time constant as a fraction of the inter-onset interval:
+// the view eases to a stop over a few of these once the next note is overdue.
+constexpr double coastFactor = 0.9;
+
+// Decay time constant (ms) for the display offset that absorbs discontinuities
+// in the fitted position (e.g. when a late note snaps the fit back): the view
+// re-converges to the true position over a few of these, gradually.
+constexpr double offsetDecayMs = 250.0;
+
 //! Recency weight for observation \p index of \p numObs (oldest = 0), over a
 //! window of \p ageLimit slots. Ported verbatim from Christophone's
 //! tempo-driven controller: a raised cosine whose apex is shifted toward the
@@ -57,10 +66,57 @@ TempoTracker::TempoTracker(int maxObservations, int minObservations)
 
 void TempoTracker::addObservation(double realTime, double musicalPos)
 {
+  // Where the output sits right now (coast/overshoot included), so we can keep
+  // it continuous across the refit below.
+  const bool wasReady = _ready;
+  const double prev = positionAt(realTime);
+
+  _coasting = false; // a real onset resumes live tracking
   _observations.emplace_back(realTime, musicalPos);
   while (static_cast<int>(_observations.size()) > _maxObservations)
     _observations.pop_front();
   refit();
+
+  // Absorb any jump the refit introduced into a decaying offset, so the view
+  // slides to the new (centered) position gradually instead of snapping. Only
+  // when we were already tracking — at warm-up we want a clean start.
+  if (wasReady && _ready)
+  {
+    _displayOffset0 = prev - baseAt(realTime);
+    _offsetT0 = realTime;
+  }
+  else
+    _displayOffset0 = 0.0;
+}
+
+void TempoTracker::heartbeat(double realTime)
+{
+  const int n = static_cast<int>(_observations.size());
+  if (n < 2)
+    return;
+
+  const double lastTime = _observations.back().first;
+  // Expected cadence = the mean inter-onset interval over the window.
+  const double interval = (lastTime - _observations.front().first) / (n - 1);
+  if (interval <= 0.0)
+    return;
+
+  if (realTime > lastTime + interval)
+  {
+    // The next onset is overdue: begin (or continue) coasting. Capture the
+    // current position and tempo once; positionAt() then decays the velocity so
+    // the view eases to a monotonic stop instead of extrapolating off the end.
+    if (!_coasting)
+    {
+      _coasting = true;
+      _coastT0 = realTime;
+      _coastP0 = _slope * (realTime - _refTime) + _intercept;
+      _coastV0 = _slope;
+      _coastTau = coastFactor * interval;
+    }
+  }
+  else
+    _coasting = false;
 }
 
 void TempoTracker::refit()
@@ -104,16 +160,36 @@ void TempoTracker::refit()
   _ready = true;
 }
 
+double TempoTracker::baseAt(double realTime) const
+{
+  if (_coasting && realTime > _coastT0)
+    // Decaying-velocity coast: eases monotonically from _coastP0 to the rest
+    // position _coastP0 + _coastV0·_coastTau.
+    return _coastP0 + _coastV0 * _coastTau *
+                          (1.0 - std::exp(-(realTime - _coastT0) / _coastTau));
+  return _slope * (realTime - _refTime) + _intercept;
+}
+
+double TempoTracker::offsetAt(double realTime) const
+{
+  if (_displayOffset0 == 0.0 || realTime <= _offsetT0)
+    return _displayOffset0;
+  return _displayOffset0 * std::exp(-(realTime - _offsetT0) / offsetDecayMs);
+}
+
 double TempoTracker::positionAt(double realTime) const
 {
   if (!_ready)
     return _observations.empty() ? 0.0 : _observations.back().second;
-  return _slope * (realTime - _refTime) + _intercept;
+  return baseAt(realTime) + offsetAt(realTime);
 }
 
 void TempoTracker::reset()
 {
   _observations.clear();
+  _coasting = false;
+  _displayOffset0 = 0.0;
+  _offsetT0 = 0.0;
   _slope = 0.0;
   _intercept = 0.0;
   _refTime = 0.0;

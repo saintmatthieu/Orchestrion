@@ -108,9 +108,12 @@ void TempoFollower::tick()
     return;
 
   const double now = static_cast<double>(_clock.elapsed());
-  // The tracker works in the monotonic (repeat-unrolled) coordinate; subtract
-  // the accumulated repeat offset to get back to the on-screen layout x. This
-  // leading position is always centered.
+
+  // Let the model decelerate if the next note is overdue (it coasts to a stop
+  // rather than extrapolating off the end). The tracker works in the monotonic
+  // (repeat-unrolled) coordinate; subtract the accumulated repeat offset to get
+  // back to the on-screen layout x. This leading position is always centered.
+  _tracker.heartbeat(now);
   const double leadingX = _tracker.positionAt(now) - _xOffset;
 
   // Zoom as far in as the user's default allows, but far enough out that the
@@ -137,6 +140,16 @@ void TempoFollower::tick()
   _lastTickMs = static_cast<qint64>(now);
 
   _canvas.centerOn(leadingX, _scaling);
+
+  // Once the coast has eased to a stop and the zoom has settled there is nothing
+  // left to animate: idle until the next note restarts the timer. (Gated on
+  // coasting so a live glide is never cut short.)
+  const bool settled = std::isfinite(_lastLeadingX) &&
+                       std::abs(leadingX - _lastLeadingX) < 0.02 &&
+                       std::abs(targetScale - _scaling) < 1e-4;
+  _lastLeadingX = leadingX;
+  if (_tracker.isCoasting() && settled)
+    _timer.stop();
 }
 
 void TempoFollower::suspend()
@@ -153,6 +166,7 @@ void TempoFollower::reset()
   _suspended = false;
   _scaling = 0.0;
   _lastTickMs = 0;
+  _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
   _trailingX.reset();
   _xOffset = 0.0;
   _lastOnsetX = std::numeric_limits<double>::quiet_NaN();

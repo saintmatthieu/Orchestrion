@@ -56,6 +56,19 @@ public:
   //! \p musicalPos, and refit.
   void addObservation(double realTime, double musicalPos);
 
+  //! Advance the model's notion of "now" without a real onset (call this each
+  //! frame). Once \p realTime overruns the expected time of the next onset (the
+  //! recent inter-onset interval past the last one), the performer is late, so
+  //! positionAt() switches from linear extrapolation to a decaying-velocity
+  //! coast: it eases to a monotonic stop (no overshoot, no reversing, no reset)
+  //! instead of running away. A real addObservation() ends the coast. No effect
+  //! before warm-up.
+  void heartbeat(double realTime);
+
+  //! Whether the next onset is overdue and the extrapolation is coasting to
+  //! rest (rather than tracking live).
+  bool isCoasting() const { return _coasting; }
+
   //! Whether enough observations have accumulated to produce an estimate.
   bool ready() const { return _ready; }
 
@@ -80,6 +93,10 @@ public:
 
 private:
   void refit();
+  //! Fitted/coasting position before the continuity offset is applied.
+  double baseAt(double realTime) const;
+  //! The decaying offset that keeps positionAt() continuous across refits.
+  double offsetAt(double realTime) const;
 
   const int _maxObservations;
   const int _minObservations;
@@ -89,5 +106,18 @@ private:
   double _intercept = 0.0; // musical position at realTime == _refTime
   double _refTime = 0.0;   // realTime offset, for numerical conditioning
   bool _ready = false;
+
+  // Decaying-velocity coast while the next onset is overdue (set by heartbeat,
+  // ended by addObservation). Captured once when the coast begins:
+  bool _coasting = false;
+  double _coastT0 = 0.0;  // realTime the coast began
+  double _coastP0 = 0.0;  // position at that time
+  double _coastV0 = 0.0;  // velocity (tempo) at that time
+  double _coastTau = 0.0; // decay time constant (∝ inter-onset interval)
+
+  // Continuity offset: set to the jump a refit would cause, then decayed to 0,
+  // so positionAt() slides to a new fit gradually instead of snapping.
+  double _displayOffset0 = 0.0;
+  double _offsetT0 = 0.0;
 };
 } // namespace dgk
