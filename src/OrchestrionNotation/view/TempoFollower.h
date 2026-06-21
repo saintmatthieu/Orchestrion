@@ -24,19 +24,24 @@
 #include <QTimer>
 
 #include <limits>
+#include <map>
 #include <optional>
 
 namespace dgk
 {
-//! Drives a constant-speed score scroll from played onsets, using a
-//! TempoTracker. The owner extracts onset x-positions (page-logical) from
-//! playback transitions and feeds them in; a ~60 fps timer then keeps the
-//! tracker's extrapolated position at the playhead, so a constant tempo yields
-//! a constant scroll speed.
+//! Drives a constant-speed score scroll from played onsets. It runs one
+//! TempoTracker per hand (= staff; the owner keys onsets by staff, since the
+//! voices on a staff share the same gestures), so each hand keeps its own
+//! tempo. A ~60 fps timer keeps the *leading* hand's extrapolated position at
+//! the playhead; a *trailing* hand that is actively playing behind it pulls the
+//! zoom out (only as far as needed) so it stays in view, while a trailing hand
+//! that has gone quiet is allowed to slip out. Zoom stays as far in as the
+//! user's default allows.
 //!
-//! It knows nothing about the score model or the Qt canvas: all viewport
-//! geometry and movement go through the Canvas interface the owner implements
-//! (mirroring how HighlightFader / KineticScroller take their owner's hooks).
+//! The owner extracts per-track onset x-positions (page-logical) from playback
+//! transitions and feeds them in. It knows nothing about the score model or the
+//! Qt canvas: all viewport geometry and movement go through the Canvas
+//! interface the owner implements (mirroring HighlightFader / KineticScroller).
 class TempoFollower
 {
 public:
@@ -65,16 +70,14 @@ public:
   TempoFollower(const TempoFollower &) = delete;
   TempoFollower &operator=(const TempoFollower &) = delete;
 
-  //! Feed one transition batch's onset extents, all in page-logical x:
-  //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset that is
-  //! sounding *or* upcoming (used once, to frame the start); \p leadingPresent
-  //! is the rightmost *sounding* onset, recorded as a tempo observation;
-  //! \p trailingActive is the leftmost onset of any *recently-played* voice,
-  //! which the zoom keeps in view (zooming out only as far as needed).
-  void onOnsets(std::optional<double> leadingAny,
-                std::optional<double> trailingAny,
-                std::optional<double> leadingPresent,
-                std::optional<double> trailingActive);
+  //! Feed one transition batch, all in page-logical x:
+  //! \p presentOnsets maps each hand (staff) that is *sounding* this batch to
+  //! its onset x — a tempo observation for that hand. \p leadingAny /
+  //! \p trailingAny are the rightmost / leftmost onset that is sounding *or*
+  //! upcoming, used once to frame the start.
+  void onOnsets(const std::map<int, double> &presentOnsets,
+                std::optional<double> leadingAny,
+                std::optional<double> trailingAny);
 
   //! Stop following and hand control back to the user — a "panic" for a manual
   //! click or swipe. Stays suspended until the next played note (which resumes
@@ -89,23 +92,28 @@ private:
   void tick();
   void frame(double leadingX, double trailingX);
 
+  //! Per-hand state: its own tempo tracker, plus repeat bookkeeping. The
+  //! tracker works in a repeat-unrolled coordinate (onset x + xOffset, kept
+  //! monotonic); the on-screen layout x is positionAt() − xOffset.
+  struct Hand
+  {
+    TempoTracker tracker;
+    // Accumulated leftward jump of repeated bars for this hand: added to its
+    // observations to keep them monotonic, subtracted again for display.
+    double xOffset = 0.0;
+    double lastOnsetX = std::numeric_limits<double>::quiet_NaN();
+  };
+
   Canvas &_canvas;
-  TempoTracker _tracker;
+  std::map<int /*staff*/, Hand> _hands;
   QElapsedTimer _clock; // wall clock for observations (ms)
   QTimer _timer;        // ~60 fps follow tick
   bool _framed = false;
   bool _suspended =
-      false;             // user took manual control; ignore onsets until reset
-  double _scaling = 0.0; // current (eased) zoom; 0 = unset
-  qint64 _lastTickMs = 0;      // for zoom-easing dt
+      false;              // user took manual control; ignore onsets until reset
+  double _scaling = 0.0;  // current (eased) zoom; 0 = unset
+  qint64 _lastTickMs = 0; // for zoom-easing dt
   // Last centered position, to detect when the coast has settled (then idle).
   double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
-  // Leftmost recently-played onset (display x); the zoom keeps it in view.
-  std::optional<double> _trailingX;
-  // Accumulated leftward jump of repeated bars: added to observations to keep
-  // the tracked coordinate monotonic across repeats, subtracted again for
-  // display.
-  double _xOffset = 0.0;
-  double _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 };
 } // namespace dgk

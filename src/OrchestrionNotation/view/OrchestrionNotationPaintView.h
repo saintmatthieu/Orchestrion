@@ -167,12 +167,6 @@ private:
   // The user's chosen zoom (fit at load, updated on manual zoom): the auto-zoom
   // never zooms in past it.
   double m_userDefaultScaling = 0.0;
-  // Per-voice latest sounding onset x and when it sounded, for the zoom's
-  // "recently played" window (so the trailing voice persists between its notes
-  // but is dropped once abandoned).
-  std::unordered_map<int, double> m_trackOnsetX;
-  std::unordered_map<int, qint64> m_trackLastMs;
-  QElapsedTimer m_activeClock;
 
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.
