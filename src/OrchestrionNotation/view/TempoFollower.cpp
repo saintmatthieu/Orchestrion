@@ -40,46 +40,44 @@ TempoFollower::TempoFollower(Canvas &canvas) : _canvas(canvas)
   _timer.callOnTimeout([this] { tick(); });
 }
 
-void TempoFollower::onOnsets(std::optional<double> leadingAny,
-                             std::optional<double> trailingAny,
-                             std::optional<double> leadingPresent,
-                             std::optional<double> trailingActive)
+void TempoFollower::onOnsets(const std::map<int, double> &presentOnsets,
+                             std::optional<double> leadingAny,
+                             std::optional<double> trailingAny)
 {
   if (_suspended)
   {
     // A manual click/swipe suspended us; resume only when a note is actually
     // played again. Start fresh so we re-frame at the current position and
-    // rebuild the tempo estimate (the timestamps from while paused are stale).
-    if (!leadingPresent)
+    // rebuild the tempo estimates (the timestamps from while paused are stale).
+    if (presentOnsets.empty())
       return;
     reset();
   }
-
-  // Latest trailing-voice position drives the zoom (read each frame in tick()).
-  _trailingX = trailingActive;
 
   // One-shot framing once we have a laid-out viewport and a position.
   if (!_framed && leadingAny && _canvas.viewWidth() > 1.0)
     frame(*leadingAny, trailingAny.value_or(*leadingAny));
 
-  // A distinct sounding onset is a tempo observation; keep the timer running
-  // while playing.
-  if (leadingPresent && *leadingPresent != _lastOnsetX)
+  // Feed each sounding hand's tracker a tempo observation.
+  bool observed = false;
+  const double now = static_cast<double>(_clock.elapsed());
+  for (const auto &[track, onsetX] : presentOnsets)
   {
-    const double actualX = *leadingPresent;
-    // A repeat replays earlier bars: the onset x jumps backward with no
-    // position-jump signal. Fold each backward jump into an accumulating offset
-    // so the tracked coordinate stays monotonic (the tempo estimate carries
-    // straight through), and subtract the same offset for display so the view
-    // snaps back to the repeated bars.
-    if (!std::isnan(_lastOnsetX) && actualX < _lastOnsetX)
-      _xOffset += _lastOnsetX - actualX;
-    _lastOnsetX = actualX;
-    _tracker.addObservation(static_cast<double>(_clock.elapsed()),
-                            actualX + _xOffset);
-    if (!_timer.isActive())
-      _timer.start();
+    Hand &hand = _hands[track];
+    if (onsetX == hand.lastOnsetX)
+      continue;
+    // A repeat replays earlier bars: this hand's onset x jumps backward with no
+    // position-jump signal. Fold each backward jump into the hand's offset so
+    // its tracked coordinate stays monotonic (the tempo carries straight
+    // through), and subtract it again for display so the view snaps back.
+    if (!std::isnan(hand.lastOnsetX) && onsetX < hand.lastOnsetX)
+      hand.xOffset += hand.lastOnsetX - onsetX;
+    hand.lastOnsetX = onsetX;
+    hand.tracker.addObservation(now, onsetX + hand.xOffset);
+    observed = true;
   }
+  if (observed && !_timer.isActive())
+    _timer.start();
 }
 
 void TempoFollower::frame(double leadingX, double trailingX)
@@ -104,32 +102,45 @@ void TempoFollower::frame(double leadingX, double trailingX)
 
 void TempoFollower::tick()
 {
-  if (!_tracker.ready())
-    return;
-
   const double now = static_cast<double>(_clock.elapsed());
 
-  // Let the model decelerate if the next note is overdue (it coasts to a stop
-  // rather than extrapolating off the end). The tracker works in the monotonic
-  // (repeat-unrolled) coordinate; subtract the accumulated repeat offset to get
-  // back to the on-screen layout x. This leading position is always centered.
-  _tracker.heartbeat(now);
-  const double leadingX = _tracker.positionAt(now) - _xOffset;
+  // Advance each hand's tracker (coasting to a stop if its next note is
+  // overdue), and collect the on-screen layout positions: the leading
+  // (rightmost) hand is centered; the leftmost *actively-playing* hand sets how
+  // far we must zoom out to keep it in view.
+  std::optional<double> leadingX;
+  std::optional<double> trailingActiveX;
+  bool allCoasting = true;
+  for (auto &[track, hand] : _hands)
+  {
+    hand.tracker.heartbeat(now);
+    if (!hand.tracker.ready())
+      continue;
+    const double pos = hand.tracker.positionAt(now) - hand.xOffset;
+    leadingX = leadingX ? std::max(*leadingX, pos) : pos;
+    if (!hand.tracker.isCoasting())
+    {
+      allCoasting = false;
+      trailingActiveX = trailingActiveX ? std::min(*trailingActiveX, pos) : pos;
+    }
+  }
+  if (!leadingX)
+    return;
 
-  // Zoom as far in as the user's default allows, but far enough out that the
-  // trailing voice stays just inside the left edge.
+  // Zoom as far in as the user's default allows, but far enough out that a
+  // lagging active hand stays just inside the left edge.
   const double userScale = _canvas.defaultScaling();
   double targetScale = userScale;
-  if (_trailingX && *_trailingX < leadingX)
+  if (trailingActiveX && *trailingActiveX < *leadingX)
   {
     const double availLeftPx = playheadFrac * _canvas.viewWidth() - edgeMarginPx;
-    const double spanLogical = leadingX - *_trailingX;
+    const double spanLogical = *leadingX - *trailingActiveX;
     if (availLeftPx > 0.0 && spanLogical > 1e-6)
       targetScale = std::min(userScale, availLeftPx / spanLogical);
     targetScale = std::clamp(targetScale, _canvas.minScaling(), userScale);
   }
 
-  // Ease the zoom gently (the pan is already smooth via the tracker).
+  // Ease the zoom gently (the pan is already smooth via the trackers).
   if (_scaling <= 0.0)
     _scaling = targetScale;
   else
@@ -139,16 +150,16 @@ void TempoFollower::tick()
   }
   _lastTickMs = static_cast<qint64>(now);
 
-  _canvas.centerOn(leadingX, _scaling);
+  _canvas.centerOn(*leadingX, _scaling);
 
-  // Once the coast has eased to a stop and the zoom has settled there is nothing
-  // left to animate: idle until the next note restarts the timer. (Gated on
-  // coasting so a live glide is never cut short.)
+  // Once every hand has coasted to a stop and the zoom has settled there is
+  // nothing left to animate: idle until the next note restarts the timer.
+  // (Gated on all-coasting so a live glide is never cut short.)
   const bool settled = std::isfinite(_lastLeadingX) &&
-                       std::abs(leadingX - _lastLeadingX) < 0.02 &&
+                       std::abs(*leadingX - _lastLeadingX) < 0.02 &&
                        std::abs(targetScale - _scaling) < 1e-4;
-  _lastLeadingX = leadingX;
-  if (_tracker.isCoasting() && settled)
+  _lastLeadingX = *leadingX;
+  if (allCoasting && settled)
     _timer.stop();
 }
 
@@ -160,15 +171,12 @@ void TempoFollower::suspend()
 
 void TempoFollower::reset()
 {
-  _tracker.reset();
+  _hands.clear();
   _timer.stop();
   _framed = false;
   _suspended = false;
   _scaling = 0.0;
   _lastTickMs = 0;
   _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
-  _trailingX.reset();
-  _xOffset = 0.0;
-  _lastOnsetX = std::numeric_limits<double>::quiet_NaN();
 }
 } // namespace dgk

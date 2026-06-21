@@ -37,13 +37,10 @@
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
-    : mu::notation::NotationPaintView(parent),
-      m_fader([this] { update(); }),
-      m_follower(*this),
-      m_kineticScroller([this](qreal physicalDx)
-                        { return moveCanvasBy(physicalDx); })
+    : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
+      m_follower(*this), m_kineticScroller([this](qreal physicalDx)
+                                           { return moveCanvasBy(physicalDx); })
 {
-  m_activeClock.start();
 }
 
 void OrchestrionNotationPaintView::subscribe(
@@ -64,32 +61,31 @@ void OrchestrionNotationPaintView::subscribe(
       !transitions.empty())
     OnTransitions(transitions);
 
-  sequencer.AboutToJumpPosition().onReceive(
-      this,
-      [this](auto)
-      {
-        m_kineticScroller.stop();
-        // The position jumps: forget the tempo estimate and re-frame at the
-        // new location on the next transitions.
-        m_follower.reset();
-        m_trackOnsetX.clear();
-        m_trackLastMs.clear();
-        m_boxes.clear();
-        m_fader.clear();
-        update();
-      });
+  sequencer.AboutToJumpPosition().onReceive(this,
+                                            [this](auto)
+                                            {
+                                              m_kineticScroller.stop();
+                                              // The position jumps: forget the
+                                              // tempo estimate and re-frame at
+                                              // the new location on the next
+                                              // transitions.
+                                              m_follower.reset();
+                                              m_boxes.clear();
+                                              m_fader.clear();
+                                              update();
+                                            });
 }
 
 void OrchestrionNotationPaintView::OnTransitions(
     const std::map<TrackIndex, ChordTransition> &transitions)
 {
-  // Onsets driving the follow: the leading *sounding* onset becomes a tempo
-  // observation; the leading/trailing of all onsets (sounding or upcoming) feed
-  // the one-shot initial framing.
-  std::optional<double> leadingPresentX;
+  // Onsets driving the follow, grouped per hand (= staff): the voices on a
+  // staff are played by the same gestures, so they share one tracker. Each
+  // hand's sounding onset is a tempo observation for it; the leading/trailing
+  // of all onsets (sounding or upcoming) feed the one-shot initial framing.
+  std::map<int /*staff*/, double> presentOnsets;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
-  const qint64 nowMs = m_activeClock.elapsed();
 
   for (const auto &[track, transition] : transitions)
   {
@@ -154,30 +150,16 @@ void OrchestrionNotationPaintView::OnTransitions(
       trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
       if (active)
       {
-        leadingPresentX =
-            leadingPresentX ? std::max(*leadingPresentX, onsetX) : onsetX;
-        // Remember this voice's position for the zoom's "recently played"
-        // window.
-        m_trackOnsetX[track.value] = onsetX;
-        m_trackLastMs[track.value] = nowMs;
+        // Collapse a staff's voices into one onset (its rightmost).
+        const int hand = track.staffIndex();
+        const auto it = presentOnsets.find(hand);
+        presentOnsets[hand] =
+            it == presentOnsets.end() ? onsetX : std::max(it->second, onsetX);
       }
     }
   }
 
-  // Trailing onset across voices that played within the recent window: the zoom
-  // keeps it in view. A voice quiet longer than the window is dropped, so an
-  // abandoned hand stops holding the zoom out.
-  constexpr qint64 activeWindowMs = 2000;
-  std::optional<double> trailingActiveX;
-  for (const auto &[trk, ms] : m_trackLastMs)
-    if (nowMs - ms <= activeWindowMs)
-    {
-      const double x = m_trackOnsetX[trk];
-      trailingActiveX = trailingActiveX ? std::min(*trailingActiveX, x) : x;
-    }
-
-  m_follower.onOnsets(leadingAnyX, trailingAnyX, leadingPresentX,
-                      trailingActiveX);
+  m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
 }
 
 double OrchestrionNotationPaintView::minScaling() const
@@ -202,10 +184,12 @@ void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
   // Center the leading position, but never past the max-padding limit (so near
   // the start/end of the score the leading note drifts off-center rather than
   // opening a gap wider than a manual zoom-out would allow).
-  const double leftX = clampLeftX(logicalX - playheadFrac * logicalWidth, scaling);
+  const double leftX =
+      clampLeftX(logicalX - playheadFrac * logicalWidth, scaling);
 
   const auto content = notationContentRect();
-  const double emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
+  const double emptyAbovePhysical =
+      (height() - content.height() * scaling) / 2.;
   const double topY = content.top() - emptyAbovePhysical / scaling;
 
   moveCanvasToPosition(muse::PointF{leftX, topY});
@@ -822,8 +806,6 @@ void OrchestrionNotationPaintView::updateNotation()
     // The fit zoom after layout is the user's default until they change it.
     m_userDefaultScaling = currentScaling();
   }
-  m_trackOnsetX.clear();
-  m_trackLastMs.clear();
   m_boxes.clear();
   m_fader.clear();
   update();
@@ -870,7 +852,8 @@ double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
                                                 double scaling) const
 {
   // Two horizontal rules (shared by the manual constraint and the auto-follow):
-  // 1. not more than maxEmptyPhysical empty pixels past either end of the system;
+  // 1. not more than maxEmptyPhysical empty pixels past either end of the
+  // system;
   // 2. if the system is narrower than the view, it stays centered.
   const auto content = notationContentRect();
   constexpr double maxEmptyPhysical = 200.;
