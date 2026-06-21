@@ -97,7 +97,9 @@ private:
   bool _suspended =
       false;             // user took manual control; ignore onsets until reset
   double _scaling = 0.0; // current (eased) zoom; 0 = unset
-  qint64 _lastTickMs = 0; // for zoom-easing dt
+  qint64 _lastTickMs = 0;      // for zoom-easing dt
+  // Last centered position, to detect when the coast has settled (then idle).
+  double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
   // Leftmost recently-played onset (display x); the zoom keeps it in view.
   std::optional<double> _trailingX;
   // Accumulated leftward jump of repeated bars: added to observations to keep
