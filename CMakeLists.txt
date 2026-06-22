@@ -44,6 +44,14 @@ else()
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation prefix for other OS" FORCE)
 endif()
 
+# Unit tests (off by default in this fork). The framework ships googletest but
+# only adds it from its own CMakeLists, which we don't include — so bring in the
+# gmock/gtest target here when tests are enabled, before the modules that use it.
+if (MUSE_ENABLE_UNIT_TESTS)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    add_subdirectory(MuseScore/src/framework/testing/thirdparty/googletest)
+endif()
+
 add_subdirectory(src/ExternalDevices)
 add_subdirectory(src/GestureControllers)
 add_subdirectory(src/MuseScoreShell)
