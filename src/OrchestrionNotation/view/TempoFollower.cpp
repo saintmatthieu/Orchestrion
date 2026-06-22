@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace dgk
 {
@@ -31,16 +32,20 @@ constexpr double playheadFrac = 0.5;
 constexpr double edgeMarginPx = 48.0;
 // Zoom-easing time constant (s): the zoom adapts gently, never snappily.
 constexpr double tauZoom = 0.35;
+// Score ticks per quarter note (MuseScore's division), to express the
+// visualization's tempo readout in BPM.
+constexpr double ticksPerQuarter = 480.0;
 } // namespace
 
-TempoFollower::TempoFollower(Canvas &canvas) : _canvas(canvas)
+TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
+    : _canvas(canvas), _viz(viz)
 {
   _clock.start();
   _timer.setInterval(16); // ~60 fps
   _timer.callOnTimeout([this] { tick(); });
 }
 
-void TempoFollower::onOnsets(const std::map<int, double> &presentOnsets,
+void TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
                              std::optional<double> leadingAny,
                              std::optional<double> trailingAny)
 {
@@ -61,20 +66,31 @@ void TempoFollower::onOnsets(const std::map<int, double> &presentOnsets,
   // Feed each sounding hand's tracker a tempo observation.
   bool observed = false;
   const double now = static_cast<double>(_clock.elapsed());
-  for (const auto &[track, onsetX] : presentOnsets)
+  for (const auto &[track, onset] : presentOnsets)
   {
     Hand &hand = _hands[track];
+    const double onsetX = onset.x;
     if (onsetX == hand.lastOnsetX)
       continue;
     // A repeat replays earlier bars: this hand's onset x jumps backward with no
     // position-jump signal. Fold each backward jump into the hand's offset so
     // its tracked coordinate stays monotonic (the tempo carries straight
     // through), and subtract it again for display so the view snaps back.
-    if (!std::isnan(hand.lastOnsetX) && onsetX < hand.lastOnsetX)
+    const bool repeat = !std::isnan(hand.lastOnsetX) && onsetX < hand.lastOnsetX;
+    if (repeat)
       hand.xOffset += hand.lastOnsetX - onsetX;
     hand.lastOnsetX = onsetX;
     hand.tracker.addObservation(now, onsetX + hand.xOffset);
+
+    // Feed the musical-tempo tracker the score tick (a repeat's backward tick
+    // would glitch the fit, so restart it there).
+    if (repeat)
+      hand.tempoTracker.reset();
+    hand.tempoTracker.addObservation(now, onset.tick);
+
     observed = true;
+    if (_viz)
+      _viz->onOnset(now, track);
   }
   if (observed && !_timer.isActive())
     _timer.start();
@@ -111,19 +127,30 @@ void TempoFollower::tick()
   std::optional<double> leadingX;
   std::optional<double> trailingActiveX;
   bool allCoasting = true;
+  std::vector<VizSink::HandTempo> vizSamples;
   for (auto &[track, hand] : _hands)
   {
     hand.tracker.heartbeat(now);
+    hand.tempoTracker.heartbeat(now);
     if (!hand.tracker.ready())
       continue;
     const double pos = hand.tracker.positionAt(now) - hand.xOffset;
     leadingX = leadingX ? std::max(*leadingX, pos) : pos;
-    if (!hand.tracker.isCoasting())
+    const bool coasting = hand.tracker.isCoasting();
+    if (!coasting)
     {
       allCoasting = false;
       trailingActiveX = trailingActiveX ? std::min(*trailingActiveX, pos) : pos;
     }
+    if (_viz)
+    {
+      // Smoothed musical tempo, ticks/ms → BPM.
+      const double bpm = hand.tempoTracker.speed() * (60000.0 / ticksPerQuarter);
+      vizSamples.push_back({track, bpm, hand.tempoTracker.isCoasting()});
+    }
   }
+  if (_viz && !vizSamples.empty())
+    _viz->onTempoSample(now, vizSamples);
   if (!leadingX)
     return;
 

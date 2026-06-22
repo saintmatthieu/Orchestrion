@@ -62,6 +62,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setNoteInfoTooltipEnabled(
                           !sequencerConfig()->noteInfoTooltipEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-tempo-visualization",
+                    [this]
+                    {
+                      sequencerConfig()->setTempoVisualizationEnabled(
+                          !sequencerConfig()->tempoVisualizationEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });

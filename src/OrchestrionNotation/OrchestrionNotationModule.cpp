@@ -20,6 +20,8 @@
 #include "internal/LoopBoundariesController.h"
 #include "internal/OrchestrionNotationInteractionProcessor.h"
 #include "view/OrchestrionNotationPaintView.h"
+#include "view/TempoVisualizationView.h"
+#include "view/TempoVizModel.h"
 
 namespace dgk
 {
@@ -32,6 +34,11 @@ void OrchestrionNotationModule::registerUiTypes()
 {
   qmlRegisterType<OrchestrionNotationPaintView>(
       "Orchestrion.OrchestrionNotation", 1, 0, "OrchestrionNotationPaintView");
+  qmlRegisterType<TempoVisualizationView>(
+      "Orchestrion.OrchestrionNotation", 1, 0, "TempoVisualizationView");
+  qmlRegisterUncreatableType<TempoVizModel>(
+      "Orchestrion.OrchestrionNotation", 1, 0, "TempoVizModel",
+      "Provided by OrchestrionNotationPaintView");
 }
 
 void OrchestrionNotationModule::registerExports()

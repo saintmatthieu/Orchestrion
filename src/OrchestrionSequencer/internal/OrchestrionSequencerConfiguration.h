@@ -43,10 +43,15 @@ private:
   void setNoteInfoTooltipEnabled(bool) override;
   muse::async::Notification noteInfoTooltipEnabledChanged() const override;
 
+  bool tempoVisualizationEnabled() const override;
+  void setTempoVisualizationEnabled(bool) override;
+  muse::async::Notification tempoVisualizationEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
+  muse::async::Notification m_tempoVisualizationEnabledChanged;
 };
 } // namespace dgk

@@ -28,6 +28,7 @@
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "TempoFollower.h"
+#include "TempoVizModel.h"
 #include <QElapsedTimer>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
@@ -52,6 +53,12 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // start/end" context-menu items.
   Q_PROPERTY(bool contextMenuHasTarget READ contextMenuHasTarget NOTIFY
                  contextMenuTargetChanged)
+  // Real-time tempo-model visualization (shown beneath the score, toggled from
+  // the Advanced menu). The model is fed by the follower; the flag mirrors the
+  // persisted config setting.
+  Q_PROPERTY(dgk::TempoVizModel *tempoVizModel READ tempoVizModel CONSTANT)
+  Q_PROPERTY(bool tempoVisualizationEnabled READ tempoVisualizationEnabled NOTIFY
+                 tempoVisualizationEnabledChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<ILoopBoundariesController> loopBoundariesController;
@@ -70,6 +77,8 @@ public:
 
   QString hoveredNoteInfo() const;
   QPointF hoveredNoteInfoPos() const;
+  TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
+  bool tempoVisualizationEnabled() const;
 
   bool contextMenuHasTarget() const;
   Q_INVOKABLE void contextMenuSetLoopStart();
@@ -83,6 +92,7 @@ signals:
   //! Right-click: ask QML to pop up the loop context menu at \p position
   //! (view-local coordinates).
   void contextMenuRequested(QPointF position);
+  void tempoVisualizationEnabledChanged();
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -157,6 +167,11 @@ private:
   std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
+
+  // Rolling state of the tempo model for the visualization strip; fed by the
+  // follower. Declared before m_follower so it exists when the follower (which
+  // writes to it) is constructed.
+  TempoVizModel m_tempoVizModel;
 
   // Constant-speed score following: turns played onsets into a smooth scroll,
   // centering the leading voice and zooming out to keep a lagging voice in

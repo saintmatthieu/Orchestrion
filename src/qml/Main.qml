@@ -248,6 +248,17 @@ ApplicationWindow {
                 }
             }
         }
+
+        // Debug aid: real-time tempo-model visualization, toggled from the
+        // Advanced menu ("Show tempo visualization"). Sits beneath the score
+        // with a small margin; reserves no space when hidden.
+        TempoVisualizationView {
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 120 : 0
+            Layout.margins: visible ? 8 : 0
+            visible: notationPaintView.tempoVisualizationEnabled
+            model: notationPaintView.tempoVizModel
+        }
     }
 
     NotationPaintViewLoaderModel {

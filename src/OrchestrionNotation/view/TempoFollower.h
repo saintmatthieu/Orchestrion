@@ -26,6 +26,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <vector>
 
 namespace dgk
 {
@@ -65,17 +66,43 @@ public:
     virtual void centerOn(double logicalX, double scaling) = 0;
   };
 
-  explicit TempoFollower(Canvas &canvas);
+  //! Optional debug tap: receives the model's per-frame state and the onsets it
+  //! reacts to, for a real-time visualization. Kept Qt-free (like Canvas).
+  class VizSink
+  {
+  public:
+    virtual ~VizSink() = default;
+    struct HandTempo
+    {
+      int staff;
+      double tempo;  // estimated tempo (musical units / ms)
+      bool coasting; // next onset overdue: extrapolating, not tracking live
+    };
+    //! Per follow-tick: the current tempo of each ready hand at time \p tMs.
+    virtual void onTempoSample(double tMs,
+                               const std::vector<HandTempo> &hands) = 0;
+    //! A hand played an onset (the model's input) at time \p tMs.
+    virtual void onOnset(double tMs, int staff) = 0;
+  };
+
+  explicit TempoFollower(Canvas &canvas, VizSink *viz = nullptr);
 
   TempoFollower(const TempoFollower &) = delete;
   TempoFollower &operator=(const TempoFollower &) = delete;
 
-  //! Feed one transition batch, all in page-logical x:
-  //! \p presentOnsets maps each hand (staff) that is *sounding* this batch to
-  //! its onset x — a tempo observation for that hand. \p leadingAny /
-  //! \p trailingAny are the rightmost / leftmost onset that is sounding *or*
-  //! upcoming, used once to frame the start.
-  void onOnsets(const std::map<int, double> &presentOnsets,
+  //! A sounding onset: its page-logical x (drives the scroll) and its score
+  //! tick (drives the musical-tempo readout for the visualization).
+  struct Onset
+  {
+    double x;
+    double tick;
+  };
+
+  //! Feed one transition batch. \p presentOnsets maps each hand (staff) that is
+  //! *sounding* this batch to its onset — a tempo observation for that hand.
+  //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that is
+  //! sounding *or* upcoming, used once to frame the start.
+  void onOnsets(const std::map<int, Onset> &presentOnsets,
                 std::optional<double> leadingAny,
                 std::optional<double> trailingAny);
 
@@ -97,7 +124,12 @@ private:
   //! monotonic); the on-screen layout x is positionAt() − xOffset.
   struct Hand
   {
+    // Scroll position, tracked in page-logical x.
     TempoTracker tracker;
+    // Musical tempo, tracked in score ticks — same α–β, so the visualization's
+    // BPM readout is *fitted* across onsets (smoothing per-onset jitter) rather
+    // than a raw single-interval ratio, and is independent of layout spacing.
+    TempoTracker tempoTracker;
     // Accumulated leftward jump of repeated bars for this hand: added to its
     // observations to keep them monotonic, subtracted again for display.
     double xOffset = 0.0;
@@ -105,6 +137,7 @@ private:
   };
 
   Canvas &_canvas;
+  VizSink *_viz; // optional, not owned
   std::map<int /*staff*/, Hand> _hands;
   QElapsedTimer _clock; // wall clock for observations (ms)
   QTimer _timer;        // ~60 fps follow tick
