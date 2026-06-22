@@ -18,6 +18,7 @@
  */
 #include "AutomaticOrchestrionPlayer.h"
 #include <QTimer>
+#include <cmath>
 
 namespace dgk
 {
@@ -69,7 +70,11 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
   if (next->deltaTicks > 0)
   {
     const int gen = m_generation;
-    QTimer::singleShot(TicksToMilliseconds(next->deltaTicks),
+    // Qt::PreciseTimer (not the default coarse, ~5%-accurate timer) so the
+    // auto-played onsets land close to their intended times even while the UI
+    // thread is busy painting; that arrival time is what the tempo model
+    // timestamps, so timer jitter shows up as tempo dents.
+    QTimer::singleShot(TicksToMilliseconds(next->deltaTicks), Qt::PreciseTimer,
                        [this, events = *next, gen]
                        {
                          if (gen == m_generation)
@@ -102,7 +107,8 @@ int AutomaticOrchestrionPlayer::TicksToMilliseconds(int ticks) const
   const double multiplier = playbackController()->tempoMultiplier();
   if (bpm <= 0 || multiplier <= 0)
     return 0;
-  return static_cast<int>(ticks * 60000.0 /
-                          (bpm * ticksPerQuarterNote * multiplier));
+  // Round (not truncate) so the per-note delay doesn't bias short.
+  return static_cast<int>(
+      std::lround(ticks * 60000.0 / (bpm * ticksPerQuarterNote * multiplier)));
 }
 } // namespace dgk

@@ -30,6 +30,8 @@ const muse::Settings::Key
 const muse::Settings::Key
     NOTE_INFO_TOOLTIP_ENABLED(module_name, "NOTE_INFO_TOOLTIP_ENABLED");
 const muse::Settings::Key
+    TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
+const muse::Settings::Key
     KEYBOARD_HELP_DISMISSED(module_name, "KEYBOARD_HELP_DISMISSED");
 } // namespace
 
@@ -48,6 +50,13 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(NOTE_INFO_TOOLTIP_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_noteInfoTooltipEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(TEMPO_VISUALIZATION_ENABLED,
+                                    muse::Val{false});
+  muse::settings()
+      ->valueChanged(TEMPO_VISUALIZATION_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_tempoVisualizationEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED,
                                     muse::Val{false});
@@ -86,6 +95,24 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::noteInfoTooltipEnabledChanged() const
 {
   return m_noteInfoTooltipEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::tempoVisualizationEnabled() const
+{
+  return muse::settings()->value(TEMPO_VISUALIZATION_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setTempoVisualizationEnabled(
+    bool enabled)
+{
+  muse::settings()->setSharedValue(TEMPO_VISUALIZATION_ENABLED,
+                                   muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::tempoVisualizationEnabledChanged() const
+{
+  return m_tempoVisualizationEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

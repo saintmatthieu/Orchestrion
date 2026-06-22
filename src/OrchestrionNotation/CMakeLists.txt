@@ -16,6 +16,10 @@ set(MODULE_SRC
   ILoopBoundariesController.h
   view/TempoFollower.cpp
   view/TempoFollower.h
+  view/TempoVisualizationView.cpp
+  view/TempoVisualizationView.h
+  view/TempoVizModel.cpp
+  view/TempoVizModel.h
   IOrchestrionNotationInteractionProcessor.h
   OrchestrionNotationModule.cpp
   OrchestrionNotationModule.h

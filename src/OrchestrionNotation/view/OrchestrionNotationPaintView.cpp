@@ -38,9 +38,15 @@ namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
-      m_follower(*this), m_kineticScroller([this](qreal physicalDx)
-                                           { return moveCanvasBy(physicalDx); })
+      m_follower(*this, &m_tempoVizModel),
+      m_kineticScroller([this](qreal physicalDx)
+                        { return moveCanvasBy(physicalDx); })
 {
+}
+
+bool OrchestrionNotationPaintView::tempoVisualizationEnabled() const
+{
+  return sequencerConfiguration()->tempoVisualizationEnabled();
 }
 
 void OrchestrionNotationPaintView::subscribe(
@@ -70,6 +76,7 @@ void OrchestrionNotationPaintView::subscribe(
                                               // the new location on the next
                                               // transitions.
                                               m_follower.reset();
+                                              m_tempoVizModel.clear();
                                               m_boxes.clear();
                                               m_fader.clear();
                                               update();
@@ -83,7 +90,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   // staff are played by the same gestures, so they share one tracker. Each
   // hand's sounding onset is a tempo observation for it; the leading/trailing
   // of all onsets (sounding or upcoming) feed the one-shot initial framing.
-  std::map<int /*staff*/, double> presentOnsets;
+  std::map<int /*staff*/, TempoFollower::Onset> presentOnsets;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
 
@@ -150,11 +157,13 @@ void OrchestrionNotationPaintView::OnTransitions(
       trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
       if (active)
       {
-        // Collapse a staff's voices into one onset (its rightmost).
+        // Collapse a staff's voices into one onset (its rightmost), carrying
+        // the score tick for the musical-tempo readout.
         const int hand = track.staffIndex();
         const auto it = presentOnsets.find(hand);
-        presentOnsets[hand] =
-            it == presentOnsets.end() ? onsetX : std::max(it->second, onsetX);
+        if (it == presentOnsets.end() || onsetX > it->second.x)
+          presentOnsets[hand] = TempoFollower::Onset{
+              onsetX, static_cast<double>(segment->tick().ticks())};
       }
     }
   }
@@ -706,6 +715,9 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
           setHoveredNoteInfo({}, m_hoveredNoteInfoPos);
       });
 
+  sequencerConfiguration()->tempoVisualizationEnabledChanged().onNotify(
+      this, [this] { emit tempoVisualizationEnabledChanged(); });
+
   load();
   updateNotation();
 
@@ -792,6 +804,7 @@ void OrchestrionNotationPaintView::updateNotation()
 {
   m_kineticScroller.stop(); // the score changed under us; cancel any glide
   m_follower.reset();       // and the tempo estimate / follow state
+  m_tempoVizModel.clear();
   if (const auto notation = globalContext()->currentNotation())
   {
     setViewMode(mu::notation::ViewMode::LINE);
