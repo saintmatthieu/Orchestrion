@@ -1,6 +1,7 @@
 set(MODULE_TEST tempotracking_tests)
 
 set(MODULE_TEST_SRC
+  ${CMAKE_CURRENT_LIST_DIR}/TempoSmootherTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/TempoTrackerTests.cpp
 )
 

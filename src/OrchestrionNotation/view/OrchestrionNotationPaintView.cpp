@@ -188,13 +188,13 @@ void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
   if (!qFuzzyCompare(currentScaling(), scaling))
     setScaling(scaling, muse::PointF{0., 0.});
 
-  constexpr double playheadFrac = 0.5;
   const double logicalWidth = width() / scaling;
-  // Center the leading position, but never past the max-padding limit (so near
-  // the start/end of the score the leading note drifts off-center rather than
-  // opening a gap wider than a manual zoom-out would allow).
-  const double leftX =
-      clampLeftX(logicalX - playheadFrac * logicalWidth, scaling);
+  // Rest the anchor at the follower's playhead fraction, but never past the
+  // max-padding limit (so near the start/end of the score the anchor drifts
+  // off its spot rather than opening a gap wider than a manual zoom-out would
+  // allow).
+  const double leftX = clampLeftX(
+      logicalX - TempoFollower::anchorFrac * logicalWidth, scaling);
 
   const auto content = notationContentRect();
   const double emptyAbovePhysical =

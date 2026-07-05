@@ -40,6 +40,15 @@ void TempoVizModel::onOnset(double tMs, int staff)
   // repaints; avoids redundant repaints on the onset thread.
 }
 
+void TempoVizModel::onSmoothedTempo(int staff,
+                                    const std::vector<CurvePoint> &curve)
+{
+  // Wholesale replacement — the spline is re-fitted over its whole window on
+  // each onset (the recent part visibly bends into place; older parts have
+  // settled). The view clips whatever has scrolled out; no pruning needed.
+  _smoothed[staff] = curve;
+}
+
 void TempoVizModel::prune()
 {
   const double cutoff = _latestMs - windowMs;
@@ -54,6 +63,7 @@ void TempoVizModel::prune()
 void TempoVizModel::clear()
 {
   _series.clear();
+  _smoothed.clear();
   _onsets.clear();
   _latestMs = 0.0;
   emit changed();

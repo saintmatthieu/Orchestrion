@@ -49,8 +49,14 @@ public:
     bool coasting;
   };
 
-  // Read API for the view (newest entries at the back).
+  // Read API for the view (newest entries at the back). series() is the
+  // causal per-frame estimate; smoothed() the re-fitted spline per hand,
+  // replaced wholesale on each of that hand's onsets.
   const std::map<int, std::deque<Point>> &series() const { return _series; }
+  const std::map<int, std::vector<CurvePoint>> &smoothed() const
+  {
+    return _smoothed;
+  }
   const std::map<int, std::deque<double>> &onsets() const { return _onsets; }
   double latestMs() const { return _latestMs; }
   bool empty() const { return _series.empty() && _onsets.empty(); }
@@ -61,6 +67,7 @@ public:
   // TempoFollower::VizSink
   void onTempoSample(double tMs, const std::vector<HandTempo> &hands) override;
   void onOnset(double tMs, int staff) override;
+  void onSmoothedTempo(int staff, const std::vector<CurvePoint> &curve) override;
 
 signals:
   void changed();
@@ -69,6 +76,7 @@ private:
   void prune();
 
   std::map<int /*staff*/, std::deque<Point>> _series;
+  std::map<int /*staff*/, std::vector<CurvePoint>> _smoothed;
   std::map<int /*staff*/, std::deque<double>> _onsets;
   double _latestMs = 0.0;
 };

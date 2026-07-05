@@ -26,15 +26,43 @@ namespace dgk
 {
 namespace
 {
-// The leading note rests mid-viewport; a lagging onset must stay this many
-// physical pixels clear of the left edge to count as "fitting".
-constexpr double playheadFrac = 0.5;
+// An onset must stay this many physical pixels clear of the view edges to
+// count as "fitting".
 constexpr double edgeMarginPx = 48.0;
 // Zoom-easing time constant (s): the zoom adapts gently, never snappily.
 constexpr double tauZoom = 0.35;
 // Score ticks per quarter note (MuseScore's division), to express the
 // visualization's tempo readout in BPM.
 constexpr double ticksPerQuarter = 480.0;
+// The scroll anchors on the smoothed position this many onsets back: enough
+// that the spline there is essentially settled (each onset's influence decays
+// by the memory factor per knot), small enough that the playhead ahead of the
+// anchor stays comfortably in view.
+constexpr double smoothDelayIntervals = 4.0;
+
+// Decay time constant (ms) for the offset that absorbs the small jump the
+// anchor makes at each onset (the spline re-fit plus the delay's cadence
+// update), keeping the displayed anchor continuous — same trick as the
+// tracker's own continuity offset.
+constexpr double anchorOffsetDecayMs = 1000.0;
+
+// The smoothed tempo curve pushed to the visualization, as a dense polyline
+// (the view stays ignorant of the spline's cubic segments).
+std::vector<TempoFollower::VizSink::CurvePoint>
+sampleSmoothedBpm(const TempoSmoother &smoother)
+{
+  constexpr double stepMs = 40.0;
+  const double tBegin = smoother.knots().front().time;
+  const double tEnd = smoother.knots().back().time;
+  std::vector<TempoFollower::VizSink::CurvePoint> curve;
+  curve.reserve(static_cast<std::size_t>((tEnd - tBegin) / stepMs) + 2);
+  for (double t = tBegin; t < tEnd; t += stepMs)
+    curve.push_back(
+        {t, smoother.velocityAt(t) * (60000.0 / ticksPerQuarter)});
+  curve.push_back(
+      {tEnd, smoother.velocityAt(tEnd) * (60000.0 / ticksPerQuarter)});
+  return curve;
+}
 } // namespace
 
 TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
@@ -81,16 +109,33 @@ void TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
       hand.xOffset += hand.lastOnsetX - onsetX;
     hand.lastOnsetX = onsetX;
     hand.tracker.addObservation(now, onsetX + hand.xOffset);
+    hand.smoother.addObservation(now, onsetX + hand.xOffset);
 
-    // Feed the musical-tempo tracker the score tick (a repeat's backward tick
-    // would glitch the fit, so restart it there).
+    // Feed the musical-tempo estimators the score tick (a repeat's backward
+    // tick would glitch the fit, so restart them there).
     if (repeat)
+    {
       hand.tempoTracker.reset();
+      hand.tempoSmoother.reset();
+      // The view should snap back over the repeated bars, not glide: clear the
+      // anchor-continuity state instead of absorbing the jump.
+      hand.anchorOffset = 0.0;
+      hand.lastRawAnchor = std::numeric_limits<double>::quiet_NaN();
+      hand.anchorDirty = false;
+    }
+    else
+      hand.anchorDirty = true;
+
     hand.tempoTracker.addObservation(now, onset.tick);
+    hand.tempoSmoother.addObservation(now, onset.tick);
 
     observed = true;
     if (_viz)
+    {
       _viz->onOnset(now, track);
+      if (hand.tempoSmoother.ready())
+        _viz->onSmoothedTempo(track, sampleSmoothedBpm(hand.tempoSmoother));
+    }
   }
   if (observed && !_timer.isActive())
     _timer.start();
@@ -103,9 +148,9 @@ void TempoFollower::frame(double leadingX, double trailingX)
   if (trailingX < leadingX)
   {
     // Zoom out (never in) so the trailing onset fits to the left of the
-    // centered leading onset, past a small edge margin.
+    // anchored leading onset, past a small edge margin.
     const double availLeftPx =
-        playheadFrac * _canvas.viewWidth() - edgeMarginPx;
+        anchorFrac * _canvas.viewWidth() - edgeMarginPx;
     const double spanLogical = leadingX - trailingX;
     if (availLeftPx > 0.0 && spanLogical > 1e-6)
       scale = std::min(userScale, availLeftPx / spanLogical);
@@ -116,15 +161,73 @@ void TempoFollower::frame(double leadingX, double trailingX)
   _framed = true;
 }
 
+//! The scroll anchor for one hand: the smoothed (spline) position a few
+//! onsets back — steadier than the causal extrapolation, at the cost of a
+//! small fixed delay the off-center playhead leaves room for. Past the
+//! spline's end (the performer has paused) it cross-fades to the causal,
+//! coast-damped state evaluated at the same delayed time, so the anchor eases
+//! to a stop with the tracker instead of extrapolating off the end.
+//!
+//! Between onsets the raw anchor moves continuously; at each onset it jumps a
+//! little (the spline re-fit near its end, the delay's cadence update). The
+//! jump is absorbed into a decaying offset so the *displayed* anchor carries
+//! straight on and slides to the corrected trajectory gradually. A repeat's
+//! intended backward snap is exempted (its continuity state is cleared).
+double TempoFollower::anchorAt(Hand &hand, double now)
+{
+  double raw;
+  double anchorSpeed;
+  if (!hand.smoother.ready() || hand.tracker.intervalMs() <= 0.0)
+  {
+    raw = hand.tracker.positionAt(now) - hand.xOffset;
+    anchorSpeed = hand.tracker.speed();
+  }
+  else
+  {
+    const double delayMs = smoothDelayIntervals * hand.tracker.intervalMs();
+    const double tEval = now - delayMs;
+    raw = hand.smoother.positionAt(tEval);
+    anchorSpeed = hand.smoother.velocityAt(tEval);
+    const double splineEnd = hand.smoother.knots().back().time;
+    if (tEval > splineEnd)
+    {
+      const double w = std::min(1.0, (tEval - splineEnd) / delayMs);
+      raw = (1.0 - w) * raw + w * hand.tracker.positionAt(tEval);
+      anchorSpeed = (1.0 - w) * anchorSpeed + w * hand.tracker.speed();
+    }
+    raw -= hand.xOffset;
+  }
+
+  const bool hasLast = !std::isnan(hand.lastRawAnchor);
+  const double dt = hasLast ? now - hand.lastAnchorTime : 0.0;
+  if (dt > 0.0)
+    hand.anchorOffset *= std::exp(-dt / anchorOffsetDecayMs);
+  if (hand.anchorDirty)
+  {
+    // Where the previous trajectory would have carried the anchor by now (dt
+    // capped: after an idle stretch there is no smooth motion to extend).
+    if (hasLast)
+      hand.anchorOffset +=
+          hand.lastRawAnchor + anchorSpeed * std::min(dt, 50.0) - raw;
+    hand.anchorDirty = false;
+  }
+  hand.lastRawAnchor = raw;
+  hand.lastAnchorTime = now;
+  return raw + hand.anchorOffset;
+}
+
 void TempoFollower::tick()
 {
   const double now = static_cast<double>(_clock.elapsed());
 
   // Advance each hand's tracker (coasting to a stop if its next note is
   // overdue), and collect the on-screen layout positions: the leading
-  // (rightmost) hand is centered; the leftmost *actively-playing* hand sets how
-  // far we must zoom out to keep it in view.
-  std::optional<double> leadingX;
+  // (rightmost) hand's smoothed, delayed anchor is what the view follows; the
+  // causal "now" positions set how far we must zoom out — leftmost
+  // *actively-playing* hand on the left side, the leading hand's own playhead
+  // (running ahead of the anchor) on the right.
+  std::optional<double> leadingAnchor;
+  std::optional<double> leadingNow;
   std::optional<double> trailingActiveX;
   bool allCoasting = true;
   std::vector<VizSink::HandTempo> vizSamples;
@@ -135,7 +238,9 @@ void TempoFollower::tick()
     if (!hand.tracker.ready())
       continue;
     const double pos = hand.tracker.positionAt(now) - hand.xOffset;
-    leadingX = leadingX ? std::max(*leadingX, pos) : pos;
+    const double anchor = anchorAt(hand, now);
+    leadingAnchor = leadingAnchor ? std::max(*leadingAnchor, anchor) : anchor;
+    leadingNow = leadingNow ? std::max(*leadingNow, pos) : pos;
     const bool coasting = hand.tracker.isCoasting();
     if (!coasting)
     {
@@ -151,23 +256,32 @@ void TempoFollower::tick()
   }
   if (_viz && !vizSamples.empty())
     _viz->onTempoSample(now, vizSamples);
-  if (!leadingX)
+  if (!leadingAnchor)
     return;
 
   // Zoom as far in as the user's default allows, but far enough out that a
-  // lagging active hand stays just inside the left edge.
+  // lagging active hand stays just inside the left edge and the leading
+  // playhead just inside the right edge.
   const double userScale = _canvas.defaultScaling();
   double targetScale = userScale;
-  if (trailingActiveX && *trailingActiveX < *leadingX)
+  if (trailingActiveX && *trailingActiveX < *leadingAnchor)
   {
-    const double availLeftPx = playheadFrac * _canvas.viewWidth() - edgeMarginPx;
-    const double spanLogical = *leadingX - *trailingActiveX;
+    const double availLeftPx = anchorFrac * _canvas.viewWidth() - edgeMarginPx;
+    const double spanLogical = *leadingAnchor - *trailingActiveX;
     if (availLeftPx > 0.0 && spanLogical > 1e-6)
-      targetScale = std::min(userScale, availLeftPx / spanLogical);
-    targetScale = std::clamp(targetScale, _canvas.minScaling(), userScale);
+      targetScale = std::min(targetScale, availLeftPx / spanLogical);
   }
+  if (leadingNow && *leadingNow > *leadingAnchor)
+  {
+    const double availRightPx =
+        (1.0 - anchorFrac) * _canvas.viewWidth() - edgeMarginPx;
+    const double spanLogical = *leadingNow - *leadingAnchor;
+    if (availRightPx > 0.0 && spanLogical > 1e-6)
+      targetScale = std::min(targetScale, availRightPx / spanLogical);
+  }
+  targetScale = std::clamp(targetScale, _canvas.minScaling(), userScale);
 
-  // Ease the zoom gently (the pan is already smooth via the trackers).
+  // Ease the zoom gently (the pan is already smooth via the smoothers).
   if (_scaling <= 0.0)
     _scaling = targetScale;
   else
@@ -177,15 +291,15 @@ void TempoFollower::tick()
   }
   _lastTickMs = static_cast<qint64>(now);
 
-  _canvas.centerOn(*leadingX, _scaling);
+  _canvas.centerOn(*leadingAnchor, _scaling);
 
   // Once every hand has coasted to a stop and the zoom has settled there is
   // nothing left to animate: idle until the next note restarts the timer.
   // (Gated on all-coasting so a live glide is never cut short.)
   const bool settled = std::isfinite(_lastLeadingX) &&
-                       std::abs(*leadingX - _lastLeadingX) < 0.02 &&
+                       std::abs(*leadingAnchor - _lastLeadingX) < 0.02 &&
                        std::abs(targetScale - _scaling) < 1e-4;
-  _lastLeadingX = *leadingX;
+  _lastLeadingX = *leadingAnchor;
   if (allCoasting && settled)
     _timer.stop();
 }

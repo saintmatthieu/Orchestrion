@@ -70,6 +70,9 @@ public:
   //! Estimated tempo: musical units per unit of real time. 0 before warm-up.
   double speed() const { return ready() ? _v : 0.0; }
 
+  //! Smoothed inter-onset interval (ms), the playing cadence. 0 until known.
+  double intervalMs() const { return _intervalMs; }
+
   //! Timing error for rhythm evaluation: how far an observation of
   //! \p musicalPos at \p realTime lies ahead (+) or behind (−) the prediction.
   double predictionError(double realTime, double musicalPos) const

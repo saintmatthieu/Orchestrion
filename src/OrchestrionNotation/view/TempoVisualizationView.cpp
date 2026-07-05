@@ -89,9 +89,14 @@ void TempoVisualizationView::paint(QPainter *painter)
   // min/max labelled even when min is zero).
   double tempoMax = 0.0;
   if (_model)
+  {
     for (const auto &[staff, pts] : _model->series())
       for (const auto &p : pts)
         tempoMax = std::max(tempoMax, p.tempo);
+    for (const auto &[staff, pts] : _model->smoothed())
+      for (const auto &p : pts)
+        tempoMax = std::max(tempoMax, p.tempo);
+  }
   const double axisMax = niceCeil(tempoMax);
   const auto yOf = [&](double tempo)
   { return bottom - (tempo / axisMax) * (bottom - top); };
@@ -123,7 +128,11 @@ void TempoVisualizationView::paint(QPainter *painter)
   const auto xOf = [&](double t)
   { return plotLeft + (t - t0) / window * (w - plotLeft); };
 
-  // Tempo curve per hand; coasting (overdue) stretches drawn dashed/faded.
+  painter->setClipRect(QRectF(plotLeft, 0, w - plotLeft, h));
+
+  // The causal per-frame estimate, faint: the live leading edge the smoothed
+  // curve hasn't reached yet (and, where they overlap, how far hindsight bends
+  // the estimate). Coasting (overdue) stretches drawn dashed.
   for (const auto &[staff, pts] : _model->series())
   {
     const QColor color = handColor(staff);
@@ -133,8 +142,8 @@ void TempoVisualizationView::paint(QPainter *painter)
       const auto &b = pts[i];
       const bool coasting = a.coasting || b.coasting;
       QColor c = color;
-      c.setAlpha(coasting ? 90 : 220);
-      QPen pen(c, coasting ? 1.0 : 1.8);
+      c.setAlpha(coasting ? 60 : 90);
+      QPen pen(c, 1.0);
       if (coasting)
         pen.setStyle(Qt::DashLine);
       painter->setPen(pen);
@@ -142,6 +151,25 @@ void TempoVisualizationView::paint(QPainter *painter)
                         QPointF(xOf(b.tMs), yOf(b.tempo)));
     }
   }
+
+  // The smoothed tempo curve — the spline itself, re-fitted on each onset —
+  // solid on top. It ends at the last onset; the faint causal trace carries on
+  // from there to "now".
+  for (const auto &[staff, pts] : _model->smoothed())
+  {
+    QColor c = handColor(staff);
+    c.setAlpha(235);
+    painter->setPen(QPen(c, 2.0));
+    for (std::size_t i = 1; i < pts.size(); ++i)
+    {
+      if (pts[i].tMs < t0)
+        continue; // scrolled out of the window
+      painter->drawLine(QPointF(xOf(pts[i - 1].tMs), yOf(pts[i - 1].tempo)),
+                        QPointF(xOf(pts[i].tMs), yOf(pts[i].tempo)));
+    }
+  }
+
+  painter->setClipping(false);
 
   // Onset ticks (the inputs the model reacts to), per hand, along the baseline.
   for (const auto &[staff, times] : _model->onsets())
