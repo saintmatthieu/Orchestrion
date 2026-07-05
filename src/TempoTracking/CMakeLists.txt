@@ -1,6 +1,8 @@
 declare_module(TempoTracking)
 
 set(MODULE_SRC
+  TempoSmoother.cpp
+  TempoSmoother.h
   TempoTracker.cpp
   TempoTracker.h
 )

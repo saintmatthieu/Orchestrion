@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "TempoTracking/TempoSmoother.h"
 #include "TempoTracking/TempoTracker.h"
 
 #include <QElapsedTimer>
@@ -31,13 +32,17 @@
 namespace dgk
 {
 //! Drives a constant-speed score scroll from played onsets. It runs one
-//! TempoTracker per hand (= staff; the owner keys onsets by staff, since the
-//! voices on a staff share the same gestures), so each hand keeps its own
-//! tempo. A ~60 fps timer keeps the *leading* hand's extrapolated position at
-//! the playhead; a *trailing* hand that is actively playing behind it pulls the
-//! zoom out (only as far as needed) so it stays in view, while a trailing hand
-//! that has gone quiet is allowed to slip out. Zoom stays as far in as the
-//! user's default allows.
+//! TempoTracker + TempoSmoother per hand (= staff; the owner keys onsets by
+//! staff, since the voices on a staff share the same gestures), so each hand
+//! keeps its own tempo. A ~60 fps timer keeps the *leading* hand's scroll
+//! anchor at the playhead (the first third of the view): the anchor is the
+//! *smoothed* (spline) position a couple of onsets back — steadier than the
+//! causal extrapolation, whose delay the off-center playhead leaves room for
+//! (the notes being played float around mid-view, ahead of the anchor). A
+//! *trailing* hand that is actively playing behind pulls the zoom out (only as
+//! far as needed) so it stays in view, while a trailing hand that has gone
+//! quiet is allowed to slip out. Zoom stays as far in as the user's default
+//! allows.
 //!
 //! The owner extracts per-track onset x-positions (page-logical) from playback
 //! transitions and feeds them in. It knows nothing about the score model or the
@@ -83,7 +88,22 @@ public:
                                const std::vector<HandTempo> &hands) = 0;
     //! A hand played an onset (the model's input) at time \p tMs.
     virtual void onOnset(double tMs, int staff) = 0;
+    struct CurvePoint
+    {
+      double tMs;
+      double tempo;
+    };
+    //! Per onset: one hand's re-smoothed tempo curve (the spline the causal
+    //! per-frame estimate only chases), sampled over the smoothing window.
+    //! Replaces that hand's previous curve.
+    virtual void onSmoothedTempo(int staff,
+                                 const std::vector<CurvePoint> &curve) = 0;
   };
+
+  //! Where the scroll anchor rests horizontally in the view. Off-center (first
+  //! third) because the anchor trails the notes being played by the smoothing
+  //! delay — the playhead itself floats in the two thirds ahead of it.
+  static constexpr double anchorFrac = 1.0 / 3.0;
 
   explicit TempoFollower(Canvas &canvas, VizSink *viz = nullptr);
 
@@ -116,25 +136,39 @@ public:
   void reset();
 
 private:
-  void tick();
-  void frame(double leadingX, double trailingX);
-
-  //! Per-hand state: its own tempo tracker, plus repeat bookkeeping. The
-  //! tracker works in a repeat-unrolled coordinate (onset x + xOffset, kept
-  //! monotonic); the on-screen layout x is positionAt() − xOffset.
+  //! Per-hand state: its own tempo trackers/smoothers, plus repeat
+  //! bookkeeping. They work in a repeat-unrolled coordinate (onset x +
+  //! xOffset, kept monotonic); the on-screen layout x is positionAt() −
+  //! xOffset.
   struct Hand
   {
-    // Scroll position, tracked in page-logical x.
+    // Scroll position, tracked in page-logical x: the causal filter (real-time
+    // "now" and coasting) …
     TempoTracker tracker;
-    // Musical tempo, tracked in score ticks — same α–β, so the visualization's
-    // BPM readout is *fitted* across onsets (smoothing per-onset jitter) rather
-    // than a raw single-interval ratio, and is independent of layout spacing.
+    // … and the smoothed spline it chases, which the scroll anchors on (a
+    // couple of onsets delayed, but with a continuous velocity).
+    TempoSmoother smoother;
+    // Musical tempo, tracked in score ticks — same model, so the
+    // visualization's BPM readout is *fitted* across onsets (smoothing
+    // per-onset jitter) rather than a raw single-interval ratio, and is
+    // independent of layout spacing. Causal trace + re-smoothed spline.
     TempoTracker tempoTracker;
+    TempoSmoother tempoSmoother;
     // Accumulated leftward jump of repeated bars for this hand: added to its
     // observations to keep them monotonic, subtracted again for display.
     double xOffset = 0.0;
     double lastOnsetX = std::numeric_limits<double>::quiet_NaN();
+    // Scroll-anchor continuity (see anchorAt): the raw anchor jumps a little
+    // at each onset; the jump is folded into a decaying offset instead.
+    double lastRawAnchor = std::numeric_limits<double>::quiet_NaN();
+    double lastAnchorTime = 0.0;
+    double anchorOffset = 0.0;
+    bool anchorDirty = false;
   };
+
+  void tick();
+  void frame(double leadingX, double trailingX);
+  double anchorAt(Hand &hand, double now);
 
   Canvas &_canvas;
   VizSink *_viz; // optional, not owned
