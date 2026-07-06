@@ -60,10 +60,13 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   Q_PROPERTY(dgk::TempoVizModel *tempoVizModel READ tempoVizModel CONSTANT)
   Q_PROPERTY(bool tempoVisualizationEnabled READ tempoVisualizationEnabled
                  NOTIFY tempoVisualizationEnabledChanged)
-  // The take's final timing score (0–100), set when the piece's last notes
-  // are released; −1 = no banner. QML shows it as the end-of-piece banner and
-  // dismisses it via dismissFinalScore().
+  // The take's final score (0–100) and its component breakdown (e.g.
+  // "tempo 87 · sync 92"), set when the piece's last notes are released;
+  // −1 = no banner. QML shows them as the end-of-piece banner and dismisses
+  // via dismissFinalScore().
   Q_PROPERTY(int finalScore READ finalScore NOTIFY finalScoreChanged)
+  Q_PROPERTY(QString finalScoreBreakdown READ finalScoreBreakdown NOTIFY
+                 finalScoreChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<ILoopBoundariesController> loopBoundariesController;
@@ -85,6 +88,7 @@ public:
   TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
   bool tempoVisualizationEnabled() const;
   int finalScore() const { return m_finalScore; }
+  QString finalScoreBreakdown() const { return m_finalScoreBreakdown; }
   Q_INVOKABLE void dismissFinalScore();
 
   bool contextMenuHasTarget() const;
@@ -174,6 +178,7 @@ private:
   // are released; re-armed when the stats restart. −1 = no banner showing.
   bool m_finalScoreShown = false;
   int m_finalScore = -1;
+  QString m_finalScoreBreakdown;
 
   struct Contact
   {

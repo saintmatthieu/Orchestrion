@@ -39,6 +39,9 @@ constexpr double ticksPerQuarter = 480.0;
 // its residuals are flattery, not information. Once past this, *all* window
 // onsets are judged (the first notes included, retroactively).
 constexpr std::size_t judgeMinKnots = 4;
+// The hand-asynchrony sample compares the hands' position curves this many
+// cadence steps in the past, where both splines have settled.
+constexpr double syncLagIntervals = 2.0;
 
 // The scroll anchors on the smoothed position this many onsets back: enough
 // that the spline there is essentially settled (each onset's influence decays
@@ -78,19 +81,19 @@ TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
   _timer.callOnTimeout([this] { tick(); });
 }
 
-std::map<int, std::vector<TempoFollower::Judgment>>
+TempoFollower::Feedback
 TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
                         std::optional<double> leadingAny,
                         std::optional<double> trailingAny)
 {
-  std::map<int, std::vector<Judgment>> judgments;
+  Feedback feedback;
   if (_suspended)
   {
     // A manual click/swipe suspended us; resume only when a note is actually
     // played again. Start fresh so we re-frame at the current position and
     // rebuild the tempo estimates (the timestamps from while paused are stale).
     if (presentOnsets.empty())
-      return judgments;
+      return feedback;
     reset();
   }
 
@@ -158,7 +161,7 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
           // whose tick the curve hasn't reached yet arrived early (− ms).
           window.push_back({r.time, -r.error / r.velocity});
       if (!window.empty())
-        judgments[track] = std::move(window);
+        feedback.judgments[track] = std::move(window);
     }
 
     observed = true;
@@ -169,9 +172,40 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
         _viz->onSmoothedTempo(track, sampleSmoothedBpm(hand.tempoSmoother));
     }
   }
+  // Hand asynchrony: with two hands playing, the musical positions their
+  // smoothed curves assign to the same instant should agree — the gap,
+  // divided by the tempo, is the asynchrony in time. Sampled a couple of
+  // cadence steps back, where both splines have settled.
+  if (observed && _hands.size() >= 2)
+  {
+    const Hand *upper = nullptr;
+    const Hand *lower = nullptr;
+    double intervalSum = 0.0;
+    for (const auto &[track, hand] : _hands) // ascending staff order
+    {
+      if (!hand.tempoSmoother.ready() || hand.tempoTracker.isCoasting() ||
+          hand.tempoTracker.intervalMs() <= 0.0)
+        continue;
+      (upper ? lower : upper) = &hand;
+      intervalSum += hand.tempoTracker.intervalMs();
+      if (lower)
+        break;
+    }
+    if (upper && lower)
+    {
+      const double tEval = now - syncLagIntervals * 0.5 * intervalSum;
+      const double meanVelocity = 0.5 * (upper->tempoSmoother.velocityAt(tEval) +
+                                         lower->tempoSmoother.velocityAt(tEval));
+      if (meanVelocity > 1e-9)
+        feedback.handSync = {now, (upper->tempoSmoother.positionAt(tEval) -
+                                   lower->tempoSmoother.positionAt(tEval)) /
+                                      meanVelocity};
+    }
+  }
+
   if (observed && !_timer.isActive())
     _timer.start();
-  return judgments;
+  return feedback;
 }
 
 void TempoFollower::frame(double leadingX, double trailingX)

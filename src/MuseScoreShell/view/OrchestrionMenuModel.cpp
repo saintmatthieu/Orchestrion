@@ -37,6 +37,8 @@ constexpr auto toggleTimingFeedbackMenuId =
     "orchestrion-advanced-toggle-timing-feedback";
 constexpr auto togglePersistentTimingMarksMenuId =
     "orchestrion-advanced-toggle-persistent-timing-marks";
+constexpr auto toggleHandSyncScoreMenuId =
+    "orchestrion-advanced-toggle-hand-sync-score";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -99,6 +101,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->handSyncScoreEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -352,9 +358,17 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   persistentMarksItem->setSelected(
       sequencerConfiguration()->persistentTimingMarksEnabled());
 
+  muse::uicomponents::MenuItem *const handSyncScoreItem =
+      makeMenuItem(toggleHandSyncScoreMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Score hand s&ynchronization"));
+  handSyncScoreItem->setSelectable(true);
+  handSyncScoreItem->setSelected(
+      sequencerConfiguration()->handSyncScoreEnabled());
+
   const QList<MenuItem *> menu{
       item, noteInfoItem, tempoVizItem, timingFeedbackItem,
-      persistentMarksItem,
+      persistentMarksItem, handSyncScoreItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,

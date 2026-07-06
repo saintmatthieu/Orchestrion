@@ -80,6 +80,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setPersistentTimingMarksEnabled(
                           !sequencerConfig()->persistentTimingMarksEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-hand-sync-score",
+                    [this]
+                    {
+                      sequencerConfig()->setHandSyncScoreEnabled(
+                          !sequencerConfig()->handSyncScoreEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });

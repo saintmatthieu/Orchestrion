@@ -255,20 +255,23 @@ ApplicationWindow {
                     z: 103
 
                     // Keep the last real score during the fade-out (the
-                    // property returns to -1 the moment it is dismissed).
+                    // properties reset the moment it is dismissed).
                     property int shownScore: 0
+                    property string shownBreakdown: ""
                     Connections {
                         target: notationPaintView
                         function onFinalScoreChanged() {
-                            if (notationPaintView.finalScore >= 0)
+                            if (notationPaintView.finalScore >= 0) {
                                 scoreBanner.shownScore = notationPaintView.finalScore
+                                scoreBanner.shownBreakdown = notationPaintView.finalScoreBreakdown
+                            }
                         }
                     }
 
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height / 5
-                    width: scoreBannerText.implicitWidth + 96
-                    height: scoreBannerText.implicitHeight + 44
+                    width: bannerColumn.width + 96
+                    height: bannerColumn.height + 40
                     radius: height / 2
                     color: "#E8241811"
                     border.color: "#E5B84B"
@@ -284,13 +287,27 @@ ApplicationWindow {
                         }
                     }
 
-                    Text {
-                        id: scoreBannerText
+                    Column {
+                        id: bannerColumn
                         anchors.centerIn: parent
-                        text: qsTr("You scored %1 !").arg(scoreBanner.shownScore)
-                        color: "#E5B84B"
-                        font.pixelSize: 40
-                        font.bold: true
+                        spacing: 4
+
+                        Text {
+                            id: scoreBannerText
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: qsTr("You scored %1 !").arg(scoreBanner.shownScore)
+                            color: "#E5B84B"
+                            font.pixelSize: 40
+                            font.bold: true
+                        }
+
+                        Text {
+                            visible: scoreBanner.shownBreakdown.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: scoreBanner.shownBreakdown
+                            color: "#C9B583"
+                            font.pixelSize: 17
+                        }
                     }
 
                     Text {
