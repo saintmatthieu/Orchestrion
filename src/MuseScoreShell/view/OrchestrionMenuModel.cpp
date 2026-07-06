@@ -33,6 +33,8 @@ constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
 constexpr auto toggleNoteInfoMenuId = "orchestrion-advanced-toggle-note-info";
 constexpr auto toggleTempoVizMenuId =
     "orchestrion-advanced-toggle-tempo-visualization";
+constexpr auto toggleTimingFeedbackMenuId =
+    "orchestrion-advanced-toggle-timing-feedback";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -87,6 +89,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->tempoVisualizationEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->timingFeedbackEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -324,8 +330,16 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   tempoVizItem->setSelected(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
+  muse::uicomponents::MenuItem *const timingFeedbackItem =
+      makeMenuItem(toggleTimingFeedbackMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Show timing &feedback"));
+  timingFeedbackItem->setSelectable(true);
+  timingFeedbackItem->setSelected(
+      sequencerConfiguration()->timingFeedbackEnabled());
+
   const QList<MenuItem *> menu{
-      item, noteInfoItem, tempoVizItem,
+      item, noteInfoItem, tempoVizItem, timingFeedbackItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,

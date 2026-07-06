@@ -73,6 +73,10 @@ public:
   //! Smoothed inter-onset interval (ms), the playing cadence. 0 until known.
   double intervalMs() const { return _intervalMs; }
 
+  //! Number of onsets observed since construction or reset() — lets callers
+  //! gate on the estimate having settled past its two-onset seeding.
+  int observations() const { return _nObs; }
+
   //! Timing error for rhythm evaluation: how far an observation of
   //! \p musicalPos at \p realTime lies ahead (+) or behind (−) the prediction.
   double predictionError(double realTime, double musicalPos) const

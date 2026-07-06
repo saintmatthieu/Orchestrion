@@ -20,6 +20,8 @@ set(MODULE_SRC
   view/TempoVisualizationView.h
   view/TempoVizModel.cpp
   view/TempoVizModel.h
+  view/TimingFeedbackOverlay.cpp
+  view/TimingFeedbackOverlay.h
   IOrchestrionNotationInteractionProcessor.h
   OrchestrionNotationModule.cpp
   OrchestrionNotationModule.h

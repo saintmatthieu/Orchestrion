@@ -47,11 +47,16 @@ private:
   void setTempoVisualizationEnabled(bool) override;
   muse::async::Notification tempoVisualizationEnabledChanged() const override;
 
+  bool timingFeedbackEnabled() const override;
+  void setTimingFeedbackEnabled(bool) override;
+  muse::async::Notification timingFeedbackEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
   muse::async::Notification m_tempoVisualizationEnabledChanged;
+  muse::async::Notification m_timingFeedbackEnabledChanged;
 };
 } // namespace dgk

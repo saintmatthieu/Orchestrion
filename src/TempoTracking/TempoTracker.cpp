@@ -92,6 +92,7 @@ void TempoTracker::addObservation(double realTime, double musicalPos)
     _p += _alpha * y;
     if (gap > 0.0)
       _v += _beta * y / gap;
+    ++_nObs;
   }
 
   // Track the playing cadence, ignoring pause-length gaps so a stop doesn't
