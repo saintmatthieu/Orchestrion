@@ -35,6 +35,8 @@ constexpr auto toggleTempoVizMenuId =
     "orchestrion-advanced-toggle-tempo-visualization";
 constexpr auto toggleTimingFeedbackMenuId =
     "orchestrion-advanced-toggle-timing-feedback";
+constexpr auto togglePersistentTimingMarksMenuId =
+    "orchestrion-advanced-toggle-persistent-timing-marks";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -93,6 +95,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->timingFeedbackEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -338,8 +344,17 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   timingFeedbackItem->setSelected(
       sequencerConfiguration()->timingFeedbackEnabled());
 
+  muse::uicomponents::MenuItem *const persistentMarksItem =
+      makeMenuItem(togglePersistentTimingMarksMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "&Keep timing marks on screen"));
+  persistentMarksItem->setSelectable(true);
+  persistentMarksItem->setSelected(
+      sequencerConfiguration()->persistentTimingMarksEnabled());
+
   const QList<MenuItem *> menu{
       item, noteInfoItem, tempoVizItem, timingFeedbackItem,
+      persistentMarksItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,

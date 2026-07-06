@@ -104,6 +104,50 @@ TEST(TempoSmootherTests, SmoothsTimingJitterBetterThanTheFilter)
   EXPECT_LT(smoothedWobble, 0.03 * trueTempo);
 }
 
+// A cleanly played *linear tempo ramp* (constant accelerando) is a musical
+// shape, not an error: the spline follows it, so the retrospective residuals
+// stay near zero — unlike the causal constant-velocity filter, whose
+// prediction lags a ramp by a constant a·Δ²/β. This is what keeps expressive
+// tempo bending out of the timing-error display.
+TEST(TempoSmootherTests, LinearTempoRampLeavesTinyResiduals)
+{
+  constexpr double v0 = 0.8;     // 100 BPM in ticks/ms at eighth-note steps
+  constexpr double accel = 3e-5; // ticks/ms² — ≈ +45 BPM over 10 s
+  TempoSmoother smoother;
+  TempoTracker tracker;
+  double causalBiasMs = 0.0;
+  int causalCount = 0;
+  constexpr int count = 30;
+  for (int k = 0; k < count; ++k)
+  {
+    const double z = k * tickStep;
+    // Position under the ramp is v0·t + a·t²/2 = z ⇒ the exact onset time:
+    const double t = (-v0 + std::sqrt(v0 * v0 + 2.0 * accel * z)) / accel;
+    if (k > count / 2 && tracker.ready())
+    {
+      // The causal filter's steady-state ramp lag, for comparison (in ms).
+      causalBiasMs +=
+          std::abs(tracker.predictionError(t, z)) / tracker.speed();
+      ++causalCount;
+    }
+    tracker.addObservation(t, z);
+    smoother.addObservation(t, z);
+  }
+  ASSERT_GT(causalCount, 0);
+  causalBiasMs /= causalCount;
+
+  double maxResidualMs = 0.0;
+  const auto residuals = smoother.residuals();
+  for (std::size_t i = 2; i + 2 < residuals.size(); ++i) // interior knots
+    maxResidualMs = std::max(
+        maxResidualMs, std::abs(residuals[i].error / residuals[i].velocity));
+
+  EXPECT_GT(causalBiasMs, 5.0) << "the ramp should defeat the causal filter";
+  EXPECT_LT(maxResidualMs, 0.25 * causalBiasMs)
+      << "hindsight should follow the ramp";
+  EXPECT_LT(maxResidualMs, 5.0);
+}
+
 // The curve is C¹: position and tempo are continuous across the knots (the
 // Hermite bridges meet the knot states exactly).
 TEST(TempoSmootherTests, SmoothedCurveIsContinuousAcrossKnots)

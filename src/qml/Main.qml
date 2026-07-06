@@ -246,6 +246,76 @@ ApplicationWindow {
                     x: notationPaintView.hoveredNoteInfoPos.x + 16
                     y: notationPaintView.hoveredNoteInfoPos.y + 16
                 }
+
+                // End-of-piece banner: the take's timing score, raised by the
+                // paint view when the last notes are released. Closes with
+                // the cross, Escape, or by starting to play again.
+                Rectangle {
+                    id: scoreBanner
+                    z: 103
+
+                    // Keep the last real score during the fade-out (the
+                    // property returns to -1 the moment it is dismissed).
+                    property int shownScore: 0
+                    Connections {
+                        target: notationPaintView
+                        function onFinalScoreChanged() {
+                            if (notationPaintView.finalScore >= 0)
+                                scoreBanner.shownScore = notationPaintView.finalScore
+                        }
+                    }
+
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: parent.height / 5
+                    width: scoreBannerText.implicitWidth + 96
+                    height: scoreBannerText.implicitHeight + 44
+                    radius: height / 2
+                    color: "#E8241811"
+                    border.color: "#E5B84B"
+                    border.width: 2
+                    visible: opacity > 0
+                    opacity: notationPaintView.finalScore >= 0 ? 1 : 0
+                    scale: notationPaintView.finalScore >= 0 ? 1 : 0.7
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 350
+                            easing.type: Easing.OutBack
+                        }
+                    }
+
+                    Text {
+                        id: scoreBannerText
+                        anchors.centerIn: parent
+                        text: qsTr("You scored %1 !").arg(scoreBanner.shownScore)
+                        color: "#E5B84B"
+                        font.pixelSize: 40
+                        font.bold: true
+                    }
+
+                    Text {
+                        text: "✕"
+                        color: "#B8A88F"
+                        font.pixelSize: 16
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: 10
+                        anchors.rightMargin: 14
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -8
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: notationPaintView.dismissFinalScore()
+                        }
+                    }
+
+                    Shortcut {
+                        sequence: "Escape"
+                        enabled: scoreBanner.visible
+                        onActivated: notationPaintView.dismissFinalScore()
+                    }
+                }
             }
         }
 

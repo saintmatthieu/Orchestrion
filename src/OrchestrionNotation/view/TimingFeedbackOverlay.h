@@ -18,33 +18,44 @@
  */
 #pragma once
 
+#include "TempoFollower.h"
+
 #include <QElapsedTimer>
 #include <QRectF>
+#include <QString>
 #include <QTimer>
 
 #include <deque>
 #include <functional>
+#include <map>
+#include <optional>
 
 class QPainter;
 
 namespace dgk
 {
-//! Paints the timing-judgment feedback:
+//! Paints the timing-judgment feedback. The judgments are *retrospective* —
+//! each onset's error is measured against the hand's smoothed tempo spline
+//! and re-evaluated as later onsets refine it (see TempoFollower::Judgment)
+//! — so everything shown here is live in both directions: new marks appear,
+//! and recent marks settle as hindsight arrives.
 //!
 //! - per judged onset, a transient *gauge* near the struck notes — above the
 //!   staff for the right hand, below it for the left, always kept clear of
 //!   the staff lines: a vertical ruler spanning a fixed ± error range, with a
-//!   centre mark (dead on time) and a marker where the onset actually landed
-//!   — high = early (rushing), low = late (dragging); an arrowhead past the
-//!   ruler's end = outlier. The marker's colour grades continuously from
-//!   green (dead on) to red (outlier);
-//! - a short-term *histogram* of the recent error samples (recency-weighted,
-//!   over roughly the last minute), docked to the bottom-right of the
-//!   viewport at a constant physical size.
+//!   centre mark (dead on time) and a marker where the onset landed relative
+//!   to the spline — high = early (rushing), low = late (dragging); an
+//!   arrowhead past the ruler's end = outlier. The marker's colour grades
+//!   continuously from green (dead on) to red (outlier), and the marker moves
+//!   while its gauge shows if the onset gets re-judged;
+//! - a short-term *box plot* of the recent errors (recency-weighted, over
+//!   roughly the last minute): median line, quartile box, Tukey whiskers and
+//!   outlier dots, docked to the bottom-right of the viewport at a constant
+//!   physical size, re-computed from the revised errors.
 //!
-//! Owns its fade timer (mirroring HighlightFader): the owner feeds it samples
-//! and paints it on top of the notation with the painter in score-logical
-//! coordinates.
+//! Owns its fade timer (mirroring HighlightFader): the owner feeds it
+//! judgments and paints it on top of the notation with the painter in
+//! score-logical coordinates.
 class TimingFeedbackOverlay
 {
 public:
@@ -54,22 +65,48 @@ public:
   TimingFeedbackOverlay(const TimingFeedbackOverlay &) = delete;
   TimingFeedbackOverlay &operator=(const TimingFeedbackOverlay &) = delete;
 
-  //! Record one judged onset: a gauge near \p noteRect (the struck notes'
-  //! hugging box, score-logical) and a histogram sample. \p errorMs is the
-  //! signed arrival error (− = early, + = late). The gauge goes below the
-  //! staff when \p belowStaff (the left hand), else above; \p staffEdgeY is
-  //! the staff's facing edge (bottom resp. top line, page-logical y), which
-  //! the ruler keeps clear of.
-  void addSample(const QRectF &noteRect, double spatium, double errorMs,
-                 bool belowStaff, double staffEdgeY);
+  //! Begin showing a gauge for \p staff's newest onset, near \p noteRect (the
+  //! struck notes' hugging box, score-logical). \p onsetTMs is the onset's
+  //! identity (TempoFollower's clock, as carried by its judgments), by which
+  //! later updateJudgments() calls revise the marker; \p errorMs is the
+  //! initial error. The gauge goes below the staff when \p belowStaff (the
+  //! left hand), else above; \p staffEdgeY is the staff's facing edge (bottom
+  //! resp. top line, page-logical y), which the ruler keeps clear of.
+  void addGauge(int staff, double onsetTMs, const QRectF &noteRect,
+                double spatium, double errorMs, bool belowStaff,
+                double staffEdgeY);
 
-  //! Forget everything, histogram included — any interruption of play (stop,
+  //! The (re-)judgments of a hand's onsets still in its smoothing window:
+  //! upsert the stats samples (keyed by onset identity) and move the
+  //! marker of any of its gauges still showing.
+  void updateJudgments(int staff,
+                       const std::vector<TempoFollower::Judgment> &window);
+
+  //! When persistent, gauges don't fade: every judged onset keeps its mark on
+  //! the page (a repeat pass stacks its marks beyond the earlier ones) until
+  //! the stats reset — so a whole take can be reviewed after playing it.
+  //! Turning persistence off fades the accumulated marks out from now.
+  void setPersistent(bool persistent);
+
+  //! The verdict of the gauge under \p logicalPos, for a tooltip (e.g.
+  //! "23 ms late"); empty if none is hit.
+  QString gaugeInfoAt(const QPointF &logicalPos) const;
+
+  //! Forget everything, stats included — any interruption of play (stop,
   //! a click or swipe, a position jump, a new score) starts the stats over.
   void reset();
 
-  //! Paint gauges and histogram. The painter must be in score-logical
+  //! The timing score, 0–100, higher = tighter: 100·e^(−m/m₀) where m is the
+  //! 80th percentile of |error| — robust like the box plot, but centred on
+  //! zero so both bias and spread cost points. takeScore() measures the whole
+  //! take (everything since the last reset(), unweighted, for the final
+  //! verdict); the score shown above the box plot is its recency-weighted
+  //! sibling over the recent window. Empty while there are no samples.
+  std::optional<int> takeScore() const;
+
+  //! Paint gauges and box plot. The painter must be in score-logical
   //! coordinates; \p viewport is the visible logical rect and \p scaling the
-  //! zoom (physical px per logical unit), used to keep the histogram HUD a
+  //! zoom (physical px per logical unit), used to keep the box-plot HUD a
   //! constant physical size.
   void paint(QPainter &painter, const QRectF &viewport, double scaling) const;
 
@@ -79,31 +116,43 @@ private:
 
   struct Gauge
   {
-    double x;       // logical x, centred on the struck notes
-    double centerY; // logical y of the ruler's zero mark
-    double spatium; // score staff-space unit: sizes the ruler
-    double errorMs;
+    int staff;
+    double onsetTMs; // the onset's identity, for judgment revisions
+    double x;        // logical x, centred on the struck notes
+    double centerY;  // logical y of the ruler's zero mark
+    double spatium;  // score staff-space unit: sizes the ruler
+    double errorMs;  // latest verdict; revised while the gauge shows
     qint64 startMs;
   };
   void paintGauge(QPainter &painter, const Gauge &gauge,
                   double opacity) const;
-  void paintHistogram(QPainter &painter, const QRectF &viewport,
-                      double scaling) const;
+  void paintBoxPlot(QPainter &painter, const QRectF &viewport,
+                    double scaling) const;
   void pruneSamples();
+  //! The score metric (80th percentile of |error|, ms) over the recent
+  //! window, recency-weighted — what the live score display shows.
+  std::optional<double> recentAbsErrorQuantile() const;
 
   const std::function<void()> _requestRepaint;
   QElapsedTimer _clock; // free-running; timestamps gauges and samples
   QTimer _timer;        // ~60 Hz while gauges are fading
 
   std::deque<Gauge> _gauges;
+  bool _persistent = false;
 
-  //! The recent error samples backing the histogram; binned (and weighted by
-  //! recentness) at paint time, pruned past the window.
+  //! The recent error samples backing the box plot, keyed per staff by onset
+  //! identity so revised judgments overwrite in place. The statistics are
+  //! computed (weighted by recentness of arrival) at paint time; entries are
+  //! pruned past the window.
   struct Sample
   {
     double errorMs;
-    qint64 tMs;
+    qint64 arrivalMs;
   };
-  std::deque<Sample> _samples;
+  std::map<int /*staff*/, std::map<double /*onsetTMs*/, Sample>> _samples;
+
+  //! The whole take's (revised) errors, never pruned, backing takeScore().
+  std::map<int /*staff*/, std::map<double /*onsetTMs*/, double /*errorMs*/>>
+      _takeSamples;
 };
 } // namespace dgk

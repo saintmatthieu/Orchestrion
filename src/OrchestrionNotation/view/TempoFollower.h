@@ -119,32 +119,30 @@ public:
     double tick;
   };
 
-  //! Verdict on one onset's timing against its hand's own fitted tempo curve —
-  //! the atomic signal of the performance game. The reference follows the
-  //! performer, so it rewards consistency (rubato played smoothly stays
-  //! "perfect"); it does not enforce a metronome.
+  //! Verdict on one onset's timing, measured against its hand's *smoothed*
+  //! tempo curve (the spline) — the atomic signal of the performance game.
+  //! The spline bends with the performer, so a smooth tempo shape (rubato, a
+  //! ritardando) is not penalized; only deviation from the performer's own
+  //! smooth curve is. Since the spline is re-fitted on every onset, the same
+  //! onset — identified by \p tMs — is re-judged as it gets hindsight, until
+  //! it leaves the smoothing window.
   struct Judgment
   {
-    enum class Tier
-    {
-      Perfect,
-      Good,
-      Early, // outside the Good window, rushing
-      Late,  //                          dragging
-    };
-    Tier tier;
+    double tMs;     // the onset's time (this class's clock): its identity
     double errorMs; // signed arrival error: − = early, + = late
   };
 
   //! Feed one transition batch. \p presentOnsets maps each hand (staff) that is
   //! *sounding* this batch to its onset — a tempo observation for that hand.
   //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that
-  //! is sounding *or* upcoming, used once to frame the start. Returns the
-  //! timing judgment per judged hand — absent while that hand's estimate is
-  //! warming up (at the start, or on resuming after a stop).
-  std::map<int, Judgment> onOnsets(const std::map<int, Onset> &presentOnsets,
-                                   std::optional<double> leadingAny,
-                                   std::optional<double> trailingAny);
+  //! is sounding *or* upcoming, used once to frame the start. Returns, per
+  //! sounding hand, the (re-)judgments of *all* its onsets still in the
+  //! smoothing window, newest last — empty while the spline is warming up (at
+  //! the start, or on resuming after a stop).
+  std::map<int, std::vector<Judgment>>
+  onOnsets(const std::map<int, Onset> &presentOnsets,
+           std::optional<double> leadingAny,
+           std::optional<double> trailingAny);
 
   //! Stop following and hand control back to the user — a "panic" for a manual
   //! click or swipe. Stays suspended until the next played note (which resumes

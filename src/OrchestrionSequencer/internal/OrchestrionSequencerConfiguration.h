@@ -51,6 +51,11 @@ private:
   void setTimingFeedbackEnabled(bool) override;
   muse::async::Notification timingFeedbackEnabledChanged() const override;
 
+  bool persistentTimingMarksEnabled() const override;
+  void setPersistentTimingMarksEnabled(bool) override;
+  muse::async::Notification
+  persistentTimingMarksEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
@@ -58,5 +63,6 @@ private:
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
   muse::async::Notification m_tempoVisualizationEnabledChanged;
   muse::async::Notification m_timingFeedbackEnabledChanged;
+  muse::async::Notification m_persistentTimingMarksEnabledChanged;
 };
 } // namespace dgk

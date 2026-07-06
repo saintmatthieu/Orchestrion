@@ -60,6 +60,10 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   Q_PROPERTY(dgk::TempoVizModel *tempoVizModel READ tempoVizModel CONSTANT)
   Q_PROPERTY(bool tempoVisualizationEnabled READ tempoVisualizationEnabled
                  NOTIFY tempoVisualizationEnabledChanged)
+  // The take's final timing score (0–100), set when the piece's last notes
+  // are released; −1 = no banner. QML shows it as the end-of-piece banner and
+  // dismisses it via dismissFinalScore().
+  Q_PROPERTY(int finalScore READ finalScore NOTIFY finalScoreChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<ILoopBoundariesController> loopBoundariesController;
@@ -80,6 +84,8 @@ public:
   QPointF hoveredNoteInfoPos() const;
   TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
   bool tempoVisualizationEnabled() const;
+  int finalScore() const { return m_finalScore; }
+  Q_INVOKABLE void dismissFinalScore();
 
   bool contextMenuHasTarget() const;
   Q_INVOKABLE void contextMenuSetLoopStart();
@@ -94,6 +100,7 @@ signals:
   //! (view-local coordinates).
   void contextMenuRequested(QPointF position);
   void tempoVisualizationEnabledChanged();
+  void finalScoreChanged();
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -158,11 +165,15 @@ private:
   // Highlights of just-ended notes, fading out (owns its own timer/clock).
   HighlightFader m_fader;
   // Timing-judgment feedback: per-onset error gauges next to the notes plus
-  // the recent-error histogram, drawn on top of the notation.
+  // the recent-error box plot, drawn on top of the notation.
   TimingFeedbackOverlay m_timingOverlay;
   // Set on any interruption of play (stop/jump, click, swipe, manual zoom):
-  // the histogram stays readable, but starts over when playing resumes.
+  // the stats stay readable, but start over when playing resumes.
   bool m_timingStatsStale = false;
+  // The final-score banner fires once per take, when the piece's last notes
+  // are released; re-armed when the stats restart. −1 = no banner showing.
+  bool m_finalScoreShown = false;
+  int m_finalScore = -1;
 
   struct Contact
   {

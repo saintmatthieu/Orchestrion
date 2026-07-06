@@ -74,6 +74,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setTimingFeedbackEnabled(
                           !sequencerConfig()->timingFeedbackEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-persistent-timing-marks",
+                    [this]
+                    {
+                      sequencerConfig()->setPersistentTimingMarksEnabled(
+                          !sequencerConfig()->persistentTimingMarksEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });

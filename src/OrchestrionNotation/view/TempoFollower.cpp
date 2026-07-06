@@ -34,18 +34,11 @@ constexpr double tauZoom = 0.35;
 // Score ticks per quarter note (MuseScore's division), to express the
 // visualization's tempo readout in BPM.
 constexpr double ticksPerQuarter = 480.0;
-// Timing-judgment windows: an onset within max(floor, frac·cadence) of its
-// predicted time is Perfect / Good. The fraction scales the tolerance to the
-// playing cadence (a 30 ms slip on a whole note is not the sin it is on a
-// sixteenth); the ms floor keeps fast passages humanly attainable.
-constexpr double perfectFloorMs = 20.0;
-constexpr double perfectFrac = 0.06;
-constexpr double goodFloorMs = 45.0;
-constexpr double goodFrac = 0.15;
-// No judgment until this many onsets have re-fed a hand's estimate: right
-// after the two-onset seed the curve fits the performer by construction, so
-// early residuals are flattery, not information.
-constexpr int judgeWarmupObservations = 3;
+// No judgments until the smoothing window holds this many onsets: a spline
+// through two or three points fits the performer nearly by construction, so
+// its residuals are flattery, not information. Once past this, *all* window
+// onsets are judged (the first notes included, retroactively).
+constexpr std::size_t judgeMinKnots = 4;
 
 // The scroll anchors on the smoothed position this many onsets back: enough
 // that the spline there is essentially settled (each onset's influence decays
@@ -85,12 +78,12 @@ TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
   _timer.callOnTimeout([this] { tick(); });
 }
 
-std::map<int, TempoFollower::Judgment>
+std::map<int, std::vector<TempoFollower::Judgment>>
 TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
                         std::optional<double> leadingAny,
                         std::optional<double> trailingAny)
 {
-  std::map<int, Judgment> judgments;
+  std::map<int, std::vector<Judgment>> judgments;
   if (_suspended)
   {
     // A manual click/swipe suspended us; resume only when a note is actually
@@ -147,30 +140,26 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     else
       hand.anchorDirty = true;
 
-    // Judge the onset's timing against the fitted curve *before* this
-    // observation corrects it — once the estimate has settled past seeding.
-    if (hand.tempoTracker.observations() >= judgeWarmupObservations &&
-        hand.tempoTracker.speed() > 0.0 && hand.tempoTracker.intervalMs() > 0.0)
-    {
-      // Residual in ticks, negated into an arrival-time error: a note whose
-      // tick the curve hasn't reached yet arrived early (− ms).
-      const double errorMs =
-          -hand.tempoTracker.predictionError(now, onset.tick) /
-          hand.tempoTracker.speed();
-      const double cadence = hand.tempoTracker.intervalMs();
-      const double absErr = std::abs(errorMs);
-      Judgment::Tier tier;
-      if (absErr <= std::max(perfectFloorMs, perfectFrac * cadence))
-        tier = Judgment::Tier::Perfect;
-      else if (absErr <= std::max(goodFloorMs, goodFrac * cadence))
-        tier = Judgment::Tier::Good;
-      else
-        tier = errorMs < 0.0 ? Judgment::Tier::Early : Judgment::Tier::Late;
-      judgments[track] = {tier, errorMs};
-    }
-
     hand.tempoTracker.addObservation(now, onset.tick);
     hand.tempoSmoother.addObservation(now, onset.tick);
+
+    // Retrospective judgment: with the spline just re-fitted through this
+    // onset, (re-)measure *every* onset still in the window against it. A
+    // smooth tempo bend is part of the curve, not an error; and each note's
+    // verdict keeps refining as later notes lend it hindsight.
+    if (hand.tempoSmoother.knots().size() >= judgeMinKnots)
+    {
+      std::vector<Judgment> window;
+      const auto residuals = hand.tempoSmoother.residuals();
+      window.reserve(residuals.size());
+      for (const auto &r : residuals)
+        if (r.velocity > 1e-9)
+          // Residual in ticks, negated into an arrival-time error: a note
+          // whose tick the curve hasn't reached yet arrived early (− ms).
+          window.push_back({r.time, -r.error / r.velocity});
+      if (!window.empty())
+        judgments[track] = std::move(window);
+    }
 
     observed = true;
     if (_viz)
