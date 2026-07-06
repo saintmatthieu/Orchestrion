@@ -194,6 +194,18 @@ double TempoSmoother::velocityAt(double realTime) const
   return velocity;
 }
 
+std::vector<TempoSmoother::Residual> TempoSmoother::residuals() const
+{
+  // _knots[i] is the smoothed state at _obs[i]'s time (smooth() keeps them in
+  // lockstep).
+  std::vector<Residual> result;
+  result.reserve(_knots.size());
+  for (std::size_t i = 0; i < _knots.size(); ++i)
+    result.push_back({_knots[i].time, _obs[i].pos - _knots[i].position,
+                      _knots[i].velocity});
+  return result;
+}
+
 void TempoSmoother::reset()
 {
   _obs.clear();

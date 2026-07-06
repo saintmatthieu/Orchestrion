@@ -55,6 +55,14 @@ public:
   virtual void setTimingFeedbackEnabled(bool) = 0;
   virtual muse::async::Notification timingFeedbackEnabledChanged() const = 0;
 
+  //! When enabled, the timing marks don't fade out: they stay on the page
+  //! until the stats reset, so a whole take can be reviewed after playing it.
+  //! Off by default.
+  virtual bool persistentTimingMarksEnabled() const = 0;
+  virtual void setPersistentTimingMarksEnabled(bool) = 0;
+  virtual muse::async::Notification
+  persistentTimingMarksEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

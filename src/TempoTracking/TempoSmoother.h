@@ -73,6 +73,19 @@ public:
   double positionAt(double realTime) const;
   double velocityAt(double realTime) const;
 
+  //! Per retained onset, how far its observation lies from the smoothed curve
+  //! — the spline's verdict on each note's timing, refined by every new
+  //! onset. \p error is observed − smoothed position (musical units, + =
+  //! ahead of the curve); \p velocity is the smoothed tempo there, for
+  //! converting the error into time.
+  struct Residual
+  {
+    double time;
+    double error;
+    double velocity;
+  };
+  std::vector<Residual> residuals() const;
+
   //! Forget all history (e.g. a position jump or a new piece).
   void reset();
 

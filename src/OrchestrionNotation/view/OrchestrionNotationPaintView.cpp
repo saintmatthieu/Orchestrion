@@ -24,6 +24,7 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QTimer>
 #include <QWheelEvent>
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
@@ -204,31 +205,73 @@ void OrchestrionNotationPaintView::OnTransitions(
     }
   }
 
-  const std::map<int, TempoFollower::Judgment> judgments =
+  const std::map<int, std::vector<TempoFollower::Judgment>> judgments =
       m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
 
-  // Playing has resumed after an interruption: the histogram starts a fresh
+  // Playing has resumed after an interruption: the error stats start a fresh
   // take. (It stays readable while interrupted; only the resume clears it.)
   if (m_timingStatsStale && !presentOnsets.empty())
   {
     m_timingOverlay.reset();
     m_timingStatsStale = false;
+    m_finalScoreShown = false;
+    dismissFinalScore();
   }
 
   // The game feedback: an error gauge next to the struck notes — above the
-  // staff for the right hand, below for the left — and a sample into the
-  // accumulated histogram.
+  // staff for the right hand, below for the left — and the hand's revised
+  // judgments into the overlay (moving still-showing markers, re-binning the
+  // box plot). The newest onset's judgment is the window's last.
   if (sequencerConfiguration()->timingFeedbackEnabled())
-    for (const auto &[staff, judgment] : judgments)
+    for (const auto &[staff, window] : judgments)
     {
-      const auto it = staffHits.find(staff);
-      if (it == staffHits.end())
+      if (window.empty())
         continue;
-      const StaffHit &hit = it->second;
-      const bool below = staff > 0; // left hand
-      m_timingOverlay.addSample(hit.rect, hit.spatium, judgment.errorMs, below,
-                                below ? hit.staffBottom : hit.staffTop);
+      if (const auto it = staffHits.find(staff); it != staffHits.end())
+      {
+        const StaffHit &hit = it->second;
+        const bool below = staff > 0; // left hand
+        m_timingOverlay.addGauge(staff, window.back().tMs, hit.rect,
+                                 hit.spatium, window.back().errorMs, below,
+                                 below ? hit.staffBottom : hit.staffTop);
+      }
+      m_timingOverlay.updateJudgments(staff, window);
     }
+
+  // End of the piece: nothing is sounding (notes *and* rests) and nothing is
+  // upcoming on any voice — the last notes were just released — so raise the
+  // final-score banner, once. (While a chord sounds or a rest passes, its
+  // transition is a *present* state carrying no future, so both must be
+  // absent to distinguish the true end; a mid-piece release holds a future
+  // chord or a present rest instead.)
+  if (!m_finalScoreShown && sequencerConfiguration()->timingFeedbackEnabled())
+    if (const auto sequencer = orchestrion()->sequencer())
+    {
+      const auto &current = sequencer->GetCurrentTransitions();
+      const bool done =
+          !current.empty() &&
+          std::all_of(current.begin(), current.end(),
+                      [](const auto &entry)
+                      {
+                        return !GetFutureChord(entry.second) &&
+                               !GetPresentThing(entry.second);
+                      });
+      if (done)
+        if (const auto score = m_timingOverlay.takeScore())
+        {
+          m_finalScoreShown = true;
+          m_finalScore = *score;
+          emit finalScoreChanged();
+        }
+    }
+}
+
+void OrchestrionNotationPaintView::dismissFinalScore()
+{
+  if (m_finalScore < 0)
+    return;
+  m_finalScore = -1;
+  emit finalScoreChanged();
 }
 
 double OrchestrionNotationPaintView::minScaling() const
@@ -499,7 +542,15 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 
   interactionProcessor()->onMouseMoved(logicPos, hitWidth());
 
-  if (sequencerConfiguration()->noteInfoTooltipEnabled())
+  // A timing gauge under the cursor tells its onset's error; otherwise fall
+  // back to the note-info debug tooltip (which has its own toggle).
+  QString gaugeInfo;
+  if (sequencerConfiguration()->timingFeedbackEnabled())
+    gaugeInfo =
+        m_timingOverlay.gaugeInfoAt(QPointF(logicPos.x(), logicPos.y()));
+  if (!gaugeInfo.isEmpty())
+    setHoveredNoteInfo(gaugeInfo, pos);
+  else if (sequencerConfiguration()->noteInfoTooltipEnabled())
     updateHoveredNoteInfo(pos);
   else if (!m_hoveredNoteInfo.isEmpty())
     setHoveredNoteInfo({}, pos);
@@ -781,6 +832,17 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   sequencerConfiguration()->tempoVisualizationEnabledChanged().onNotify(
       this, [this] { emit tempoVisualizationEnabledChanged(); });
 
+  m_timingOverlay.setPersistent(
+      sequencerConfiguration()->persistentTimingMarksEnabled());
+  sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        m_timingOverlay.setPersistent(
+            sequencerConfiguration()->persistentTimingMarksEnabled());
+        update();
+      });
+
   load();
   updateNotation();
 
@@ -888,6 +950,8 @@ void OrchestrionNotationPaintView::updateNotation()
   // A different score: the error stats start over immediately.
   m_timingOverlay.reset();
   m_timingStatsStale = false;
+  m_finalScoreShown = false;
+  dismissFinalScore();
   update();
 }
 
@@ -1081,7 +1145,7 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
 
   const auto view = viewport();
 
-  // Timing-judgment overlay (gauges above the notes + histogram HUD), on top
+  // Timing-judgment overlay (gauges next to the notes + box-plot HUD), on top
   // of the notation.
   if (sequencerConfiguration()->timingFeedbackEnabled())
     m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());

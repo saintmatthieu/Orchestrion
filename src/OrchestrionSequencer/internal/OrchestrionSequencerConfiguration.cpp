@@ -33,6 +33,8 @@ const muse::Settings::Key
     TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
 const muse::Settings::Key TIMING_FEEDBACK_ENABLED(module_name,
                                                   "TIMING_FEEDBACK_ENABLED");
+const muse::Settings::Key PERSISTENT_TIMING_MARKS_ENABLED(
+    module_name, "PERSISTENT_TIMING_MARKS_ENABLED");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 } // namespace
@@ -65,6 +67,13 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(TIMING_FEEDBACK_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_timingFeedbackEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(PERSISTENT_TIMING_MARKS_ENABLED,
+                                    muse::Val{false});
+  muse::settings()
+      ->valueChanged(PERSISTENT_TIMING_MARKS_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_persistentTimingMarksEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
@@ -136,6 +145,24 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::timingFeedbackEnabledChanged() const
 {
   return m_timingFeedbackEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::persistentTimingMarksEnabled() const
+{
+  return muse::settings()->value(PERSISTENT_TIMING_MARKS_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setPersistentTimingMarksEnabled(
+    bool enabled)
+{
+  muse::settings()->setSharedValue(PERSISTENT_TIMING_MARKS_ENABLED,
+                                   muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::persistentTimingMarksEnabledChanged() const
+{
+  return m_persistentTimingMarksEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

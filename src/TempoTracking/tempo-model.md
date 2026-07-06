@@ -379,8 +379,15 @@ onset it re-runs, over the window (O(window) 2×2 arithmetic):
    i.e. the (windowed) cubic smoothing spline itself. Exact timing ⇒ the spline
    is exactly the constant-tempo line (unit-tested, like §5).
 
-Two consumers:
+Three consumers:
 
+- **Timing judgments**: each onset's displayed error is its *residual against
+  the spline*, re-evaluated on every re-fit (the gauge markers settle, the
+  histogram re-bins as hindsight arrives). Because the spline bends with the
+  performer, a smooth tempo shape — rubato, a ritardando — is part of the
+  curve and costs nothing; only deviation from the performer's own smooth
+  curve registers (unit-tested: a played linear ramp leaves interior
+  residuals a quarter of the causal filter's `a·Δ²/β` lag, under 5 ms).
 - **Visualization**: the smoothed BPM curve is drawn solid (re-sent per onset —
   its recent end visibly bends into place as new onsets land); the causal
   per-frame estimate stays as a faint trace, carrying the leading edge from the
