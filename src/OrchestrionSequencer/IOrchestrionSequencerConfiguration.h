@@ -63,6 +63,13 @@ public:
   virtual muse::async::Notification
   persistentTimingMarksEnabledChanged() const = 0;
 
+  //! Whether the performance score includes the hand-synchronization
+  //! component. Off by default: hand asynchrony correlates strongly with the
+  //! tempo-smoothness errors anyway, so one score usually suffices.
+  virtual bool handSyncScoreEnabled() const = 0;
+  virtual void setHandSyncScoreEnabled(bool) = 0;
+  virtual muse::async::Notification handSyncScoreEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

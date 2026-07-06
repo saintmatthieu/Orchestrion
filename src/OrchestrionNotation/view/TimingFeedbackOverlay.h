@@ -29,6 +29,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <vector>
 
 class QPainter;
 
@@ -82,6 +83,16 @@ public:
   void updateJudgments(int staff,
                        const std::vector<TempoFollower::Judgment> &window);
 
+  //! One hand-asynchrony sample (see TempoFollower::Feedback::handSync): fed
+  //! into the sync component of the score. Never arrives for single-staff
+  //! scores — or while the sync component is disabled — and the score then
+  //! has no sync part.
+  void addSyncSample(double tMs, double errorMs);
+
+  //! Drop the sync samples (the component was toggled off mid-take, and its
+  //! stale samples shouldn't linger in the verdict).
+  void clearSyncStats();
+
   //! When persistent, gauges don't fade: every judged onset keeps its mark on
   //! the page (a repeat pass stacks its marks beyond the earlier ones) until
   //! the stats reset — so a whole take can be reviewed after playing it.
@@ -96,13 +107,19 @@ public:
   //! a click or swipe, a position jump, a new score) starts the stats over.
   void reset();
 
-  //! The timing score, 0–100, higher = tighter: 100·e^(−m/m₀) where m is the
-  //! 80th percentile of |error| — robust like the box plot, but centred on
-  //! zero so both bias and spread cost points. takeScore() measures the whole
-  //! take (everything since the last reset(), unweighted, for the final
-  //! verdict); the score shown above the box plot is its recency-weighted
-  //! sibling over the recent window. Empty while there are no samples.
-  std::optional<int> takeScore() const;
+  //! The final score of the whole take (everything since the last reset(),
+  //! unweighted): the average of the available component scores — tempo
+  //! smoothness, and hand sync when the piece has two hands. Each component
+  //! is 100·e^(−m/m₀), m the 80th percentile of its |error| — robust like
+  //! the box plot, but centred on zero so both bias and spread cost points.
+  //! The score shown above the box plot is the recency-weighted sibling.
+  //! Empty while there are no samples.
+  std::optional<int> takeFinalScore() const;
+
+  //! The take's component scores for display next to the final score, e.g.
+  //! "tempo 87 · sync 92" (no sync part for single-staff scores); empty while
+  //! there are no samples.
+  QString takeScoreBreakdown() const;
 
   //! Paint gauges and box plot. The painter must be in score-logical
   //! coordinates; \p viewport is the visible logical rect and \p scaling the
@@ -129,9 +146,13 @@ private:
   void paintBoxPlot(QPainter &painter, const QRectF &viewport,
                     double scaling) const;
   void pruneSamples();
-  //! The score metric (80th percentile of |error|, ms) over the recent
+  //! The score metrics (80th percentile of |error|, ms) over the recent
   //! window, recency-weighted — what the live score display shows.
   std::optional<double> recentAbsErrorQuantile() const;
+  std::optional<double> recentSyncAbsErrorQuantile() const;
+  //! Their whole-take, unweighted siblings — the final verdict.
+  std::optional<double> takeAbsErrorQuantile() const;
+  std::optional<double> takeSyncAbsErrorQuantile() const;
 
   const std::function<void()> _requestRepaint;
   QElapsedTimer _clock; // free-running; timestamps gauges and samples
@@ -151,8 +172,14 @@ private:
   };
   std::map<int /*staff*/, std::map<double /*onsetTMs*/, Sample>> _samples;
 
-  //! The whole take's (revised) errors, never pruned, backing takeScore().
+  //! The whole take's (revised) errors, never pruned, backing the take's
+  //! tempo-smoothness component.
   std::map<int /*staff*/, std::map<double /*onsetTMs*/, double /*errorMs*/>>
       _takeSamples;
+
+  //! Hand-asynchrony samples: the rolling window (recency-weighted, like
+  //! _samples) and the whole take's, backing the sync component.
+  std::deque<Sample> _syncSamples;
+  std::vector<double> _takeSyncErrors;
 };
 } // namespace dgk

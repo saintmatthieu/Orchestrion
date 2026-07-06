@@ -205,7 +205,7 @@ void OrchestrionNotationPaintView::OnTransitions(
     }
   }
 
-  const std::map<int, std::vector<TempoFollower::Judgment>> judgments =
+  const TempoFollower::Feedback feedback =
       m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
 
   // Playing has resumed after an interruption: the error stats start a fresh
@@ -223,7 +223,8 @@ void OrchestrionNotationPaintView::OnTransitions(
   // judgments into the overlay (moving still-showing markers, re-binning the
   // box plot). The newest onset's judgment is the window's last.
   if (sequencerConfiguration()->timingFeedbackEnabled())
-    for (const auto &[staff, window] : judgments)
+  {
+    for (const auto &[staff, window] : feedback.judgments)
     {
       if (window.empty())
         continue;
@@ -237,6 +238,10 @@ void OrchestrionNotationPaintView::OnTransitions(
       }
       m_timingOverlay.updateJudgments(staff, window);
     }
+    if (feedback.handSync && sequencerConfiguration()->handSyncScoreEnabled())
+      m_timingOverlay.addSyncSample(feedback.handSync->tMs,
+                                    feedback.handSync->errorMs);
+  }
 
   // End of the piece: nothing is sounding (notes *and* rests) and nothing is
   // upcoming on any voice — the last notes were just released — so raise the
@@ -257,10 +262,11 @@ void OrchestrionNotationPaintView::OnTransitions(
                                !GetPresentThing(entry.second);
                       });
       if (done)
-        if (const auto score = m_timingOverlay.takeScore())
+        if (const auto score = m_timingOverlay.takeFinalScore())
         {
           m_finalScoreShown = true;
           m_finalScore = *score;
+          m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
           emit finalScoreChanged();
         }
     }
@@ -271,6 +277,7 @@ void OrchestrionNotationPaintView::dismissFinalScore()
   if (m_finalScore < 0)
     return;
   m_finalScore = -1;
+  m_finalScoreBreakdown.clear();
   emit finalScoreChanged();
 }
 
@@ -840,6 +847,17 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
       {
         m_timingOverlay.setPersistent(
             sequencerConfiguration()->persistentTimingMarksEnabled());
+        update();
+      });
+
+  sequencerConfiguration()->handSyncScoreEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        // Toggled off: stale sync samples shouldn't linger in the verdict.
+        // (Toggling on starts collecting from here on, nothing to do.)
+        if (!sequencerConfiguration()->handSyncScoreEnabled())
+          m_timingOverlay.clearSyncStats();
         update();
       });
 

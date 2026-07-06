@@ -379,7 +379,7 @@ onset it re-runs, over the window (O(window) 2×2 arithmetic):
    i.e. the (windowed) cubic smoothing spline itself. Exact timing ⇒ the spline
    is exactly the constant-tempo line (unit-tested, like §5).
 
-Three consumers:
+Four consumers:
 
 - **Timing judgments**: each onset's displayed error is its *residual against
   the spline*, re-evaluated on every re-fit (the gauge markers settle, the
@@ -388,6 +388,11 @@ Three consumers:
   curve and costs nothing; only deviation from the performer's own smooth
   curve registers (unit-tested: a played linear ramp leaves interior
   residuals a quarter of the causal filter's `a·Δ²/β` lag, under 5 ms).
+- **Hand asynchrony**: with one spline per hand in the shared unrolled-tick
+  coordinate, the hands' positions at the same instant should agree; the gap
+  ÷ tempo is the asynchrony in ms ("melody lead" when signed), sampled per
+  onset batch at a settled point of both splines and scored like the timing
+  errors.
 - **Visualization**: the smoothed BPM curve is drawn solid (re-sent per onset —
   its recent end visibly bends into place as new onsets land); the causal
   per-frame estimate stays as a faint trace, carrying the leading edge from the

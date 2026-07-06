@@ -57,6 +57,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-persistent-timing-marks",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-advanced-toggle-hand-sync-score",
+                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::reverbOff, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::reverbRoom, mu::context::UiCtxAny,

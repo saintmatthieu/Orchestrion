@@ -132,17 +132,27 @@ public:
     double errorMs; // signed arrival error: − = early, + = late
   };
 
+  //! What one transition batch yields for the performance game.
+  struct Feedback
+  {
+    //! Per sounding hand, the (re-)judgments of *all* its onsets still in
+    //! the smoothing window, newest last — empty while the spline is warming
+    //! up (at the start, or on resuming after a stop).
+    std::map<int, std::vector<Judgment>> judgments;
+    //! One hand-asynchrony sample, when at least two hands are playing: how
+    //! far apart the hands' smoothed position curves are at a recent, settled
+    //! instant, converted to time (+ = the upper staff leads). Absent for
+    //! single-staff scores or while either spline is warming up or coasting.
+    std::optional<Judgment> handSync;
+  };
+
   //! Feed one transition batch. \p presentOnsets maps each hand (staff) that is
   //! *sounding* this batch to its onset — a tempo observation for that hand.
   //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that
-  //! is sounding *or* upcoming, used once to frame the start. Returns, per
-  //! sounding hand, the (re-)judgments of *all* its onsets still in the
-  //! smoothing window, newest last — empty while the spline is warming up (at
-  //! the start, or on resuming after a stop).
-  std::map<int, std::vector<Judgment>>
-  onOnsets(const std::map<int, Onset> &presentOnsets,
-           std::optional<double> leadingAny,
-           std::optional<double> trailingAny);
+  //! is sounding *or* upcoming, used once to frame the start.
+  Feedback onOnsets(const std::map<int, Onset> &presentOnsets,
+                    std::optional<double> leadingAny,
+                    std::optional<double> trailingAny);
 
   //! Stop following and hand control back to the user — a "panic" for a manual
   //! click or swipe. Stays suspended until the next played note (which resumes

@@ -56,6 +56,10 @@ private:
   muse::async::Notification
   persistentTimingMarksEnabledChanged() const override;
 
+  bool handSyncScoreEnabled() const override;
+  void setHandSyncScoreEnabled(bool) override;
+  muse::async::Notification handSyncScoreEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
@@ -64,5 +68,6 @@ private:
   muse::async::Notification m_tempoVisualizationEnabledChanged;
   muse::async::Notification m_timingFeedbackEnabledChanged;
   muse::async::Notification m_persistentTimingMarksEnabledChanged;
+  muse::async::Notification m_handSyncScoreEnabledChanged;
 };
 } // namespace dgk

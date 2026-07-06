@@ -72,7 +72,9 @@ constexpr double recencyTauMs = 20000.0;
 // the high 90s, m = scoreRefMs scores ≈ 37.
 constexpr double scoreQuantile = 0.8;
 constexpr double scoreRefMs = 60.0;
-constexpr double scoreBandPx = 36.0; // panel band above the plot
+// Panel band above the plot: the combined score plus a component breakdown.
+constexpr double scoreBandPx = 52.0;
+constexpr double scoreMainRowPx = 34.0;
 
 //! The \p q-quantile of |error| over (|error|, weight) pairs; the first value
 //! where the running weight reaches the requested share of the total.
@@ -100,6 +102,49 @@ int scoreOf(double absErrorQuantileMs)
 {
   return static_cast<int>(
       std::lround(100.0 * std::exp(-absErrorQuantileMs / scoreRefMs)));
+}
+
+//! The component scores as a display line, e.g. "tempo 87 · sync 92" — used
+//! both in the HUD's score band (recent window) and next to the final banner
+//! score (whole take). Empty with fewer than two components: a lone
+//! sub-score would just repeat the combined one.
+QString breakdownText(const std::optional<double> &timingQuantile,
+                      const std::optional<double> &syncQuantile)
+{
+  if (!timingQuantile || !syncQuantile)
+    return {};
+  return QString::fromUtf8("tempo %1 · sync %2")
+      .arg(scoreOf(*timingQuantile))
+      .arg(scoreOf(*syncQuantile));
+}
+
+//! The combined score: the plain average of the available component scores
+//! (a single-staff piece has no sync component). A geometric mean — i.e.
+//! averaging the error metrics before the exp map — would punish one bad
+//! component harder; a knob for later. Also yields the mean error metric,
+//! for colouring the display.
+struct Composite
+{
+  int score;
+  double meanQuantileMs;
+};
+std::optional<Composite>
+combineScores(const std::vector<std::optional<double>> &quantiles)
+{
+  double scoreSum = 0.0;
+  double quantileSum = 0.0;
+  int count = 0;
+  for (const auto &quantile : quantiles)
+    if (quantile)
+    {
+      scoreSum += scoreOf(*quantile);
+      quantileSum += *quantile;
+      ++count;
+    }
+  if (count == 0)
+    return std::nullopt;
+  return Composite{static_cast<int>(std::lround(scoreSum / count)),
+                   quantileSum / count};
 }
 
 // Accuracy colour: green when dead on time, grading through yellow/orange to
@@ -237,11 +282,29 @@ void TimingFeedbackOverlay::updateJudgments(
   _requestRepaint();
 }
 
+void TimingFeedbackOverlay::addSyncSample(double tMs, double errorMs)
+{
+  Q_UNUSED(tMs);
+  _syncSamples.push_back({errorMs, _clock.elapsed()});
+  _takeSyncErrors.push_back(errorMs);
+  pruneSamples();
+  _requestRepaint();
+}
+
+void TimingFeedbackOverlay::clearSyncStats()
+{
+  _syncSamples.clear();
+  _takeSyncErrors.clear();
+  _requestRepaint();
+}
+
 void TimingFeedbackOverlay::reset()
 {
   _gauges.clear();
   _samples.clear();
   _takeSamples.clear();
+  _syncSamples.clear();
+  _takeSyncErrors.clear();
   _timer.stop();
 }
 
@@ -260,16 +323,49 @@ std::optional<double> TimingFeedbackOverlay::recentAbsErrorQuantile() const
   return weightedAbsQuantile(std::move(data), scoreQuantile);
 }
 
-std::optional<int> TimingFeedbackOverlay::takeScore() const
+std::optional<double> TimingFeedbackOverlay::recentSyncAbsErrorQuantile() const
+{
+  const qint64 now = _clock.elapsed();
+  std::vector<std::pair<double, double>> data;
+  for (const Sample &sample : _syncSamples)
+  {
+    const double age = static_cast<double>(now - sample.arrivalMs);
+    if (age <= sampleWindowMs)
+      data.emplace_back(std::abs(sample.errorMs),
+                        std::exp(-age / recencyTauMs));
+  }
+  return weightedAbsQuantile(std::move(data), scoreQuantile);
+}
+
+std::optional<double> TimingFeedbackOverlay::takeAbsErrorQuantile() const
 {
   std::vector<std::pair<double, double>> data;
   for (const auto &[staff, samples] : _takeSamples)
     for (const auto &[onsetTMs, errorMs] : samples)
       data.emplace_back(std::abs(errorMs), 1.0);
-  const auto quantile = weightedAbsQuantile(std::move(data), scoreQuantile);
-  if (!quantile)
+  return weightedAbsQuantile(std::move(data), scoreQuantile);
+}
+
+std::optional<double> TimingFeedbackOverlay::takeSyncAbsErrorQuantile() const
+{
+  std::vector<std::pair<double, double>> data;
+  for (const double errorMs : _takeSyncErrors)
+    data.emplace_back(std::abs(errorMs), 1.0);
+  return weightedAbsQuantile(std::move(data), scoreQuantile);
+}
+
+std::optional<int> TimingFeedbackOverlay::takeFinalScore() const
+{
+  const auto composite =
+      combineScores({takeAbsErrorQuantile(), takeSyncAbsErrorQuantile()});
+  if (!composite)
     return std::nullopt;
-  return scoreOf(*quantile);
+  return composite->score;
+}
+
+QString TimingFeedbackOverlay::takeScoreBreakdown() const
+{
+  return breakdownText(takeAbsErrorQuantile(), takeSyncAbsErrorQuantile());
 }
 
 void TimingFeedbackOverlay::pruneSamples()
@@ -280,6 +376,10 @@ void TimingFeedbackOverlay::pruneSamples()
       it = static_cast<double>(now - it->second.arrivalMs) > sampleWindowMs
                ? samples.erase(it)
                : std::next(it);
+  while (!_syncSamples.empty() &&
+         static_cast<double>(now - _syncSamples.front().arrivalMs) >
+             sampleWindowMs)
+    _syncSamples.pop_front();
 }
 
 void TimingFeedbackOverlay::advance()
@@ -511,20 +611,29 @@ void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
                    Qt::AlignRight | Qt::AlignVCenter,
                    QString::fromUtf8("±%1 ms").arg(rangeMs));
 
-  // The live score, big, in its accuracy colour (the same 0–100 the final
-  // popup reports, but recency-weighted).
-  if (const auto quantile = recentAbsErrorQuantile())
+  // The live score, big, in its accuracy colour — the combined verdict (the
+  // same composition the final banner reports, but recency-weighted) — with
+  // the per-component breakdown beneath. Single-staff scores have no sync
+  // component, so the breakdown then shows tempo alone.
+  const auto timingQuantile = recentAbsErrorQuantile();
+  const auto syncQuantile = recentSyncAbsErrorQuantile();
+  if (const auto composite = combineScores({timingQuantile, syncQuantile}))
   {
-    painter.drawText(QRectF(plotLeft, 0, plotRight - plotLeft, scoreBandPx),
-                     Qt::AlignLeft | Qt::AlignVCenter, "score");
+    painter.drawText(
+        QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
+        Qt::AlignLeft | Qt::AlignVCenter, "score");
+    painter.drawText(QRectF(plotLeft, scoreMainRowPx - 4, plotRight - plotLeft,
+                            scoreBandPx - scoreMainRowPx + 4),
+                     Qt::AlignLeft | Qt::AlignVCenter,
+                     breakdownText(timingQuantile, syncQuantile));
     QFont scoreFont = painter.font();
     scoreFont.setPixelSize(26);
     scoreFont.setBold(true);
     painter.setFont(scoreFont);
-    painter.setPen(withAlpha(errorColor(*quantile), 1.0));
-    painter.drawText(QRectF(plotLeft, 0, plotRight - plotLeft, scoreBandPx),
-                     Qt::AlignRight | Qt::AlignVCenter,
-                     QString::number(scoreOf(*quantile)));
+    painter.setPen(withAlpha(errorColor(composite->meanQuantileMs), 1.0));
+    painter.drawText(
+        QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
+        Qt::AlignRight | Qt::AlignVCenter, QString::number(composite->score));
   }
   painter.restore();
 }
