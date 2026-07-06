@@ -48,6 +48,13 @@ public:
   virtual muse::async::Notification
   tempoVisualizationEnabledChanged() const = 0;
 
+  //! When enabled, each played note gets a colored flash judging its timing
+  //! against the performer's own tempo curve (gold = perfect, green = good,
+  //! blue = early, red = late). On by default.
+  virtual bool timingFeedbackEnabled() const = 0;
+  virtual void setTimingFeedbackEnabled(bool) = 0;
+  virtual muse::async::Notification timingFeedbackEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

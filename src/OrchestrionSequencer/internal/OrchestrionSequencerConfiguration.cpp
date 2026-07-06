@@ -31,8 +31,10 @@ const muse::Settings::Key
     NOTE_INFO_TOOLTIP_ENABLED(module_name, "NOTE_INFO_TOOLTIP_ENABLED");
 const muse::Settings::Key
     TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
-const muse::Settings::Key
-    KEYBOARD_HELP_DISMISSED(module_name, "KEYBOARD_HELP_DISMISSED");
+const muse::Settings::Key TIMING_FEEDBACK_ENABLED(module_name,
+                                                  "TIMING_FEEDBACK_ENABLED");
+const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
+                                                  "KEYBOARD_HELP_DISMISSED");
 } // namespace
 
 void OrchestrionSequencerConfiguration::init()
@@ -58,8 +60,13 @@ void OrchestrionSequencerConfiguration::init()
       .onReceive(this, [this](const muse::Val &)
                  { m_tempoVisualizationEnabledChanged.notify(); });
 
-  muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED,
-                                    muse::Val{false});
+  muse::settings()->setDefaultValue(TIMING_FEEDBACK_ENABLED, muse::Val{true});
+  muse::settings()
+      ->valueChanged(TIMING_FEEDBACK_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_timingFeedbackEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
 
 bool OrchestrionSequencerConfiguration::velocityRecordingEnabled() const
@@ -113,6 +120,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::tempoVisualizationEnabledChanged() const
 {
   return m_tempoVisualizationEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::timingFeedbackEnabled() const
+{
+  return muse::settings()->value(TIMING_FEEDBACK_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setTimingFeedbackEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(TIMING_FEEDBACK_ENABLED, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::timingFeedbackEnabledChanged() const
+{
+  return m_timingFeedbackEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

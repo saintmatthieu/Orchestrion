@@ -68,6 +68,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setTempoVisualizationEnabled(
                           !sequencerConfig()->tempoVisualizationEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-timing-feedback",
+                    [this]
+                    {
+                      sequencerConfig()->setTimingFeedbackEnabled(
+                          !sequencerConfig()->timingFeedbackEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
@@ -77,9 +83,9 @@ void OrchestrionActionController::init()
   dispatcher()->reg(
       this, actionIds::reverbHall,
       [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Hall); });
-  dispatcher()->reg(this, actionIds::reverbCathedral, [this] {
-    synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral);
-  });
+  dispatcher()->reg(
+      this, actionIds::reverbCathedral,
+      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral); });
 
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]

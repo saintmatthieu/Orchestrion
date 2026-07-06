@@ -110,21 +110,41 @@ public:
   TempoFollower(const TempoFollower &) = delete;
   TempoFollower &operator=(const TempoFollower &) = delete;
 
-  //! A sounding onset: its page-logical x (drives the scroll) and its score
-  //! tick (drives the musical-tempo readout for the visualization).
+  //! A sounding onset: its page-logical x (drives the scroll) and its
+  //! playback-unrolled tick — continuous through repeats, voltas and jumps —
+  //! which drives the musical-tempo readout and the timing judgments.
   struct Onset
   {
     double x;
     double tick;
   };
 
+  //! Verdict on one onset's timing against its hand's own fitted tempo curve —
+  //! the atomic signal of the performance game. The reference follows the
+  //! performer, so it rewards consistency (rubato played smoothly stays
+  //! "perfect"); it does not enforce a metronome.
+  struct Judgment
+  {
+    enum class Tier
+    {
+      Perfect,
+      Good,
+      Early, // outside the Good window, rushing
+      Late,  //                          dragging
+    };
+    Tier tier;
+    double errorMs; // signed arrival error: − = early, + = late
+  };
+
   //! Feed one transition batch. \p presentOnsets maps each hand (staff) that is
   //! *sounding* this batch to its onset — a tempo observation for that hand.
-  //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that is
-  //! sounding *or* upcoming, used once to frame the start.
-  void onOnsets(const std::map<int, Onset> &presentOnsets,
-                std::optional<double> leadingAny,
-                std::optional<double> trailingAny);
+  //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that
+  //! is sounding *or* upcoming, used once to frame the start. Returns the
+  //! timing judgment per judged hand — absent while that hand's estimate is
+  //! warming up (at the start, or on resuming after a stop).
+  std::map<int, Judgment> onOnsets(const std::map<int, Onset> &presentOnsets,
+                                   std::optional<double> leadingAny,
+                                   std::optional<double> trailingAny);
 
   //! Stop following and hand control back to the user — a "panic" for a manual
   //! click or swipe. Stays suspended until the next played note (which resumes
@@ -148,10 +168,11 @@ private:
     // … and the smoothed spline it chases, which the scroll anchors on (a
     // couple of onsets delayed, but with a continuous velocity).
     TempoSmoother smoother;
-    // Musical tempo, tracked in score ticks — same model, so the
-    // visualization's BPM readout is *fitted* across onsets (smoothing
-    // per-onset jitter) rather than a raw single-interval ratio, and is
-    // independent of layout spacing. Causal trace + re-smoothed spline.
+    // Musical tempo, tracked in playback-unrolled ticks (continuous through
+    // repeats and jumps) — same model, so the visualization's BPM readout is
+    // *fitted* across onsets (smoothing per-onset jitter) rather than a raw
+    // single-interval ratio, and is independent of layout spacing. Causal
+    // trace + re-smoothed spline.
     TempoTracker tempoTracker;
     TempoSmoother tempoSmoother;
     // Accumulated leftward jump of repeated bars for this hand: added to its

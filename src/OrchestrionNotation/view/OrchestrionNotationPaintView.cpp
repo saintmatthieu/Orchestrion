@@ -27,8 +27,10 @@
 #include <QWheelEvent>
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
+#include <engraving/dom/measure.h>
 #include <engraving/dom/note.h>
 #include <engraving/dom/segment.h>
+#include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
 
 #include <cmath>
@@ -38,6 +40,7 @@ namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
+      m_timingOverlay([this] { update(); }),
       m_follower(*this, &m_tempoVizModel),
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
@@ -79,6 +82,10 @@ void OrchestrionNotationPaintView::subscribe(
                                               m_tempoVizModel.clear();
                                               m_boxes.clear();
                                               m_fader.clear();
+                                              // An interruption: the timing
+                                              // stats restart when playing
+                                              // resumes (readable until then).
+                                              m_timingStatsStale = true;
                                               update();
                                             });
 }
@@ -93,6 +100,17 @@ void OrchestrionNotationPaintView::OnTransitions(
   std::map<int /*staff*/, TempoFollower::Onset> presentOnsets;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
+  // Where to place a hand's timing gauge if its onset gets judged: the union
+  // of the boxes of the notes it struck this batch, plus the staff's edges so
+  // the gauge keeps clear of the staff lines.
+  struct StaffHit
+  {
+    QRectF rect;
+    double spatium = 1.0;
+    double staffTop = 0.0;
+    double staffBottom = 0.0;
+  };
+  std::map<int /*staff*/, StaffHit> staffHits;
 
   for (const auto &[track, transition] : transitions)
   {
@@ -148,6 +166,23 @@ void OrchestrionNotationPaintView::OnTransitions(
     box.color = QColor(mahogany);
     box.intensity = active ? 1.0 : 0.3;
 
+    if (active)
+    {
+      StaffHit &hit = staffHits[track.staffIndex()];
+      hit.rect = hit.rect.isNull() ? box.rect : hit.rect.united(box.rect);
+      hit.spatium = spatium;
+      if (const mu::engraving::System *system = segment->measure()->system())
+      {
+        hit.staffTop = system->staffYpage(track.staffIndex());
+        hit.staffBottom = hit.staffTop + 4.0 * spatium; // the 5 staff lines
+      }
+      else
+      {
+        hit.staffTop = hit.rect.top();
+        hit.staffBottom = hit.rect.bottom();
+      }
+    }
+
     // Onset x of this track's note (page-logical), for the follow. Use the
     // segment element rather than the hugging box, whose width includes ties.
     if (const auto el = segment->element(track.value))
@@ -158,17 +193,42 @@ void OrchestrionNotationPaintView::OnTransitions(
       if (active)
       {
         // Collapse a staff's voices into one onset (its rightmost), carrying
-        // the score tick for the musical-tempo readout.
+        // the playback-unrolled tick — continuous through repeats, voltas and
+        // jumps — for the musical-tempo readout and the timing judgments.
         const int hand = track.staffIndex();
         const auto it = presentOnsets.find(hand);
         if (it == presentOnsets.end() || onsetX > it->second.x)
           presentOnsets[hand] = TempoFollower::Onset{
-              onsetX, static_cast<double>(segment->tick().ticks())};
+              onsetX, static_cast<double>(present->GetBeginTick().withRepeats)};
       }
     }
   }
 
-  m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
+  const std::map<int, TempoFollower::Judgment> judgments =
+      m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
+
+  // Playing has resumed after an interruption: the histogram starts a fresh
+  // take. (It stays readable while interrupted; only the resume clears it.)
+  if (m_timingStatsStale && !presentOnsets.empty())
+  {
+    m_timingOverlay.reset();
+    m_timingStatsStale = false;
+  }
+
+  // The game feedback: an error gauge next to the struck notes — above the
+  // staff for the right hand, below for the left — and a sample into the
+  // accumulated histogram.
+  if (sequencerConfiguration()->timingFeedbackEnabled())
+    for (const auto &[staff, judgment] : judgments)
+    {
+      const auto it = staffHits.find(staff);
+      if (it == staffHits.end())
+        continue;
+      const StaffHit &hit = it->second;
+      const bool below = staff > 0; // left hand
+      m_timingOverlay.addSample(hit.rect, hit.spatium, judgment.errorMs, below,
+                                below ? hit.staffBottom : hit.staffTop);
+    }
 }
 
 double OrchestrionNotationPaintView::minScaling() const
@@ -193,8 +253,8 @@ void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
   // max-padding limit (so near the start/end of the score the anchor drifts
   // off its spot rather than opening a gap wider than a manual zoom-out would
   // allow).
-  const double leftX = clampLeftX(
-      logicalX - TempoFollower::anchorFrac * logicalWidth, scaling);
+  const double leftX =
+      clampLeftX(logicalX - TempoFollower::anchorFrac * logicalWidth, scaling);
 
   const auto content = notationContentRect();
   const double emptyAbovePhysical =
@@ -327,6 +387,7 @@ void OrchestrionNotationPaintView::onMousePressed(
 {
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   m_follower.suspend();     // ...and hands auto-scroll control back to the user
+  m_timingStatsStale = true; // timing stats restart when playing resumes
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
   const mu::notation::EngravingItem *hitElement =
@@ -587,8 +648,10 @@ float OrchestrionNotationPaintView::hitWidth() const
 void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
 {
   // A wheel/trackpad swipe (zoom or pan) is manual navigation: hand auto-scroll
-  // control back to the user.
+  // control back to the user. An interruption also restarts the timing stats
+  // once playing resumes.
   m_follower.suspend();
+  m_timingStatsStale = true;
 
   // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
   // Ctrl-modified wheel event) zooms the score in/out about the cursor.
@@ -795,6 +858,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   {
     m_userDefaultScaling = newMatrix.m11();
     m_follower.suspend();
+    m_timingStatsStale = true;
   }
 
   constrainScorePosition();
@@ -821,6 +885,9 @@ void OrchestrionNotationPaintView::updateNotation()
   }
   m_boxes.clear();
   m_fader.clear();
+  // A different score: the error stats start over immediately.
+  m_timingOverlay.reset();
+  m_timingStatsStale = false;
   update();
 }
 
@@ -1013,6 +1080,11 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   painter->setOpacity(1.0);
 
   const auto view = viewport();
+
+  // Timing-judgment overlay (gauges above the notes + histogram HUD), on top
+  // of the notation.
+  if (sequencerConfiguration()->timingFeedbackEnabled())
+    m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());
 
   const auto radius = 30. / currentScaling();
 

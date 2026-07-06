@@ -348,7 +348,10 @@ $$
 
 Repeats are handled by feeding each tracker a monotonic coordinate: the scroll
 tracker folds each backward jump into an accumulating x-offset (kept monotonic,
-subtracted for display); the tempo tracker is `reset()` at the backward tick.
+subtracted for display); the tempo tracker is fed the **playback-unrolled**
+tick (the sequencer's `Tick::withRepeats`), which is continuous through
+repeats, voltas and jumps — so the tempo estimate and the timing judgments
+carry straight across them with no reset.
 
 ---
 

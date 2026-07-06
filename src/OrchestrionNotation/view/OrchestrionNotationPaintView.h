@@ -29,6 +29,7 @@
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "TempoFollower.h"
 #include "TempoVizModel.h"
+#include "TimingFeedbackOverlay.h"
 #include <QElapsedTimer>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
@@ -57,8 +58,8 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // the Advanced menu). The model is fed by the follower; the flag mirrors the
   // persisted config setting.
   Q_PROPERTY(dgk::TempoVizModel *tempoVizModel READ tempoVizModel CONSTANT)
-  Q_PROPERTY(bool tempoVisualizationEnabled READ tempoVisualizationEnabled NOTIFY
-                 tempoVisualizationEnabledChanged)
+  Q_PROPERTY(bool tempoVisualizationEnabled READ tempoVisualizationEnabled
+                 NOTIFY tempoVisualizationEnabledChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<ILoopBoundariesController> loopBoundariesController;
@@ -103,8 +104,8 @@ private:
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
   //! Clamp a desired viewport-left (logical) so the empty space past either end
-  //! of the system never exceeds the max padding (and a system narrower than the
-  //! view stays centered). Shared by manual constraint and auto-follow.
+  //! of the system never exceeds the max padding (and a system narrower than
+  //! the view stays centered). Shared by manual constraint and auto-follow.
   double clampLeftX(double desiredLeftX, double scaling) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -156,6 +157,12 @@ private:
   std::unordered_map<int, Highlight> m_boxes;
   // Highlights of just-ended notes, fading out (owns its own timer/clock).
   HighlightFader m_fader;
+  // Timing-judgment feedback: per-onset error gauges next to the notes plus
+  // the recent-error histogram, drawn on top of the notation.
+  TimingFeedbackOverlay m_timingOverlay;
+  // Set on any interruption of play (stop/jump, click, swipe, manual zoom):
+  // the histogram stays readable, but starts over when playing resumes.
+  bool m_timingStatsStale = false;
 
   struct Contact
   {

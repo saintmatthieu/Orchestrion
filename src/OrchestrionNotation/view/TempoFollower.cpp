@@ -34,6 +34,19 @@ constexpr double tauZoom = 0.35;
 // Score ticks per quarter note (MuseScore's division), to express the
 // visualization's tempo readout in BPM.
 constexpr double ticksPerQuarter = 480.0;
+// Timing-judgment windows: an onset within max(floor, frac·cadence) of its
+// predicted time is Perfect / Good. The fraction scales the tolerance to the
+// playing cadence (a 30 ms slip on a whole note is not the sin it is on a
+// sixteenth); the ms floor keeps fast passages humanly attainable.
+constexpr double perfectFloorMs = 20.0;
+constexpr double perfectFrac = 0.06;
+constexpr double goodFloorMs = 45.0;
+constexpr double goodFrac = 0.15;
+// No judgment until this many onsets have re-fed a hand's estimate: right
+// after the two-onset seed the curve fits the performer by construction, so
+// early residuals are flattery, not information.
+constexpr int judgeWarmupObservations = 3;
+
 // The scroll anchors on the smoothed position this many onsets back: enough
 // that the spline there is essentially settled (each onset's influence decays
 // by the memory factor per knot), small enough that the playhead ahead of the
@@ -57,8 +70,7 @@ sampleSmoothedBpm(const TempoSmoother &smoother)
   std::vector<TempoFollower::VizSink::CurvePoint> curve;
   curve.reserve(static_cast<std::size_t>((tEnd - tBegin) / stepMs) + 2);
   for (double t = tBegin; t < tEnd; t += stepMs)
-    curve.push_back(
-        {t, smoother.velocityAt(t) * (60000.0 / ticksPerQuarter)});
+    curve.push_back({t, smoother.velocityAt(t) * (60000.0 / ticksPerQuarter)});
   curve.push_back(
       {tEnd, smoother.velocityAt(tEnd) * (60000.0 / ticksPerQuarter)});
   return curve;
@@ -73,17 +85,19 @@ TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
   _timer.callOnTimeout([this] { tick(); });
 }
 
-void TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
-                             std::optional<double> leadingAny,
-                             std::optional<double> trailingAny)
+std::map<int, TempoFollower::Judgment>
+TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
+                        std::optional<double> leadingAny,
+                        std::optional<double> trailingAny)
 {
+  std::map<int, Judgment> judgments;
   if (_suspended)
   {
     // A manual click/swipe suspended us; resume only when a note is actually
     // played again. Start fresh so we re-frame at the current position and
     // rebuild the tempo estimates (the timestamps from while paused are stale).
     if (presentOnsets.empty())
-      return;
+      return judgments;
     reset();
   }
 
@@ -104,19 +118,26 @@ void TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     // position-jump signal. Fold each backward jump into the hand's offset so
     // its tracked coordinate stays monotonic (the tempo carries straight
     // through), and subtract it again for display so the view snaps back.
-    const bool repeat = !std::isnan(hand.lastOnsetX) && onsetX < hand.lastOnsetX;
+    const bool repeat =
+        !std::isnan(hand.lastOnsetX) && onsetX < hand.lastOnsetX;
     if (repeat)
       hand.xOffset += hand.lastOnsetX - onsetX;
     hand.lastOnsetX = onsetX;
     hand.tracker.addObservation(now, onsetX + hand.xOffset);
     hand.smoother.addObservation(now, onsetX + hand.xOffset);
 
-    // Feed the musical-tempo estimators the score tick (a repeat's backward
-    // tick would glitch the fit, so restart them there).
-    if (repeat)
+    // Feed the musical-tempo estimators the playback-unrolled tick: unlike
+    // the score tick it is continuous through repeats, voltas and jumps, so
+    // the tempo estimate — and the judgments — carry straight across them.
+    // Only a coast restarts them: the performer stopped, and the wound-down
+    // curve says nothing about the resumed tempo (a fresh take).
+    if (hand.tempoTracker.isCoasting())
     {
       hand.tempoTracker.reset();
       hand.tempoSmoother.reset();
+    }
+    if (repeat)
+    {
       // The view should snap back over the repeated bars, not glide: clear the
       // anchor-continuity state instead of absorbing the jump.
       hand.anchorOffset = 0.0;
@@ -125,6 +146,28 @@ void TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     }
     else
       hand.anchorDirty = true;
+
+    // Judge the onset's timing against the fitted curve *before* this
+    // observation corrects it — once the estimate has settled past seeding.
+    if (hand.tempoTracker.observations() >= judgeWarmupObservations &&
+        hand.tempoTracker.speed() > 0.0 && hand.tempoTracker.intervalMs() > 0.0)
+    {
+      // Residual in ticks, negated into an arrival-time error: a note whose
+      // tick the curve hasn't reached yet arrived early (− ms).
+      const double errorMs =
+          -hand.tempoTracker.predictionError(now, onset.tick) /
+          hand.tempoTracker.speed();
+      const double cadence = hand.tempoTracker.intervalMs();
+      const double absErr = std::abs(errorMs);
+      Judgment::Tier tier;
+      if (absErr <= std::max(perfectFloorMs, perfectFrac * cadence))
+        tier = Judgment::Tier::Perfect;
+      else if (absErr <= std::max(goodFloorMs, goodFrac * cadence))
+        tier = Judgment::Tier::Good;
+      else
+        tier = errorMs < 0.0 ? Judgment::Tier::Early : Judgment::Tier::Late;
+      judgments[track] = {tier, errorMs};
+    }
 
     hand.tempoTracker.addObservation(now, onset.tick);
     hand.tempoSmoother.addObservation(now, onset.tick);
@@ -139,6 +182,7 @@ void TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
   }
   if (observed && !_timer.isActive())
     _timer.start();
+  return judgments;
 }
 
 void TempoFollower::frame(double leadingX, double trailingX)
@@ -149,8 +193,7 @@ void TempoFollower::frame(double leadingX, double trailingX)
   {
     // Zoom out (never in) so the trailing onset fits to the left of the
     // anchored leading onset, past a small edge margin.
-    const double availLeftPx =
-        anchorFrac * _canvas.viewWidth() - edgeMarginPx;
+    const double availLeftPx = anchorFrac * _canvas.viewWidth() - edgeMarginPx;
     const double spanLogical = leadingX - trailingX;
     if (availLeftPx > 0.0 && spanLogical > 1e-6)
       scale = std::min(userScale, availLeftPx / spanLogical);
@@ -250,7 +293,8 @@ void TempoFollower::tick()
     if (_viz)
     {
       // Smoothed musical tempo, ticks/ms → BPM.
-      const double bpm = hand.tempoTracker.speed() * (60000.0 / ticksPerQuarter);
+      const double bpm =
+          hand.tempoTracker.speed() * (60000.0 / ticksPerQuarter);
       vizSamples.push_back({track, bpm, hand.tempoTracker.isCoasting()});
     }
   }
