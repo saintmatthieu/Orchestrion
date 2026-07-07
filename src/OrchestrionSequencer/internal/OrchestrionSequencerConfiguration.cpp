@@ -40,6 +40,7 @@ const muse::Settings::Key HAND_SYNC_SCORE_ENABLED(module_name,
                                                   "HAND_SYNC_SCORE_ENABLED");
 const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
                                                  "DYNAMICS_SCORE_ENABLED");
+const muse::Settings::Key AUTO_PLAYED_STAFF(module_name, "AUTO_PLAYED_STAFF");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 } // namespace
@@ -91,6 +92,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(DYNAMICS_SCORE_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_dynamicsScoreEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(AUTO_PLAYED_STAFF, muse::Val{-1});
+  muse::settings()
+      ->valueChanged(AUTO_PLAYED_STAFF)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_autoPlayedStaffChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
@@ -212,6 +219,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::dynamicsScoreEnabledChanged() const
 {
   return m_dynamicsScoreEnabledChanged;
+}
+
+int OrchestrionSequencerConfiguration::autoPlayedStaff() const
+{
+  return muse::settings()->value(AUTO_PLAYED_STAFF).toInt();
+}
+
+void OrchestrionSequencerConfiguration::setAutoPlayedStaff(int staff)
+{
+  muse::settings()->setSharedValue(AUTO_PLAYED_STAFF, muse::Val{staff});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::autoPlayedStaffChanged() const
+{
+  return m_autoPlayedStaffChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

@@ -162,6 +162,23 @@ public:
                     std::optional<double> leadingAny,
                     std::optional<double> trailingAny);
 
+  //! Tempo-following auto-play. While \p staff is set, that hand belongs to
+  //! the machine: it is exempt from judgments, dynamics and sync sampling,
+  //! and whenever the *manual* hands' estimated position reaches one of its
+  //! targets (see setAutoTargets), \p fire is invoked — noteOn to strike its
+  //! next chord, noteOff to release the current one. The auto hand thereby
+  //! follows the performer, accelerating, slowing and coasting to a stop with
+  //! them. \p fire is called from the follow tick: defer any re-entrant work.
+  void setAutoPlay(std::optional<int> staff,
+                   std::function<void(bool noteOn)> fire);
+
+  //! The auto hand's due points, in playback-unrolled ticks: the sounding
+  //! chord's end (→ noteOff) and the next chord's begin (→ noteOn). The owner
+  //! refreshes them from the sequencer's transitions after every batch; each
+  //! fires at most once until refreshed.
+  void setAutoTargets(std::optional<double> offTick,
+                      std::optional<double> onTick);
+
   //! Stop following and hand control back to the user — a "panic" for a manual
   //! click or swipe. Stays suspended until the next played note (which resumes
   //! following fresh) or a reset().
@@ -224,5 +241,11 @@ private:
   qint64 _lastTickMs = 0; // for zoom-easing dt
   // Last centered position, to detect when the coast has settled (then idle).
   double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
+
+  // Tempo-following auto-play (see setAutoPlay / setAutoTargets).
+  std::optional<int> _autoStaff;
+  std::function<void(bool)> _autoFire;
+  std::optional<double> _autoOffTick;
+  std::optional<double> _autoOnTick;
 };
 } // namespace dgk

@@ -379,7 +379,7 @@ onset it re-runs, over the window (O(window) 2×2 arithmetic):
    i.e. the (windowed) cubic smoothing spline itself. Exact timing ⇒ the spline
    is exactly the constant-tempo line (unit-tested, like §5).
 
-Five consumers:
+Six consumers:
 
 - **Timing judgments**: each onset's displayed error is its *residual against
   the spline*, re-evaluated on every re-fit (the gauge markers settle, the
@@ -399,6 +399,11 @@ Five consumers:
   velocity registers — same retrospective residuals, judged in velocity
   fractions. Only genuine controller velocities are fed (derived ones are
   smooth by construction and would inflate the score).
+- **Auto-play**: the manual hands' *causal* estimate (utick position, live,
+  coasting when the performer stops) paces a machine-played hand: its next
+  due strike/release ticks come from the sequencer's transitions, and fire
+  when the estimate reaches them — so the auto hand follows the performer's
+  tempo. The auto hand is exempt from judgments, sync and dynamics scoring.
 - **Visualization**: the smoothed BPM curve is drawn solid (re-sent per onset —
   its recent end visibly bends into place as new onsets land); the causal
   per-frame estimate stays as a faint trace, carrying the leading edge from the

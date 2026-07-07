@@ -92,6 +92,20 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setDynamicsScoreEnabled(
                           !sequencerConfig()->dynamicsScoreEnabled());
                     });
+  // Tempo-following auto-play: at most one hand at a time (the other one is
+  // yours — for full playback there is the playback button).
+  dispatcher()->reg(this, "orchestrion-advanced-autoplay-left-hand",
+                    [this]
+                    {
+                      sequencerConfig()->setAutoPlayedStaff(
+                          sequencerConfig()->autoPlayedStaff() == 1 ? -1 : 1);
+                    });
+  dispatcher()->reg(this, "orchestrion-advanced-autoplay-right-hand",
+                    [this]
+                    {
+                      sequencerConfig()->setAutoPlayedStaff(
+                          sequencerConfig()->autoPlayedStaff() == 0 ? -1 : 0);
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });

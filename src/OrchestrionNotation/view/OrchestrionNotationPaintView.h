@@ -143,6 +143,11 @@ private:
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
+  //! Refresh the tempo-following auto-play targets (the auto hand's next due
+  //! release/strike, in playback-unrolled ticks) from a transitions batch.
+  //! Batches only carry the *changed* tracks, so a per-voice ledger
+  //! (m_autoTrackTargets) persists the auto staff's state between batches.
+  void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
   void updateNotation();
 
   // TempoFollower::Canvas
@@ -178,6 +183,13 @@ private:
   // velocity-less devices), from HandNoteEvents — which fires just before the
   // transitions batch the gesture causes; consumed by that batch's onsets.
   std::optional<float> m_pendingHandVelocity[2] = {}; // [0]=right, [1]=left
+  // Per-voice ledger backing updateAutoTargets().
+  struct AutoTargets
+  {
+    std::optional<double> offTick;
+    std::optional<double> onTick;
+  };
+  std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
   // The final-score banner fires once per take, when the piece's last notes
   // are released; re-armed when the stats restart. −1 = no banner showing.
   bool m_finalScoreShown = false;

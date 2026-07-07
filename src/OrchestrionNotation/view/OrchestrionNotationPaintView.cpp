@@ -39,6 +39,15 @@
 
 namespace dgk
 {
+namespace
+{
+// The sequencer routes input events to hands by pitch (< 60 = left hand, see
+// OrchestrionSequencer::OnInputEventRecursive) — the same sentinels the
+// automatic player uses.
+constexpr int rightHandPitch = 60;
+constexpr int leftHandPitch = 59;
+} // namespace
+
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
       m_timingOverlay([this] { update(); }),
@@ -97,6 +106,9 @@ void OrchestrionNotationPaintView::subscribe(
                                               // stats restart when playing
                                               // resumes (readable until then).
                                               m_timingStatsStale = true;
+                                              // The jump's transitions batch
+                                              // repopulates the ledger.
+                                              m_autoTrackTargets.clear();
                                               update();
                                             });
 }
@@ -289,6 +301,48 @@ void OrchestrionNotationPaintView::OnTransitions(
           emit finalScoreChanged();
         }
     }
+
+  updateAutoTargets(transitions);
+}
+
+void OrchestrionNotationPaintView::updateAutoTargets(
+    const std::map<TrackIndex, ChordTransition> &batch)
+{
+  const int autoStaff = sequencerConfiguration()->autoPlayedStaff();
+  if (autoStaff < 0)
+    return;
+
+  // Refresh the ledger entries this batch brings for the auto staff.
+  for (const auto &[track, transition] : batch)
+  {
+    if (track.staffIndex() != autoStaff)
+      continue;
+    AutoTargets &targets = m_autoTrackTargets[track.value];
+    const IChord *present = GetPresentChord(transition);
+    targets.offTick =
+        present
+            ? std::make_optional<double>(present->GetEndTick().withRepeats)
+            : std::nullopt;
+    const IChord *future = GetFutureChord(transition);
+    targets.onTick =
+        future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
+               : std::nullopt;
+  }
+
+  // Aggregate: the auto hand's earliest release and strike across its voices,
+  // in playback-unrolled ticks — the coordinate the manual hands' estimate
+  // lives in.
+  std::optional<double> offTick;
+  std::optional<double> onTick;
+  for (const auto &[track, targets] : m_autoTrackTargets)
+  {
+    if (targets.offTick)
+      offTick =
+          offTick ? std::min(*offTick, *targets.offTick) : targets.offTick;
+    if (targets.onTick)
+      onTick = onTick ? std::min(*onTick, *targets.onTick) : targets.onTick;
+  }
+  m_follower.setAutoTargets(offTick, onTick);
 }
 
 void OrchestrionNotationPaintView::dismissFinalScore()
@@ -889,6 +943,42 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         update();
       });
 
+  // Tempo-following auto-play: the follower fires when the manual hands'
+  // estimate reaches the auto hand's next due point; we inject the hand event
+  // (deferred out of the follow tick — the resulting transitions re-enter it
+  // with fresh targets).
+  const auto configureAutoPlay = [this]
+  {
+    const int staff = sequencerConfiguration()->autoPlayedStaff();
+    m_autoTrackTargets.clear();
+    m_follower.setAutoPlay(
+        staff < 0 ? std::nullopt : std::make_optional(staff),
+        [this](bool noteOn)
+        {
+          QTimer::singleShot(
+              0, this,
+              [this, noteOn]
+              {
+                const int staff = sequencerConfiguration()->autoPlayedStaff();
+                const auto sequencer = orchestrion()->sequencer();
+                if (staff < 0 || !sequencer)
+                  return;
+                sequencer->OnInputEvent(noteOn ? NoteEventType::noteOn
+                                               : NoteEventType::noteOff,
+                                        staff > 0 ? leftHandPitch
+                                                  : rightHandPitch,
+                                        std::nullopt);
+              });
+        });
+    // Seed from whatever the last batch holds (after loading it covers every
+    // voice; mid-piece it may not — a rewind repopulates it in full).
+    if (const auto sequencer = orchestrion()->sequencer())
+      updateAutoTargets(sequencer->GetCurrentTransitions());
+  };
+  configureAutoPlay();
+  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, configureAutoPlay);
+
   load();
   updateNotation();
 
@@ -997,6 +1087,7 @@ void OrchestrionNotationPaintView::updateNotation()
   m_timingOverlay.reset();
   m_timingStatsStale = false;
   m_finalScoreShown = false;
+  m_autoTrackTargets.clear();
   dismissFinalScore();
   update();
 }
