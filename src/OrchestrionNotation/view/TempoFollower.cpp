@@ -148,11 +148,15 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     hand.tempoTracker.addObservation(now, onset.tick);
     hand.tempoSmoother.addObservation(now, onset.tick);
 
+    // The machine-played hand's onsets are tracked (for the scroll and the
+    // viz) but never judged: it is not a performance.
+    const bool isAutoHand = _autoStaff && track == *_autoStaff;
+
     // Retrospective judgment: with the spline just re-fitted through this
     // onset, (re-)measure *every* onset still in the window against it. A
     // smooth tempo bend is part of the curve, not an error; and each note's
     // verdict keeps refining as later notes lend it hindsight.
-    if (hand.tempoSmoother.knots().size() >= judgeMinKnots)
+    if (!isAutoHand && hand.tempoSmoother.knots().size() >= judgeMinKnots)
     {
       std::vector<Judgment> window;
       const auto residuals = hand.tempoSmoother.residuals();
@@ -170,7 +174,7 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     // curve: a gesture's velocity is (re-)measured against the smoothed swell
     // as later gestures refine it. The residual is already the error (a
     // velocity fraction) — no time conversion.
-    if (onset.velocity)
+    if (!isAutoHand && onset.velocity)
     {
       hand.dynamicsSmoother.addObservation(now, *onset.velocity);
       if (hand.dynamicsSmoother.knots().size() >= judgeMinKnots)
@@ -203,6 +207,9 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     double intervalSum = 0.0;
     for (const auto &[track, hand] : _hands) // ascending staff order
     {
+      // A machine-played hand is synchronized by construction: no sample.
+      if (_autoStaff && track == *_autoStaff)
+        continue;
       if (!hand.tempoSmoother.ready() || hand.tempoTracker.isCoasting() ||
           hand.tempoTracker.intervalMs() <= 0.0)
         continue;
@@ -344,6 +351,38 @@ void TempoFollower::tick()
   }
   if (_viz && !vizSamples.empty())
     _viz->onTempoSample(now, vizSamples);
+
+  // Tempo-following auto-play: fire the auto hand's due events once the
+  // manual hands' estimated position reaches them. Each target fires once;
+  // the resulting transitions bring the next ones. When the performer stops,
+  // the estimate coasts to a halt and the auto hand halts with it.
+  if (_autoStaff && _autoFire && (_autoOnTick || _autoOffTick))
+  {
+    std::optional<double> manualTicks;
+    for (auto &[track, hand] : _hands)
+      if (track != *_autoStaff && hand.tempoTracker.ready())
+      {
+        const double pos = hand.tempoTracker.positionAt(now);
+        manualTicks = manualTicks ? std::max(*manualTicks, pos) : pos;
+      }
+    if (manualTicks)
+    {
+      if (_autoOnTick && *manualTicks >= *_autoOnTick)
+      {
+        // Advancing releases the previous chord itself: the pending noteOff
+        // is superseded.
+        _autoOnTick.reset();
+        _autoOffTick.reset();
+        _autoFire(true);
+      }
+      else if (_autoOffTick && *manualTicks >= *_autoOffTick)
+      {
+        _autoOffTick.reset();
+        _autoFire(false);
+      }
+    }
+  }
+
   if (!leadingAnchor)
     return;
 
@@ -392,6 +431,26 @@ void TempoFollower::tick()
     _timer.stop();
 }
 
+void TempoFollower::setAutoPlay(std::optional<int> staff,
+                                std::function<void(bool)> fire)
+{
+  _autoStaff = staff;
+  _autoFire = std::move(fire);
+  _autoOffTick.reset();
+  _autoOnTick.reset();
+}
+
+void TempoFollower::setAutoTargets(std::optional<double> offTick,
+                                   std::optional<double> onTick)
+{
+  _autoOffTick = offTick;
+  _autoOnTick = onTick;
+  // The trigger check lives in the follow tick: make sure it is running (it
+  // idles itself again once everything has settled).
+  if (_autoStaff && (offTick || onTick) && !_suspended && !_timer.isActive())
+    _timer.start();
+}
+
 void TempoFollower::suspend()
 {
   _suspended = true;
@@ -407,5 +466,7 @@ void TempoFollower::reset()
   _scaling = 0.0;
   _lastTickMs = 0;
   _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
+  _autoOffTick.reset();
+  _autoOnTick.reset();
 }
 } // namespace dgk

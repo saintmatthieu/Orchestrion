@@ -41,6 +41,10 @@ constexpr auto toggleHandSyncScoreMenuId =
     "orchestrion-advanced-toggle-hand-sync-score";
 constexpr auto toggleDynamicsScoreMenuId =
     "orchestrion-advanced-toggle-dynamics-score";
+constexpr auto autoplayLeftHandMenuId =
+    "orchestrion-advanced-autoplay-left-hand";
+constexpr auto autoplayRightHandMenuId =
+    "orchestrion-advanced-autoplay-right-hand";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -111,6 +115,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->dynamicsScoreEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -380,6 +388,21 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   dynamicsScoreItem->setSelected(
       sequencerConfiguration()->dynamicsScoreEnabled());
 
+  const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
+  muse::uicomponents::MenuItem *const autoplayLeftItem =
+      makeMenuItem(autoplayLeftHandMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Auto-play &left hand"));
+  autoplayLeftItem->setSelectable(true);
+  autoplayLeftItem->setSelected(autoPlayedStaff == 1);
+
+  muse::uicomponents::MenuItem *const autoplayRightItem =
+      makeMenuItem(autoplayRightHandMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Auto-play &right hand"));
+  autoplayRightItem->setSelectable(true);
+  autoplayRightItem->setSelected(autoPlayedStaff == 0);
+
   const QList<MenuItem *> menu{
       item,
       noteInfoItem,
@@ -388,6 +411,8 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       persistentMarksItem,
       handSyncScoreItem,
       dynamicsScoreItem,
+      autoplayLeftItem,
+      autoplayRightItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,

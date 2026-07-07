@@ -78,6 +78,13 @@ public:
   virtual void setDynamicsScoreEnabled(bool) = 0;
   virtual muse::async::Notification dynamicsScoreEnabledChanged() const = 0;
 
+  //! Which hand the machine plays, following the performer's tempo: −1 =
+  //! none, 0 = the right hand (staff 0), 1 = the left. The auto-played hand
+  //! is exempt from timing judgments and scoring.
+  virtual int autoPlayedStaff() const = 0;
+  virtual void setAutoPlayedStaff(int) = 0;
+  virtual muse::async::Notification autoPlayedStaffChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;
