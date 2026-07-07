@@ -174,6 +174,10 @@ private:
   // Set on any interruption of play (stop/jump, click, swipe, manual zoom):
   // the stats stay readable, but start over when playing resumes.
   bool m_timingStatsStale = false;
+  // The latest gesture's raw controller velocity per hand (empty for
+  // velocity-less devices), from HandNoteEvents — which fires just before the
+  // transitions batch the gesture causes; consumed by that batch's onsets.
+  std::optional<float> m_pendingHandVelocity[2] = {}; // [0]=right, [1]=left
   // The final-score banner fires once per take, when the piece's last notes
   // are released; re-armed when the stats restart. −1 = no banner showing.
   bool m_finalScoreShown = false;

@@ -248,9 +248,9 @@ void OrchestrionSequencer::SendTransitions(
               m_rightHandUpperVoice.has_value() &&
               track.staffIndex() == m_rightHandUpperVoice->staffIndex() &&
               track.voiceIndex() != m_rightHandUpperVoice->voiceIndex();
-          velocity =
-              isLeftHand || isInnerRightHandVoice ? base * accompanimentGain
-                                                  : base;
+          velocity = isLeftHand || isInnerRightHandVoice
+                         ? base * accompanimentGain
+                         : base;
         }
       }
       else if (m_velocityRecordingEnabled)
@@ -409,10 +409,13 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                           GoToTick(0);
                       }};
 
-  // Notify which hand just played, for the beginner-help key animation. Reached
-  // only after the press/release bookkeeping confirmed a genuine event, so it
+  // Notify which hand just played — for the beginner-help key animation, and
+  // (with the raw controller velocity) for the dynamics scoring. Reached only
+  // after the press/release bookkeeping confirmed a genuine event, so it
   // fires exactly once per processed note-on/note-off.
-  m_handNoteEvent.send(AutoPlayEvent{type, isLeftHand});
+  m_handNoteEvent.send(
+      AutoPlayEvent{type, isLeftHand,
+                    type == NoteEventType::noteOn ? velocity : std::nullopt});
 
   SendTransitions(transitions, std::move(velocity), isLeftHand);
 

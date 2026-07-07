@@ -110,13 +110,16 @@ public:
   TempoFollower(const TempoFollower &) = delete;
   TempoFollower &operator=(const TempoFollower &) = delete;
 
-  //! A sounding onset: its page-logical x (drives the scroll) and its
+  //! A sounding onset: its page-logical x (drives the scroll), its
   //! playback-unrolled tick — continuous through repeats, voltas and jumps —
-  //! which drives the musical-tempo readout and the timing judgments.
+  //! which drives the musical-tempo readout and the timing judgments, and the
+  //! gesture's raw controller velocity (0..1) when the input device measures
+  //! one, driving the dynamics judgments.
   struct Onset
   {
     double x;
     double tick;
+    std::optional<double> velocity;
   };
 
   //! Verdict on one onset's timing, measured against its hand's *smoothed*
@@ -139,6 +142,11 @@ public:
     //! the smoothing window, newest last — empty while the spline is warming
     //! up (at the start, or on resuming after a stop).
     std::map<int, std::vector<Judgment>> judgments;
+    //! Same shape for the dynamics: each onset's played velocity measured
+    //! against the hand's smoothed loudness curve. Here Judgment::errorMs
+    //! actually holds a velocity-fraction error (0..1 scale, + = louder than
+    //! the curve). Only gestures with a real controller velocity contribute.
+    std::map<int, std::vector<Judgment>> dynamicsJudgments;
     //! One hand-asynchrony sample, when at least two hands are playing: how
     //! far apart the hands' smoothed position curves are at a recent, settled
     //! instant, converted to time (+ = the upper staff leads). Absent for
@@ -183,6 +191,11 @@ private:
     // trace + re-smoothed spline.
     TempoTracker tempoTracker;
     TempoSmoother tempoSmoother;
+    // Played loudness, smoothed over real time: the same state-space model
+    // fits a smoothing spline to whatever it observes, here the gestures'
+    // controller velocities — so a musical swell is part of the curve and
+    // only erratic loudness registers as error.
+    TempoSmoother dynamicsSmoother;
     // Accumulated leftward jump of repeated bars for this hand: added to its
     // observations to keep them monotonic, subtracted again for display.
     double xOffset = 0.0;
