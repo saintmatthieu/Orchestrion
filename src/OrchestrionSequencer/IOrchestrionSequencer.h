@@ -31,6 +31,11 @@ struct AutoPlayEvent
 {
   NoteEventType type;
   bool isLeftHand;
+  //! The gesture's raw controller velocity — empty when the input device
+  //! doesn't measure one (e.g. the computer keyboard) and for note-offs.
+  //! Consumers judging played dynamics must ignore derived velocities, so
+  //! only the genuine measurement travels here.
+  std::optional<float> velocity;
 };
 
 struct NextAutoPlayEvents

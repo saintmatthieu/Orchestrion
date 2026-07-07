@@ -33,10 +33,13 @@ const muse::Settings::Key
     TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
 const muse::Settings::Key TIMING_FEEDBACK_ENABLED(module_name,
                                                   "TIMING_FEEDBACK_ENABLED");
-const muse::Settings::Key PERSISTENT_TIMING_MARKS_ENABLED(
-    module_name, "PERSISTENT_TIMING_MARKS_ENABLED");
+const muse::Settings::Key
+    PERSISTENT_TIMING_MARKS_ENABLED(module_name,
+                                    "PERSISTENT_TIMING_MARKS_ENABLED");
 const muse::Settings::Key HAND_SYNC_SCORE_ENABLED(module_name,
                                                   "HAND_SYNC_SCORE_ENABLED");
+const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
+                                                 "DYNAMICS_SCORE_ENABLED");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 } // namespace
@@ -82,6 +85,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(HAND_SYNC_SCORE_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_handSyncScoreEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(DYNAMICS_SCORE_ENABLED, muse::Val{true});
+  muse::settings()
+      ->valueChanged(DYNAMICS_SCORE_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_dynamicsScoreEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
@@ -180,14 +189,29 @@ bool OrchestrionSequencerConfiguration::handSyncScoreEnabled() const
 
 void OrchestrionSequencerConfiguration::setHandSyncScoreEnabled(bool enabled)
 {
-  muse::settings()->setSharedValue(HAND_SYNC_SCORE_ENABLED,
-                                   muse::Val{enabled});
+  muse::settings()->setSharedValue(HAND_SYNC_SCORE_ENABLED, muse::Val{enabled});
 }
 
 muse::async::Notification
 OrchestrionSequencerConfiguration::handSyncScoreEnabledChanged() const
 {
   return m_handSyncScoreEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::dynamicsScoreEnabled() const
+{
+  return muse::settings()->value(DYNAMICS_SCORE_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setDynamicsScoreEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(DYNAMICS_SCORE_ENABLED, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::dynamicsScoreEnabledChanged() const
+{
+  return m_dynamicsScoreEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

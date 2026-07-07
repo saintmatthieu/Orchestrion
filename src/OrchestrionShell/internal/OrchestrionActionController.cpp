@@ -86,6 +86,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setHandSyncScoreEnabled(
                           !sequencerConfig()->handSyncScoreEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-dynamics-score",
+                    [this]
+                    {
+                      sequencerConfig()->setDynamicsScoreEnabled(
+                          !sequencerConfig()->dynamicsScoreEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });

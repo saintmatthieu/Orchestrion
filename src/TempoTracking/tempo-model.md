@@ -379,7 +379,7 @@ onset it re-runs, over the window (O(window) 2×2 arithmetic):
    i.e. the (windowed) cubic smoothing spline itself. Exact timing ⇒ the spline
    is exactly the constant-tempo line (unit-tested, like §5).
 
-Four consumers:
+Five consumers:
 
 - **Timing judgments**: each onset's displayed error is its *residual against
   the spline*, re-evaluated on every re-fit (the gauge markers settle, the
@@ -393,6 +393,12 @@ Four consumers:
   ÷ tempo is the asynchrony in ms ("melody lead" when signed), sampled per
   onset batch at a settled point of both splines and scored like the timing
   errors.
+- **Dynamics smoothness**: the same smoother fed `(time, velocity)` fits a
+  smoothing spline to the played loudness directly (the model is agnostic to
+  what it observes), so a musical swell is part of the curve and only erratic
+  velocity registers — same retrospective residuals, judged in velocity
+  fractions. Only genuine controller velocities are fed (derived ones are
+  smooth by construction and would inflate the score).
 - **Visualization**: the smoothed BPM curve is drawn solid (re-sent per onset —
   its recent end visibly bends into place as new onsets land); the causal
   per-frame estimate stays as a faint trace, carrying the leading edge from the

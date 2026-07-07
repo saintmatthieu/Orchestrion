@@ -34,17 +34,21 @@ namespace
 // The gauge's fixed error range: the ruler always spans ± this many ms, so
 // its reading is comparable across notes and sessions. Beyond it = outlier.
 constexpr double rangeMs = 250.0;
+// The dynamics scale sharing the same ruler (and the dynamics box plot's
+// axis): ± this velocity fraction, + (up) = too loud.
+constexpr double dynamicsRange = 0.25;
 
 // Gauge lifetime: readable for a moment, then fading out.
 constexpr qint64 holdMs = 10000;
 constexpr qint64 gaugeLifeMs = 12000;
 
 // Ruler geometry in staff spaces (spatium), so it scales with the score.
-constexpr double halfLenSp = 4.0;    // half the ruler's length (= rangeMs)
-constexpr double clearanceSp = 1.5;  // gap between the notes and the ruler
-constexpr double centerTickSp = 0.8; // half-width of the zero mark
-constexpr double endTickSp = 0.4;    // half-width of the range end caps
-constexpr double markerRadiusSp = 0.5;
+constexpr double halfLenSp = 4.0;      // half the ruler's length (= rangeMs)
+constexpr double clearanceSp = 1.5;    // gap between the notes and the ruler
+constexpr double centerTickSp = 0.8;   // half-width of the zero mark
+constexpr double endTickSp = 0.4;      // half-width of the range end caps
+constexpr double markerRadiusSp = 0.5; // the timing dot
+constexpr double ringRadiusSp = 0.85;  // the dynamics ring around it
 // A replayed spot (a repeat pass, a retried note) stacks its gauge this far
 // beyond the earlier one instead of painting over it.
 constexpr double stackStepSp = 2.0 * halfLenSp + 1.5;
@@ -66,12 +70,14 @@ constexpr double whiskerCapHalfWidthPx = 2 * 9.0;
 constexpr double sampleWindowMs = 60000.0;
 constexpr double recencyTauMs = 20000.0;
 
-// The score: 100·e^(−m/scoreRefMs), where m is the scoreQuantile-th
-// percentile of |error|. Robust like the box plot but centred on zero, so
-// both bias and spread cost points; exact playback (m of a few ms) scores in
-// the high 90s, m = scoreRefMs scores ≈ 37.
+// A component's score: 100·e^(−m/ref), where m is the scoreQuantile-th
+// percentile of its |error| — robust like the box plot but centred on zero,
+// so both bias and spread cost points — and ref that component's reference
+// error (scoring ≈ 37). Timing-like components (tempo, sync) measure ms;
+// the dynamics component measures velocity fractions (0..1).
 constexpr double scoreQuantile = 0.8;
 constexpr double scoreRefMs = 60.0;
+constexpr double dynamicsScoreRef = 0.12;
 // Panel band above the plot: the combined score plus a component breakdown.
 constexpr double scoreBandPx = 52.0;
 constexpr double scoreMainRowPx = 34.0;
@@ -98,61 +104,86 @@ weightedAbsQuantile(std::vector<std::pair<double, double>> data, double q)
   return data.back().first;
 }
 
-int scoreOf(double absErrorQuantileMs)
+int scoreOf(double absErrorQuantile, double ref)
 {
   return static_cast<int>(
-      std::lround(100.0 * std::exp(-absErrorQuantileMs / scoreRefMs)));
+      std::lround(100.0 * std::exp(-absErrorQuantile / ref)));
 }
+
+//! One component of the score: its display label, error quantile (absent =
+//! no samples, component not applicable) and reference error.
+struct Component
+{
+  const char *label;
+  std::optional<double> quantile;
+  double ref;
+};
 
 //! The component scores as a display line, e.g. "tempo 87 · sync 92" — used
 //! both in the HUD's score band (recent window) and next to the final banner
 //! score (whole take). Empty with fewer than two components: a lone
 //! sub-score would just repeat the combined one.
-QString breakdownText(const std::optional<double> &timingQuantile,
-                      const std::optional<double> &syncQuantile)
+QString breakdownText(const std::vector<Component> &components)
 {
-  if (!timingQuantile || !syncQuantile)
+  const auto present =
+      std::count_if(components.begin(), components.end(),
+                    [](const Component &c) { return c.quantile.has_value(); });
+  if (present < 2)
     return {};
-  return QString::fromUtf8("tempo %1 · sync %2")
-      .arg(scoreOf(*timingQuantile))
-      .arg(scoreOf(*syncQuantile));
+  QString text;
+  for (const Component &component : components)
+  {
+    if (!component.quantile)
+      continue;
+    if (!text.isEmpty())
+      text += QString::fromUtf8(" · ");
+    text += QStringLiteral("%1 %2")
+                .arg(component.label)
+                .arg(scoreOf(*component.quantile, component.ref));
+  }
+  return text;
 }
 
 //! The combined score: the plain average of the available component scores
-//! (a single-staff piece has no sync component). A geometric mean — i.e.
-//! averaging the error metrics before the exp map — would punish one bad
-//! component harder; a knob for later. Also yields the mean error metric,
-//! for colouring the display.
+//! (a single-staff piece has no sync component; a velocity-less controller
+//! yields no dynamics samples). A geometric mean — i.e. averaging the
+//! normalized errors before the exp map — would punish one bad component
+//! harder; a knob for later. Also yields the mean error in units of the
+//! components' references, for colouring the display.
 struct Composite
 {
   int score;
-  double meanQuantileMs;
+  double meanErrorRatio;
 };
-std::optional<Composite>
-combineScores(const std::vector<std::optional<double>> &quantiles)
+std::optional<Composite> combineScores(const std::vector<Component> &components)
 {
   double scoreSum = 0.0;
-  double quantileSum = 0.0;
+  double ratioSum = 0.0;
   int count = 0;
-  for (const auto &quantile : quantiles)
-    if (quantile)
+  for (const Component &component : components)
+    if (component.quantile)
     {
-      scoreSum += scoreOf(*quantile);
-      quantileSum += *quantile;
+      scoreSum += scoreOf(*component.quantile, component.ref);
+      ratioSum += *component.quantile / component.ref;
       ++count;
     }
   if (count == 0)
     return std::nullopt;
   return Composite{static_cast<int>(std::lround(scoreSum / count)),
-                   quantileSum / count};
+                   ratioSum / count};
 }
 
-// Accuracy colour: green when dead on time, grading through yellow/orange to
-// red at (and beyond) the gauge's range — the traffic-light hue sweep.
+// Accuracy colour: green when dead on, grading through yellow/orange to red
+// at (and beyond) the scale's range — the traffic-light hue sweep. \p t is
+// |error| as a fraction of the applicable range.
+QColor ratioColor(double t)
+{
+  return QColor::fromHsvF((1.0 - std::clamp(t, 0.0, 1.0)) / 3.0, 0.72, 0.82);
+}
+
 QColor errorColor(double errorMs)
 {
-  const double t = std::min(std::abs(errorMs) / rangeMs, 1.0);
-  return QColor::fromHsvF((1.0 - t) / 3.0, 0.72, 0.82);
+  return ratioColor(std::abs(errorMs) / rangeMs);
 }
 
 QColor withAlpha(QColor color, double alpha)
@@ -206,7 +237,7 @@ void TimingFeedbackOverlay::addGauge(int staff, double onsetTMs,
   centerY += belowStaff ? stackOffset : -stackOffset;
 
   _gauges.push_back({staff, onsetTMs, x, centerY, spatium, errorMs,
-                     _clock.elapsed()});
+                     std::nullopt, _clock.elapsed()});
   if (!_persistent && !_timer.isActive())
     _timer.start();
 }
@@ -242,30 +273,51 @@ QString TimingFeedbackOverlay::gaugeInfoAt(const QPointF &logicalPos) const
     if (!hitRect.contains(logicalPos))
       continue;
     const int ms = static_cast<int>(std::lround(std::abs(gauge.errorMs)));
-    if (ms == 0)
-      return QStringLiteral("on time");
-    return QStringLiteral("%1 ms %2")
-        .arg(ms)
-        .arg(gauge.errorMs < 0.0 ? QStringLiteral("early")
-                                 : QStringLiteral("late"));
+    QString info = ms == 0
+                       ? QStringLiteral("on time")
+                       : QStringLiteral("%1 ms %2")
+                             .arg(ms)
+                             .arg(gauge.errorMs < 0.0 ? QStringLiteral("early")
+                                                      : QStringLiteral("late"));
+    if (gauge.dynamicsError)
+    {
+      const int pct =
+          static_cast<int>(std::lround(std::abs(*gauge.dynamicsError) * 100));
+      info += QString::fromUtf8(" · ") +
+              (pct == 0 ? QStringLiteral("even loudness")
+                        : QStringLiteral("%1 % too %2")
+                              .arg(pct)
+                              .arg(*gauge.dynamicsError > 0.0
+                                       ? QStringLiteral("loud")
+                                       : QStringLiteral("soft")));
+    }
+    return info;
   }
   return {};
+}
+
+void TimingFeedbackOverlay::upsertSamples(
+    int staff, const std::vector<TempoFollower::Judgment> &window,
+    SampleMap &samples, TakeSampleMap &takeSamples)
+{
+  const qint64 now = _clock.elapsed();
+  auto &staffSamples = samples[staff];
+  auto &staffTakeSamples = takeSamples[staff];
+  for (const TempoFollower::Judgment &judgment : window)
+  {
+    if (const auto it = staffSamples.find(judgment.tMs);
+        it != staffSamples.end())
+      it->second.errorMs = judgment.errorMs;
+    else
+      staffSamples.emplace(judgment.tMs, Sample{judgment.errorMs, now});
+    staffTakeSamples[judgment.tMs] = judgment.errorMs;
+  }
 }
 
 void TimingFeedbackOverlay::updateJudgments(
     int staff, const std::vector<TempoFollower::Judgment> &window)
 {
-  const qint64 now = _clock.elapsed();
-  auto &samples = _samples[staff];
-  auto &takeSamples = _takeSamples[staff];
-  for (const TempoFollower::Judgment &judgment : window)
-  {
-    if (const auto it = samples.find(judgment.tMs); it != samples.end())
-      it->second.errorMs = judgment.errorMs;
-    else
-      samples.emplace(judgment.tMs, Sample{judgment.errorMs, now});
-    takeSamples[judgment.tMs] = judgment.errorMs;
-  }
+  upsertSamples(staff, window, _samples, _takeSamples);
 
   for (Gauge &gauge : _gauges)
   {
@@ -276,6 +328,26 @@ void TimingFeedbackOverlay::updateJudgments(
                                  { return j.tMs == gauge.onsetTMs; });
     if (it != window.end())
       gauge.errorMs = it->errorMs;
+  }
+
+  pruneSamples();
+  _requestRepaint();
+}
+
+void TimingFeedbackOverlay::updateDynamicsJudgments(
+    int staff, const std::vector<TempoFollower::Judgment> &window)
+{
+  upsertSamples(staff, window, _dynamicsSamples, _takeDynamicsSamples);
+
+  for (Gauge &gauge : _gauges)
+  {
+    if (gauge.staff != staff)
+      continue;
+    const auto it = std::find_if(window.begin(), window.end(),
+                                 [&gauge](const TempoFollower::Judgment &j)
+                                 { return j.tMs == gauge.onsetTMs; });
+    if (it != window.end())
+      gauge.dynamicsError = it->errorMs;
   }
 
   pruneSamples();
@@ -298,6 +370,13 @@ void TimingFeedbackOverlay::clearSyncStats()
   _requestRepaint();
 }
 
+void TimingFeedbackOverlay::clearDynamicsStats()
+{
+  _dynamicsSamples.clear();
+  _takeDynamicsSamples.clear();
+  _requestRepaint();
+}
+
 void TimingFeedbackOverlay::reset()
 {
   _gauges.clear();
@@ -305,21 +384,34 @@ void TimingFeedbackOverlay::reset()
   _takeSamples.clear();
   _syncSamples.clear();
   _takeSyncErrors.clear();
+  _dynamicsSamples.clear();
+  _takeDynamicsSamples.clear();
   _timer.stop();
 }
 
-std::optional<double> TimingFeedbackOverlay::recentAbsErrorQuantile() const
+std::optional<double>
+TimingFeedbackOverlay::recentQuantile(const SampleMap &samples) const
 {
   const qint64 now = _clock.elapsed();
   std::vector<std::pair<double, double>> data;
-  for (const auto &[staff, samples] : _samples)
-    for (const auto &[onsetTMs, sample] : samples)
+  for (const auto &[staff, staffSamples] : samples)
+    for (const auto &[onsetTMs, sample] : staffSamples)
     {
       const double age = static_cast<double>(now - sample.arrivalMs);
       if (age <= sampleWindowMs)
         data.emplace_back(std::abs(sample.errorMs),
                           std::exp(-age / recencyTauMs));
     }
+  return weightedAbsQuantile(std::move(data), scoreQuantile);
+}
+
+std::optional<double>
+TimingFeedbackOverlay::takeQuantile(const TakeSampleMap &samples)
+{
+  std::vector<std::pair<double, double>> data;
+  for (const auto &[staff, staffSamples] : samples)
+    for (const auto &[onsetTMs, error] : staffSamples)
+      data.emplace_back(std::abs(error), 1.0);
   return weightedAbsQuantile(std::move(data), scoreQuantile);
 }
 
@@ -337,15 +429,6 @@ std::optional<double> TimingFeedbackOverlay::recentSyncAbsErrorQuantile() const
   return weightedAbsQuantile(std::move(data), scoreQuantile);
 }
 
-std::optional<double> TimingFeedbackOverlay::takeAbsErrorQuantile() const
-{
-  std::vector<std::pair<double, double>> data;
-  for (const auto &[staff, samples] : _takeSamples)
-    for (const auto &[onsetTMs, errorMs] : samples)
-      data.emplace_back(std::abs(errorMs), 1.0);
-  return weightedAbsQuantile(std::move(data), scoreQuantile);
-}
-
 std::optional<double> TimingFeedbackOverlay::takeSyncAbsErrorQuantile() const
 {
   std::vector<std::pair<double, double>> data;
@@ -356,8 +439,10 @@ std::optional<double> TimingFeedbackOverlay::takeSyncAbsErrorQuantile() const
 
 std::optional<int> TimingFeedbackOverlay::takeFinalScore() const
 {
-  const auto composite =
-      combineScores({takeAbsErrorQuantile(), takeSyncAbsErrorQuantile()});
+  const auto composite = combineScores(
+      {{"tempo", takeQuantile(_takeSamples), scoreRefMs},
+       {"sync", takeSyncAbsErrorQuantile(), scoreRefMs},
+       {"dyn", takeQuantile(_takeDynamicsSamples), dynamicsScoreRef}});
   if (!composite)
     return std::nullopt;
   return composite->score;
@@ -365,17 +450,21 @@ std::optional<int> TimingFeedbackOverlay::takeFinalScore() const
 
 QString TimingFeedbackOverlay::takeScoreBreakdown() const
 {
-  return breakdownText(takeAbsErrorQuantile(), takeSyncAbsErrorQuantile());
+  return breakdownText(
+      {{"tempo", takeQuantile(_takeSamples), scoreRefMs},
+       {"sync", takeSyncAbsErrorQuantile(), scoreRefMs},
+       {"dyn", takeQuantile(_takeDynamicsSamples), dynamicsScoreRef}});
 }
 
 void TimingFeedbackOverlay::pruneSamples()
 {
   const qint64 now = _clock.elapsed();
-  for (auto &[staff, samples] : _samples)
-    for (auto it = samples.begin(); it != samples.end();)
-      it = static_cast<double>(now - it->second.arrivalMs) > sampleWindowMs
-               ? samples.erase(it)
-               : std::next(it);
+  for (SampleMap *map : {&_samples, &_dynamicsSamples})
+    for (auto &[staff, samples] : *map)
+      for (auto it = samples.begin(); it != samples.end();)
+        it = static_cast<double>(now - it->second.arrivalMs) > sampleWindowMs
+                 ? samples.erase(it)
+                 : std::next(it);
   while (!_syncSamples.empty() &&
          static_cast<double>(now - _syncSamples.front().arrivalMs) >
              sampleWindowMs)
@@ -407,16 +496,15 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
       continue; // scrolled out of view (persistent marks can be many)
     const qint64 age = now - gauge.startMs;
     const double opacity =
-        _persistent ? 1.0
-        : age <= holdMs
-            ? 1.0
-            : 1.0 - static_cast<double>(age - holdMs) /
-                        static_cast<double>(gaugeLifeMs - holdMs);
+        _persistent     ? 1.0
+        : age <= holdMs ? 1.0
+                        : 1.0 - static_cast<double>(age - holdMs) /
+                                    static_cast<double>(gaugeLifeMs - holdMs);
     if (opacity > 0.0)
       paintGauge(painter, gauge, opacity);
   }
 
-  paintBoxPlot(painter, viewport, scaling);
+  paintBoxPlots(painter, viewport, scaling);
 
   painter.restore();
 }
@@ -466,24 +554,86 @@ void TimingFeedbackOverlay::paintGauge(QPainter &painter, const Gauge &gauge,
                                   QPointF(x - 0.55 * sp, baseY),
                                   QPointF(x + 0.55 * sp, baseY)});
   }
+
+  // The dynamics marker shares the stem: a ring on its own scale — high =
+  // too loud, low = too soft, pinned at the ends beyond ±dynamicsRange — in
+  // a darker, translucent shade of its accuracy colour. Dead-on timing and
+  // dynamics nest the dot inside the ring: one bigger circle.
+  if (gauge.dynamicsError)
+  {
+    const double error = *gauge.dynamicsError;
+    const double y =
+        centerY - std::clamp(error / dynamicsRange, -1.0, 1.0) * halfLenSp * sp;
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(
+        QPen(withAlpha(ratioColor(std::abs(error) / dynamicsRange).darker(135),
+                       0.85 * opacity),
+             0.22 * sp));
+    painter.drawEllipse(QPointF(x, y), ringRadiusSp * sp, ringRadiusSp * sp);
+  }
 }
 
-void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
-                                         const QRectF &viewport,
-                                         double scaling) const
+std::vector<std::pair<double, double>>
+TimingFeedbackOverlay::recentSignedSamples(const SampleMap &samples) const
 {
-  // Gather the in-window samples (at their latest revised errors) with their
-  // recency weights: an old note counts for little, the last few notes
-  // dominate the statistics.
+  // The in-window samples (at their latest revised errors) with their recency
+  // weights: an old note counts for little, the last few notes dominate the
+  // statistics.
   const qint64 now = _clock.elapsed();
-  std::vector<std::pair<double /*errorMs*/, double /*weight*/>> data;
-  for (const auto &[staff, samples] : _samples)
-    for (const auto &[onsetTMs, sample] : samples)
+  std::vector<std::pair<double /*error*/, double /*weight*/>> data;
+  for (const auto &[staff, staffSamples] : samples)
+    for (const auto &[onsetTMs, sample] : staffSamples)
     {
       const double age = static_cast<double>(now - sample.arrivalMs);
       if (age <= sampleWindowMs)
         data.emplace_back(sample.errorMs, std::exp(-age / recencyTauMs));
     }
+  return data;
+}
+
+void TimingFeedbackOverlay::paintBoxPlots(QPainter &painter,
+                                          const QRectF &viewport,
+                                          double scaling) const
+{
+  // The main (timing) panel, bottom-right, hosting the combined-score band —
+  // the same composition the final banner reports, but recency-weighted —
+  // with the per-component breakdown (hidden when only one component has
+  // samples: it would just repeat the combined score).
+  const std::vector<Component> components{
+      {"tempo", recentQuantile(_samples), scoreRefMs},
+      {"sync", recentSyncAbsErrorQuantile(), scoreRefMs},
+      {"dyn", recentQuantile(_dynamicsSamples), dynamicsScoreRef}};
+  std::optional<ScoreBandSpec> combinedBand;
+  if (const auto composite = combineScores(components))
+    combinedBand =
+        ScoreBandSpec{QStringLiteral("score"), composite->score,
+                      composite->meanErrorRatio, breakdownText(components)};
+  paintBoxPlotPanel(painter, viewport, scaling, recentSignedSamples(_samples),
+                    false, rangeMs, "early", "late",
+                    QString::fromUtf8("±%1 ms").arg(rangeMs), combinedBand);
+
+  // The dynamics panel, bottom-left, with its own sub-score. Negated so
+  // "too loud" reads upward, matching the gauges' ring.
+  std::optional<ScoreBandSpec> dynamicsBand;
+  if (const auto quantile = recentQuantile(_dynamicsSamples))
+    dynamicsBand = ScoreBandSpec{QStringLiteral("dyn score"),
+                                 scoreOf(*quantile, dynamicsScoreRef),
+                                 *quantile / dynamicsScoreRef, QString()};
+  auto dynamics = recentSignedSamples(_dynamicsSamples);
+  for (auto &[error, weight] : dynamics)
+    error = -error;
+  paintBoxPlotPanel(painter, viewport, scaling, std::move(dynamics), true,
+                    dynamicsRange, "loud", "soft",
+                    QString::fromUtf8("±%1 %").arg(dynamicsRange * 100.0),
+                    dynamicsBand);
+}
+
+void TimingFeedbackOverlay::paintBoxPlotPanel(
+    QPainter &painter, const QRectF &viewport, double scaling,
+    std::vector<std::pair<double, double>> data, bool dockLeft, double range,
+    const char *topLabel, const char *bottomLabel, const QString &rangeLabel,
+    const std::optional<ScoreBandSpec> &scoreBand) const
+{
   if (data.empty())
     return;
   std::sort(data.begin(), data.end());
@@ -527,11 +677,15 @@ void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
     }
   }
 
-  // Dock bottom-right at constant physical size: translate to the panel's
-  // logical origin, then undo the zoom so everything below is in physical px.
-  const double panelHeight = scoreBandPx + hudHeightPx;
+  // Dock in the viewport's bottom corner at constant physical size: translate
+  // to the panel's logical origin, then undo the zoom so everything below is
+  // in physical px.
+  const double bandPx = scoreBand ? scoreBandPx : 0.0;
+  const double panelHeight = bandPx + hudHeightPx;
   painter.save();
-  painter.translate(viewport.right() - (hudWidthPx + hudMarginPx) / scaling,
+  painter.translate(dockLeft ? viewport.left() + hudMarginPx / scaling
+                             : viewport.right() -
+                                   (hudWidthPx + hudMarginPx) / scaling,
                     viewport.bottom() - (panelHeight + hudMarginPx) / scaling);
   painter.scale(1.0 / scaling, 1.0 / scaling);
 
@@ -539,23 +693,22 @@ void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
   painter.setBrush(QColor(0, 0, 0, 130));
   painter.drawRoundedRect(QRectF(0, 0, hudWidthPx, panelHeight), 8, 8);
 
-  // Same vertical convention as the gauges: early at the top, late at the
-  // bottom. Beyond-scale values get pinned into a small band past the ±
-  // range limits. The score band sits above the plot.
-  const double plotTop = scoreBandPx + hudPaddingPx + hudLabelBandPx;
+  // Beyond-scale values get pinned into a small band past the ± range
+  // limits. The score band, if any, sits above the plot.
+  const double plotTop = bandPx + hudPaddingPx + hudLabelBandPx;
   const double plotBottom = panelHeight - hudPaddingPx - hudLabelBandPx;
   const double plotLeft = hudPaddingPx;
   const double plotRight = hudWidthPx - hudPaddingPx;
   const double limitTop = plotTop + outlierBandPx;
   const double limitBottom = plotBottom - outlierBandPx;
-  const auto yOf = [&](double errorMs)
+  const auto yOf = [&](double value)
   {
-    if (errorMs < -rangeMs)
+    if (value < -range)
       return plotTop + 0.5 * outlierBandPx;
-    if (errorMs > rangeMs)
+    if (value > range)
       return plotBottom - 0.5 * outlierBandPx;
     return limitTop +
-           (errorMs + rangeMs) / (2.0 * rangeMs) * (limitBottom - limitTop);
+           (value + range) / (2.0 * range) * (limitBottom - limitTop);
   };
 
   // The zero-error line and the always-visible ± range limits.
@@ -574,7 +727,7 @@ void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
                      QPointF(cx + whiskerCapHalfWidthPx, yOf(w)));
 
   // The quartile box, in the median's accuracy colour, and the median line.
-  const QColor color = errorColor(median);
+  const QColor color = ratioColor(std::abs(median) / range);
   painter.setPen(QPen(withAlpha(color, 0.9), 1.0));
   painter.setBrush(withAlpha(color, 0.35));
   painter.drawRect(QRectF(cx - boxHalfWidthPx, yOf(q1), 2.0 * boxHalfWidthPx,
@@ -587,7 +740,8 @@ void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
   painter.setPen(Qt::NoPen);
   for (std::size_t i = 0; i < outliers.size(); ++i)
   {
-    painter.setBrush(withAlpha(errorColor(outliers[i]), 0.85));
+    painter.setBrush(
+        withAlpha(ratioColor(std::abs(outliers[i]) / range), 0.85));
     const double x = cx + (static_cast<double>(i % 5) - 2.0) * 4.0;
     painter.drawEllipse(QPointF(x, yOf(outliers[i])), 2.0, 2.0);
   }
@@ -596,44 +750,40 @@ void TimingFeedbackOverlay::paintBoxPlot(QPainter &painter,
   font.setPixelSize(9);
   painter.setFont(font);
   painter.setPen(QColor(235, 235, 235, 220));
-  painter.drawText(QRectF(plotLeft, scoreBandPx + 1, plotRight - plotLeft,
+  painter.drawText(QRectF(plotLeft, bandPx + 1, plotRight - plotLeft,
                           hudLabelBandPx + hudPaddingPx),
-                   Qt::AlignLeft | Qt::AlignVCenter, "early");
-  painter.drawText(QRectF(plotLeft, scoreBandPx + 1, plotRight - plotLeft,
+                   Qt::AlignLeft | Qt::AlignVCenter, topLabel);
+  painter.drawText(QRectF(plotLeft, bandPx + 1, plotRight - plotLeft,
                           hudLabelBandPx + hudPaddingPx),
                    Qt::AlignRight | Qt::AlignVCenter,
                    QString("n=%1").arg(static_cast<int>(data.size())));
   painter.drawText(QRectF(plotLeft, plotBottom, plotRight - plotLeft,
                           hudLabelBandPx + hudPaddingPx - 1),
-                   Qt::AlignLeft | Qt::AlignVCenter, "late");
+                   Qt::AlignLeft | Qt::AlignVCenter, bottomLabel);
   painter.drawText(QRectF(plotLeft, plotBottom, plotRight - plotLeft,
                           hudLabelBandPx + hudPaddingPx - 1),
-                   Qt::AlignRight | Qt::AlignVCenter,
-                   QString::fromUtf8("±%1 ms").arg(rangeMs));
+                   Qt::AlignRight | Qt::AlignVCenter, rangeLabel);
 
-  // The live score, big, in its accuracy colour — the combined verdict (the
-  // same composition the final banner reports, but recency-weighted) — with
-  // the per-component breakdown beneath. Single-staff scores have no sync
-  // component, so the breakdown then shows tempo alone.
-  const auto timingQuantile = recentAbsErrorQuantile();
-  const auto syncQuantile = recentSyncAbsErrorQuantile();
-  if (const auto composite = combineScores({timingQuantile, syncQuantile}))
+  // The score band: the panel's score, big, in its accuracy colour, with an
+  // optional breakdown line beneath.
+  if (scoreBand)
   {
-    painter.drawText(
-        QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
-        Qt::AlignLeft | Qt::AlignVCenter, "score");
+    painter.drawText(QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
+                     Qt::AlignLeft | Qt::AlignVCenter, scoreBand->label);
     painter.drawText(QRectF(plotLeft, scoreMainRowPx - 4, plotRight - plotLeft,
                             scoreBandPx - scoreMainRowPx + 4),
-                     Qt::AlignLeft | Qt::AlignVCenter,
-                     breakdownText(timingQuantile, syncQuantile));
+                     Qt::AlignLeft | Qt::AlignVCenter, scoreBand->breakdown);
     QFont scoreFont = painter.font();
     scoreFont.setPixelSize(26);
     scoreFont.setBold(true);
     painter.setFont(scoreFont);
-    painter.setPen(withAlpha(errorColor(composite->meanQuantileMs), 1.0));
-    painter.drawText(
-        QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
-        Qt::AlignRight | Qt::AlignVCenter, QString::number(composite->score));
+    // Colour by the error relative to the component references, expressed on
+    // the gauge's ms scale.
+    painter.setPen(
+        withAlpha(errorColor(scoreBand->errorRatio * scoreRefMs), 1.0));
+    painter.drawText(QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
+                     Qt::AlignRight | Qt::AlignVCenter,
+                     QString::number(scoreBand->score));
   }
   painter.restore();
 }

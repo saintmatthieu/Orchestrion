@@ -67,6 +67,16 @@ void OrchestrionNotationPaintView::subscribe(
 
   registry.ModifiedChanged().onNotify(this, [this] { update(); });
 
+  // The raw controller velocity of each gesture, for the dynamics scoring:
+  // the event precedes the transitions batch the gesture causes.
+  sequencer.HandNoteEvents().onReceive(
+      this,
+      [this](const AutoPlayEvent &event)
+      {
+        if (event.type == NoteEventType::noteOn)
+          m_pendingHandVelocity[event.isLeftHand ? 1 : 0] = event.velocity;
+      });
+
   if (const auto &transitions = sequencer.GetCurrentTransitions();
       !transitions.empty())
     OnTransitions(transitions);
@@ -197,16 +207,24 @@ void OrchestrionNotationPaintView::OnTransitions(
         // the playback-unrolled tick — continuous through repeats, voltas and
         // jumps — for the musical-tempo readout and the timing judgments.
         const int hand = track.staffIndex();
+        // The gesture's controller velocity (cached from HandNoteEvents just
+        // before this batch), for the dynamics judgments.
+        const std::optional<float> &velocity =
+            m_pendingHandVelocity[hand > 0 ? 1 : 0];
         const auto it = presentOnsets.find(hand);
         if (it == presentOnsets.end() || onsetX > it->second.x)
           presentOnsets[hand] = TempoFollower::Onset{
-              onsetX, static_cast<double>(present->GetBeginTick().withRepeats)};
+              onsetX, static_cast<double>(present->GetBeginTick().withRepeats),
+              velocity ? std::make_optional<double>(*velocity) : std::nullopt};
       }
     }
   }
 
   const TempoFollower::Feedback feedback =
       m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
+  // The cached velocities were for this batch only.
+  m_pendingHandVelocity[0].reset();
+  m_pendingHandVelocity[1].reset();
 
   // Playing has resumed after an interruption: the error stats start a fresh
   // take. (It stays readable while interrupted; only the resume clears it.)
@@ -241,6 +259,9 @@ void OrchestrionNotationPaintView::OnTransitions(
     if (feedback.handSync && sequencerConfiguration()->handSyncScoreEnabled())
       m_timingOverlay.addSyncSample(feedback.handSync->tMs,
                                     feedback.handSync->errorMs);
+    if (sequencerConfiguration()->dynamicsScoreEnabled())
+      for (const auto &[staff, window] : feedback.dynamicsJudgments)
+        m_timingOverlay.updateDynamicsJudgments(staff, window);
   }
 
   // End of the piece: nothing is sounding (notes *and* rests) and nothing is
@@ -253,14 +274,12 @@ void OrchestrionNotationPaintView::OnTransitions(
     if (const auto sequencer = orchestrion()->sequencer())
     {
       const auto &current = sequencer->GetCurrentTransitions();
-      const bool done =
-          !current.empty() &&
-          std::all_of(current.begin(), current.end(),
-                      [](const auto &entry)
-                      {
-                        return !GetFutureChord(entry.second) &&
-                               !GetPresentThing(entry.second);
-                      });
+      const bool done = !current.empty() &&
+                        std::all_of(current.begin(), current.end(),
+                                    [](const auto &entry) {
+                                      return !GetFutureChord(entry.second) &&
+                                             !GetPresentThing(entry.second);
+                                    });
       if (done)
         if (const auto score = m_timingOverlay.takeFinalScore())
         {
@@ -858,6 +877,15 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         // (Toggling on starts collecting from here on, nothing to do.)
         if (!sequencerConfiguration()->handSyncScoreEnabled())
           m_timingOverlay.clearSyncStats();
+        update();
+      });
+
+  sequencerConfiguration()->dynamicsScoreEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        if (!sequencerConfiguration()->dynamicsScoreEnabled())
+          m_timingOverlay.clearDynamicsStats();
         update();
       });
 

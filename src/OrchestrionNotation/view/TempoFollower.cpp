@@ -126,11 +126,13 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     // the score tick it is continuous through repeats, voltas and jumps, so
     // the tempo estimate — and the judgments — carry straight across them.
     // Only a coast restarts them: the performer stopped, and the wound-down
-    // curve says nothing about the resumed tempo (a fresh take).
+    // curve says nothing about the resumed tempo (a fresh take). The loudness
+    // curve restarts with them.
     if (hand.tempoTracker.isCoasting())
     {
       hand.tempoTracker.reset();
       hand.tempoSmoother.reset();
+      hand.dynamicsSmoother.reset();
     }
     if (repeat)
     {
@@ -164,6 +166,24 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
         feedback.judgments[track] = std::move(window);
     }
 
+    // The dynamics judgments, same retrospective principle over the loudness
+    // curve: a gesture's velocity is (re-)measured against the smoothed swell
+    // as later gestures refine it. The residual is already the error (a
+    // velocity fraction) — no time conversion.
+    if (onset.velocity)
+    {
+      hand.dynamicsSmoother.addObservation(now, *onset.velocity);
+      if (hand.dynamicsSmoother.knots().size() >= judgeMinKnots)
+      {
+        std::vector<Judgment> window;
+        const auto residuals = hand.dynamicsSmoother.residuals();
+        window.reserve(residuals.size());
+        for (const auto &r : residuals)
+          window.push_back({r.time, r.error});
+        feedback.dynamicsJudgments[track] = std::move(window);
+      }
+    }
+
     observed = true;
     if (_viz)
     {
@@ -194,8 +214,9 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     if (upper && lower)
     {
       const double tEval = now - syncLagIntervals * 0.5 * intervalSum;
-      const double meanVelocity = 0.5 * (upper->tempoSmoother.velocityAt(tEval) +
-                                         lower->tempoSmoother.velocityAt(tEval));
+      const double meanVelocity =
+          0.5 * (upper->tempoSmoother.velocityAt(tEval) +
+                 lower->tempoSmoother.velocityAt(tEval));
       if (meanVelocity > 1e-9)
         feedback.handSync = {now, (upper->tempoSmoother.positionAt(tEval) -
                                    lower->tempoSmoother.positionAt(tEval)) /

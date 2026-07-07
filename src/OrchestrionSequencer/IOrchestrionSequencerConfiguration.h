@@ -70,6 +70,14 @@ public:
   virtual void setHandSyncScoreEnabled(bool) = 0;
   virtual muse::async::Notification handSyncScoreEnabledChanged() const = 0;
 
+  //! Whether the performance score includes the dynamics-smoothness
+  //! component (played velocities judged against the performer's own
+  //! smoothed loudness curve). On by default; it only contributes when the
+  //! input device measures velocity.
+  virtual bool dynamicsScoreEnabled() const = 0;
+  virtual void setDynamicsScoreEnabled(bool) = 0;
+  virtual muse::async::Notification dynamicsScoreEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;
