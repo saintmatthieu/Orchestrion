@@ -18,12 +18,19 @@
  */
 #include "TimingFeedbackOverlay.h"
 
+#include <draw/painter.h>
+#include <engraving/dom/engravingitem.h>
+#include <engraving/dom/spanner.h>
+#include <engraving/rendering/iscorerenderer.h>
+
 #include <QFont>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPolygonF>
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -41,7 +48,42 @@ constexpr double dynamicsRange = 0.25;
 // Gauge lifetime: readable for a moment, then fading out.
 constexpr qint64 holdMs = 10000;
 constexpr qint64 gaugeLifeMs = 12000;
+// The per-onset ruler gauges overlap the deviation ribbon, which now carries
+// the same information — hidden for now, one flag away from returning.
+// (Their data still feeds the shadows, the ribbon and the tooltips.)
+constexpr bool showGaugeRulers = false;
 
+//! The current engraved centre of a set of items (they move when the layout
+//! warps), or \p fallback when there are none.
+double unitedItemsCenterX(
+    const std::vector<mu::engraving::EngravingItem *> &items, double fallback)
+{
+  if (items.empty())
+    return fallback;
+  double left = std::numeric_limits<double>::max();
+  double right = std::numeric_limits<double>::lowest();
+  for (const mu::engraving::EngravingItem *item : items)
+  {
+    const muse::RectF rect = item->pageBoundingRect();
+    left = std::min(left, rect.left());
+    right = std::max(right, rect.right());
+  }
+  return 0.5 * (left + right);
+}
+} // namespace
+
+double TimingFeedbackOverlay::gaugeAnchorX(const Gauge &gauge) const
+{
+  return unitedItemsCenterX(gauge.items, gauge.x);
+}
+
+double TimingFeedbackOverlay::ribbonAnchorX(const RibbonPoint &point) const
+{
+  return unitedItemsCenterX(point.items, point.x);
+}
+
+namespace
+{
 // Ruler geometry in staff spaces (spatium), so it scales with the score.
 constexpr double halfLenSp = 4.0;      // half the ruler's length (= rangeMs)
 constexpr double clearanceSp = 1.5;    // gap between the notes and the ruler
@@ -69,6 +111,15 @@ constexpr double whiskerCapHalfWidthPx = 2 * 9.0;
 // you are playing *now*, not the whole session.
 constexpr double sampleWindowMs = 60000.0;
 constexpr double recencyTauMs = 20000.0;
+
+// Ticks → logical px in the fork's time-proportional layout: the
+// HORIZONTAL_FIXED mode gives widthOfSegmentCell (3) staff spaces per global
+// quantum (a sixteenth = 120 ticks). Keep in sync with
+// MasterScore::widthOfSegmentCell and the fork's calculateQuantumCell.
+constexpr double shadowCellWidthSp = 3.0;
+constexpr double shadowQuantumTicks = 120.0;
+// The performance copy's translucency.
+constexpr double shadowActualAlpha = 0.8;
 
 // A component's score: 100·e^(−m/ref), where m is the scoreQuantile-th
 // percentile of its |error| — robust like the box plot but centred on zero,
@@ -202,10 +253,34 @@ TimingFeedbackOverlay::TimingFeedbackOverlay(
   _timer.callOnTimeout([this] { advance(); });
 }
 
-void TimingFeedbackOverlay::addGauge(int staff, double onsetTMs,
-                                     const QRectF &noteRect, double spatium,
-                                     double errorMs, bool belowStaff,
-                                     double staffEdgeY)
+void TimingFeedbackOverlay::setShadowsEnabled(bool enabled)
+{
+  _shadowsEnabled = enabled;
+  _requestRepaint();
+}
+
+void TimingFeedbackOverlay::setWarpProgress(double progress)
+{
+  _warpProgress = std::clamp(progress, 0.0, 1.0);
+  _requestRepaint();
+}
+
+std::optional<double> TimingFeedbackOverlay::takeErrorAt(int staff,
+                                                         double tMs) const
+{
+  const auto staffIt = _takeSamples.find(staff);
+  if (staffIt == _takeSamples.end())
+    return std::nullopt;
+  const auto it = staffIt->second.find(tMs);
+  if (it == staffIt->second.end())
+    return std::nullopt;
+  return it->second;
+}
+
+void TimingFeedbackOverlay::addGauge(
+    int staff, double onsetTMs, const QRectF &noteRect, double spatium,
+    double errorMs, bool belowStaff, double staffEdgeY,
+    std::vector<mu::engraving::EngravingItem *> items)
 {
   // Place the ruler clear of both the struck notes and the staff lines: for
   // the right hand its lower end is min(above the notes, above the staff);
@@ -236,8 +311,17 @@ void TimingFeedbackOverlay::addGauge(int staff, double onsetTMs,
   const double stackOffset = level * stackStepSp * spatium;
   centerY += belowStaff ? stackOffset : -stackOffset;
 
+  // The deviation ribbon: one take-wide point per judged onset (values are
+  // revised by updateJudgments), on the lane's *stable* zero line — the
+  // nominal ruler centre, unlike centerY which avoids the struck notes.
+  _ribbonBaselineY[staff] =
+      belowStaff ? staffEdgeY + (clearanceSp + halfLenSp) * spatium
+                 : staffEdgeY - (clearanceSp + halfLenSp) * spatium;
+  _ribbon[staff].push_back({onsetTMs, items, x, spatium});
+
   _gauges.push_back({staff, onsetTMs, x, centerY, spatium, errorMs,
-                     std::nullopt, _clock.elapsed()});
+                     std::nullopt, std::move(items), 0.0, 0.0, 0.0,
+                     _clock.elapsed()});
   if (!_persistent && !_timer.isActive())
     _timer.start();
 }
@@ -267,7 +351,7 @@ QString TimingFeedbackOverlay::gaugeInfoAt(const QPointF &logicalPos) const
   {
     const Gauge &gauge = *it;
     const double sp = gauge.spatium;
-    const QRectF hitRect(gauge.x - 1.5 * sp,
+    const QRectF hitRect(gaugeAnchorX(gauge) - 1.5 * sp,
                          gauge.centerY - (halfLenSp + 2.0) * sp, 3.0 * sp,
                          2.0 * (halfLenSp + 2.0) * sp);
     if (!hitRect.contains(logicalPos))
@@ -291,6 +375,9 @@ QString TimingFeedbackOverlay::gaugeInfoAt(const QPointF &logicalPos) const
                                        ? QStringLiteral("loud")
                                        : QStringLiteral("soft")));
     }
+    if (gauge.bpm > 0.0)
+      info += QString::fromUtf8(" · %1 bpm")
+                  .arg(static_cast<int>(std::lround(gauge.bpm)));
     return info;
   }
   return {};
@@ -327,8 +414,27 @@ void TimingFeedbackOverlay::updateJudgments(
                                  [&gauge](const TempoFollower::Judgment &j)
                                  { return j.tMs == gauge.onsetTMs; });
     if (it != window.end())
+    {
       gauge.errorMs = it->errorMs;
+      gauge.warpTicks = it->warpTicks;
+      gauge.errorTicks = it->errorTicks;
+      gauge.bpm = it->bpm;
+    }
   }
+
+  if (const auto ribbonIt = _ribbon.find(staff); ribbonIt != _ribbon.end())
+    for (RibbonPoint &point : ribbonIt->second)
+    {
+      const auto it = std::find_if(window.begin(), window.end(),
+                                   [&point](const TempoFollower::Judgment &j)
+                                   { return j.tMs == point.tMs; });
+      if (it != window.end())
+      {
+        point.warpMs = it->warpMs;
+        point.errorMs = it->errorMs;
+        point.bpm = it->bpm;
+      }
+    }
 
   pruneSamples();
   _requestRepaint();
@@ -386,6 +492,8 @@ void TimingFeedbackOverlay::reset()
   _takeSyncErrors.clear();
   _dynamicsSamples.clear();
   _takeDynamicsSamples.clear();
+  _ribbon.clear();
+  _ribbonBaselineY.clear();
   _timer.stop();
 }
 
@@ -489,10 +597,13 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setOpacity(1.0);
 
+  paintRibbon(painter, viewport);
+
   const qint64 now = _clock.elapsed();
   for (const Gauge &gauge : _gauges)
   {
-    if (gauge.x < viewport.left() || gauge.x > viewport.right())
+    const double anchorX = gaugeAnchorX(gauge);
+    if (anchorX < viewport.left() || anchorX > viewport.right())
       continue; // scrolled out of view (persistent marks can be many)
     const qint64 age = now - gauge.startMs;
     const double opacity =
@@ -500,8 +611,12 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
         : age <= holdMs ? 1.0
                         : 1.0 - static_cast<double>(age - holdMs) /
                                     static_cast<double>(gaugeLifeMs - holdMs);
-    if (opacity > 0.0)
-      paintGauge(painter, gauge, opacity);
+    if (opacity <= 0.0)
+      continue;
+    if (_shadowsEnabled)
+      paintShadows(painter, gauge, opacity);
+    if (showGaugeRulers)
+      paintGauge(painter, gauge, anchorX, opacity);
   }
 
   paintBoxPlots(painter, viewport, scaling);
@@ -509,11 +624,212 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
   painter.restore();
 }
 
+void TimingFeedbackOverlay::paintShadows(QPainter &painter, const Gauge &gauge,
+                                         double opacity) const
+{
+  if (gauge.items.empty())
+    return;
+
+  // The performance copy sits at the note's *absolute* performance position:
+  // the full tempo warp plus the residual while the score shows ideal
+  // spacing, only the residual once the layout has baked the warp in — so
+  // during the bake animation the coloured notes stay put and the page
+  // morphs to meet them.
+  const double pxPerTick =
+      shadowCellWidthSp * gauge.spatium / shadowQuantumTicks;
+  const double dx = ((1.0 - _warpProgress) * gauge.warpTicks +
+                     gauge.errorTicks) *
+                    pxPerTick;
+
+  muse::draw::Painter musePainter(&painter, "timing-shadows");
+  painter.setOpacity(shadowActualAlpha * opacity);
+  const QColor color = errorColor(gauge.errorMs);
+  const auto drawOne = [&](mu::engraving::EngravingItem *item)
+  {
+    const muse::PointF position = item->pagePos() + muse::PointF(dx, 0.0);
+    const muse::draw::Color savedColor = item->color();
+    item->setColor(muse::draw::Color::fromQColor(color));
+    musePainter.translate(position);
+    item->renderer()->drawItem(item, &musePainter);
+    musePainter.translate(-position);
+    item->setColor(savedColor);
+  };
+  for (mu::engraving::EngravingItem *item : gauge.items)
+  {
+    // A spanner (a struck note's tie) has no direct drawing — the renderer
+    // asserts on it. Its visual is its laid-out segments: draw those.
+    if (const auto spanner = dynamic_cast<mu::engraving::Spanner *>(item))
+      for (mu::engraving::SpannerSegment *segment : spanner->spannerSegments())
+        drawOne(segment);
+    else
+      drawOne(item);
+  }
+  painter.setOpacity(1.0);
+}
+
+double TimingFeedbackOverlay::ribbonMaxAbsMs() const
+{
+  // The take's largest actual deviation fills the band (± halfLenSp staff
+  // spaces), never zoomed in past the gauges' range.
+  double maxAbsMs = rangeMs;
+  for (const auto &[staff, points] : _ribbon)
+    for (const RibbonPoint &point : points)
+      maxAbsMs = std::max(maxAbsMs, std::abs(point.warpMs + point.errorMs));
+  return maxAbsMs;
+}
+
+QString TimingFeedbackOverlay::ribbonInfoAt(const QPointF &logicalPos) const
+{
+  const double maxAbsMs = ribbonMaxAbsMs();
+  for (const auto &[staff, points] : _ribbon)
+  {
+    if (points.size() < 2)
+      continue;
+    const auto baselineIt = _ribbonBaselineY.find(staff);
+    if (baselineIt == _ribbonBaselineY.end())
+      continue;
+    const double baseY = baselineIt->second;
+    const double sp = points.back().spatium;
+    const double pxPerMs = halfLenSp * sp / maxAbsMs;
+
+    double prevX = ribbonAnchorX(points.front());
+    for (std::size_t i = 1; i < points.size(); ++i)
+    {
+      const double x0 = prevX;
+      const double x1 = ribbonAnchorX(points[i]);
+      prevX = x1;
+      if (x1 <= x0) // a repeat pass rewinds x: not a curve segment
+        continue;
+      if (logicalPos.x() < x0 || logicalPos.x() > x1)
+        continue;
+      const RibbonPoint &a = points[i - 1];
+      const RibbonPoint &b = points[i];
+      const double t = (logicalPos.x() - x0) / (x1 - x0);
+      const double warpMs = a.warpMs + t * (b.warpMs - a.warpMs);
+      if (std::abs(logicalPos.y() - (baseY + warpMs * pxPerMs)) > 1.2 * sp)
+        continue;
+      // The tempo along the curve — it evolves with the gradient, while the
+      // height reads as the accumulated deviation.
+      const double bpm = a.bpm + t * (b.bpm - a.bpm);
+      QString info = QString::fromUtf8("%1 bpm").arg(
+          static_cast<int>(std::lround(bpm)));
+      const int deviation =
+          static_cast<int>(std::lround(std::abs(warpMs)));
+      if (deviation > 0)
+        info += QString::fromUtf8(" · %1 ms %2")
+                    .arg(deviation)
+                    .arg(warpMs > 0.0 ? QStringLiteral("behind")
+                                      : QStringLiteral("ahead"));
+      return info;
+    }
+  }
+  return {};
+}
+
+void TimingFeedbackOverlay::paintRibbon(QPainter &painter,
+                                        const QRectF &viewport) const
+{
+  const double maxAbsMs = ribbonMaxAbsMs();
+
+  const QColor ink(40, 40, 40);
+  for (const auto &[staff, points] : _ribbon)
+  {
+    if (points.empty())
+      continue;
+    const auto baselineIt = _ribbonBaselineY.find(staff);
+    if (baselineIt == _ribbonBaselineY.end())
+      continue;
+    const double baseY = baselineIt->second;
+    const double sp = points.back().spatium;
+    const double pxPerMs = halfLenSp * sp / maxAbsMs;
+
+    // Live anchors, split into strokes where x runs backward (repeat passes
+    // draw as separate overlapping strokes, like the stacked gauges).
+    struct Node
+    {
+      double x;
+      double curveY; // the fitted deviation — the interpolation
+      double dotY;   // + residual — where the onset actually landed
+      double errorMs;
+    };
+    std::vector<std::vector<Node>> strokes(1);
+    double prevX = std::numeric_limits<double>::lowest();
+    double minX = std::numeric_limits<double>::max();
+    double maxX = std::numeric_limits<double>::lowest();
+    for (const RibbonPoint &point : points)
+    {
+      const double x = ribbonAnchorX(point);
+      if (x < prevX && !strokes.back().empty())
+        strokes.emplace_back();
+      prevX = x;
+      minX = std::min(minX, x);
+      maxX = std::max(maxX, x);
+      strokes.back().push_back({x, baseY + point.warpMs * pxPerMs,
+                                baseY + (point.warpMs + point.errorMs) *
+                                            pxPerMs,
+                                point.errorMs});
+    }
+
+    // The zero line: the constant-tempo reference.
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(withAlpha(ink, 0.3), 0.1 * sp, Qt::DashLine));
+    painter.drawLine(QPointF(std::max(minX, viewport.left()), baseY),
+                     QPointF(std::min(maxX, viewport.right()), baseY));
+
+    for (const auto &stroke : strokes)
+    {
+      // The fitted curve, smoothed through the genuine spline values
+      // (Catmull-Rom control points).
+      if (stroke.size() >= 2)
+      {
+        QPainterPath path(QPointF(stroke.front().x, stroke.front().curveY));
+        for (std::size_t i = 1; i < stroke.size(); ++i)
+        {
+          const Node &n0 = stroke[i > 1 ? i - 2 : 0];
+          const Node &n1 = stroke[i - 1];
+          const Node &n2 = stroke[i];
+          const Node &n3 = stroke[i + 1 < stroke.size() ? i + 1 : i];
+          path.cubicTo(QPointF(n1.x + (n2.x - n0.x) / 6.0,
+                               n1.curveY + (n2.curveY - n0.curveY) / 6.0),
+                       QPointF(n2.x - (n3.x - n1.x) / 6.0,
+                               n2.curveY - (n3.curveY - n1.curveY) / 6.0),
+                       QPointF(n2.x, n2.curveY));
+        }
+        painter.setPen(QPen(withAlpha(ink, 0.6), 0.15 * sp));
+        painter.drawPath(path);
+      }
+
+      // The onsets: a dot at each actual deviation, and the residual — the
+      // early/late verdict — as its connector down/up to the curve.
+      for (const Node &node : stroke)
+      {
+        if (node.x < viewport.left() || node.x > viewport.right())
+          continue;
+        painter.setPen(QPen(withAlpha(ink, 0.4), 0.1 * sp));
+        painter.drawLine(QPointF(node.x, node.curveY),
+                         QPointF(node.x, node.dotY));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(withAlpha(errorColor(node.errorMs), 0.95));
+        painter.drawEllipse(QPointF(node.x, node.dotY), 0.35 * sp, 0.35 * sp);
+      }
+    }
+
+    // The adaptive scale, labelled at the band's visible left end.
+    QFont font = painter.font();
+    font.setPixelSize(std::max(1, static_cast<int>(1.6 * sp)));
+    painter.setFont(font);
+    painter.setPen(withAlpha(ink, 0.7));
+    painter.drawText(QPointF(std::max(minX, viewport.left()) + sp,
+                             baseY - (halfLenSp + 0.6) * sp),
+                     QString::fromUtf8("±%1 ms").arg(qRound(maxAbsMs)));
+  }
+}
+
 void TimingFeedbackOverlay::paintGauge(QPainter &painter, const Gauge &gauge,
-                                       double opacity) const
+                                       double anchorX, double opacity) const
 {
   const double sp = gauge.spatium;
-  const double x = gauge.x;
+  const double x = anchorX;
   const double centerY = gauge.centerY;
   const double topY = centerY - halfLenSp * sp;
   const double bottomY = centerY + halfLenSp * sp;

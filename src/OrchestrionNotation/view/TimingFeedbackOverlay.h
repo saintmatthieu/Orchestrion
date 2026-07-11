@@ -33,6 +33,11 @@
 
 class QPainter;
 
+namespace mu::engraving
+{
+class EngravingItem;
+} // namespace mu::engraving
+
 namespace dgk
 {
 //! Paints the timing-judgment feedback. The judgments are *retrospective* —
@@ -74,9 +79,26 @@ public:
   //! initial error. The gauge goes below the staff when \p belowStaff (the
   //! left hand), else above; \p staffEdgeY is the staff's facing edge (bottom
   //! resp. top line, page-logical y), which the ruler keeps clear of.
+  //! \p items are the struck notes' engraving items, repainted as the warped
+  //! ghost / actual copies when shadows are enabled (see setShadowsEnabled).
   void addGauge(int staff, double onsetTMs, const QRectF &noteRect,
                 double spatium, double errorMs, bool belowStaff,
-                double staffEdgeY);
+                double staffEdgeY,
+                std::vector<mu::engraving::EngravingItem *> items);
+
+  //! Shadow copies of the played notes' symbols, meaningful only with the
+  //! time-proportional score layout: per judged onset, the notes are
+  //! repainted at their absolute performance position, coloured by the
+  //! timing error. A perfectly timed note at steady tempo exactly covers the
+  //! engraved one.
+  void setShadowsEnabled(bool enabled);
+
+  //! How far the score layout itself has been warped onto the performance's
+  //! fitted tempo curve (0 = ideal spacing during play, 1 = fully baked at
+  //! take end, in between while the bake animates). The shadows compensate:
+  //! they sit at absolute performance positions, so as the score morphs, the
+  //! coloured notes stay put and the page slides to meet them.
+  void setWarpProgress(double progress);
 
   //! The (re-)judgments of a hand's onsets still in its smoothing window:
   //! upsert the stats samples (keyed by onset identity) and move the
@@ -113,9 +135,20 @@ public:
   //! "23 ms late"); empty if none is hit.
   QString gaugeInfoAt(const QPointF &logicalPos) const;
 
+  //! The smoothed tempo and accumulated deviation at \p logicalPos anywhere
+  //! along the deviation curve (e.g. "78 bpm · 120 ms behind") — so gliding
+  //! the cursor along the ribbon shows the tempo tracking the curve's
+  //! *gradient* while the deviation tracks its height. Empty if not on a
+  //! curve.
+  QString ribbonInfoAt(const QPointF &logicalPos) const;
+
   //! Forget everything, stats included — any interruption of play (stop,
   //! a click or swipe, a position jump, a new score) starts the stats over.
   void reset();
+
+  //! The final (spline-settled) timing error of the take's onset identified
+  //! by \p staff and \p tMs — for building the take's layout warp.
+  std::optional<double> takeErrorAt(int staff, double tMs) const;
 
   //! The final score of the whole take (everything since the last reset(),
   //! unweighted): the average of the available component scores — tempo
@@ -161,9 +194,30 @@ private:
     // The loudness verdict (velocity fraction, + = too loud), shown as a ring
     // on the same ruler; absent for velocity-less gestures.
     std::optional<double> dynamicsError;
-    qint64 startMs;
+    // For the shadow copies: the struck notes' engraving items and the
+    // tempo-warp / residual displacements in playback ticks (revised with
+    // the judgments).
+    std::vector<mu::engraving::EngravingItem *> items;
+    double warpTicks = 0.0;
+    double errorTicks = 0.0;
+    // The fitted tempo at this onset (BPM), for the tooltip.
+    double bpm = 0.0;
+    qint64 startMs = 0;
   };
-  void paintGauge(QPainter &painter, const Gauge &gauge, double opacity) const;
+  void paintGauge(QPainter &painter, const Gauge &gauge, double anchorX,
+                  double opacity) const;
+  void paintShadows(QPainter &painter, const Gauge &gauge,
+                    double opacity) const;
+  //! The timing-deviation ribbon: per staff, along its gauge lane's zero
+  //! line, the take's fitted deviation curve (vs the constant-tempo
+  //! reference), the onsets as dots at their actual deviations, and a
+  //! connector per onset — the residual, i.e. the early/late verdict, made
+  //! visible as the dot's distance to the curve.
+  void paintRibbon(QPainter &painter, const QRectF &viewport) const;
+  //! The gauge's live horizontal anchor: its notes' current engraved centre
+  //! (they move when the layout warps), falling back to the position cached
+  //! at onset time.
+  double gaugeAnchorX(const Gauge &gauge) const;
   void paintBoxPlots(QPainter &painter, const QRectF &viewport,
                      double scaling) const;
   //! The score band above a panel's plot: the combined score (with the
@@ -206,6 +260,27 @@ private:
 
   std::deque<Gauge> _gauges;
   bool _persistent = false;
+  bool _shadowsEnabled = false;
+  double _warpProgress = 0.0;
+
+  //! The deviation ribbon's take-wide points, in onset order, revised with
+  //! the judgments (never faded; cleared with the take).
+  struct RibbonPoint
+  {
+    double tMs; // the onset's identity, for revisions
+    std::vector<mu::engraving::EngravingItem *> items; // live x anchor
+    double x;                                          // fallback anchor
+    double spatium;
+    double warpMs = 0.0;  // fitted deviation (the curve)
+    double errorMs = 0.0; // + residual = the dot
+    double bpm = 0.0;     // fitted tempo, for the curve tooltip
+  };
+  std::map<int /*staff*/, std::vector<RibbonPoint>> _ribbon;
+  std::map<int /*staff*/, double> _ribbonBaselineY; // the lane's zero line
+  double ribbonAnchorX(const RibbonPoint &point) const;
+  //! The shared adaptive scale (largest actual deviation, floored at the
+  //! gauges' range) — one source for both painting and hit-testing.
+  double ribbonMaxAbsMs() const;
 
   //! Timing errors (the box plot and the tempo-smoothness component): the
   //! rolling window and the whole take's.

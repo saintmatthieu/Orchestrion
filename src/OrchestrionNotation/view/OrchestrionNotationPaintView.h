@@ -148,6 +148,14 @@ private:
   //! Batches only carry the *changed* tracks, so a per-voice ledger
   //! (m_autoTrackTargets) persists the auto staff's state between batches.
   void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
+  //! Bake the take's fitted tempo curve into the score layout (animated), so
+  //! the page shows performed time and the coloured performance notes sit at
+  //! residual-only offsets. Fires once per take, when it is over (end of
+  //! piece or an interruption); self-guards on the proportional-spacing mode.
+  void bakePerformanceWarp();
+  void applyWarpStep();
+  //! Back to the ideal (notated) spacing — a fresh take is starting.
+  void clearPerformanceWarp();
   void updateNotation();
 
   // TempoFollower::Canvas
@@ -190,6 +198,23 @@ private:
     std::optional<double> onTick;
   };
   std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
+
+  // The take's onsets, for baking the performance's tempo warp into the
+  // layout: identity (staff, tMs) to look up the final revised error in the
+  // overlay, plus the onset's engraved (score) tick and playback tick.
+  struct TakeOnsetRecord
+  {
+    int staff;
+    double tMs;
+    int scoreTick;
+    double utick;
+  };
+  std::vector<TakeOnsetRecord> m_takeOnsetRecords;
+  // The baked warp (score tick → warped ticks) and its ease-in animation.
+  std::vector<std::pair<int, double>> m_warpTable;
+  QTimer m_warpTimer;
+  double m_warpProgress = 0.0;
+  bool m_warpBaked = false;
   // The final-score banner fires once per take, when the piece's last notes
   // are released; re-armed when the stats restart. −1 = no banner showing.
   bool m_finalScoreShown = false;

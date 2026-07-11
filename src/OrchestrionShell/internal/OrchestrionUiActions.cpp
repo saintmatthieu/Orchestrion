@@ -65,6 +65,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-autoplay-right-hand",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction("orchestrion-advanced-toggle-proportional-spacing",
+                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::reverbOff, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::reverbRoom, mu::context::UiCtxAny,

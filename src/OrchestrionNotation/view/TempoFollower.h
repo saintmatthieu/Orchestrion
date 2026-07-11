@@ -133,6 +133,19 @@ public:
   {
     double tMs;     // the onset's time (this class's clock): its identity
     double errorMs; // signed arrival error: − = early, + = late
+    //! For the time-proportional overlays, in playback ticks: how far the
+    //! fitted smooth timeline displaces this note from the window's
+    //! constant-tempo reference (+ = later/right), and the actual arrival's
+    //! additional displacement from the fitted one. Both re-fitted with the
+    //! spline; unused by the dynamics judgments.
+    double warpTicks = 0.0;
+    double errorTicks = 0.0;
+    //! The same fitted displacement in milliseconds, for the deviation
+    //! ribbon (the note's actual deviation is warpMs + errorMs).
+    double warpMs = 0.0;
+    //! The fitted tempo at this onset, in BPM (for the tooltips); re-fitted
+    //! like the rest. 0 for the dynamics judgments.
+    double bpm = 0.0;
   };
 
   //! What one transition batch yields for the performance game.

@@ -45,6 +45,8 @@ constexpr auto autoplayLeftHandMenuId =
     "orchestrion-advanced-autoplay-left-hand";
 constexpr auto autoplayRightHandMenuId =
     "orchestrion-advanced-autoplay-right-hand";
+constexpr auto toggleProportionalSpacingMenuId =
+    "orchestrion-advanced-toggle-proportional-spacing";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -119,6 +121,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -403,6 +409,14 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   autoplayRightItem->setSelectable(true);
   autoplayRightItem->setSelected(autoPlayedStaff == 0);
 
+  muse::uicomponents::MenuItem *const proportionalSpacingItem =
+      makeMenuItem(toggleProportionalSpacingMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Time-&proportional spacing"));
+  proportionalSpacingItem->setSelectable(true);
+  proportionalSpacingItem->setSelected(
+      sequencerConfiguration()->timeProportionalSpacingEnabled());
+
   const QList<MenuItem *> menu{
       item,
       noteInfoItem,
@@ -413,6 +427,7 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       dynamicsScoreItem,
       autoplayLeftItem,
       autoplayRightItem,
+      proportionalSpacingItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,

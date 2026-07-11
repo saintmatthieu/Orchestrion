@@ -33,6 +33,7 @@
 #include <engraving/dom/segment.h>
 #include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
+#include <notation/imasternotation.h>
 
 #include <cmath>
 #include <optional>
@@ -46,6 +47,11 @@ namespace
 // automatic player uses.
 constexpr int rightHandPitch = 60;
 constexpr int leftHandPitch = 59;
+
+// The warp-bake animation: the score morphs from ideal to performed spacing
+// (each step is a full horizontal relayout — cheap in linear view mode).
+constexpr int warpAnimSteps = 18;
+constexpr int warpAnimStepMs = 40;
 } // namespace
 
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
@@ -55,6 +61,8 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
 {
+  m_warpTimer.setInterval(warpAnimStepMs);
+  m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
 }
 
 bool OrchestrionNotationPaintView::tempoVisualizationEnabled() const
@@ -106,6 +114,7 @@ void OrchestrionNotationPaintView::subscribe(
                                               // stats restart when playing
                                               // resumes (readable until then).
                                               m_timingStatsStale = true;
+                                              bakePerformanceWarp();
                                               // The jump's transitions batch
                                               // repopulates the ledger.
                                               m_autoTrackTargets.clear();
@@ -121,6 +130,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   // hand's sounding onset is a tempo observation for it; the leading/trailing
   // of all onsets (sounding or upcoming) feed the one-shot initial framing.
   std::map<int /*staff*/, TempoFollower::Onset> presentOnsets;
+  std::map<int /*staff*/, int> presentScoreTicks; // engraved position
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
   // Where to place a hand's timing gauge if its onset gets judged: the union
@@ -132,6 +142,8 @@ void OrchestrionNotationPaintView::OnTransitions(
     double spatium = 1.0;
     double staffTop = 0.0;
     double staffBottom = 0.0;
+    // The struck notes' engraving items, for the tempo-warped shadow copies.
+    std::vector<mu::engraving::EngravingItem *> items;
   };
   std::map<int /*staff*/, StaffHit> staffHits;
 
@@ -194,6 +206,7 @@ void OrchestrionNotationPaintView::OnTransitions(
       StaffHit &hit = staffHits[track.staffIndex()];
       hit.rect = hit.rect.isNull() ? box.rect : hit.rect.united(box.rect);
       hit.spatium = spatium;
+      hit.items.insert(hit.items.end(), items.begin(), items.end());
       if (const mu::engraving::System *system = segment->measure()->system())
       {
         hit.staffTop = system->staffYpage(track.staffIndex());
@@ -225,9 +238,12 @@ void OrchestrionNotationPaintView::OnTransitions(
             m_pendingHandVelocity[hand > 0 ? 1 : 0];
         const auto it = presentOnsets.find(hand);
         if (it == presentOnsets.end() || onsetX > it->second.x)
+        {
           presentOnsets[hand] = TempoFollower::Onset{
               onsetX, static_cast<double>(present->GetBeginTick().withRepeats),
               velocity ? std::make_optional<double>(*velocity) : std::nullopt};
+          presentScoreTicks[hand] = segment->tick().ticks();
+        }
       }
     }
   }
@@ -245,6 +261,8 @@ void OrchestrionNotationPaintView::OnTransitions(
     m_timingOverlay.reset();
     m_timingStatsStale = false;
     m_finalScoreShown = false;
+    m_takeOnsetRecords.clear();
+    clearPerformanceWarp();
     dismissFinalScore();
   }
 
@@ -264,8 +282,14 @@ void OrchestrionNotationPaintView::OnTransitions(
         const bool below = staff > 0; // left hand
         m_timingOverlay.addGauge(staff, window.back().tMs, hit.rect,
                                  hit.spatium, window.back().errorMs, below,
-                                 below ? hit.staffBottom : hit.staffTop);
+                                 below ? hit.staffBottom : hit.staffTop,
+                                 hit.items);
       }
+      if (const auto tickIt = presentScoreTicks.find(staff);
+          tickIt != presentScoreTicks.end())
+        m_takeOnsetRecords.push_back({staff, window.back().tMs,
+                                      tickIt->second,
+                                      presentOnsets.at(staff).tick});
       m_timingOverlay.updateJudgments(staff, window);
     }
     if (feedback.handSync && sequencerConfiguration()->handSyncScoreEnabled())
@@ -293,6 +317,7 @@ void OrchestrionNotationPaintView::OnTransitions(
                                              !GetPresentThing(entry.second);
                                     });
       if (done)
+      {
         if (const auto score = m_timingOverlay.takeFinalScore())
         {
           m_finalScoreShown = true;
@@ -300,6 +325,9 @@ void OrchestrionNotationPaintView::OnTransitions(
           m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
           emit finalScoreChanged();
         }
+        // The take is over: morph the page onto its fitted tempo curve.
+        bakePerformanceWarp();
+      }
     }
 
   updateAutoTargets(transitions);
@@ -343,6 +371,123 @@ void OrchestrionNotationPaintView::updateAutoTargets(
       onTick = onTick ? std::min(*onTick, *targets.onTick) : targets.onTick;
   }
   m_follower.setAutoTargets(offTick, onTick);
+}
+
+void OrchestrionNotationPaintView::bakePerformanceWarp()
+{
+  if (m_warpBaked ||
+      !sequencerConfiguration()->timeProportionalSpacingEnabled() ||
+      m_takeOnsetRecords.size() < 2)
+    return;
+
+  // Each onset's final, spline-settled fitted arrival time.
+  struct Point
+  {
+    int scoreTick;
+    double utick;
+    double fittedMs;
+    double tMs;
+  };
+  std::vector<Point> points;
+  points.reserve(m_takeOnsetRecords.size());
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    if (const auto error =
+            m_timingOverlay.takeErrorAt(record.staff, record.tMs))
+      points.push_back(
+          {record.scoreTick, record.utick, record.tMs - *error, record.tMs});
+  if (points.size() < 2)
+    return;
+  std::sort(points.begin(), points.end(),
+            [](const Point &a, const Point &b) { return a.tMs < b.tMs; });
+
+  // The take's constant-tempo reference: the line through its end onsets.
+  const Point &first = points.front();
+  const Point &last = points.back();
+  const double span = last.fittedMs - first.fittedMs;
+  if (span <= 0.0 || last.utick <= first.utick)
+    return;
+  const double refTempo = (last.utick - first.utick) / span;
+
+  // The warped position per onset, folded back into score-tick space (a
+  // repeat pass's tick offset cancels within the pass); the engraved bar of
+  // a repeated section gets its *last* pass.
+  std::map<int, std::pair<double /*tMs*/, double /*warped*/>> byScoreTick;
+  for (const Point &p : points)
+  {
+    const double warpedUtick =
+        first.utick + refTempo * (p.fittedMs - first.fittedMs);
+    const double warped = warpedUtick - (p.utick - p.scoreTick);
+    const auto it = byScoreTick.find(p.scoreTick);
+    if (it == byScoreTick.end() || it->second.first < p.tMs)
+      byScoreTick[p.scoreTick] = {p.tMs, warped};
+  }
+
+  // Assemble the layout table: sorted, monotonic, anchored so the first
+  // onset keeps its place and the rest warps around it.
+  std::vector<std::pair<int, double>> table;
+  table.reserve(byScoreTick.size());
+  double running = std::numeric_limits<double>::lowest();
+  for (const auto &[tick, entry] : byScoreTick)
+  {
+    running = std::max(running, entry.second);
+    table.emplace_back(tick, running);
+  }
+  const double shift = table.front().first - table.front().second;
+  for (auto &[tick, warped] : table)
+    warped += shift;
+
+  m_warpTable = std::move(table);
+  m_warpBaked = true;
+  m_warpProgress = 0.0;
+  m_warpTimer.start();
+}
+
+void OrchestrionNotationPaintView::applyWarpStep()
+{
+  m_warpProgress =
+      std::min(1.0, m_warpProgress + 1.0 / static_cast<double>(warpAnimSteps));
+  // Ease out: fast start, gentle landing.
+  const double eased = 1.0 - std::pow(1.0 - m_warpProgress, 3.0);
+  auto table = m_warpTable;
+  for (auto &[tick, warped] : table)
+    warped = (1.0 - eased) * tick + eased * warped;
+
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto master =
+      masterNotation ? masterNotation->masterScore() : nullptr;
+  if (!master)
+  {
+    m_warpTimer.stop();
+    return;
+  }
+  master->setLayoutTickWarp(std::move(table));
+  master->doLayout();
+  m_timingOverlay.setWarpProgress(eased);
+  if (m_warpProgress >= 1.0)
+  {
+    m_warpTimer.stop();
+    constrainScorePosition();
+  }
+  update();
+}
+
+void OrchestrionNotationPaintView::clearPerformanceWarp()
+{
+  m_warpTimer.stop();
+  m_warpProgress = 0.0;
+  m_warpBaked = false;
+  m_warpTable.clear();
+  m_timingOverlay.setWarpProgress(0.0);
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto master =
+      masterNotation ? masterNotation->masterScore() : nullptr;
+  if (master && master->hasLayoutTickWarp())
+  {
+    master->setLayoutTickWarp({});
+    master->doLayout();
+    constrainScorePosition();
+    update();
+  }
 }
 
 void OrchestrionNotationPaintView::dismissFinalScore()
@@ -511,6 +656,7 @@ void OrchestrionNotationPaintView::onMousePressed(
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   m_follower.suspend();     // ...and hands auto-scroll control back to the user
   m_timingStatsStale = true; // timing stats restart when playing resumes
+  bakePerformanceWarp();     // an interruption ends the take: review time
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
   const mu::notation::EngravingItem *hitElement =
@@ -622,14 +768,19 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 
   interactionProcessor()->onMouseMoved(logicPos, hitWidth());
 
-  // A timing gauge under the cursor tells its onset's error; otherwise fall
+  // A timing gauge under the cursor tells its onset's error; anywhere else
+  // along the deviation curve tells the smoothed tempo there; otherwise fall
   // back to the note-info debug tooltip (which has its own toggle).
-  QString gaugeInfo;
+  QString timingInfo;
   if (sequencerConfiguration()->timingFeedbackEnabled())
-    gaugeInfo =
-        m_timingOverlay.gaugeInfoAt(QPointF(logicPos.x(), logicPos.y()));
-  if (!gaugeInfo.isEmpty())
-    setHoveredNoteInfo(gaugeInfo, pos);
+  {
+    const QPointF logical(logicPos.x(), logicPos.y());
+    timingInfo = m_timingOverlay.gaugeInfoAt(logical);
+    if (timingInfo.isEmpty())
+      timingInfo = m_timingOverlay.ribbonInfoAt(logical);
+  }
+  if (!timingInfo.isEmpty())
+    setHoveredNoteInfo(timingInfo, pos);
   else if (sequencerConfiguration()->noteInfoTooltipEnabled())
     updateHoveredNoteInfo(pos);
   else if (!m_hoveredNoteInfo.isEmpty())
@@ -780,9 +931,10 @@ void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
 {
   // A wheel/trackpad swipe (zoom or pan) is manual navigation: hand auto-scroll
   // control back to the user. An interruption also restarts the timing stats
-  // once playing resumes.
+  // once playing resumes, and ends the take: review time.
   m_follower.suspend();
   m_timingStatsStale = true;
+  bakePerformanceWarp();
 
   // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
   // Ctrl-modified wheel event) zooms the score in/out about the cursor.
@@ -979,6 +1131,20 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
       this, configureAutoPlay);
 
+  // Toggling the layout mode re-lays-out the score; every cached x is stale,
+  // which is exactly what updateNotation() resets (follower, stats, marks).
+  // The shadow copies only mean anything on the time-proportional canvas.
+  m_timingOverlay.setShadowsEnabled(
+      sequencerConfiguration()->timeProportionalSpacingEnabled());
+  sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        m_timingOverlay.setShadowsEnabled(
+            sequencerConfiguration()->timeProportionalSpacingEnabled());
+        updateNotation();
+      });
+
   load();
   updateNotation();
 
@@ -1057,6 +1223,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
     m_userDefaultScaling = newMatrix.m11();
     m_follower.suspend();
     m_timingStatsStale = true;
+    bakePerformanceWarp();
   }
 
   constrainScorePosition();
@@ -1069,7 +1236,12 @@ void OrchestrionNotationPaintView::updateNotation()
   m_tempoVizModel.clear();
   if (const auto notation = globalContext()->currentNotation())
   {
-    setViewMode(mu::notation::ViewMode::LINE);
+    // Time-proportional spacing uses MuseScore's duration-proportional
+    // layout (with the fork's global quantum), so equal horizontal distance
+    // = equal musical time — the canvas for the tempo-warped note overlays.
+    setViewMode(sequencerConfiguration()->timeProportionalSpacingEnabled()
+                    ? mu::notation::ViewMode::HORIZONTAL_FIXED
+                    : mu::notation::ViewMode::LINE);
     auto config = notation->interaction()->scoreConfig();
     config.isShowInvisibleElements = false;
     config.isShowUnprintableElements = false;
@@ -1088,6 +1260,8 @@ void OrchestrionNotationPaintView::updateNotation()
   m_timingStatsStale = false;
   m_finalScoreShown = false;
   m_autoTrackTargets.clear();
+  m_takeOnsetRecords.clear();
+  clearPerformanceWarp();
   dismissFinalScore();
   update();
 }

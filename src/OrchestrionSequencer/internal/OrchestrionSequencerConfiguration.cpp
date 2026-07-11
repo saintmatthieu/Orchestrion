@@ -41,6 +41,8 @@ const muse::Settings::Key HAND_SYNC_SCORE_ENABLED(module_name,
 const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
                                                  "DYNAMICS_SCORE_ENABLED");
 const muse::Settings::Key AUTO_PLAYED_STAFF(module_name, "AUTO_PLAYED_STAFF");
+const muse::Settings::Key TIME_PROPORTIONAL_SPACING_ENABLED(
+    module_name, "TIME_PROPORTIONAL_SPACING_ENABLED");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 } // namespace
@@ -98,6 +100,13 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(AUTO_PLAYED_STAFF)
       .onReceive(this, [this](const muse::Val &)
                  { m_autoPlayedStaffChanged.notify(); });
+
+  muse::settings()->setDefaultValue(TIME_PROPORTIONAL_SPACING_ENABLED,
+                                    muse::Val{false});
+  muse::settings()
+      ->valueChanged(TIME_PROPORTIONAL_SPACING_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_timeProportionalSpacingEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
@@ -235,6 +244,24 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::autoPlayedStaffChanged() const
 {
   return m_autoPlayedStaffChanged;
+}
+
+bool OrchestrionSequencerConfiguration::timeProportionalSpacingEnabled() const
+{
+  return muse::settings()->value(TIME_PROPORTIONAL_SPACING_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setTimeProportionalSpacingEnabled(
+    bool enabled)
+{
+  muse::settings()->setSharedValue(TIME_PROPORTIONAL_SPACING_ENABLED,
+                                   muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::timeProportionalSpacingEnabledChanged() const
+{
+  return m_timeProportionalSpacingEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const
