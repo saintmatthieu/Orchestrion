@@ -33,6 +33,7 @@
 #include <QElapsedTimer>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
+#include <limits>
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
 #include <unordered_map>
@@ -67,6 +68,13 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   Q_PROPERTY(int finalScore READ finalScore NOTIFY finalScoreChanged)
   Q_PROPERTY(QString finalScoreBreakdown READ finalScoreBreakdown NOTIFY
                  finalScoreChanged)
+  // Post-take tuning: the tempo model's smoothing memory γ, exposed as a
+  // slider once the take is over — writing it re-fits the whole take (curve,
+  // tooltips, stats, layout warp) so the effect is observable immediately.
+  Q_PROPERTY(bool smoothingTunerVisible READ smoothingTunerVisible NOTIFY
+                 smoothingTunerVisibleChanged)
+  Q_PROPERTY(double tempoSmoothing READ tempoSmoothing WRITE setTempoSmoothing
+                 NOTIFY tempoSmoothingChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<ILoopBoundariesController> loopBoundariesController;
@@ -90,6 +98,9 @@ public:
   int finalScore() const { return m_finalScore; }
   QString finalScoreBreakdown() const { return m_finalScoreBreakdown; }
   Q_INVOKABLE void dismissFinalScore();
+  bool smoothingTunerVisible() const;
+  double tempoSmoothing() const;
+  void setTempoSmoothing(double memory);
 
   bool contextMenuHasTarget() const;
   Q_INVOKABLE void contextMenuSetLoopStart();
@@ -105,6 +116,8 @@ signals:
   void contextMenuRequested(QPointF position);
   void tempoVisualizationEnabledChanged();
   void finalScoreChanged();
+  void smoothingTunerVisibleChanged();
+  void tempoSmoothingChanged();
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -127,6 +140,11 @@ private:
   //! cream tint across the looped span.
   void paintLoopMarkers(muse::draw::Painter *painter) override;
   void paintLoopRegionUnderlay(QPainter *painter);
+  //! Post-take: a vertical grid line behind the score at each beat of the
+  //! fitted tempo curve. With the performance warp baked (x = performed
+  //! time), the lines' spacing is the performed beat duration: they spread
+  //! where the performer slowed and bunch where they rushed.
+  void paintBeatLines(QPainter *painter);
   void onMousePressed(const QPointF &pos, Qt::KeyboardModifiers modifiers,
                       Qt::MouseButton button);
   void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
@@ -148,12 +166,28 @@ private:
   //! Batches only carry the *changed* tracks, so a per-voice ledger
   //! (m_autoTrackTargets) persists the auto staff's state between batches.
   void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
-  //! Bake the take's fitted tempo curve into the score layout (animated), so
-  //! the page shows performed time and the coloured performance notes sit at
+  //! Bake the take's fitted tempo curve into the score layout, so the page
+  //! shows performed time and the coloured performance notes sit at
   //! residual-only offsets. Fires once per take, when it is over (end of
-  //! piece or an interruption); self-guards on the proportional-spacing mode.
-  void bakePerformanceWarp();
+  //! piece or an interruption); self-guards on the proportional-spacing
+  //! mode. Animated by default; instant when re-tuning.
+  void bakePerformanceWarp(bool animate = true);
   void applyWarpStep();
+  //! The take is over (interruption or end of piece): hand its recording to
+  //! the automatic player — the play button now replays the performance —
+  //! and bake its tempo curve into the layout.
+  void endTake();
+  //! Arm (or disarm) the play button with the finished take, per the current
+  //! play mode: the raw performance, its fitted-tempo idealization, or
+  //! nothing (metronomic playback).
+  void pushReplayTake();
+  //! The take's events time-warped onto the fitted tempo curve: each event
+  //! shifted by the (interpolated) fitted error at its time, so what plays
+  //! is the spline — the performance minus its per-note jitter.
+  std::vector<ReplayEvent> fittedTempoEvents() const;
+  //! Re-fit the whole take with the configured smoothing memory and refresh
+  //! everything derived from it (ribbon, tooltips, stats, layout warp).
+  void retuneTake();
   //! Back to the ideal (notated) spacing — a fresh take is starting.
   void clearPerformanceWarp();
   void updateNotation();
@@ -208,8 +242,23 @@ private:
     double tMs;
     int scoreTick;
     double utick;
+    // The same instant on the replay recording's clock, linking the onset's
+    // fitted error to the recorded events (for the fitted-tempo replay).
+    double eventMs;
+    // The onset's engraved segment element, for its live x (follows the
+    // warp morph) — anchors the post-take beat grid.
+    const mu::engraving::EngravingItem *anchor = nullptr;
   };
   std::vector<TakeOnsetRecord> m_takeOnsetRecords;
+  // The take's raw input events (times relative to its first event) for the
+  // post-take replay, and the earliest score tick it struck — where the
+  // replay rewinds to.
+  std::vector<ReplayEvent> m_replayEvents;
+  QElapsedTimer m_replayClock;
+  int m_replayStartTick = std::numeric_limits<int>::max();
+  // Whether the recorded take is finished (armed for replay): a play-mode
+  // change may then re-arm it, but never a half-recorded one.
+  bool m_takeOver = false;
   // The baked warp (score tick → warped ticks) and its ease-in animation.
   std::vector<std::pair<int, double>> m_warpTable;
   QTimer m_warpTimer;

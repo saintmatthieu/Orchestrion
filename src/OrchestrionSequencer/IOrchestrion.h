@@ -25,6 +25,17 @@
 
 namespace dgk
 {
+//! What the play button does while a finished take is on record: replay the
+//! performance verbatim, re-perform it on its *fitted* tempo curve (the
+//! spline the judgments compare against — the performance minus its per-note
+//! jitter), or the plain metronomic playback.
+enum class PlayMode
+{
+  replayPerformance,
+  replayFittedTempo,
+  metronome,
+};
+
 class IOrchestrion : MODULE_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrion);
@@ -35,5 +46,19 @@ public:
   virtual IOrchestrionSequencerPtr sequencer() = 0;
   virtual muse::async::Notification sequencerChanged() const = 0;
   virtual IModifiableItemRegistryPtr modifiableItemRegistry() const = 0;
+
+  //! While set, the play button replays this recorded take — the machine
+  //! re-performs it, timing, dynamics and all — instead of the metronomic
+  //! automatic playback (the post-take review's listen-back). Cleared when a
+  //! new take begins.
+  virtual void setReplayTake(std::optional<ReplayTake> take) = 0;
+  //! Whether such a replay is running right now. Its re-injected events must
+  //! not be judged as a new performance.
+  virtual bool isReplaying() const = 0;
+
+  //! Session-only (deliberately not persisted): a review/tuning aid.
+  virtual PlayMode playMode() const = 0;
+  virtual void setPlayMode(PlayMode mode) = 0;
+  virtual muse::async::Notification playModeChanged() const = 0;
 };
 } // namespace dgk

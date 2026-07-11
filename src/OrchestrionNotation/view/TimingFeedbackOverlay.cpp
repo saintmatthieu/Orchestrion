@@ -279,7 +279,7 @@ std::optional<double> TimingFeedbackOverlay::takeErrorAt(int staff,
 
 void TimingFeedbackOverlay::addGauge(
     int staff, double onsetTMs, const QRectF &noteRect, double spatium,
-    double errorMs, bool belowStaff, double staffEdgeY,
+    bool belowStaff, double staffEdgeY,
     std::vector<mu::engraving::EngravingItem *> items)
 {
   // Place the ruler clear of both the struck notes and the staff lines: for
@@ -319,7 +319,7 @@ void TimingFeedbackOverlay::addGauge(
                  : staffEdgeY - (clearanceSp + halfLenSp) * spatium;
   _ribbon[staff].push_back({onsetTMs, items, x, spatium});
 
-  _gauges.push_back({staff, onsetTMs, x, centerY, spatium, errorMs,
+  _gauges.push_back({staff, onsetTMs, x, centerY, spatium, 0.0, false,
                      std::nullopt, std::move(items), 0.0, 0.0, 0.0,
                      _clock.elapsed()});
   if (!_persistent && !_timer.isActive())
@@ -350,6 +350,8 @@ QString TimingFeedbackOverlay::gaugeInfoAt(const QPointF &logicalPos) const
   for (auto it = _gauges.rbegin(); it != _gauges.rend(); ++it)
   {
     const Gauge &gauge = *it;
+    if (!gauge.judged)
+      continue;
     const double sp = gauge.spatium;
     const QRectF hitRect(gaugeAnchorX(gauge) - 1.5 * sp,
                          gauge.centerY - (halfLenSp + 2.0) * sp, 3.0 * sp,
@@ -419,6 +421,7 @@ void TimingFeedbackOverlay::updateJudgments(
       gauge.warpTicks = it->warpTicks;
       gauge.errorTicks = it->errorTicks;
       gauge.bpm = it->bpm;
+      gauge.judged = true;
     }
   }
 
@@ -433,6 +436,7 @@ void TimingFeedbackOverlay::updateJudgments(
         point.warpMs = it->warpMs;
         point.errorMs = it->errorMs;
         point.bpm = it->bpm;
+        point.judged = true;
       }
     }
 
@@ -602,6 +606,8 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
   const qint64 now = _clock.elapsed();
   for (const Gauge &gauge : _gauges)
   {
+    if (!gauge.judged)
+      continue; // pending: its verdict arrives with the spline warm-up
     const double anchorX = gaugeAnchorX(gauge);
     if (anchorX < viewport.left() || anchorX > viewport.right())
       continue; // scrolled out of view (persistent marks can be many)
@@ -674,36 +680,42 @@ double TimingFeedbackOverlay::ribbonMaxAbsMs() const
   double maxAbsMs = rangeMs;
   for (const auto &[staff, points] : _ribbon)
     for (const RibbonPoint &point : points)
-      maxAbsMs = std::max(maxAbsMs, std::abs(point.warpMs + point.errorMs));
+      if (point.judged)
+        maxAbsMs = std::max(maxAbsMs, std::abs(point.warpMs + point.errorMs));
   return maxAbsMs;
 }
 
 QString TimingFeedbackOverlay::ribbonInfoAt(const QPointF &logicalPos) const
 {
   const double maxAbsMs = ribbonMaxAbsMs();
-  for (const auto &[staff, points] : _ribbon)
+  for (const auto &[staff, allPoints] : _ribbon)
   {
+    std::vector<const RibbonPoint *> points;
+    points.reserve(allPoints.size());
+    for (const RibbonPoint &point : allPoints)
+      if (point.judged)
+        points.push_back(&point);
     if (points.size() < 2)
       continue;
     const auto baselineIt = _ribbonBaselineY.find(staff);
     if (baselineIt == _ribbonBaselineY.end())
       continue;
     const double baseY = baselineIt->second;
-    const double sp = points.back().spatium;
+    const double sp = points.back()->spatium;
     const double pxPerMs = halfLenSp * sp / maxAbsMs;
 
-    double prevX = ribbonAnchorX(points.front());
+    double prevX = ribbonAnchorX(*points.front());
     for (std::size_t i = 1; i < points.size(); ++i)
     {
       const double x0 = prevX;
-      const double x1 = ribbonAnchorX(points[i]);
+      const double x1 = ribbonAnchorX(*points[i]);
       prevX = x1;
       if (x1 <= x0) // a repeat pass rewinds x: not a curve segment
         continue;
       if (logicalPos.x() < x0 || logicalPos.x() > x1)
         continue;
-      const RibbonPoint &a = points[i - 1];
-      const RibbonPoint &b = points[i];
+      const RibbonPoint &a = *points[i - 1];
+      const RibbonPoint &b = *points[i];
       const double t = (logicalPos.x() - x0) / (x1 - x0);
       const double warpMs = a.warpMs + t * (b.warpMs - a.warpMs);
       if (std::abs(logicalPos.y() - (baseY + warpMs * pxPerMs)) > 1.2 * sp)
@@ -758,6 +770,8 @@ void TimingFeedbackOverlay::paintRibbon(QPainter &painter,
     double maxX = std::numeric_limits<double>::lowest();
     for (const RibbonPoint &point : points)
     {
+      if (!point.judged)
+        continue; // pending: its verdict arrives with the spline warm-up
       const double x = ribbonAnchorX(point);
       if (x < prevX && !strokes.back().empty())
         strokes.emplace_back();
@@ -769,6 +783,8 @@ void TimingFeedbackOverlay::paintRibbon(QPainter &painter,
                                             pxPerMs,
                                 point.errorMs});
     }
+    if (minX > maxX)
+      continue; // nothing judged yet (spline still warming up)
 
     // The zero line: the constant-tempo reference.
     painter.setBrush(Qt::NoBrush);

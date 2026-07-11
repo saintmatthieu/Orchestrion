@@ -110,6 +110,10 @@ public:
   TempoFollower(const TempoFollower &) = delete;
   TempoFollower &operator=(const TempoFollower &) = delete;
 
+  //! The smoothing memory γ used for the *musical* spline of hands created
+  //! from now on (i.e. from the next take; live hands keep theirs).
+  void setSmootherMemory(double memory);
+
   //! A sounding onset: its page-logical x (drives the scroll), its
   //! playback-unrolled tick — continuous through repeats, voltas and jumps —
   //! which drives the musical-tempo readout and the timing judgments, and the
@@ -151,6 +155,12 @@ public:
   //! What one transition batch yields for the performance game.
   struct Feedback
   {
+    //! Per manually-played sounding hand, the clock stamp of this batch's
+    //! onset — the identity its judgments carry. Present from the very first
+    //! onset, before the spline warms up, so the display can create the
+    //! onset's marks up front and fill their values in as judgments arrive
+    //! (retroactively for the take's first onsets).
+    std::map<int, double> onsetTMs;
     //! Per sounding hand, the (re-)judgments of *all* its onsets still in
     //! the smoothing window, newest last — empty while the spline is warming
     //! up (at the start, or on resuming after a stop).
@@ -174,6 +184,14 @@ public:
   Feedback onOnsets(const std::map<int, Onset> &presentOnsets,
                     std::optional<double> leadingAny,
                     std::optional<double> trailingAny);
+
+  //! Re-fit a whole take offline with a different smoothing memory γ: feed
+  //! its (time ms, playback tick) observations, in order, through an
+  //! unbounded smoother and return the re-judged window — the post-take
+  //! tuning slider's engine.
+  static std::vector<Judgment>
+  refitTake(const std::vector<std::pair<double, double>> &observations,
+            double memory);
 
   //! Tempo-following auto-play. While \p staff is set, that hand belongs to
   //! the machine: it is exempt from judgments, dynamics and sync sampling,
@@ -208,6 +226,8 @@ private:
   //! xOffset.
   struct Hand
   {
+    explicit Hand(double smootherMemory) : tempoSmoother(smootherMemory) {}
+
     // Scroll position, tracked in page-logical x: the causal filter (real-time
     // "now" and coasting) …
     TempoTracker tracker;
@@ -254,6 +274,9 @@ private:
   qint64 _lastTickMs = 0; // for zoom-easing dt
   // Last centered position, to detect when the coast has settled (then idle).
   double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
+
+  // The musical spline's smoothing memory for newly created hands.
+  double _smootherMemory = 0.6;
 
   // Tempo-following auto-play (see setAutoPlay / setAutoTargets).
   std::optional<int> _autoStaff;

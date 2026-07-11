@@ -73,6 +73,10 @@ private:
   muse::async::Notification
   timeProportionalSpacingEnabledChanged() const override;
 
+  double tempoSmoothingMemory() const override;
+  void setTempoSmoothingMemory(double) override;
+  muse::async::Notification tempoSmoothingMemoryChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
@@ -85,5 +89,6 @@ private:
   muse::async::Notification m_dynamicsScoreEnabledChanged;
   muse::async::Notification m_autoPlayedStaffChanged;
   muse::async::Notification m_timeProportionalSpacingEnabledChanged;
+  muse::async::Notification m_tempoSmoothingMemoryChanged;
 };
 } // namespace dgk

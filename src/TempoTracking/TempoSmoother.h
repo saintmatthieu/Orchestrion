@@ -47,7 +47,10 @@ class TempoSmoother
 public:
   //! \p memory is γ ∈ (0,1) as in TempoTracker: higher = smoother. It maps to
   //! the process/measurement-noise ratio of the underlying state-space model.
-  explicit TempoSmoother(double memory = 0.6);
+  //! \p maxKnots / \p maxWindowMs bound the sliding window (the defaults suit
+  //! live following); pass large values for a whole-take offline re-fit.
+  explicit TempoSmoother(double memory = 0.6, std::size_t maxKnots = 64,
+                         double maxWindowMs = 12000.0);
 
   //! Record that at \p realTime the performance reached \p musicalPos, and
   //! re-smooth the window. Out-of-order times are ignored.
@@ -94,6 +97,8 @@ private:
   void evalAt(double realTime, double &position, double &velocity) const;
 
   const double _memory;
+  const std::size_t _maxKnots;
+  const double _maxWindowMs;
 
   struct Obs
   {

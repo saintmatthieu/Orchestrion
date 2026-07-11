@@ -19,6 +19,7 @@
 #pragma once
 
 #include "ExternalDevices/IMidiDeviceService.h"
+#include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
@@ -49,6 +50,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   muse::Inject<IMidiDeviceService> midiDeviceService;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
   muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration;
+  muse::Inject<IOrchestrion> orchestrion;
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);
@@ -85,6 +87,7 @@ private:
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
+  muse::uicomponents::MenuItem *makePlayModeSubmenu(PlayMode current);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
 
   void createMenus(bool withSaveItem);
