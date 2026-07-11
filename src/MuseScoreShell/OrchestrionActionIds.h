@@ -28,6 +28,8 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
      {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
 
+static constexpr const char *loopIn = "orchestrion-loop-in";
+static constexpr const char *loopOut = "orchestrion-loop-out";
 static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
 static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
 static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";

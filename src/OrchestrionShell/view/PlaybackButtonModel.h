@@ -32,6 +32,7 @@ class PlaybackButtonModel : public QObject, public muse::async::Asyncable
 
   Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
   Q_PROPERTY(bool isPlayAllowed READ isPlayAllowed NOTIFY isPlayAllowedChanged)
+  Q_PROPERTY(bool isLoopEnabled READ isLoopEnabled NOTIFY isLoopEnabledChanged)
 
   INJECT(mu::playback::IPlaybackController, playbackController);
   INJECT(muse::actions::IActionsDispatcher, dispatcher);
@@ -41,6 +42,7 @@ public:
 
   bool isPlaying() const;
   bool isPlayAllowed() const;
+  bool isLoopEnabled() const;
 
   Q_INVOKABLE void load();
   Q_INVOKABLE void togglePlay();
@@ -48,9 +50,11 @@ public:
   Q_INVOKABLE void rewind();
   Q_INVOKABLE void backStep();
   Q_INVOKABLE void forwardStep();
+  Q_INVOKABLE void toggleLoop();
 
 signals:
   void isPlayingChanged();
   void isPlayAllowedChanged();
+  void isLoopEnabledChanged();
 };
 } // namespace dgk

@@ -20,6 +20,7 @@
 
 #include "GestureControllers/IGestureControllerSelector.h"
 #include "HighlightFader.h"
+#include "ILoopBoundariesController.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include "KineticScroller.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
@@ -44,8 +45,13 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
                  hoveredNoteInfoChanged)
   Q_PROPERTY(QPointF hoveredNoteInfoPos READ hoveredNoteInfoPos NOTIFY
                  hoveredNoteInfoChanged)
+  // Whether the last right-click hit a chord — enables the "set loop
+  // start/end" context-menu items.
+  Q_PROPERTY(bool contextMenuHasTarget READ contextMenuHasTarget NOTIFY
+                 contextMenuTargetChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
+  muse::Inject<ILoopBoundariesController> loopBoundariesController;
   muse::Inject<mu::notation::INotationConfiguration> configuration;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<IOrchestrion> orchestrion;
@@ -62,9 +68,18 @@ public:
   QString hoveredNoteInfo() const;
   QPointF hoveredNoteInfoPos() const;
 
+  bool contextMenuHasTarget() const;
+  Q_INVOKABLE void contextMenuSetLoopStart();
+  Q_INVOKABLE void contextMenuSetLoopEnd();
+  Q_INVOKABLE void clearLoop();
+
 signals:
   void mouseActivity();
   void hoveredNoteInfoChanged();
+  void contextMenuTargetChanged();
+  //! Right-click: ask QML to pop up the loop context menu at \p position
+  //! (view-local coordinates).
+  void contextMenuRequested(QPointF position);
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -78,11 +93,21 @@ private:
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
   void paintNotationUnderlay(QPainter *painter) override;
+  //! Orchestrion-styled loop boundaries (replaces MuseScore's orange flags):
+  //! navy pill handles with a cream accent, plus — via the underlay — a soft
+  //! cream tint across the looped span.
+  void paintLoopMarkers(muse::draw::Painter *painter) override;
+  void paintLoopRegionUnderlay(QPainter *painter);
   void onMousePressed(const QPointF &pos, Qt::KeyboardModifiers modifiers,
                       Qt::MouseButton button);
   void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
   void onMouseReleased(Qt::MouseButton button);
   void onMouseMoved(const QPointF &pos);
+  //! The loop-boundary flag at \p logicPos (canvas coordinates), if any.
+  std::optional<mu::notation::LoopBoundaryType>
+  loopFlagAt(const muse::PointF &logicPos) const;
+  //! Move the dragged loop boundary to the chord under \p logicPos.
+  void dragLoopBoundaryTo(const muse::PointF &logicPos);
   void updateHoveredNoteInfo(const QPointF &itemPos);
   void setHoveredNoteInfo(const QString &info, const QPointF &itemPos);
   std::vector<mu::engraving::EngravingItem *>
@@ -126,5 +151,14 @@ private:
   KineticScroller m_kineticScroller;
   QString m_hoveredNoteInfo;
   QPointF m_hoveredNoteInfoPos;
+
+  // Chord under the last right-click, acted on by the context-menu items.
+  std::optional<ILoopBoundariesController::ChordTicks> m_contextMenuTarget;
+
+  // The loop-boundary flag being dragged, if any. While set, mouse events are
+  // filtered away from the base view so it doesn't pan or select alongside.
+  std::optional<mu::notation::LoopBoundaryType> m_draggedLoopBoundary;
+  // A horizontal-resize override cursor is active (hovering a loop flag).
+  bool m_loopFlagCursor = false;
 };
 } // namespace dgk

@@ -21,8 +21,11 @@
 #include "OrchestrionNotationModule.h"
 #include "modularity/imodulesetup.h"
 
+#include <memory>
+
 namespace dgk
 {
+class LoopBoundariesController;
 
 class OrchestrionNotationModule : public muse::modularity::IModuleSetup
 {
@@ -30,6 +33,10 @@ public:
   std::string moduleName() const override;
   void registerUiTypes() override;
   void registerExports() override;
+  void onInit(const muse::IApplication::RunMode &mode) override;
+
+private:
+  std::shared_ptr<LoopBoundariesController> m_loopBoundariesController;
 };
 
 } // namespace dgk

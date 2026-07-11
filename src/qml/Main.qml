@@ -154,6 +154,30 @@ ApplicationWindow {
                     hideControlsTimer.restart()
                 }
 
+                onContextMenuRequested: function(position) {
+                    loopContextMenu.popup(position.x, position.y)
+                }
+
+                Menu {
+                    id: loopContextMenu
+
+                    MenuItem {
+                        text: "Set loop start (I)"
+                        enabled: notationPaintView.contextMenuHasTarget
+                        onTriggered: notationPaintView.contextMenuSetLoopStart()
+                    }
+                    MenuItem {
+                        text: "Set loop end (O)"
+                        enabled: notationPaintView.contextMenuHasTarget
+                        onTriggered: notationPaintView.contextMenuSetLoopEnd()
+                    }
+                    MenuSeparator { }
+                    MenuItem {
+                        text: "Clear loop"
+                        onTriggered: notationPaintView.clearLoop()
+                    }
+                }
+
                 Timer {
                     id: hideControlsTimer
                     interval: 2000

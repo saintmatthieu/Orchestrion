@@ -10,4 +10,19 @@
     <std>4</std>
     <autorepeat>0</autorepeat>
   </SC>
+  <SC>
+    <key>loop</key>
+    <seq>Ctrl+L</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>orchestrion-loop-in</key>
+    <seq>I</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>orchestrion-loop-out</key>
+    <seq>O</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
 </Shortcuts>

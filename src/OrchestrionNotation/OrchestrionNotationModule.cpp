@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationModule.h"
+#include "internal/LoopBoundariesController.h"
 #include "internal/OrchestrionNotationInteractionProcessor.h"
 #include "view/OrchestrionNotationPaintView.h"
 
@@ -38,5 +39,16 @@ void OrchestrionNotationModule::registerExports()
   ioc()->registerExport<IOrchestrionNotationInteractionProcessor>(
       moduleName(),
       std::make_shared<OrchestrionNotationInteractionProcessor>());
+
+  m_loopBoundariesController = std::make_shared<LoopBoundariesController>();
+  ioc()->registerExport<ILoopBoundariesController>(moduleName(),
+                                                   m_loopBoundariesController);
+}
+
+void OrchestrionNotationModule::onInit(const muse::IApplication::RunMode &mode)
+{
+  if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
+    return;
+  m_loopBoundariesController->init();
 }
 } // namespace dgk

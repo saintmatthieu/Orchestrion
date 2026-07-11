@@ -41,11 +41,12 @@ Row {
 
     Repeater {
         model: [
-            { icon: "back", action: () => playbackModel.rewind(), tooltip: "Rewind (Home)" },
-            { icon: "rewind-button", action: () => playbackModel.backStep(), tooltip: "Previous (Left)" },
-            { icon: playbackModel.isPlaying ? "pause-button" : "play", action: () => playbackModel.togglePlay(), tooltip: "Play/Pause (Space)" },
-            { icon: "stop-sign", action: () => playbackModel.stop(), tooltip: "Stop" },
-            { icon: "rewind-button", action: () => playbackModel.forwardStep(), tooltip: "Next (Right)", flipped: true }
+            { icon: "back.png", action: () => playbackModel.rewind(), tooltip: "Rewind (Home)" },
+            { icon: "rewind-button.png", action: () => playbackModel.backStep(), tooltip: "Previous (Left)" },
+            { icon: playbackModel.isPlaying ? "pause-button.png" : "play.png", action: () => playbackModel.togglePlay(), tooltip: "Play/Pause (Space)" },
+            { icon: "stop-sign.png", action: () => playbackModel.stop(), tooltip: "Stop" },
+            { icon: "rewind-button.png", action: () => playbackModel.forwardStep(), tooltip: "Next (Right)", flipped: true },
+            { icon: "loop.svg", action: () => playbackModel.toggleLoop(), tooltip: "Loop (Ctrl+L)", checked: playbackModel.isLoopEnabled }
         ]
 
         Item {
@@ -54,10 +55,17 @@ Row {
             height: 36
             rotation: modelData.flipped ? 180 : 0
 
+            Rectangle {
+                anchors.fill: parent
+                radius: 6
+                color: Theme.accent
+                opacity: modelData.checked ? 0.3 : 0
+            }
+
             Image {
                 id: iconSource
                 anchors.fill: parent
-                source: "qrc:/icons/player/" + modelData.icon + ".png"
+                source: "qrc:/icons/player/" + modelData.icon
                 fillMode: Image.PreserveAspectFit
                 mipmap: true
                 visible: false

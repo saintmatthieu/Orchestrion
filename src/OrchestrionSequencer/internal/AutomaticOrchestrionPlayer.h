@@ -45,5 +45,10 @@ private:
   // Used to cancel previously scheduled calls to FireAndContinue when the
   // position changes e.g. by the user pressing left/right during playback.
   int m_generation = 0;
+  // True while our own OnInputEvent calls are on the stack. A position jump
+  // they cause (e.g. the loop wrap-around) must not re-enter ScheduleNext
+  // from the AboutToJumpPosition notification — the sequencer state is not
+  // settled yet, and FireAndContinue reschedules after they return anyway.
+  bool m_firingInputEvents = false;
 };
 } // namespace dgk

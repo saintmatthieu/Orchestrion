@@ -36,7 +36,8 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
                                             [this](int /*tick*/)
                                             {
                                               ++m_generation;
-                                              ScheduleNext();
+                                              if (!m_firingInputEvents)
+                                                ScheduleNext();
                                             });
 
   playbackController()->isPlayingChanged().onNotify(
@@ -54,6 +55,9 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
 
 void AutomaticOrchestrionPlayer::ScheduleNext()
 {
+  if (!m_playing)
+    return;
+
   const auto next = m_sequencer.WhatToPlayNext();
   if (!next)
   {
@@ -81,12 +85,14 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
 {
   if (!m_playing)
     return;
+  m_firingInputEvents = true;
   if (events.leftHandEvent)
     m_sequencer.OnInputEvent(*events.leftHandEvent, leftHandPitch,
                              std::nullopt);
   if (events.rightHandEvent)
     m_sequencer.OnInputEvent(*events.rightHandEvent, rightHandPitch,
                              std::nullopt);
+  m_firingInputEvents = false;
   ScheduleNext();
 }
 

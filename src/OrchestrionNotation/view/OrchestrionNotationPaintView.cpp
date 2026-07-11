@@ -28,6 +28,7 @@
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/note.h>
+#include <engraving/dom/segment.h>
 #include <engraving/dom/tie.h>
 
 #include <cmath>
@@ -212,6 +213,7 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 
   if (watched == this)
   {
+    const bool wasDraggingLoopFlag = m_draggedLoopBoundary.has_value();
     const auto mouseEvent = static_cast<QMouseEvent *>(event);
     switch (event->type())
     {
@@ -231,6 +233,13 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
     default:
       break;
     }
+
+    // A loop-flag drag owns the mouse: swallow its events so the base view
+    // doesn't also pan the canvas or interact with the score.
+    if ((m_draggedLoopBoundary.has_value() || wasDraggingLoopFlag) &&
+        (type == QEvent::MouseButtonPress || type == QEvent::MouseMove ||
+         type == QEvent::MouseButtonRelease))
+      return true;
   }
 
   return mu::notation::NotationPaintView::eventFilter(watched, event);
@@ -242,15 +251,35 @@ void OrchestrionNotationPaintView::onMousePressed(
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
-  const bool onElement =
-      interaction && interaction->hitElement(logicPos, hitWidth());
+  const mu::notation::EngravingItem *hitElement =
+      interaction ? interaction->hitElement(logicPos, hitWidth()) : nullptr;
+
+  if (button == Qt::RightButton)
+  {
+    m_contextMenuTarget = loopBoundariesController()->chordTicks(hitElement);
+    emit contextMenuTargetChanged();
+    emit contextMenuRequested(pos);
+    return;
+  }
+
+  if (button == Qt::LeftButton && modifiers.testFlag(Qt::ShiftModifier))
+  {
+    if (const auto ticks = loopBoundariesController()->chordTicks(hitElement))
+      loopBoundariesController()->onChordShiftClicked(*ticks);
+    return;
+  }
+
+  if (button == Qt::LeftButton && modifiers == Qt::NoModifier)
+    if ((m_draggedLoopBoundary = loopFlagAt(logicPos)))
+      return;
+
   interactionProcessor()->onMousePressed(logicPos, hitWidth());
 
   // A plain left-drag starting on empty background pans the canvas (the base
   // view does the panning); track it so the release can add a kinetic throw.
   // Pressing an element, or holding a modifier, is selection — not panning.
   m_canvasDragging =
-      button == Qt::LeftButton && modifiers == Qt::NoModifier && !onElement;
+      button == Qt::LeftButton && modifiers == Qt::NoModifier && !hitElement;
   if (m_canvasDragging)
   {
     m_lastDragPos = pos;
@@ -261,6 +290,12 @@ void OrchestrionNotationPaintView::onMousePressed(
 void OrchestrionNotationPaintView::onMouseDragged(const QPointF &pos,
                                                   Qt::MouseButtons buttons)
 {
+  if (m_draggedLoopBoundary && (buttons & Qt::LeftButton))
+  {
+    dragLoopBoundaryTo(toLogical(pos));
+    return;
+  }
+
   if (!m_canvasDragging || !(buttons & Qt::LeftButton))
     return;
   // The base view pans the canvas to follow the cursor; we only feed the
@@ -271,21 +306,132 @@ void OrchestrionNotationPaintView::onMouseDragged(const QPointF &pos,
 
 void OrchestrionNotationPaintView::onMouseReleased(Qt::MouseButton button)
 {
+  if (button == Qt::LeftButton && m_draggedLoopBoundary)
+  {
+    m_draggedLoopBoundary.reset();
+    return;
+  }
+
   if (button != Qt::LeftButton || !m_canvasDragging)
     return;
   m_canvasDragging = false;
   m_kineticScroller.endDrag();
 }
 
+bool OrchestrionNotationPaintView::contextMenuHasTarget() const
+{
+  return m_contextMenuTarget.has_value();
+}
+
+void OrchestrionNotationPaintView::contextMenuSetLoopStart()
+{
+  if (m_contextMenuTarget)
+    loopBoundariesController()->setLoopStart(m_contextMenuTarget->start);
+}
+
+void OrchestrionNotationPaintView::contextMenuSetLoopEnd()
+{
+  if (m_contextMenuTarget)
+    loopBoundariesController()->setLoopEnd(m_contextMenuTarget->end);
+}
+
+void OrchestrionNotationPaintView::clearLoop()
+{
+  loopBoundariesController()->clearLoop();
+}
+
 void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 {
   const muse::PointF logicPos = toLogical(pos);
+
+  const bool overLoopFlag = loopFlagAt(logicPos).has_value();
+  if (overLoopFlag != m_loopFlagCursor)
+  {
+    if (overLoopFlag)
+      QApplication::setOverrideCursor(Qt::SizeHorCursor);
+    else
+      QApplication::restoreOverrideCursor();
+    m_loopFlagCursor = overLoopFlag;
+  }
+  if (overLoopFlag)
+    // Keep the interaction processor from replacing the resize cursor with
+    // the pointing hand of an element underneath the flag.
+    return;
+
   interactionProcessor()->onMouseMoved(logicPos, hitWidth());
 
   if (sequencerConfiguration()->noteInfoTooltipEnabled())
     updateHoveredNoteInfo(pos);
   else if (!m_hoveredNoteInfo.isEmpty())
     setHoveredNoteInfo({}, pos);
+}
+
+std::optional<mu::notation::LoopBoundaryType>
+OrchestrionNotationPaintView::loopFlagAt(const muse::PointF &logicPos) const
+{
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (!masterNotation || !masterNotation->playback()->loopBoundaries().enabled)
+    return std::nullopt;
+
+  // Inflate horizontally by half the marker width so the thin flag line is
+  // comfortable to grab.
+  const auto contains = [&logicPos](const muse::RectF &rect)
+  {
+    if (rect.isEmpty())
+      return false;
+    const auto pad = rect.width() / 2;
+    return muse::RectF{rect.left() - pad, rect.top(), rect.width() + 2 * pad,
+                       rect.height()}
+        .contains(logicPos);
+  };
+
+  const auto inRect = loopInMarkerRect();
+  const auto outRect = loopOutMarkerRect();
+  const bool inHit = contains(inRect);
+  const bool outHit = contains(outRect);
+  if (inHit && outHit)
+    // Overlapping flags (a very short loop): pick the nearer one.
+    return std::abs(logicPos.x() - inRect.center().x()) <=
+                   std::abs(logicPos.x() - outRect.center().x())
+               ? mu::notation::LoopBoundaryType::LoopIn
+               : mu::notation::LoopBoundaryType::LoopOut;
+  if (inHit)
+    return mu::notation::LoopBoundaryType::LoopIn;
+  if (outHit)
+    return mu::notation::LoopBoundaryType::LoopOut;
+  return std::nullopt;
+}
+
+void OrchestrionNotationPaintView::dragLoopBoundaryTo(
+    const muse::PointF &logicPos)
+{
+  const auto notation = this->notation();
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (!notation || !masterNotation)
+    return;
+
+  const mu::engraving::Score *score = notation->elements()->msScore();
+  mu::engraving::staff_idx_t staffIdx = 0;
+  mu::engraving::Segment *segment = nullptr;
+  score->pos2measure(logicPos, &staffIdx, nullptr, &segment, nullptr);
+  if (!segment)
+    return;
+
+  // Snap to the chord under the cursor, and refuse to cross the other
+  // boundary — the flag just stops at the last valid chord.
+  const auto &boundaries = masterNotation->playback()->loopBoundaries();
+  if (*m_draggedLoopBoundary == mu::notation::LoopBoundaryType::LoopIn)
+  {
+    const auto tick = segment->tick().ticks();
+    if (tick != boundaries.loopInTick && tick < boundaries.loopOutTick)
+      loopBoundariesController()->setLoopStart(tick);
+  }
+  else
+  {
+    const auto endTick = (segment->tick() + segment->ticks()).ticks();
+    if (endTick != boundaries.loopOutTick && endTick > boundaries.loopInTick)
+      loopBoundariesController()->setLoopEnd(endTick);
+  }
 }
 
 void OrchestrionNotationPaintView::updateHoveredNoteInfo(const QPointF &itemPos)
@@ -631,6 +777,8 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // transform and before the notation is drawn — so the highlight sits behind
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
+  paintLoopRegionUnderlay(painter);
+
   if (m_boxes.empty() && m_fader.empty())
     return;
 
@@ -659,6 +807,91 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
 
   m_fader.forEach(fillBox);
   painter->restore();
+}
+
+namespace
+{
+// Orchestrion loop-marker palette: the wallpaper's dark espresso for the
+// handles and the region shading, the cream accent (Theme.accent) for the dot.
+const QColor loopHandleColor{0x3C, 0x1F, 0x19};
+const QColor loopAccentColor{0xF0, 0xE5, 0xC8};
+} // namespace
+
+void OrchestrionNotationPaintView::paintLoopRegionUnderlay(QPainter *painter)
+{
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (!masterNotation || !masterNotation->playback()->loopBoundaries().enabled)
+    return;
+
+  const auto inRect = loopInMarkerRect();
+  const auto outRect = loopOutMarkerRect();
+  // Shade only the simple case of both boundaries on the same system — always
+  // true in Orchestrion's horizontal continuous view.
+  if (inRect.isEmpty() || outRect.isEmpty() ||
+      std::abs(inRect.top() - outRect.top()) > .5 ||
+      outRect.left() <= inRect.left())
+    return;
+
+  painter->save();
+  painter->setRenderHint(QPainter::Antialiasing);
+  painter->setPen(Qt::NoPen);
+  // The score band is itself cream, so shade the looped span with a whisper
+  // of the handles' espresso instead of the accent color.
+  QColor tint = loopHandleColor;
+  tint.setAlpha(28);
+  painter->setBrush(tint);
+  const QRectF region{QPointF{inRect.left(), inRect.top()},
+                      QPointF{outRect.left(), inRect.bottom()}};
+  painter->drawRect(region);
+  painter->restore();
+}
+
+void OrchestrionNotationPaintView::paintLoopMarkers(
+    muse::draw::Painter *painter)
+{
+  const auto notation = this->notation();
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (!notation || !masterNotation ||
+      !masterNotation->playback()->loopBoundaries().enabled)
+    return;
+
+  const double spatium =
+      notation->style()->styleValue(mu::notation::StyleId::spatium).toDouble();
+  if (spatium <= 0)
+    return;
+
+  const auto paintHandle = [&](const muse::RectF &rect, bool isLoopIn)
+  {
+    if (rect.isEmpty())
+      return;
+
+    painter->setNoPen();
+    painter->setAntialiasing(true);
+    painter->setBrush(loopHandleColor);
+
+    // A slim vertical pill spanning the system...
+    const double barWidth = 0.45 * spatium;
+    const double x = rect.left();
+    const muse::RectF bar{x - barWidth / 2, rect.top(), barWidth,
+                          rect.height()};
+    painter->drawRoundedRect(bar, barWidth / 2, barWidth / 2);
+
+    // ...with a rounded tab at the top pointing into the loop...
+    const double tabWidth = 1.9 * spatium;
+    const double tabHeight = 1.4 * spatium;
+    const muse::RectF tab{isLoopIn ? x - barWidth / 2
+                                   : x + barWidth / 2 - tabWidth,
+                          rect.top(), tabWidth, tabHeight};
+    painter->drawRoundedRect(tab, 0.5 * spatium, 0.5 * spatium);
+
+    // ...and the cream accent dot on the tab.
+    painter->setBrush(loopAccentColor);
+    const double dotRadius = 0.32 * spatium;
+    painter->drawEllipse(tab.center(), dotRadius, dotRadius);
+  };
+
+  paintHandle(loopInMarkerRect(), true);
+  paintHandle(loopOutMarkerRect(), false);
 }
 
 void OrchestrionNotationPaintView::paint(QPainter *painter)

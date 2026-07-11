@@ -46,6 +46,16 @@
     <autorepeat>0</autorepeat>
   </SC>
   <SC>
+    <key>orchestrion-loop-in</key>
+    <seq>I</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>orchestrion-loop-out</key>
+    <seq>O</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
     <key>view-toggle-fullscreen</key>
     <seq>F11</seq>
     <autorepeat>0</autorepeat>

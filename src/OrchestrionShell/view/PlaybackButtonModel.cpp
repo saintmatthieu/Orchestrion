@@ -29,6 +29,14 @@ void PlaybackButtonModel::load()
 
   playbackController()->isPlayAllowedChanged().onNotify(
       this, [this] { emit isPlayAllowedChanged(); });
+
+  playbackController()->actionCheckedChanged().onReceive(
+      this,
+      [this](const muse::actions::ActionCode &actionCode)
+      {
+        if (actionCode == "loop")
+          emit isLoopEnabledChanged();
+      });
 }
 
 bool PlaybackButtonModel::isPlaying() const
@@ -41,6 +49,11 @@ bool PlaybackButtonModel::isPlayAllowed() const
   return playbackController()->isPlayAllowed();
 }
 
+bool PlaybackButtonModel::isLoopEnabled() const
+{
+  return playbackController()->actionChecked("loop");
+}
+
 void PlaybackButtonModel::togglePlay() { dispatcher()->dispatch("play"); }
 
 void PlaybackButtonModel::stop() { dispatcher()->dispatch("stop"); }
@@ -50,4 +63,6 @@ void PlaybackButtonModel::rewind() { dispatcher()->dispatch("rewind"); }
 void PlaybackButtonModel::backStep() { dispatcher()->dispatch("prev"); }
 
 void PlaybackButtonModel::forwardStep() { dispatcher()->dispatch("next"); }
+
+void PlaybackButtonModel::toggleLoop() { dispatcher()->dispatch("loop"); }
 } // namespace dgk
