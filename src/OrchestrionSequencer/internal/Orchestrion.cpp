@@ -79,4 +79,30 @@ IModifiableItemRegistryPtr Orchestrion::modifiableItemRegistry() const
 {
   return m_modifiableItemRegistry;
 }
+
+void Orchestrion::setReplayTake(std::optional<ReplayTake> take)
+{
+  if (m_autoPlayer)
+    m_autoPlayer->SetReplayTake(std::move(take));
+}
+
+bool Orchestrion::isReplaying() const
+{
+  return m_autoPlayer && m_autoPlayer->IsReplaying();
+}
+
+PlayMode Orchestrion::playMode() const { return m_playMode; }
+
+void Orchestrion::setPlayMode(PlayMode mode)
+{
+  if (mode == m_playMode)
+    return;
+  m_playMode = mode;
+  m_playModeChanged.notify();
+}
+
+muse::async::Notification Orchestrion::playModeChanged() const
+{
+  return m_playModeChanged;
+}
 } // namespace dgk

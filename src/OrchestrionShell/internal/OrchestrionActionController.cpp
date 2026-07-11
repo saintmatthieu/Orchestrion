@@ -113,6 +113,16 @@ void OrchestrionActionController::init()
                           !sequencerConfig()->timeProportionalSpacingEnabled());
                     });
 
+  dispatcher()->reg(
+      this, actionIds::playModePerformance,
+      [this] { orchestrion()->setPlayMode(PlayMode::replayPerformance); });
+  dispatcher()->reg(
+      this, actionIds::playModeFittedTempo,
+      [this] { orchestrion()->setPlayMode(PlayMode::replayFittedTempo); });
+  dispatcher()->reg(
+      this, actionIds::playModeMetronome,
+      [this] { orchestrion()->setPlayMode(PlayMode::metronome); });
+
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
   dispatcher()->reg(

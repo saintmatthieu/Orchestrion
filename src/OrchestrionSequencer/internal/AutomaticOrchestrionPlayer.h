@@ -19,6 +19,7 @@
 #pragma once
 
 #include "IOrchestrionSequencer.h"
+#include <QElapsedTimer>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
 #include <modularity/ioc.h>
@@ -35,10 +36,19 @@ class AutomaticOrchestrionPlayer : public muse::async::Asyncable,
 public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
 
+  //! While set, play replays this recorded take — rewind to its start tick,
+  //! re-inject its input events at their recorded times — instead of the
+  //! metronomic playback.
+  void SetReplayTake(std::optional<ReplayTake> take);
+  bool IsReplaying() const { return m_replayActive; }
+
 private:
   void ScheduleNext();
   void FireAndContinue(const NextAutoPlayEvents &events);
   int TicksToMilliseconds(int ticks) const;
+  void StartReplay();
+  void ScheduleReplayNext();
+  void FireReplayEvent();
 
   IOrchestrionSequencer &m_sequencer;
   bool m_playing = false;
@@ -50,5 +60,13 @@ private:
   // from the AboutToJumpPosition notification — the sequencer state is not
   // settled yet, and FireAndContinue reschedules after they return anyway.
   bool m_firingInputEvents = false;
+
+  std::optional<ReplayTake> m_replayTake;
+  bool m_replayActive = false;
+  // True while the replay performs its own rewind to the take's start, so
+  // that jump isn't taken for the user navigating away.
+  bool m_selfJump = false;
+  std::size_t m_replayIndex = 0;
+  QElapsedTimer m_replayClock;
 };
 } // namespace dgk

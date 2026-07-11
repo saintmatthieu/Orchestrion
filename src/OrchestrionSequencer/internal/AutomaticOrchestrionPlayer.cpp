@@ -33,13 +33,23 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
     IOrchestrionSequencer &sequencer)
     : m_sequencer{sequencer}
 {
-  sequencer.AboutToJumpPosition().onReceive(this,
-                                            [this](int /*tick*/)
-                                            {
-                                              ++m_generation;
-                                              if (!m_firingInputEvents)
-                                                ScheduleNext();
-                                            });
+  sequencer.AboutToJumpPosition().onReceive(
+      this,
+      [this](int /*tick*/)
+      {
+        ++m_generation;
+        if (m_selfJump)
+          return; // the replay's own rewind to the take's start
+        if (m_replayActive)
+        {
+          // The user navigated away mid-replay: end it.
+          m_replayActive = false;
+          dispatcher()->dispatch("stop");
+          return;
+        }
+        if (!m_firingInputEvents)
+          ScheduleNext();
+      });
 
   playbackController()->isPlayingChanged().onNotify(
       this,
@@ -49,9 +59,73 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
         if (m_playing)
         {
           ++m_generation;
-          ScheduleNext();
+          if (m_replayTake)
+            StartReplay();
+          else
+            ScheduleNext();
         }
+        else
+          m_replayActive = false; // pause ends the replay; play restarts it
       });
+}
+
+void AutomaticOrchestrionPlayer::SetReplayTake(std::optional<ReplayTake> take)
+{
+  m_replayTake = std::move(take);
+  if (!m_replayTake)
+    m_replayActive = false;
+}
+
+void AutomaticOrchestrionPlayer::StartReplay()
+{
+  m_replayActive = true;
+  m_replayIndex = 0;
+  m_selfJump = true;
+  m_sequencer.GoToTick(m_replayTake->startTick);
+  m_selfJump = false;
+  m_replayClock.start();
+  ScheduleReplayNext();
+}
+
+void AutomaticOrchestrionPlayer::ScheduleReplayNext()
+{
+  if (m_replayIndex >= m_replayTake->events.size())
+  {
+    dispatcher()->dispatch("stop");
+    m_playing = false;
+    m_replayActive = false;
+    return;
+  }
+
+  // Schedule against the replay's absolute clock, not event-to-event deltas,
+  // so timer latency doesn't accumulate: the whole point of the replay is
+  // letting the user judge the performance's timing by ear.
+  const int delay = static_cast<int>(m_replayTake->events[m_replayIndex].ms -
+                                     m_replayClock.elapsed());
+  if (delay > 0)
+  {
+    const int gen = m_generation;
+    QTimer::singleShot(delay, Qt::PreciseTimer,
+                       [this, gen]
+                       {
+                         if (gen == m_generation)
+                           FireReplayEvent();
+                       });
+  }
+  else
+    FireReplayEvent();
+}
+
+void AutomaticOrchestrionPlayer::FireReplayEvent()
+{
+  if (!m_playing || !m_replayActive)
+    return;
+  const ReplayEvent &event = m_replayTake->events[m_replayIndex];
+  m_sequencer.OnInputEvent(event.type,
+                           event.isLeftHand ? leftHandPitch : rightHandPitch,
+                           event.velocity);
+  ++m_replayIndex;
+  ScheduleReplayNext();
 }
 
 void AutomaticOrchestrionPlayer::ScheduleNext()

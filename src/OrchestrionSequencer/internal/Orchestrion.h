@@ -47,11 +47,18 @@ private:
   muse::async::Notification sequencerChanged() const override;
   void setSequencer(IOrchestrionSequencerPtr sequencer);
   IModifiableItemRegistryPtr modifiableItemRegistry() const override;
+  void setReplayTake(std::optional<ReplayTake> take) override;
+  bool isReplaying() const override;
+  PlayMode playMode() const override;
+  void setPlayMode(PlayMode mode) override;
+  muse::async::Notification playModeChanged() const override;
 
 private:
   IOrchestrionSequencerPtr m_sequencer;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
   std::unique_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   muse::async::Notification m_sequencerChanged;
+  PlayMode m_playMode = PlayMode::replayPerformance;
+  muse::async::Notification m_playModeChanged;
 };
 } // namespace dgk

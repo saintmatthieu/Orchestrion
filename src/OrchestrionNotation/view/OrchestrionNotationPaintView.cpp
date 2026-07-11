@@ -52,6 +52,10 @@ constexpr int leftHandPitch = 59;
 // (each step is a full horizontal relayout — cheap in linear view mode).
 constexpr int warpAnimSteps = 18;
 constexpr int warpAnimStepMs = 40;
+
+// The post-take beat grid: one line per quarter note (the sequencer's tick
+// resolution is 480 per quarter).
+constexpr int beatGridTicks = 480;
 } // namespace
 
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
@@ -92,6 +96,33 @@ void OrchestrionNotationPaintView::subscribe(
       {
         if (event.type == NoteEventType::noteOn)
           m_pendingHandVelocity[event.isLeftHand ? 1 : 0] = event.velocity;
+
+        // Record the take's raw events, for the post-take replay. A note-on
+        // while the previous take's stats are stale begins a new take (this
+        // event precedes the transitions batch that restarts the stats).
+        if (orchestrion()->isReplaying())
+          return; // the replay's own events aren't a new performance
+        const bool newTake = event.type == NoteEventType::noteOn &&
+                             (m_timingStatsStale || m_replayEvents.empty());
+        if (newTake)
+        {
+          m_replayEvents.clear();
+          m_replayClock.restart();
+          m_replayStartTick = std::numeric_limits<int>::max();
+          m_takeOver = false;
+          // From here on, the play button is the metronomic playback again —
+          // until this take, in turn, is over.
+          orchestrion()->setReplayTake(std::nullopt);
+        }
+        else if (m_replayEvents.empty())
+          return; // a stray release before any take began
+        m_replayEvents.push_back(
+            {newTake ? 0 : static_cast<int>(m_replayClock.elapsed()),
+             event.type, event.isLeftHand, event.velocity});
+        // A release arriving after the take ended still belongs to it: keep
+        // the pushed copy complete, so replayed notes don't ring forever.
+        if (m_timingStatsStale && !newTake)
+          pushReplayTake();
       });
 
   if (const auto &transitions = sequencer.GetCurrentTransitions();
@@ -114,7 +145,7 @@ void OrchestrionNotationPaintView::subscribe(
                                               // stats restart when playing
                                               // resumes (readable until then).
                                               m_timingStatsStale = true;
-                                              bakePerformanceWarp();
+                                              endTake();
                                               // The jump's transitions batch
                                               // repopulates the ledger.
                                               m_autoTrackTargets.clear();
@@ -131,6 +162,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   // of all onsets (sounding or upcoming) feed the one-shot initial framing.
   std::map<int /*staff*/, TempoFollower::Onset> presentOnsets;
   std::map<int /*staff*/, int> presentScoreTicks; // engraved position
+  std::map<int /*staff*/, const mu::engraving::EngravingItem *> presentAnchors;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
   // Where to place a hand's timing gauge if its onset gets judged: the union
@@ -243,10 +275,16 @@ void OrchestrionNotationPaintView::OnTransitions(
               onsetX, static_cast<double>(present->GetBeginTick().withRepeats),
               velocity ? std::make_optional<double>(*velocity) : std::nullopt};
           presentScoreTicks[hand] = segment->tick().ticks();
+          presentAnchors[hand] = el;
         }
       }
     }
   }
+
+  // A replay of the finished take: the review visuals (marks, ribbon, warp,
+  // stats) stay frozen for comparison with what is heard; only the follower
+  // (scroll) and the note highlights track the replayed events.
+  const bool replaying = orchestrion()->isReplaying();
 
   const TempoFollower::Feedback feedback =
       m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
@@ -254,9 +292,14 @@ void OrchestrionNotationPaintView::OnTransitions(
   m_pendingHandVelocity[0].reset();
   m_pendingHandVelocity[1].reset();
 
+  // Track the take's earliest struck score tick: where its replay rewinds to.
+  if (!replaying)
+    for (const auto &[staff, tick] : presentScoreTicks)
+      m_replayStartTick = std::min(m_replayStartTick, tick);
+
   // Playing has resumed after an interruption: the error stats start a fresh
   // take. (It stays readable while interrupted; only the resume clears it.)
-  if (m_timingStatsStale && !presentOnsets.empty())
+  if (m_timingStatsStale && !presentOnsets.empty() && !replaying)
   {
     m_timingOverlay.reset();
     m_timingStatsStale = false;
@@ -264,34 +307,39 @@ void OrchestrionNotationPaintView::OnTransitions(
     m_takeOnsetRecords.clear();
     clearPerformanceWarp();
     dismissFinalScore();
+    emit smoothingTunerVisibleChanged();
   }
 
   // The game feedback: an error gauge next to the struck notes — above the
   // staff for the right hand, below for the left — and the hand's revised
   // judgments into the overlay (moving still-showing markers, re-binning the
   // box plot). The newest onset's judgment is the window's last.
-  if (sequencerConfiguration()->timingFeedbackEnabled())
+  if (sequencerConfiguration()->timingFeedbackEnabled() && !replaying)
   {
-    for (const auto &[staff, window] : feedback.judgments)
+    // Every sounding manual onset gets its marks (gauge, ribbon point, take
+    // record) up front, in a pending state: the judgments fill them in as
+    // they arrive — retroactively for the take's first onsets, which are
+    // only judged once the spline has warmed up.
+    for (const auto &[staff, tMs] : feedback.onsetTMs)
     {
-      if (window.empty())
-        continue;
       if (const auto it = staffHits.find(staff); it != staffHits.end())
       {
         const StaffHit &hit = it->second;
         const bool below = staff > 0; // left hand
-        m_timingOverlay.addGauge(staff, window.back().tMs, hit.rect,
-                                 hit.spatium, window.back().errorMs, below,
+        m_timingOverlay.addGauge(staff, tMs, hit.rect, hit.spatium, below,
                                  below ? hit.staffBottom : hit.staffTop,
                                  hit.items);
       }
       if (const auto tickIt = presentScoreTicks.find(staff);
           tickIt != presentScoreTicks.end())
-        m_takeOnsetRecords.push_back({staff, window.back().tMs,
-                                      tickIt->second,
-                                      presentOnsets.at(staff).tick});
-      m_timingOverlay.updateJudgments(staff, window);
+        m_takeOnsetRecords.push_back(
+            {staff, tMs, tickIt->second, presentOnsets.at(staff).tick,
+             static_cast<double>(m_replayClock.elapsed()),
+             presentAnchors.at(staff)});
     }
+    for (const auto &[staff, window] : feedback.judgments)
+      if (!window.empty())
+        m_timingOverlay.updateJudgments(staff, window);
     if (feedback.handSync && sequencerConfiguration()->handSyncScoreEnabled())
       m_timingOverlay.addSyncSample(feedback.handSync->tMs,
                                     feedback.handSync->errorMs);
@@ -306,7 +354,8 @@ void OrchestrionNotationPaintView::OnTransitions(
   // transition is a *present* state carrying no future, so both must be
   // absent to distinguish the true end; a mid-piece release holds a future
   // chord or a present rest instead.)
-  if (!m_finalScoreShown && sequencerConfiguration()->timingFeedbackEnabled())
+  if (!m_finalScoreShown && !replaying &&
+      sequencerConfiguration()->timingFeedbackEnabled())
     if (const auto sequencer = orchestrion()->sequencer())
     {
       const auto &current = sequencer->GetCurrentTransitions();
@@ -325,12 +374,17 @@ void OrchestrionNotationPaintView::OnTransitions(
           m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
           emit finalScoreChanged();
         }
-        // The take is over: morph the page onto its fitted tempo curve.
-        bakePerformanceWarp();
+        // The take is over: review time.
+        endTake();
       }
     }
 
-  updateAutoTargets(transitions);
+  if (replaying)
+    // The recorded take already contains the auto hand's events: keep the
+    // follower's auto-play trigger quiet so they don't fire twice.
+    m_follower.setAutoTargets(std::nullopt, std::nullopt);
+  else
+    updateAutoTargets(transitions);
 }
 
 void OrchestrionNotationPaintView::updateAutoTargets(
@@ -373,8 +427,97 @@ void OrchestrionNotationPaintView::updateAutoTargets(
   m_follower.setAutoTargets(offTick, onTick);
 }
 
-void OrchestrionNotationPaintView::bakePerformanceWarp()
+void OrchestrionNotationPaintView::endTake()
 {
+  m_takeOver = true;
+  pushReplayTake();
+  bakePerformanceWarp();
+}
+
+void OrchestrionNotationPaintView::pushReplayTake()
+{
+  if (m_replayEvents.empty() ||
+      m_replayStartTick == std::numeric_limits<int>::max())
+    return;
+  switch (orchestrion()->playMode())
+  {
+  case PlayMode::replayPerformance:
+    orchestrion()->setReplayTake(ReplayTake{m_replayStartTick, m_replayEvents});
+    break;
+  case PlayMode::replayFittedTempo:
+    orchestrion()->setReplayTake(
+        ReplayTake{m_replayStartTick, fittedTempoEvents()});
+    break;
+  case PlayMode::metronome:
+    orchestrion()->setReplayTake(std::nullopt);
+    break;
+  }
+}
+
+std::vector<ReplayEvent> OrchestrionNotationPaintView::fittedTempoEvents() const
+{
+  // Per hand, the take onsets' final fitted errors over the recording's
+  // clock. (Staff 0 is the right hand, the rest the left — the same grouping
+  // that routes the input events.)
+  std::map<bool /*isLeft*/, std::vector<std::pair<double, double>>> errors;
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    if (const auto error = m_timingOverlay.takeErrorAt(record.staff, record.tMs))
+      errors[record.staff > 0].emplace_back(record.eventMs, *error);
+  for (auto &[isLeft, series] : errors)
+    std::sort(series.begin(), series.end());
+
+  // The fitted error at any event time, by linear interpolation between the
+  // hand's onsets (clamped at the take's ends). The auto-played hand has no
+  // judgments, hence no series: its events replay as recorded.
+  const auto errorAt = [&errors](bool isLeft, double ms)
+  {
+    const auto it = errors.find(isLeft);
+    if (it == errors.end() || it->second.empty())
+      return 0.0;
+    const auto &series = it->second;
+    if (ms <= series.front().first)
+      return series.front().second;
+    if (ms >= series.back().first)
+      return series.back().second;
+    const auto next = std::lower_bound(series.begin(), series.end(),
+                                       std::make_pair(ms, 0.0));
+    const auto prev = std::prev(next);
+    const double span = next->first - prev->first;
+    const double frac = span > 0.0 ? (ms - prev->first) / span : 0.0;
+    return prev->second + frac * (next->second - prev->second);
+  };
+
+  std::vector<ReplayEvent> events = m_replayEvents;
+  // error = actual − fitted, so the fitted arrival is the shift-back.
+  double lastMs[2] = {-std::numeric_limits<double>::infinity(),
+                      -std::numeric_limits<double>::infinity()};
+  for (ReplayEvent &event : events)
+  {
+    double ms = event.ms - errorAt(event.isLeftHand, event.ms);
+    // Keep each hand's event order: a release hopping over the next strike
+    // would make the sequencer cut the wrong chord.
+    double &prev = lastMs[event.isLeftHand ? 1 : 0];
+    ms = std::max(ms, prev);
+    prev = ms;
+    event.ms = static_cast<int>(std::lround(ms));
+  }
+  std::stable_sort(events.begin(), events.end(),
+                   [](const ReplayEvent &a, const ReplayEvent &b)
+                   { return a.ms < b.ms; });
+  if (!events.empty())
+  {
+    const int firstMs = events.front().ms;
+    for (ReplayEvent &event : events)
+      event.ms -= firstMs;
+  }
+  return events;
+}
+
+void OrchestrionNotationPaintView::bakePerformanceWarp(bool animate)
+{
+  // The take is (or may be) over: the tuning slider shows/hides with it.
+  emit smoothingTunerVisibleChanged();
+
   if (m_warpBaked ||
       !sequencerConfiguration()->timeProportionalSpacingEnabled() ||
       m_takeOnsetRecords.size() < 2)
@@ -438,8 +581,78 @@ void OrchestrionNotationPaintView::bakePerformanceWarp()
 
   m_warpTable = std::move(table);
   m_warpBaked = true;
-  m_warpProgress = 0.0;
-  m_warpTimer.start();
+  if (animate)
+  {
+    m_warpProgress = 0.0;
+    m_warpTimer.start();
+    return;
+  }
+
+  // Instant (re-tuning): apply the final table in one step.
+  m_warpTimer.stop();
+  m_warpProgress = 1.0;
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (const auto master =
+          masterNotation ? masterNotation->masterScore() : nullptr)
+  {
+    master->setLayoutTickWarp(m_warpTable);
+    master->doLayout();
+  }
+  m_timingOverlay.setWarpProgress(1.0);
+  constrainScorePosition();
+  update();
+}
+
+void OrchestrionNotationPaintView::retuneTake()
+{
+  if (m_takeOnsetRecords.empty())
+    return;
+  const double memory = sequencerConfiguration()->tempoSmoothingMemory();
+
+  // Per staff, the take's raw observations, in onset order.
+  std::map<int, std::vector<std::pair<double, double>>> observations;
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    observations[record.staff].emplace_back(record.tMs, record.utick);
+  for (const auto &[staff, obs] : observations)
+  {
+    const auto window = TempoFollower::refitTake(obs, memory);
+    if (!window.empty())
+      m_timingOverlay.updateJudgments(staff, window);
+  }
+
+  // The layout warp and the fitted-tempo replay derive from the fitted
+  // errors: rebuild them in place, without the animation.
+  if (m_warpBaked)
+  {
+    m_warpBaked = false;
+    bakePerformanceWarp(false);
+  }
+  if (m_takeOver)
+    pushReplayTake();
+  update();
+}
+
+bool OrchestrionNotationPaintView::smoothingTunerVisible() const
+{
+  return (m_timingStatsStale || m_finalScoreShown) &&
+         !m_takeOnsetRecords.empty() &&
+         sequencerConfiguration()->timingFeedbackEnabled();
+}
+
+double OrchestrionNotationPaintView::tempoSmoothing() const
+{
+  return sequencerConfiguration()->tempoSmoothingMemory();
+}
+
+void OrchestrionNotationPaintView::setTempoSmoothing(double memory)
+{
+  memory = std::clamp(memory, 0.05, 0.98);
+  if (qFuzzyCompare(memory, sequencerConfiguration()->tempoSmoothingMemory()))
+    return;
+  sequencerConfiguration()->setTempoSmoothingMemory(memory);
+  m_follower.setSmootherMemory(memory); // future takes fit live with it
+  retuneTake();                         // this take re-fits right now
+  emit tempoSmoothingChanged();
 }
 
 void OrchestrionNotationPaintView::applyWarpStep()
@@ -656,7 +869,7 @@ void OrchestrionNotationPaintView::onMousePressed(
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   m_follower.suspend();     // ...and hands auto-scroll control back to the user
   m_timingStatsStale = true; // timing stats restart when playing resumes
-  bakePerformanceWarp();     // an interruption ends the take: review time
+  endTake();                 // an interruption ends the take: review time
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
   const mu::notation::EngravingItem *hitElement =
@@ -934,7 +1147,7 @@ void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
   // once playing resumes, and ends the take: review time.
   m_follower.suspend();
   m_timingStatsStale = true;
-  bakePerformanceWarp();
+  endTake();
 
   // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
   // Ctrl-modified wheel event) zooms the score in/out about the cursor.
@@ -1063,6 +1276,18 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
 
   sequencerConfiguration()->tempoVisualizationEnabledChanged().onNotify(
       this, [this] { emit tempoVisualizationEnabledChanged(); });
+
+  m_follower.setSmootherMemory(
+      sequencerConfiguration()->tempoSmoothingMemory());
+
+  // Re-arm (or disarm) the finished take when the play mode changes. A
+  // half-recorded take stays unarmed; endTake will push it with the new mode.
+  orchestrion()->playModeChanged().onNotify(this,
+                                            [this]
+                                            {
+                                              if (m_takeOver)
+                                                pushReplayTake();
+                                            });
 
   m_timingOverlay.setPersistent(
       sequencerConfiguration()->persistentTimingMarksEnabled());
@@ -1223,7 +1448,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
     m_userDefaultScaling = newMatrix.m11();
     m_follower.suspend();
     m_timingStatsStale = true;
-    bakePerformanceWarp();
+    endTake();
   }
 
   constrainScorePosition();
@@ -1261,8 +1486,13 @@ void OrchestrionNotationPaintView::updateNotation()
   m_finalScoreShown = false;
   m_autoTrackTargets.clear();
   m_takeOnsetRecords.clear();
+  m_replayEvents.clear();
+  m_replayStartTick = std::numeric_limits<int>::max();
+  m_takeOver = false;
+  orchestrion()->setReplayTake(std::nullopt);
   clearPerformanceWarp();
   dismissFinalScore();
+  emit smoothingTunerVisibleChanged();
   update();
 }
 
@@ -1321,6 +1551,52 @@ double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
   return std::clamp(desiredLeftX, minLeft, maxLeft);
 }
 
+void OrchestrionNotationPaintView::paintBeatLines(QPainter *painter)
+{
+  if (!m_takeOver || m_takeOnsetRecords.size() < 2)
+    return;
+
+  // The onsets' (utick, live x): the anchors are the engraved elements, so
+  // the grid follows the warp morph and the γ-slider re-fits. Between
+  // onsets, both the utick→x layout and the utick→time fit are linear, so
+  // beats interpolate exactly.
+  std::vector<std::pair<double, double>> points;
+  points.reserve(m_takeOnsetRecords.size());
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    if (record.anchor)
+      points.emplace_back(record.utick,
+                          record.anchor->pageBoundingRect().center().x());
+  std::sort(points.begin(), points.end());
+  if (points.size() < 2)
+    return;
+
+  const QRectF view = viewport().toQRectF();
+  painter->save();
+  QPen pen(QColor(90, 43, 37, 60)); // faint mahogany hairline
+  pen.setWidthF(0.0);
+  pen.setCosmetic(true);
+  painter->setPen(pen);
+
+  auto lower = points.begin();
+  for (double beat =
+           std::ceil(points.front().first / beatGridTicks) * beatGridTicks;
+       beat <= points.back().first; beat += beatGridTicks)
+  {
+    while (lower + 1 != points.end() && (lower + 1)->first <= beat)
+      ++lower;
+    if (lower + 1 == points.end())
+      break;
+    const auto &[u0, x0] = *lower;
+    const auto &[u1, x1] = *(lower + 1);
+    // x jumping backwards = a repeat seam: no grid across the page jump.
+    if (u1 <= u0 || x1 < x0)
+      continue;
+    const double x = x0 + (beat - u0) / (u1 - u0) * (x1 - x0);
+    painter->drawLine(QPointF(x, view.top()), QPointF(x, view.bottom()));
+  }
+  painter->restore();
+}
+
 void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
 {
   // Called by the base view once the painter carries the score's world
@@ -1328,6 +1604,7 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
   paintLoopRegionUnderlay(painter);
+  paintBeatLines(painter);
 
   if (m_boxes.empty() && m_fader.empty())
     return;

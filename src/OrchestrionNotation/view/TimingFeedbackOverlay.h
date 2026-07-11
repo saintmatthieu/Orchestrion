@@ -81,9 +81,11 @@ public:
   //! resp. top line, page-logical y), which the ruler keeps clear of.
   //! \p items are the struck notes' engraving items, repainted as the warped
   //! ghost / actual copies when shadows are enabled (see setShadowsEnabled).
+  //! Created for every onset, from the take's very first — in a pending
+  //! state, drawn only once its first judgment arrives with the spline
+  //! warm-up (retroactively for the earliest onsets).
   void addGauge(int staff, double onsetTMs, const QRectF &noteRect,
-                double spatium, double errorMs, bool belowStaff,
-                double staffEdgeY,
+                double spatium, bool belowStaff, double staffEdgeY,
                 std::vector<mu::engraving::EngravingItem *> items);
 
   //! Shadow copies of the played notes' symbols, meaningful only with the
@@ -191,6 +193,7 @@ private:
     double centerY;  // logical y of the ruler's zero mark
     double spatium;  // score staff-space unit: sizes the ruler
     double errorMs;  // latest verdict; revised while the gauge shows
+    bool judged;     // false (and the gauge hidden) until the first verdict
     // The loudness verdict (velocity fraction, + = too loud), shown as a ring
     // on the same ruler; absent for velocity-less gestures.
     std::optional<double> dynamicsError;
@@ -274,6 +277,7 @@ private:
     double warpMs = 0.0;  // fitted deviation (the curve)
     double errorMs = 0.0; // + residual = the dot
     double bpm = 0.0;     // fitted tempo, for the curve tooltip
+    bool judged = false;  // hidden until the first verdict arrives
   };
   std::map<int /*staff*/, std::vector<RibbonPoint>> _ribbon;
   std::map<int /*staff*/, double> _ribbonBaselineY; // the lane's zero line

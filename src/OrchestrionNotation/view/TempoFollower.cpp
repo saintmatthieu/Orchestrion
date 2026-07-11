@@ -55,6 +55,45 @@ constexpr double smoothDelayIntervals = 4.0;
 // tracker's own continuity offset.
 constexpr double anchorOffsetDecayMs = 1000.0;
 
+//! Judge every onset in \p smoother's window against its spline — shared by
+//! the live per-onset path and the whole-take offline re-fit. Empty while
+//! the window is warming up.
+std::vector<TempoFollower::Judgment> judgeWindow(const TempoSmoother &smoother)
+{
+  std::vector<TempoFollower::Judgment> window;
+  if (smoother.knots().size() < judgeMinKnots)
+    return window;
+  const auto &knots = smoother.knots();
+  const auto residuals = smoother.residuals();
+  // The window's constant-tempo reference: the straight line through its
+  // end knots — the timeline the time-proportional layout represents.
+  const double t0 = knots.front().time;
+  const double p0 = knots.front().position;
+  const double refSpan = knots.back().time - t0;
+  const double refTempo =
+      refSpan > 0.0 ? (knots.back().position - p0) / refSpan : 0.0;
+  window.reserve(residuals.size());
+  for (std::size_t i = 0; i < residuals.size(); ++i)
+  {
+    const auto &r = residuals[i];
+    if (r.velocity <= 1e-9)
+      continue;
+    // Residual in ticks, negated into an arrival-time error: a note whose
+    // tick the curve hasn't reached yet arrived early (− ms).
+    const double errorMs = -r.error / r.velocity;
+    // The tempo warp: where the fitted arrival time falls on the reference
+    // timeline, minus the notated tick — the smooth part of the note's
+    // displacement; the residual is the jittery rest.
+    const double fittedArrival = r.time - errorMs;
+    const double notatedTick = knots[i].position + r.error;
+    const double warpTicks = p0 + refTempo * (fittedArrival - t0) - notatedTick;
+    window.push_back({r.time, errorMs, warpTicks, refTempo * errorMs,
+                      refTempo > 1e-9 ? warpTicks / refTempo : 0.0,
+                      r.velocity * (60000.0 / ticksPerQuarter)});
+  }
+  return window;
+}
+
 // The smoothed tempo curve pushed to the visualization, as a dense polyline
 // (the view stays ignorant of the spline's cubic segments).
 std::vector<TempoFollower::VizSink::CurvePoint>
@@ -79,6 +118,21 @@ TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
   _clock.start();
   _timer.setInterval(16); // ~60 fps
   _timer.callOnTimeout([this] { tick(); });
+}
+
+std::vector<TempoFollower::Judgment> TempoFollower::refitTake(
+    const std::vector<std::pair<double, double>> &observations, double memory)
+{
+  TempoSmoother smoother(memory, std::numeric_limits<std::size_t>::max(),
+                         std::numeric_limits<double>::max());
+  for (const auto &[tMs, utick] : observations)
+    smoother.addObservation(tMs, utick);
+  return judgeWindow(smoother);
+}
+
+void TempoFollower::setSmootherMemory(double memory)
+{
+  _smootherMemory = memory;
 }
 
 TempoFollower::Feedback
@@ -106,7 +160,8 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
   const double now = static_cast<double>(_clock.elapsed());
   for (const auto &[track, onset] : presentOnsets)
   {
-    Hand &hand = _hands[track];
+    Hand &hand =
+        _hands.try_emplace(track, Hand{_smootherMemory}).first->second;
     const double onsetX = onset.x;
     if (onsetX == hand.lastOnsetX)
       continue;
@@ -156,38 +211,10 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     // onset, (re-)measure *every* onset still in the window against it. A
     // smooth tempo bend is part of the curve, not an error; and each note's
     // verdict keeps refining as later notes lend it hindsight.
-    if (!isAutoHand && hand.tempoSmoother.knots().size() >= judgeMinKnots)
+    if (!isAutoHand)
     {
-      const auto &knots = hand.tempoSmoother.knots();
-      const auto residuals = hand.tempoSmoother.residuals();
-      // The window's constant-tempo reference: the straight line through its
-      // end knots — the timeline the time-proportional layout represents.
-      const double t0 = knots.front().time;
-      const double p0 = knots.front().position;
-      const double refSpan = knots.back().time - t0;
-      const double refTempo =
-          refSpan > 0.0 ? (knots.back().position - p0) / refSpan : 0.0;
-      std::vector<Judgment> window;
-      window.reserve(residuals.size());
-      for (std::size_t i = 0; i < residuals.size(); ++i)
-      {
-        const auto &r = residuals[i];
-        if (r.velocity <= 1e-9)
-          continue;
-        // Residual in ticks, negated into an arrival-time error: a note
-        // whose tick the curve hasn't reached yet arrived early (− ms).
-        const double errorMs = -r.error / r.velocity;
-        // The tempo warp: where the fitted arrival time falls on the
-        // reference timeline, minus the notated tick — the smooth part of
-        // the note's displacement; the residual is the jittery rest.
-        const double fittedArrival = r.time - errorMs;
-        const double notatedTick = knots[i].position + r.error;
-        const double warpTicks =
-            p0 + refTempo * (fittedArrival - t0) - notatedTick;
-        window.push_back({r.time, errorMs, warpTicks, refTempo * errorMs,
-                          refTempo > 1e-9 ? warpTicks / refTempo : 0.0,
-                          r.velocity * (60000.0 / ticksPerQuarter)});
-      }
+      feedback.onsetTMs[track] = now;
+      auto window = judgeWindow(hand.tempoSmoother);
       if (!window.empty())
         feedback.judgments[track] = std::move(window);
     }

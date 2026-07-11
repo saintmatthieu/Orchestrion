@@ -43,6 +43,8 @@ const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
 const muse::Settings::Key AUTO_PLAYED_STAFF(module_name, "AUTO_PLAYED_STAFF");
 const muse::Settings::Key TIME_PROPORTIONAL_SPACING_ENABLED(
     module_name, "TIME_PROPORTIONAL_SPACING_ENABLED");
+const muse::Settings::Key TEMPO_SMOOTHING_MEMORY(module_name,
+                                                 "TEMPO_SMOOTHING_MEMORY");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 } // namespace
@@ -107,6 +109,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(TIME_PROPORTIONAL_SPACING_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_timeProportionalSpacingEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(TEMPO_SMOOTHING_MEMORY, muse::Val{0.6});
+  muse::settings()
+      ->valueChanged(TEMPO_SMOOTHING_MEMORY)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_tempoSmoothingMemoryChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
@@ -262,6 +270,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::timeProportionalSpacingEnabledChanged() const
 {
   return m_timeProportionalSpacingEnabledChanged;
+}
+
+double OrchestrionSequencerConfiguration::tempoSmoothingMemory() const
+{
+  return muse::settings()->value(TEMPO_SMOOTHING_MEMORY).toDouble();
+}
+
+void OrchestrionSequencerConfiguration::setTempoSmoothingMemory(double memory)
+{
+  muse::settings()->setSharedValue(TEMPO_SMOOTHING_MEMORY, muse::Val{memory});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::tempoSmoothingMemoryChanged() const
+{
+  return m_tempoSmoothingMemoryChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

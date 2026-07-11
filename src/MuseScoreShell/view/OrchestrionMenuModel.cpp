@@ -128,6 +128,10 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  orchestrion()->playModeChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -428,10 +432,46 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       autoplayLeftItem,
       autoplayRightItem,
       proportionalSpacingItem,
+      makePlayModeSubmenu(orchestrion()->playMode()),
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
+}
+
+muse::uicomponents::MenuItem *
+OrchestrionMenuModel::makePlayModeSubmenu(PlayMode current)
+{
+  using namespace muse::uicomponents;
+  QList<MenuItem *> items;
+  const auto addItem =
+      [this, &items, current](const char *actionCode,
+                              const muse::TranslatableString &title,
+                              PlayMode mode)
+  {
+    auto *const item = makeMenuItem(actionCode, title);
+    IF_ASSERT_FAILED(item) return;
+    item->setSelectable(true);
+    item->setSelected(mode == current);
+    items.append(item);
+  };
+
+  addItem(actionIds::playModePerformance,
+          muse::TranslatableString("appshell/menu/advanced",
+                                   "Replay performance"),
+          PlayMode::replayPerformance);
+  addItem(actionIds::playModeFittedTempo,
+          muse::TranslatableString("appshell/menu/advanced",
+                                   "Replay at fitted tempo"),
+          PlayMode::replayFittedTempo);
+  addItem(actionIds::playModeMetronome,
+          muse::TranslatableString("appshell/menu/advanced",
+                                   "Metronomic playback"),
+          PlayMode::metronome);
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/advanced", "Play &button mode"),
+      items, "menu-orchestrion-play-mode");
 }
 
 muse::uicomponents::MenuItem *

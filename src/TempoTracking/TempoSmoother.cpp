@@ -25,12 +25,6 @@ namespace dgk
 {
 namespace
 {
-// Window bounds: enough onsets that the visible part of the curve (a few
-// seconds) is fully covered and the window edge is far from the recent knots
-// the callers read; small enough that a re-smooth stays trivial.
-constexpr std::size_t maxKnots = 64;
-constexpr double maxWindowMs = 12000.0;
-
 // Diffuse initial velocity variance: the first onset pins position only; the
 // second effectively determines the velocity through the correlation this
 // large prior allows. Large against the velocity information two onsets carry
@@ -40,15 +34,19 @@ constexpr double maxWindowMs = 12000.0;
 constexpr double bigVelocityVariance = 1e4;
 } // namespace
 
-TempoSmoother::TempoSmoother(double memory) : _memory(memory) {}
+TempoSmoother::TempoSmoother(double memory, std::size_t maxKnots,
+                             double maxWindowMs)
+    : _memory(memory), _maxKnots(maxKnots), _maxWindowMs(maxWindowMs)
+{
+}
 
 void TempoSmoother::addObservation(double realTime, double musicalPos)
 {
   if (!_obs.empty() && realTime <= _obs.back().time)
     return;
   _obs.push_back({realTime, musicalPos});
-  while (_obs.size() > maxKnots ||
-         _obs.back().time - _obs.front().time > maxWindowMs)
+  while (_obs.size() > _maxKnots ||
+         _obs.back().time - _obs.front().time > _maxWindowMs)
     _obs.pop_front();
   smooth();
 }

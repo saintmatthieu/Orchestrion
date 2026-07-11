@@ -333,6 +333,50 @@ ApplicationWindow {
                         onActivated: notationPaintView.dismissFinalScore()
                     }
                 }
+
+                // Post-take tuning panel: the tempo model's smoothing memory.
+                // Dragging the slider re-fits the finished take live, so the
+                // effect on the curve, marks and warp is directly observable.
+                Rectangle {
+                    id: smoothingTuner
+                    z: 104
+
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 24
+                    width: tunerRow.width + 48
+                    height: tunerRow.height + 24
+                    radius: height / 2
+                    color: "#E8241811"
+                    border.color: "#E5B84B"
+                    border.width: 1
+                    visible: opacity > 0
+                    opacity: notationPaintView.smoothingTunerVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    Row {
+                        id: tunerRow
+                        anchors.centerIn: parent
+                        spacing: 12
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("tempo smoothing: %1")
+                                      .arg(notationPaintView.tempoSmoothing.toFixed(2))
+                            color: "#C9B583"
+                            font.pixelSize: 15
+                        }
+
+                        Slider {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 220
+                            from: 0.3
+                            to: 0.95
+                            value: notationPaintView.tempoSmoothing
+                            onMoved: notationPaintView.tempoSmoothing = value
+                        }
+                    }
+                }
             }
         }
 

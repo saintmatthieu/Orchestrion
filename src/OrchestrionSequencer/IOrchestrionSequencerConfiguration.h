@@ -94,6 +94,13 @@ public:
   virtual muse::async::Notification
   timeProportionalSpacingEnabledChanged() const = 0;
 
+  //! The tempo model's smoothing memory γ ∈ (0,1): how stiff the fitted
+  //! tempo spline is (higher = smoother, less tolerant of short-term
+  //! deviations). Tunable from the post-take slider; default 0.6.
+  virtual double tempoSmoothingMemory() const = 0;
+  virtual void setTempoSmoothingMemory(double) = 0;
+  virtual muse::async::Notification tempoSmoothingMemoryChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

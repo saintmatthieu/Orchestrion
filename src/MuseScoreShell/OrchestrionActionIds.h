@@ -35,4 +35,11 @@ static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
 static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
 static constexpr const char *reverbCathedral =
     "orchestrion-advanced-reverb-cathedral";
+
+static constexpr const char *playModePerformance =
+    "orchestrion-advanced-play-mode-performance";
+static constexpr const char *playModeFittedTempo =
+    "orchestrion-advanced-play-mode-fitted-tempo";
+static constexpr const char *playModeMetronome =
+    "orchestrion-advanced-play-mode-metronome";
 } // namespace dgk::actionIds
