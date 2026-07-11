@@ -60,6 +60,13 @@ jobs:
           variant: sccache
           key: ${{ runner.os }}-sccache
 
+      - name: Pre-populate harfbuzz cmake helper
+        shell: pwsh
+        run: |
+          $hbDir = "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz"
+          New-Item -ItemType Directory -Force -Path $hbDir | Out-Null
+          Copy-Item "${{github.workspace}}/buildscripts/harfbuzz.cmake" "$hbDir/harfbuzz.cmake"
+
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/build -G Ninja
@@ -165,6 +172,12 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-ccache
+
+      - name: Pre-populate harfbuzz cmake helper
+        run: |
+          mkdir -p "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz"
+          cp "${{github.workspace}}/buildscripts/harfbuzz.cmake" \
+             "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz/harfbuzz.cmake"
 
       - name: Configure CMake
         run: >
@@ -276,6 +289,12 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ runner.os }}-ccache
+
+      - name: Pre-populate harfbuzz cmake helper
+        run: |
+          mkdir -p "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz"
+          cp "${{github.workspace}}/buildscripts/harfbuzz.cmake" \
+             "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz/harfbuzz.cmake"
 
       - name: Configure CMake
         run: >
