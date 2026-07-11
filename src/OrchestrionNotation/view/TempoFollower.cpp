@@ -158,14 +158,36 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
     // verdict keeps refining as later notes lend it hindsight.
     if (!isAutoHand && hand.tempoSmoother.knots().size() >= judgeMinKnots)
     {
-      std::vector<Judgment> window;
+      const auto &knots = hand.tempoSmoother.knots();
       const auto residuals = hand.tempoSmoother.residuals();
+      // The window's constant-tempo reference: the straight line through its
+      // end knots — the timeline the time-proportional layout represents.
+      const double t0 = knots.front().time;
+      const double p0 = knots.front().position;
+      const double refSpan = knots.back().time - t0;
+      const double refTempo =
+          refSpan > 0.0 ? (knots.back().position - p0) / refSpan : 0.0;
+      std::vector<Judgment> window;
       window.reserve(residuals.size());
-      for (const auto &r : residuals)
-        if (r.velocity > 1e-9)
-          // Residual in ticks, negated into an arrival-time error: a note
-          // whose tick the curve hasn't reached yet arrived early (− ms).
-          window.push_back({r.time, -r.error / r.velocity});
+      for (std::size_t i = 0; i < residuals.size(); ++i)
+      {
+        const auto &r = residuals[i];
+        if (r.velocity <= 1e-9)
+          continue;
+        // Residual in ticks, negated into an arrival-time error: a note
+        // whose tick the curve hasn't reached yet arrived early (− ms).
+        const double errorMs = -r.error / r.velocity;
+        // The tempo warp: where the fitted arrival time falls on the
+        // reference timeline, minus the notated tick — the smooth part of
+        // the note's displacement; the residual is the jittery rest.
+        const double fittedArrival = r.time - errorMs;
+        const double notatedTick = knots[i].position + r.error;
+        const double warpTicks =
+            p0 + refTempo * (fittedArrival - t0) - notatedTick;
+        window.push_back({r.time, errorMs, warpTicks, refTempo * errorMs,
+                          refTempo > 1e-9 ? warpTicks / refTempo : 0.0,
+                          r.velocity * (60000.0 / ticksPerQuarter)});
+      }
       if (!window.empty())
         feedback.judgments[track] = std::move(window);
     }

@@ -388,6 +388,19 @@ Six consumers:
   curve and costs nothing; only deviation from the performer's own smooth
   curve registers (unit-tested: a played linear ramp leaves interior
   residuals a quarter of the causal filter's `a·Δ²/β` lag, under 5 ms).
+  On the time-proportional score layout the same data drives the *note
+  shadows*: each judged onset's symbols are repainted at their absolute
+  performance position (warp + residual, coloured by the error) while
+  playing; when the take is over, the fitted tempo curve is baked into the
+  score layout itself (a real re-layout via the fork's `MasterScore`
+  tick-warp table, animated — the page morphs to meet the coloured notes,
+  which stay put), leaving them at residual-only offsets from the warped
+  engraving. Tempo shape and jitter become visible directly on the page.
+  The *deviation ribbon* plots the interpolation itself along each staff's
+  gauge lane: the detrended fitted curve `T_fit(τ) − T_lin(τ)` (ms, adaptive
+  labelled scale), the onsets as dots at their actual deviations, and the
+  residual as each dot's connector to the curve — the early/late verdict as
+  geometry.
 - **Hand asynchrony**: with one spline per hand in the shared unrolled-tick
   coordinate, the hands' positions at the same instant should agree; the gap
   ÷ tempo is the asynchrony in ms ("melody lead" when signed), sampled per

@@ -68,6 +68,11 @@ private:
   void setAutoPlayedStaff(int) override;
   muse::async::Notification autoPlayedStaffChanged() const override;
 
+  bool timeProportionalSpacingEnabled() const override;
+  void setTimeProportionalSpacingEnabled(bool) override;
+  muse::async::Notification
+  timeProportionalSpacingEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
@@ -79,5 +84,6 @@ private:
   muse::async::Notification m_handSyncScoreEnabledChanged;
   muse::async::Notification m_dynamicsScoreEnabledChanged;
   muse::async::Notification m_autoPlayedStaffChanged;
+  muse::async::Notification m_timeProportionalSpacingEnabledChanged;
 };
 } // namespace dgk

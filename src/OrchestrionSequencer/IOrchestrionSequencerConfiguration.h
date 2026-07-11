@@ -85,6 +85,15 @@ public:
   virtual void setAutoPlayedStaff(int) = 0;
   virtual muse::async::Notification autoPlayedStaffChanged() const = 0;
 
+  //! When enabled, the score is laid out time-proportionally: horizontal
+  //! note spacing is determined by durations alone, so equal distance =
+  //! equal musical time (the canvas for the tempo-warped note overlays).
+  //! Off by default.
+  virtual bool timeProportionalSpacingEnabled() const = 0;
+  virtual void setTimeProportionalSpacingEnabled(bool) = 0;
+  virtual muse::async::Notification
+  timeProportionalSpacingEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

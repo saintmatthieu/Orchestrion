@@ -106,6 +106,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setAutoPlayedStaff(
                           sequencerConfig()->autoPlayedStaff() == 0 ? -1 : 0);
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-proportional-spacing",
+                    [this]
+                    {
+                      sequencerConfig()->setTimeProportionalSpacingEnabled(
+                          !sequencerConfig()->timeProportionalSpacingEnabled());
+                    });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
