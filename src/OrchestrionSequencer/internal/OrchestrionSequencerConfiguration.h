@@ -77,6 +77,10 @@ private:
   void setTempoSmoothingMemory(double) override;
   muse::async::Notification tempoSmoothingMemoryChanged() const override;
 
+  bool unrollRepeatsEnabled() const override;
+  void setUnrollRepeatsEnabled(bool) override;
+  muse::async::Notification unrollRepeatsEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
@@ -90,5 +94,6 @@ private:
   muse::async::Notification m_autoPlayedStaffChanged;
   muse::async::Notification m_timeProportionalSpacingEnabledChanged;
   muse::async::Notification m_tempoSmoothingMemoryChanged;
+  muse::async::Notification m_unrollRepeatsEnabledChanged;
 };
 } // namespace dgk
