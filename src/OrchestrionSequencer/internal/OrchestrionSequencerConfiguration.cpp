@@ -45,6 +45,8 @@ const muse::Settings::Key TIME_PROPORTIONAL_SPACING_ENABLED(
     module_name, "TIME_PROPORTIONAL_SPACING_ENABLED");
 const muse::Settings::Key TEMPO_SMOOTHING_MEMORY(module_name,
                                                  "TEMPO_SMOOTHING_MEMORY");
+const muse::Settings::Key UNROLL_REPEATS_ENABLED(module_name,
+                                                 "UNROLL_REPEATS_ENABLED");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 } // namespace
@@ -115,6 +117,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(TEMPO_SMOOTHING_MEMORY)
       .onReceive(this, [this](const muse::Val &)
                  { m_tempoSmoothingMemoryChanged.notify(); });
+
+  muse::settings()->setDefaultValue(UNROLL_REPEATS_ENABLED, muse::Val{true});
+  muse::settings()
+      ->valueChanged(UNROLL_REPEATS_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_unrollRepeatsEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 }
@@ -286,6 +294,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::tempoSmoothingMemoryChanged() const
 {
   return m_tempoSmoothingMemoryChanged;
+}
+
+bool OrchestrionSequencerConfiguration::unrollRepeatsEnabled() const
+{
+  return muse::settings()->value(UNROLL_REPEATS_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setUnrollRepeatsEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(UNROLL_REPEATS_ENABLED, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::unrollRepeatsEnabledChanged() const
+{
+  return m_unrollRepeatsEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const

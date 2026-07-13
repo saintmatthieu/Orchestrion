@@ -112,6 +112,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setTimeProportionalSpacingEnabled(
                           !sequencerConfig()->timeProportionalSpacingEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-unroll-repeats",
+                    [this]
+                    {
+                      sequencerConfig()->setUnrollRepeatsEnabled(
+                          !sequencerConfig()->unrollRepeatsEnabled());
+                    });
 
   dispatcher()->reg(
       this, actionIds::playModePerformance,

@@ -101,6 +101,15 @@ public:
   virtual void setTempoSmoothingMemory(double) = 0;
   virtual muse::async::Notification tempoSmoothingMemoryChanged() const = 0;
 
+  //! When enabled, a loaded score's repeats are unrolled in place — every
+  //! pass becomes its own engraved passage — so the deviation ribbon, beat
+  //! grid and layout warp carry through repeats without folding passes onto
+  //! the same bars. On by default; a change applies to the next loaded
+  //! score.
+  virtual bool unrollRepeatsEnabled() const = 0;
+  virtual void setUnrollRepeatsEnabled(bool) = 0;
+  virtual muse::async::Notification unrollRepeatsEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

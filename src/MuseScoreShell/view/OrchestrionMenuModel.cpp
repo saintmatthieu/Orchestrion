@@ -47,6 +47,8 @@ constexpr auto autoplayRightHandMenuId =
     "orchestrion-advanced-autoplay-right-hand";
 constexpr auto toggleProportionalSpacingMenuId =
     "orchestrion-advanced-toggle-proportional-spacing";
+constexpr auto toggleUnrollRepeatsMenuId =
+    "orchestrion-advanced-toggle-unroll-repeats";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -125,6 +127,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->unrollRepeatsEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -399,10 +405,9 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       sequencerConfiguration()->dynamicsScoreEnabled());
 
   const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
-  muse::uicomponents::MenuItem *const autoplayLeftItem =
-      makeMenuItem(autoplayLeftHandMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "Auto-play &left hand"));
+  muse::uicomponents::MenuItem *const autoplayLeftItem = makeMenuItem(
+      autoplayLeftHandMenuId, muse::TranslatableString("appshell/menu/advanced",
+                                                       "Auto-play &left hand"));
   autoplayLeftItem->setSelectable(true);
   autoplayLeftItem->setSelected(autoPlayedStaff == 1);
 
@@ -421,6 +426,14 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   proportionalSpacingItem->setSelected(
       sequencerConfiguration()->timeProportionalSpacingEnabled());
 
+  muse::uicomponents::MenuItem *const unrollRepeatsItem =
+      makeMenuItem(toggleUnrollRepeatsMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "&Unroll repeats"));
+  unrollRepeatsItem->setSelectable(true);
+  unrollRepeatsItem->setSelected(
+      sequencerConfiguration()->unrollRepeatsEnabled());
+
   const QList<MenuItem *> menu{
       item,
       noteInfoItem,
@@ -432,6 +445,7 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       autoplayLeftItem,
       autoplayRightItem,
       proportionalSpacingItem,
+      unrollRepeatsItem,
       makePlayModeSubmenu(orchestrion()->playMode()),
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
@@ -444,10 +458,9 @@ OrchestrionMenuModel::makePlayModeSubmenu(PlayMode current)
 {
   using namespace muse::uicomponents;
   QList<MenuItem *> items;
-  const auto addItem =
-      [this, &items, current](const char *actionCode,
-                              const muse::TranslatableString &title,
-                              PlayMode mode)
+  const auto addItem = [this, &items, current](
+                           const char *actionCode,
+                           const muse::TranslatableString &title, PlayMode mode)
   {
     auto *const item = makeMenuItem(actionCode, title);
     IF_ASSERT_FAILED(item) return;
@@ -456,18 +469,18 @@ OrchestrionMenuModel::makePlayModeSubmenu(PlayMode current)
     items.append(item);
   };
 
-  addItem(actionIds::playModePerformance,
-          muse::TranslatableString("appshell/menu/advanced",
-                                   "Replay performance"),
-          PlayMode::replayPerformance);
+  addItem(
+      actionIds::playModePerformance,
+      muse::TranslatableString("appshell/menu/advanced", "Replay performance"),
+      PlayMode::replayPerformance);
   addItem(actionIds::playModeFittedTempo,
           muse::TranslatableString("appshell/menu/advanced",
                                    "Replay at fitted tempo"),
           PlayMode::replayFittedTempo);
-  addItem(actionIds::playModeMetronome,
-          muse::TranslatableString("appshell/menu/advanced",
-                                   "Metronomic playback"),
-          PlayMode::metronome);
+  addItem(
+      actionIds::playModeMetronome,
+      muse::TranslatableString("appshell/menu/advanced", "Metronomic playback"),
+      PlayMode::metronome);
 
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "Play &button mode"),
