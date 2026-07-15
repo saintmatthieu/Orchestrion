@@ -985,19 +985,39 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
   // along the deviation curve tells the smoothed tempo there; otherwise fall
   // back to the note-info debug tooltip (which has its own toggle).
   QString timingInfo;
+  QPointF timingPos = pos;
+  int placement = 0; // 0 = at the cursor
   if (sequencerConfiguration()->timingFeedbackEnabled())
   {
     const QPointF logical(logicPos.x(), logicPos.y());
-    timingInfo = m_timingOverlay.gaugeInfoAt(logical);
-    if (timingInfo.isEmpty())
+    // The hovered onset also reveals its coloured shadow copy (gliding out
+    // from the engraved notes to its error position); its tooltip anchors
+    // beside the noteheads, on the copy-free side.
+    m_timingOverlay.updateHover(logical);
+    if (const auto tip = m_timingOverlay.gaugeTipAt(logical))
+    {
+      timingInfo = tip->text;
+      const muse::PointF anchor =
+          fromLogical(muse::PointF(tip->anchor.x(), tip->anchor.y()));
+      timingPos = QPointF(anchor.x(), anchor.y());
+      placement = tip->leftOfAnchor ? 1 : 2;
+    }
+    else
       timingInfo = m_timingOverlay.ribbonInfoAt(logical);
   }
   if (!timingInfo.isEmpty())
-    setHoveredNoteInfo(timingInfo, pos);
-  else if (sequencerConfiguration()->noteInfoTooltipEnabled())
-    updateHoveredNoteInfo(pos);
-  else if (!m_hoveredNoteInfo.isEmpty())
-    setHoveredNoteInfo({}, pos);
+  {
+    m_hoveredNoteInfoPlacement = placement;
+    setHoveredNoteInfo(timingInfo, timingPos);
+  }
+  else
+  {
+    m_hoveredNoteInfoPlacement = 0;
+    if (sequencerConfiguration()->noteInfoTooltipEnabled())
+      updateHoveredNoteInfo(pos);
+    else if (!m_hoveredNoteInfo.isEmpty())
+      setHoveredNoteInfo({}, pos);
+  }
 }
 
 std::optional<mu::notation::LoopBoundaryType>

@@ -51,6 +51,12 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
                  hoveredNoteInfoChanged)
   Q_PROPERTY(QPointF hoveredNoteInfoPos READ hoveredNoteInfoPos NOTIFY
                  hoveredNoteInfoChanged)
+  // How the tooltip sits relative to hoveredNoteInfoPos: 0 = below-right of
+  // the cursor; 1 / 2 = vertically centred to the left / right of a timing
+  // gauge's anchor (beside the onset's noteheads, clear of the coloured
+  // copy — left for an early note, right for a late one).
+  Q_PROPERTY(int hoveredNoteInfoPlacement READ hoveredNoteInfoPlacement NOTIFY
+                 hoveredNoteInfoChanged)
   // Whether the last right-click hit a chord — enables the "set loop
   // start/end" context-menu items.
   Q_PROPERTY(bool contextMenuHasTarget READ contextMenuHasTarget NOTIFY
@@ -93,6 +99,7 @@ public:
 
   QString hoveredNoteInfo() const;
   QPointF hoveredNoteInfoPos() const;
+  int hoveredNoteInfoPlacement() const { return m_hoveredNoteInfoPlacement; }
   TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
   bool tempoVisualizationEnabled() const;
   int finalScore() const { return m_finalScore; }
@@ -306,6 +313,7 @@ private:
   KineticScroller m_kineticScroller;
   QString m_hoveredNoteInfo;
   QPointF m_hoveredNoteInfoPos;
+  int m_hoveredNoteInfoPlacement = 0;
 
   // Chord under the last right-click, acted on by the context-menu items.
   std::optional<ILoopBoundariesController::ChordTicks> m_contextMenuTarget;

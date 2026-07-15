@@ -120,6 +120,9 @@ constexpr double shadowCellWidthSp = 3.0;
 constexpr double shadowQuantumTicks = 120.0;
 // The performance copy's translucency.
 constexpr double shadowActualAlpha = 0.8;
+// The hover reveal: the copy appears on top of the engraved notes and
+// glides out to its error position over this long.
+constexpr double shadowGlideMs = 250.0;
 
 // A component's score: 100·e^(−m/ref), where m is the scoreQuantile-th
 // percentile of its |error| — robust like the box plot but centred on zero,
@@ -251,6 +254,15 @@ TimingFeedbackOverlay::TimingFeedbackOverlay(
   _clock.start();
   _timer.setInterval(16); // ~60 fps while gauges fade
   _timer.callOnTimeout([this] { advance(); });
+  _hoverTimer.setInterval(16); // ~60 fps while a hovered shadow glides out
+  _hoverTimer.callOnTimeout(
+      [this]
+      {
+        if (!_hoveredGauge ||
+            _clock.elapsed() - _hoverStartMs > shadowGlideMs)
+          _hoverTimer.stop();
+        _requestRepaint();
+      });
 }
 
 void TimingFeedbackOverlay::setShadowsEnabled(bool enabled)
@@ -344,7 +356,8 @@ void TimingFeedbackOverlay::setPersistent(bool persistent)
   _requestRepaint();
 }
 
-QString TimingFeedbackOverlay::gaugeInfoAt(const QPointF &logicalPos) const
+const TimingFeedbackOverlay::Gauge *
+TimingFeedbackOverlay::gaugeAt(const QPointF &logicalPos) const
 {
   // Newest first, so coinciding marks report the latest pass.
   for (auto it = _gauges.rbegin(); it != _gauges.rend(); ++it)
@@ -356,33 +369,76 @@ QString TimingFeedbackOverlay::gaugeInfoAt(const QPointF &logicalPos) const
     const QRectF hitRect(gaugeAnchorX(gauge) - 1.5 * sp,
                          gauge.centerY - (halfLenSp + 2.0) * sp, 3.0 * sp,
                          2.0 * (halfLenSp + 2.0) * sp);
-    if (!hitRect.contains(logicalPos))
-      continue;
-    const int ms = static_cast<int>(std::lround(std::abs(gauge.errorMs)));
-    QString info = ms == 0
-                       ? QStringLiteral("on time")
-                       : QStringLiteral("%1 ms %2")
-                             .arg(ms)
-                             .arg(gauge.errorMs < 0.0 ? QStringLiteral("early")
-                                                      : QStringLiteral("late"));
-    if (gauge.dynamicsError)
-    {
-      const int pct =
-          static_cast<int>(std::lround(std::abs(*gauge.dynamicsError) * 100));
-      info += QString::fromUtf8(" · ") +
-              (pct == 0 ? QStringLiteral("even loudness")
-                        : QStringLiteral("%1 % too %2")
-                              .arg(pct)
-                              .arg(*gauge.dynamicsError > 0.0
-                                       ? QStringLiteral("loud")
-                                       : QStringLiteral("soft")));
-    }
-    if (gauge.bpm > 0.0)
-      info += QString::fromUtf8(" · %1 bpm")
-                  .arg(static_cast<int>(std::lround(gauge.bpm)));
-    return info;
+    if (hitRect.contains(logicalPos))
+      return &gauge;
   }
-  return {};
+  return nullptr;
+}
+
+void TimingFeedbackOverlay::updateHover(const QPointF &logicalPos)
+{
+  const Gauge *hit = gaugeAt(logicalPos);
+  const std::optional<std::pair<int, double>> id =
+      hit ? std::make_optional(std::make_pair(hit->staff, hit->onsetTMs))
+          : std::nullopt;
+  if (id == _hoveredGauge)
+    return;
+  _hoveredGauge = id;
+  _hoverStartMs = _clock.elapsed();
+  if (_hoveredGauge && !_hoverTimer.isActive())
+    _hoverTimer.start();
+  _requestRepaint();
+}
+
+std::optional<TimingFeedbackOverlay::GaugeTip>
+TimingFeedbackOverlay::gaugeTipAt(const QPointF &logicalPos) const
+{
+  const Gauge *hit = gaugeAt(logicalPos);
+  if (!hit)
+    return std::nullopt;
+  const Gauge &gauge = *hit;
+  const int ms = static_cast<int>(std::lround(std::abs(gauge.errorMs)));
+  QString info = ms == 0
+                     ? QStringLiteral("on time")
+                     : QStringLiteral("%1 ms %2")
+                           .arg(ms)
+                           .arg(gauge.errorMs < 0.0 ? QStringLiteral("early")
+                                                    : QStringLiteral("late"));
+  if (gauge.dynamicsError)
+  {
+    const int pct =
+        static_cast<int>(std::lround(std::abs(*gauge.dynamicsError) * 100));
+    info += QString::fromUtf8(" · ") +
+            (pct == 0 ? QStringLiteral("even loudness")
+                      : QStringLiteral("%1 % too %2")
+                            .arg(pct)
+                            .arg(*gauge.dynamicsError > 0.0
+                                     ? QStringLiteral("loud")
+                                     : QStringLiteral("soft")));
+  }
+  if (gauge.bpm > 0.0)
+    info += QString::fromUtf8(" · %1 bpm")
+                .arg(static_cast<int>(std::lround(gauge.bpm)));
+
+  // Anchor beside the united footprint of the engraved notes and their
+  // coloured copy at its full displacement, so the tooltip covers neither.
+  const double pxPerTick =
+      shadowCellWidthSp * gauge.spatium / shadowQuantumTicks;
+  const double dx = ((1.0 - _warpProgress) * gauge.warpTicks +
+                     gauge.errorTicks) *
+                    pxPerTick;
+  mu::engraving::RectF united;
+  for (const mu::engraving::EngravingItem *item : gauge.items)
+    united = united.united(item->pageBoundingRect());
+  QRectF bounds = united.toQRectF();
+  bounds = bounds.united(bounds.translated(dx, 0.0));
+  const bool left = gauge.errorMs < 0.0;
+  const double margin = 0.75 * gauge.spatium;
+  return GaugeTip{info,
+                  QPointF(left ? bounds.left() - margin
+                               : bounds.right() + margin,
+                          bounds.center().y()),
+                  left};
 }
 
 void TimingFeedbackOverlay::upsertSamples(
@@ -499,6 +555,8 @@ void TimingFeedbackOverlay::reset()
   _ribbon.clear();
   _ribbonBaselineY.clear();
   _timer.stop();
+  _hoveredGauge.reset();
+  _hoverTimer.stop();
 }
 
 std::optional<double>
@@ -604,6 +662,11 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
   paintRibbon(painter, viewport);
 
   const qint64 now = _clock.elapsed();
+  // The hover reveal: the hovered onset's shadow glides from the engraved
+  // notes out to its error position (ease-out).
+  const double glideT =
+      std::min(1.0, static_cast<double>(now - _hoverStartMs) / shadowGlideMs);
+  const double glide = 1.0 - (1.0 - glideT) * (1.0 - glideT);
   for (const Gauge &gauge : _gauges)
   {
     if (!gauge.judged)
@@ -619,8 +682,10 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
                                     static_cast<double>(gaugeLifeMs - holdMs);
     if (opacity <= 0.0)
       continue;
-    if (_shadowsEnabled)
-      paintShadows(painter, gauge, opacity);
+    if (_shadowsEnabled && _hoveredGauge &&
+        gauge.staff == _hoveredGauge->first &&
+        gauge.onsetTMs == _hoveredGauge->second)
+      paintShadows(painter, gauge, opacity, glide);
     if (showGaugeRulers)
       paintGauge(painter, gauge, anchorX, opacity);
   }
@@ -631,7 +696,7 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
 }
 
 void TimingFeedbackOverlay::paintShadows(QPainter &painter, const Gauge &gauge,
-                                         double opacity) const
+                                         double opacity, double glide) const
 {
   if (gauge.items.empty())
     return;
@@ -640,12 +705,12 @@ void TimingFeedbackOverlay::paintShadows(QPainter &painter, const Gauge &gauge,
   // the full tempo warp plus the residual while the score shows ideal
   // spacing, only the residual once the layout has baked the warp in — so
   // during the bake animation the coloured notes stay put and the page
-  // morphs to meet them.
+  // morphs to meet them. The glide slides it there from the engraved notes.
   const double pxPerTick =
       shadowCellWidthSp * gauge.spatium / shadowQuantumTicks;
   const double dx = ((1.0 - _warpProgress) * gauge.warpTicks +
                      gauge.errorTicks) *
-                    pxPerTick;
+                    pxPerTick * glide;
 
   muse::draw::Painter musePainter(&painter, "timing-shadows");
   painter.setOpacity(shadowActualAlpha * opacity);
