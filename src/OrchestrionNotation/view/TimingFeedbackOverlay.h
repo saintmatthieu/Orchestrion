@@ -133,9 +133,23 @@ public:
   //! Turning persistence off fades the accumulated marks out from now.
   void setPersistent(bool persistent);
 
-  //! The verdict of the gauge under \p logicalPos, for a tooltip (e.g.
-  //! "23 ms late"); empty if none is hit.
-  QString gaugeInfoAt(const QPointF &logicalPos) const;
+  //! The verdict tooltip of the gauge under \p logicalPos (e.g. "23 ms
+  //! late · 90 bpm"): its text and where to place it — anchored beside the
+  //! onset's noteheads, on the left for an early note (whose coloured copy
+  //! sits left of the engraved notes) and on the right for a late one, so
+  //! the tooltip covers neither the black nor the coloured noteheads.
+  struct GaugeTip
+  {
+    QString text;
+    QPointF anchor; // page-logical, vertically centred on the notes
+    bool leftOfAnchor = false;
+  };
+  std::optional<GaugeTip> gaugeTipAt(const QPointF &logicalPos) const;
+
+  //! Track the cursor: the coloured shadow copy of an onset's notes shows
+  //! only while its gauge (the tooltip hit zone) is hovered, appearing on
+  //! top of the engraved notes and gliding out to its error position.
+  void updateHover(const QPointF &logicalPos);
 
   //! The smoothed tempo and accumulated deviation at \p logicalPos anywhere
   //! along the deviation curve (e.g. "78 bpm · 120 ms behind") — so gliding
@@ -209,8 +223,13 @@ private:
   };
   void paintGauge(QPainter &painter, const Gauge &gauge, double anchorX,
                   double opacity) const;
-  void paintShadows(QPainter &painter, const Gauge &gauge,
-                    double opacity) const;
+  //! \p glide slides the copy from the engraved notes (0) out to its full
+  //! error displacement (1) — the hover reveal animation.
+  void paintShadows(QPainter &painter, const Gauge &gauge, double opacity,
+                    double glide) const;
+  //! The gauge whose tooltip/hover hit zone contains \p logicalPos (newest
+  //! first, so coinciding marks yield the latest pass); null if none.
+  const Gauge *gaugeAt(const QPointF &logicalPos) const;
   //! The timing-deviation ribbon: per staff, along its gauge lane's zero
   //! line, the take's fitted deviation curve (vs the constant-tempo
   //! reference), the onsets as dots at their actual deviations, and a
@@ -265,6 +284,13 @@ private:
   bool _persistent = false;
   bool _shadowsEnabled = false;
   double _warpProgress = 0.0;
+
+  //! The hovered gauge's identity (staff, onsetTMs) — pointers into the
+  //! deque wouldn't survive pruning — when the glide began, and the timer
+  //! repainting while it runs.
+  std::optional<std::pair<int, double>> _hoveredGauge;
+  qint64 _hoverStartMs = 0;
+  QTimer _hoverTimer;
 
   //! The deviation ribbon's take-wide points, in onset order, revised with
   //! the judgments (never faded; cleared with the take).

@@ -243,8 +243,18 @@ ApplicationWindow {
                     delay: 0
                     visible: notationPaintView.hoveredNoteInfo.length > 0
                     text: notationPaintView.hoveredNoteInfo
-                    x: notationPaintView.hoveredNoteInfoPos.x + 16
-                    y: notationPaintView.hoveredNoteInfoPos.y + 16
+                    // Below-right of the cursor by default; a timing gauge's
+                    // tip anchors beside the onset's noteheads instead —
+                    // left of an early note's coloured copy, right of a late
+                    // one's — so it covers neither the black nor the
+                    // coloured notes.
+                    x: notationPaintView.hoveredNoteInfoPlacement === 1
+                       ? notationPaintView.hoveredNoteInfoPos.x - width
+                       : notationPaintView.hoveredNoteInfoPos.x
+                         + (notationPaintView.hoveredNoteInfoPlacement === 2 ? 0 : 16)
+                    y: notationPaintView.hoveredNoteInfoPlacement === 0
+                       ? notationPaintView.hoveredNoteInfoPos.y + 16
+                       : notationPaintView.hoveredNoteInfoPos.y - height / 2
                 }
 
                 // End-of-piece banner: the take's timing score, raised by the
