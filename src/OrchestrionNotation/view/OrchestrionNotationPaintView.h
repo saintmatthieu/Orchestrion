@@ -195,6 +195,11 @@ private:
   //! Re-fit the whole take with the configured smoothing memory and refresh
   //! everything derived from it (ribbon, tooltips, stats, layout warp).
   void retuneTake();
+  //! The re-fit itself: judge every take onset against one full-hindsight
+  //! (unbounded-window) spline and push the verdicts through the
+  //! display/stats pipeline. Runs once when the take ends — the live,
+  //! bounded-window verdicts are provisional — and again per γ retune.
+  void refitTakeJudgments();
   //! Back to the ideal (notated) spacing — a fresh take is starting.
   void clearPerformanceWarp();
   void updateNotation();
