@@ -367,15 +367,19 @@ void OrchestrionNotationPaintView::OnTransitions(
                                     });
       if (done)
       {
+        // The take is over: review time. Ends (and re-fits) the take before
+        // the banner reads its score, so the verdict is the full-hindsight
+        // one.
+        endTake();
         if (const auto score = m_timingOverlay.takeFinalScore())
         {
           m_finalScoreShown = true;
           m_finalScore = *score;
           m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
           emit finalScoreChanged();
+          // endTake's visibility emit preceded m_finalScoreShown: re-emit.
+          emit smoothingTunerVisibleChanged();
         }
-        // The take is over: review time.
-        endTake();
       }
     }
 
@@ -429,9 +433,36 @@ void OrchestrionNotationPaintView::updateAutoTargets(
 
 void OrchestrionNotationPaintView::endTake()
 {
-  m_takeOver = true;
+  if (!m_takeOver)
+  {
+    m_takeOver = true;
+    // The live judgments freeze with whatever hindsight the bounded
+    // smoothing window happened to give them; the take's final verdicts
+    // (ribbon, marks, stats, warp) come from one full-hindsight re-fit —
+    // the same fit the γ slider explores, so the slider then only changes
+    // anything when γ actually changes.
+    refitTakeJudgments();
+  }
   pushReplayTake();
   bakePerformanceWarp();
+}
+
+void OrchestrionNotationPaintView::refitTakeJudgments()
+{
+  if (m_takeOnsetRecords.empty())
+    return;
+  const double memory = sequencerConfiguration()->tempoSmoothingMemory();
+
+  // Per staff, the take's raw observations, in onset order.
+  std::map<int, std::vector<std::pair<double, double>>> observations;
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    observations[record.staff].emplace_back(record.tMs, record.utick);
+  for (const auto &[staff, obs] : observations)
+  {
+    const auto window = TempoFollower::refitTake(obs, memory);
+    if (!window.empty())
+      m_timingOverlay.updateJudgments(staff, window);
+  }
 }
 
 void OrchestrionNotationPaintView::pushReplayTake()
@@ -605,20 +636,7 @@ void OrchestrionNotationPaintView::bakePerformanceWarp(bool animate)
 
 void OrchestrionNotationPaintView::retuneTake()
 {
-  if (m_takeOnsetRecords.empty())
-    return;
-  const double memory = sequencerConfiguration()->tempoSmoothingMemory();
-
-  // Per staff, the take's raw observations, in onset order.
-  std::map<int, std::vector<std::pair<double, double>>> observations;
-  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
-    observations[record.staff].emplace_back(record.tMs, record.utick);
-  for (const auto &[staff, obs] : observations)
-  {
-    const auto window = TempoFollower::refitTake(obs, memory);
-    if (!window.empty())
-      m_timingOverlay.updateJudgments(staff, window);
-  }
+  refitTakeJudgments();
 
   // The layout warp and the fitted-tempo replay derive from the fitted
   // errors: rebuild them in place, without the animation.
