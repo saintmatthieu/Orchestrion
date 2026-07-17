@@ -65,7 +65,43 @@ void Orchestrion::setSequencer(IOrchestrionSequencerPtr sequencer)
   if (sequencer == m_sequencer)
     return;
   m_sequencer = std::move(sequencer);
+
+  if (m_sequencer)
+  {
+    // MuseScore's SequencePlayer sets the engine to IdleMode on every stop
+    // and pause (e.g. when the automatic player reaches the end of the
+    // score), and an idle mixer stops processing entirely once the output
+    // has decayed to silence (the early return in Mixer::process) — note-ons
+    // then pile up unheard in the synthesizers until something wakes the
+    // mixer again, which flushes them as a burst. Idling is fine (it saves
+    // CPU while nothing sounds), as long as everything that sounds — or
+    // heralds sound — wakes the engine: every note-on gesture, and every
+    // position jump (a click on a note, Home, prev/next), the latter so the
+    // first gesture after it isn't late.
+    m_sequencer->HandNoteEvents().onReceive(this,
+                                            [this](const AutoPlayEvent &event)
+                                            {
+                                              if (event.type ==
+                                                  NoteEventType::noteOn)
+                                                wakeAudioEngine();
+                                            });
+    m_sequencer->AboutToJumpPosition().onReceive(this, [this](int)
+                                                 { wakeAudioEngine(); });
+  }
+
   m_sequencerChanged.notify();
+}
+
+void Orchestrion::wakeAudioEngine()
+{
+  muse::async::Async::call(
+      this,
+      [this]
+      {
+        if (audioEngine()->mode() == muse::audio::RenderMode::IdleMode)
+          audioEngine()->setMode(muse::audio::RenderMode::RealTimeMode);
+      },
+      muse::audio::AudioThread::ID);
 }
 
 IOrchestrionSequencerPtr Orchestrion::sequencer() { return m_sequencer; }

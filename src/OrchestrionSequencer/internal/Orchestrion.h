@@ -45,8 +45,10 @@ public:
 private:
   IOrchestrionSequencerPtr sequencer() override;
   muse::async::Notification sequencerChanged() const override;
-  void setSequencer(IOrchestrionSequencerPtr sequencer);
   IModifiableItemRegistryPtr modifiableItemRegistry() const override;
+
+  void setSequencer(IOrchestrionSequencerPtr sequencer);
+  void wakeAudioEngine();
 
 private:
   IOrchestrionSequencerPtr m_sequencer;
