@@ -36,8 +36,7 @@
 namespace dgk
 {
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
-    : mu::notation::NotationPaintView(parent),
-      m_fader([this] { update(); }),
+    : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
 {
@@ -898,7 +897,6 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
 {
   NotationPaintView::paint(painter);
 
-  painter->restore();
   // Touch contacts stay on top of everything.
   painter->setRenderHint(QPainter::Antialiasing);
   painter->setBrush(Qt::NoBrush);
