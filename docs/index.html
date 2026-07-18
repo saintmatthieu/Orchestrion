@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orchestrion — your students play real music, rhythm first</title>
+  <meta name="description" content="Orchestrion is a free, open-source app for music education. Students play the rhythm on any keyboard — MIDI or computer — and Orchestrion supplies the notes of a real score. Windows, macOS, Linux.">
+  <link rel="canonical" href="https://saintmatthieu.github.io/Orchestrion/">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <meta name="theme-color" content="#2e1a12">
+  <meta property="og:title" content="Orchestrion — your students play real music, rhythm first">
+  <meta property="og:description" content="A free, open-source app for music education: students tap the rhythm, the score supplies the pitches. Works with MuseScore and MusicXML files.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://saintmatthieu.github.io/Orchestrion/">
+  <meta property="og:image" content="https://saintmatthieu.github.io/Orchestrion/assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --espresso: #2e1a12;
+      --espresso-soft: #4a3126;
+      --parchment: #f4ecd9;
+      --parchment-deep: #ece0c6;
+      --gold: #b9863e;
+      --gold-bright: #d6a85c;
+      --cream: #f7f1e3;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--parchment);
+      color: var(--espresso);
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      line-height: 1.6;
+    }
+    a { color: var(--gold); }
+    .wrap { max-width: 60rem; margin: 0 auto; padding: 0 1.25rem; }
+
+    header.site {
+      background: var(--espresso);
+      color: var(--cream);
+      padding: 0.9rem 0;
+    }
+    header.site .wrap { display: flex; align-items: center; gap: 0.75rem; }
+    header.site img { width: 2.2rem; height: 2.2rem; }
+    header.site .name { font-size: 1.35rem; font-style: italic; letter-spacing: 0.02em; }
+    header.site nav { margin-left: auto; display: flex; gap: 1.25rem; }
+    header.site nav a { color: var(--gold-bright); text-decoration: none; font-size: 0.95rem; }
+    header.site nav a:hover { text-decoration: underline; }
+
+    .hero {
+      background: linear-gradient(var(--espresso), #3a2318);
+      color: var(--cream);
+      text-align: center;
+      padding: 3.5rem 0 4rem;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4.5vw, 3rem);
+      font-style: italic;
+      font-weight: 500;
+      color: var(--gold-bright);
+      max-width: 40ch;
+      margin: 0 auto 1rem;
+    }
+    .hero p.sub {
+      max-width: 56ch;
+      margin: 0 auto 2.25rem;
+      font-size: 1.15rem;
+      color: #e8ddc8;
+    }
+    .video-frame {
+      max-width: 50rem;
+      margin: 0 auto 2.5rem;
+      border: 1px solid var(--gold);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    }
+    .video-frame img { display: block; width: 100%; height: auto; }
+    .video-frame .ratio { position: relative; padding-top: 56.25%; }
+    .video-frame .ratio iframe {
+      position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+    }
+
+    .downloads { display: flex; flex-wrap: wrap; gap: 0.9rem; justify-content: center; }
+    .dl {
+      display: inline-block;
+      padding: 0.85rem 1.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--gold);
+      color: var(--cream);
+      text-decoration: none;
+      font-size: 1.05rem;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .dl:hover { background: rgba(214,168,92,0.15); transform: translateY(-1px); }
+    .dl strong { color: var(--gold-bright); }
+    .dl small { display: block; font-size: 0.78rem; color: #cbbfa5; }
+    .dl.primary { background: var(--gold); border-color: var(--gold); color: var(--espresso); }
+    .dl.primary strong, .dl.primary small { color: var(--espresso); }
+    .dl.primary:hover { background: var(--gold-bright); }
+    .release-note { margin-top: 1.1rem; font-size: 0.9rem; color: #cbbfa5; }
+    .release-note a { color: var(--gold-bright); }
+
+    section.band { padding: 3.5rem 0; }
+    section.band.deep { background: var(--parchment-deep); }
+    h2 {
+      font-size: 1.9rem;
+      font-style: italic;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 2.25rem;
+    }
+    h2::after {
+      content: "";
+      display: block;
+      width: 5rem; height: 2px;
+      background: var(--gold);
+      margin: 0.7rem auto 0;
+    }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+    @media (max-width: 44rem) { .steps { grid-template-columns: 1fr; } }
+    .step .num {
+      width: 2.6rem; height: 2.6rem;
+      border-radius: 50%;
+      background: var(--espresso);
+      color: var(--gold-bright);
+      font-size: 1.25rem;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 0.9rem;
+    }
+    .step h3 { font-size: 1.2rem; margin-bottom: 0.4rem; }
+    .step p { color: var(--espresso-soft); }
+
+    .teachers ul { list-style: none; max-width: 44rem; margin: 0 auto; }
+    .teachers li {
+      padding-left: 2rem;
+      position: relative;
+      margin-bottom: 1.1rem;
+      color: var(--espresso-soft);
+    }
+    .teachers li::before {
+      content: "♪";
+      position: absolute; left: 0;
+      color: var(--gold);
+      font-size: 1.1rem;
+    }
+    .teachers li strong { color: var(--espresso); }
+
+    footer.site {
+      background: var(--espresso);
+      color: #cbbfa5;
+      padding: 2rem 0;
+      font-size: 0.92rem;
+      text-align: center;
+    }
+    footer.site a { color: var(--gold-bright); }
+    footer.site p { margin: 0.3rem 0; }
+  </style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <img src="assets/icon.png" alt="" width="36" height="36">
+    <span class="name">Orchestrion</span>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#teachers">For teachers</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/saintmatthieu/Orchestrion">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" id="download">
+  <div class="wrap">
+    <h1>Your students play real music&nbsp;— rhythm&nbsp;first.</h1>
+    <p class="sub">
+      Orchestrion turns any score into an instrument. The student taps the rhythm —
+      on a MIDI keyboard or the computer keyboard — and Orchestrion plays the notes
+      of the piece, at the student's own pulse. Real repertoire, from day one.
+    </p>
+
+    <!--
+      Demo video: after uploading to YouTube, set VIDEO_ID in the script at the
+      bottom of this file. Until then the app screenshot is shown instead.
+    -->
+    <div class="video-frame" id="video-slot">
+      <img src="assets/hero.png" width="800" height="350"
+           alt="Orchestrion showing the score of Frère Jacques on a parchment background">
+    </div>
+
+    <div class="downloads">
+      <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
+        <strong>Windows</strong><small>installer (.msi)</small>
+      </a>
+      <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
+        <strong>macOS</strong><small>signed &amp; notarized (.dmg)</small>
+      </a>
+      <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
+        <strong>Linux</strong><small>AppImage</small>
+      </a>
+    </div>
+    <p class="release-note" id="release-note">
+      Free &amp; open source (GPL-3.0) · <a href="https://github.com/saintmatthieu/Orchestrion/releases">all releases</a>
+    </p>
+  </div>
+</section>
+
+<section class="band" id="how">
+  <div class="wrap">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>Open a score</h3>
+        <p>Start with the bundled pieces — from Frère Jacques to a Chopin nocturne —
+           or open any MuseScore or MusicXML file.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>Choose how to play</h3>
+        <p>Plug in any MIDI keyboard, or use the computer keyboard as-is.
+           There is nothing to configure.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>Tap the rhythm</h3>
+        <p>Each tap plays the next notes of the piece. The student owns the timing;
+           Orchestrion takes care of the pitches.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band deep teachers" id="teachers">
+  <div class="wrap">
+    <h2>For music teachers</h2>
+    <ul>
+      <li><strong>Rhythm before note-reading.</strong> Students experience pulse, phrasing
+          and musical flow with real repertoire, before pitch accuracy becomes a hurdle.
+          Wrong-note anxiety is simply removed from the equation.</li>
+      <li><strong>Your own repertoire.</strong> Orchestrion opens MuseScore (<code>.mscz</code>)
+          and MusicXML (<code>.mxl</code>, <code>.musicxml</code>) files — use the material
+          you already teach with.</li>
+      <li><strong>Zero setup in the classroom.</strong> The computer keyboard works out of the
+          box; a USB MIDI keyboard is detected automatically.</li>
+      <li><strong>Free and open source.</strong> GPL-3.0 licensed, no account, no ads,
+          works offline. Built on MuseScore's engraving and playback engine.</li>
+    </ul>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap">
+    <p>
+      <a href="https://github.com/saintmatthieu/Orchestrion">Source code on GitHub</a> ·
+      <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/LICENSE">GPL-3.0 license</a> ·
+      <a href="https://github.com/saintmatthieu/Orchestrion/issues">Report an issue</a>
+    </p>
+    <p>Bundled scores include community engravings —
+       see <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/scores/attributions.json">attributions</a>.</p>
+    <p>© 2024–2026 Matthieu Hodgkinson</p>
+  </div>
+</footer>
+
+<script>
+  // ---- Demo video -----------------------------------------------------
+  // TODO: after uploading the demo to YouTube, paste its video id here
+  // (the part after "v=" in the URL), e.g. "dQw4w9WgXcQ".
+  var VIDEO_ID = "";
+  if (VIDEO_ID) {
+    document.getElementById("video-slot").innerHTML =
+      '<div class="ratio"><iframe src="https://www.youtube-nocookie.com/embed/' + VIDEO_ID +
+      '" title="Orchestrion demo video" allow="accelerometer; autoplay; clipboard-write; ' +
+      'encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+  }
+
+  // ---- Direct download links ------------------------------------------
+  // Buttons default to the releases page; if the GitHub API is reachable,
+  // upgrade them to direct links for the latest release assets.
+  (function () {
+    var culture = "en-US";
+    var lang = (navigator.language || "").toLowerCase();
+    if (lang.indexOf("fr") === 0) culture = "fr-FR";
+    else if (lang.indexOf("de") === 0) culture = "de-DE";
+
+    fetch("https://api.github.com/repos/saintmatthieu/Orchestrion/releases/latest")
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (release) {
+        function link(id, suffix) {
+          var asset = (release.assets || []).find(function (a) {
+            return a.name.endsWith(suffix);
+          });
+          if (asset) document.getElementById(id).href = asset.browser_download_url;
+        }
+        link("dl-win", "-Windows-" + culture + ".msi");
+        link("dl-mac", "-macOS.dmg");
+        link("dl-linux", "-Linux-x86_64.AppImage");
+        if (release.tag_name) {
+          document.getElementById("release-note").insertAdjacentHTML(
+            "afterbegin", "Latest release: <strong>" + release.tag_name + "</strong> · ");
+        }
+      })
+      .catch(function () { /* keep fallback links */ });
+
+    // Emphasize the visitor's platform.
+    var ua = navigator.userAgent;
+    var id = ua.indexOf("Win") !== -1 ? "dl-win"
+           : ua.indexOf("Mac") !== -1 ? "dl-mac"
+           : ua.indexOf("Linux") !== -1 ? "dl-linux" : null;
+    if (id) document.getElementById(id).classList.add("primary");
+  })();
+</script>
+
+</body>
+</html>
