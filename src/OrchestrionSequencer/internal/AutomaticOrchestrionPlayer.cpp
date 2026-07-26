@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "AutomaticOrchestrionPlayer.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 #include <QTimer>
 #include <cmath>
 
@@ -43,30 +44,49 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
         if (m_replayActive)
         {
           // The user navigated away mid-replay: end it.
-          m_replayActive = false;
-          dispatcher()->dispatch("stop");
+          dispatcher()->dispatch(actionIds::playbackStop);
           return;
         }
         if (!m_firingInputEvents)
           ScheduleNext();
       });
 
-  playbackController()->isPlayingChanged().onNotify(
-      this,
-      [this]
-      {
-        m_playing = playbackController()->isPlaying();
-        if (m_playing)
-        {
-          ++m_generation;
-          if (m_replayTake)
-            StartReplay();
-          else
-            ScheduleNext();
-        }
-        else
-          m_replayActive = false; // pause ends the replay; play restarts it
-      });
+  // Orchestrion owns its playing state, driven by its own transport actions
+  // (see OrchestrionActionIds.h). MuseScore's "play"/"stop" are neither
+  // handled nor dispatched: its transport machinery was built for
+  // rendered-track playback — a playhead running over the (now silent)
+  // tracks, auto-stopping at *its* score end, stopped by *its* code (e.g.
+  // the preferences dialog) — while Orchestrion playback is just scheduled
+  // gesture events. With nothing dispatching MuseScore's ids, its transport
+  // simply never runs.
+  dispatcher()->reg(this, actionIds::playbackToggle, [this] { TogglePlay(); });
+  dispatcher()->reg(this, actionIds::playbackStop, [this] { Stop(); });
+}
+
+void AutomaticOrchestrionPlayer::TogglePlay()
+{
+  if (m_playing)
+  {
+    Stop();
+    return;
+  }
+  m_playing = true;
+  ++m_generation;
+  m_playingChanged.notify();
+  if (m_replayTake)
+    StartReplay();
+  else
+    ScheduleNext();
+}
+
+void AutomaticOrchestrionPlayer::Stop()
+{
+  if (!m_playing)
+    return;
+  ++m_generation; // cancels all scheduled events, nominal and replay alike
+  m_playing = false;
+  m_replayActive = false;
+  m_playingChanged.notify();
 }
 
 void AutomaticOrchestrionPlayer::SetReplayTake(std::optional<ReplayTake> take)
@@ -91,9 +111,8 @@ void AutomaticOrchestrionPlayer::ScheduleReplayNext()
 {
   if (m_replayIndex >= m_replayTake->events.size())
   {
-    dispatcher()->dispatch("stop");
-    m_playing = false;
-    m_replayActive = false;
+    // Our own stop handler does the bookkeeping.
+    dispatcher()->dispatch(actionIds::playbackStop);
     return;
   }
 
@@ -118,7 +137,7 @@ void AutomaticOrchestrionPlayer::ScheduleReplayNext()
 
 void AutomaticOrchestrionPlayer::FireReplayEvent()
 {
-  if (!m_playing || !m_replayActive)
+  if (!m_replayActive)
     return;
   const ReplayEvent &event = m_replayTake->events[m_replayIndex];
   m_sequencer.OnInputEvent(event.type,
@@ -136,8 +155,7 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
   const auto next = m_sequencer.WhatToPlayNext();
   if (!next)
   {
-    dispatcher()->dispatch("stop");
-    m_playing = false;
+    dispatcher()->dispatch(actionIds::playbackStop);
     return;
   }
 

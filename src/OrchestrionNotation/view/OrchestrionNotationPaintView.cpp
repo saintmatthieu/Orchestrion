@@ -100,7 +100,7 @@ void OrchestrionNotationPaintView::subscribe(
         // Record the take's raw events, for the post-take replay. A note-on
         // while the previous take's stats are stale begins a new take (this
         // event precedes the transitions batch that restarts the stats).
-        if (orchestrion()->isReplaying())
+        if (orchestrion()->player()->IsReplaying())
           return; // the replay's own events aren't a new performance
         const bool newTake = event.type == NoteEventType::noteOn &&
                              (m_timingStatsStale || m_replayEvents.empty());
@@ -112,7 +112,7 @@ void OrchestrionNotationPaintView::subscribe(
           m_takeOver = false;
           // From here on, the play button is the metronomic playback again —
           // until this take, in turn, is over.
-          orchestrion()->setReplayTake(std::nullopt);
+          orchestrion()->player()->SetReplayTake(std::nullopt);
         }
         else if (m_replayEvents.empty())
           return; // a stray release before any take began
@@ -284,7 +284,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   // A replay of the finished take: the review visuals (marks, ribbon, warp,
   // stats) stay frozen for comparison with what is heard; only the follower
   // (scroll) and the note highlights track the replayed events.
-  const bool replaying = orchestrion()->isReplaying();
+  const bool replaying = orchestrion()->player()->IsReplaying();
 
   const TempoFollower::Feedback feedback =
       m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
@@ -467,20 +467,20 @@ void OrchestrionNotationPaintView::refitTakeJudgments()
 
 void OrchestrionNotationPaintView::pushReplayTake()
 {
+  const auto player = orchestrion()->player();
   if (m_replayEvents.empty() ||
       m_replayStartTick == std::numeric_limits<int>::max())
     return;
   switch (orchestrion()->playMode())
   {
   case PlayMode::replayPerformance:
-    orchestrion()->setReplayTake(ReplayTake{m_replayStartTick, m_replayEvents});
+    player->SetReplayTake(ReplayTake{m_replayStartTick, m_replayEvents});
     break;
   case PlayMode::replayFittedTempo:
-    orchestrion()->setReplayTake(
-        ReplayTake{m_replayStartTick, fittedTempoEvents()});
+    player->SetReplayTake(ReplayTake{m_replayStartTick, fittedTempoEvents()});
     break;
   case PlayMode::metronome:
-    orchestrion()->setReplayTake(std::nullopt);
+    player->SetReplayTake(std::nullopt);
     break;
   }
 }
@@ -1527,7 +1527,7 @@ void OrchestrionNotationPaintView::updateNotation()
   m_replayEvents.clear();
   m_replayStartTick = std::numeric_limits<int>::max();
   m_takeOver = false;
-  orchestrion()->setReplayTake(std::nullopt);
+  orchestrion()->player()->SetReplayTake(std::nullopt);
   clearPerformanceWarp();
   dismissFinalScore();
   emit smoothingTunerVisibleChanged();

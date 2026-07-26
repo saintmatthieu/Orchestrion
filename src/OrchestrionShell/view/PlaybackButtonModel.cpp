@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "PlaybackButtonModel.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 
 namespace dgk
 {
@@ -24,8 +25,19 @@ PlaybackButtonModel::PlaybackButtonModel(QObject *parent) : QObject(parent) {}
 
 void PlaybackButtonModel::load()
 {
-  playbackController()->isPlayingChanged().onNotify(
-      this, [this] { emit isPlayingChanged(); });
+  // Orchestrion's own playing state (the automatic player's), not
+  // MuseScore's transport: the transport's playhead auto-stops at *its*
+  // score end, which says nothing about our event scheduling. The player
+  // lives and dies with the sequencer, so resubscribe on each swap.
+  const auto subscribeToPlayer = [this]
+  {
+    orchestrion()->player()->PlayingChanged().onNotify(
+        this, [this] { emit isPlayingChanged(); });
+    // The swap itself may have changed the state (a playing player died).
+    emit isPlayingChanged();
+  };
+  orchestrion()->sequencerChanged().onNotify(this, subscribeToPlayer);
+  subscribeToPlayer();
 
   playbackController()->isPlayAllowedChanged().onNotify(
       this, [this] { emit isPlayAllowedChanged(); });
@@ -41,7 +53,7 @@ void PlaybackButtonModel::load()
 
 bool PlaybackButtonModel::isPlaying() const
 {
-  return playbackController()->isPlaying();
+  return orchestrion()->player()->IsPlaying();
 }
 
 bool PlaybackButtonModel::isPlayAllowed() const
@@ -54,9 +66,15 @@ bool PlaybackButtonModel::isLoopEnabled() const
   return playbackController()->actionChecked("loop");
 }
 
-void PlaybackButtonModel::togglePlay() { dispatcher()->dispatch("play"); }
+void PlaybackButtonModel::togglePlay()
+{
+  dispatcher()->dispatch(actionIds::playbackToggle);
+}
 
-void PlaybackButtonModel::stop() { dispatcher()->dispatch("stop"); }
+void PlaybackButtonModel::stop()
+{
+  dispatcher()->dispatch(actionIds::playbackStop);
+}
 
 void PlaybackButtonModel::rewind() { dispatcher()->dispatch("rewind"); }
 

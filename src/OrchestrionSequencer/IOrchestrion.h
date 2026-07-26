@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "IOrchestrionPlayer.h"
 #include "IOrchestrionSequencer.h"
 #include "IModifiableItemRegistry.h"
 #include <async/notification.h>
@@ -47,16 +48,15 @@ public:
   virtual muse::async::Notification sequencerChanged() const = 0;
   virtual IModifiableItemRegistryPtr modifiableItemRegistry() const = 0;
 
-  //! While set, the play button replays this recorded take — the machine
-  //! re-performs it, timing, dynamics and all — instead of the metronomic
-  //! automatic playback (the post-take review's listen-back). Cleared when a
-  //! new take begins.
-  virtual void setReplayTake(std::optional<ReplayTake> take) = 0;
-  //! Whether such a replay is running right now. Its re-injected events must
-  //! not be judged as a new performance.
-  virtual bool isReplaying() const = 0;
+  //! The automatic player (see IOrchestrionPlayer). Never null: before a
+  //! score is loaded, a never-playing stub is returned, so consumers need
+  //! no null checks. The real player is created and destroyed with the
+  //! sequencer — sequencerChanged() also signals a new player, so
+  //! subscribers to the player's notifications must resubscribe then.
+  virtual IOrchestrionPlayerPtr player() = 0;
 
-  //! Session-only (deliberately not persisted): a review/tuning aid.
+  //! Session-only (deliberately not persisted): a review/tuning aid. Lives
+  //! here, not on the player, so it survives player swaps (score changes).
   virtual PlayMode playMode() const = 0;
   virtual void setPlayMode(PlayMode mode) = 0;
   virtual muse::async::Notification playModeChanged() const = 0;

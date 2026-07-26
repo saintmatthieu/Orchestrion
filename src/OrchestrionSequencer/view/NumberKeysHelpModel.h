@@ -80,6 +80,7 @@ signals:
 
 private:
   void subscribeToSequencer();
+  bool isPlaying() const;
   void onHandNoteEvent(const AutoPlayEvent &);
   void updateNoMidiConnected();
 

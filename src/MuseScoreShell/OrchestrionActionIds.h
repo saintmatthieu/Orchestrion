@@ -36,6 +36,14 @@ static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
 static constexpr const char *reverbCathedral =
     "orchestrion-advanced-reverb-cathedral";
 
+//! Orchestrion's own transport actions. Deliberately NOT MuseScore's
+//! "play"/"stop": those ids are also handled — and sometimes dispatched —
+//! by MuseScore code with its rendered-track playback in mind (e.g. the
+//! preferences dialog dispatches "stop"), while Orchestrion playback is
+//! just scheduled gesture events. Own ids keep the two worlds apart.
+static constexpr const char *playbackToggle = "orchestrion-play";
+static constexpr const char *playbackStop = "orchestrion-stop";
+
 static constexpr const char *playModePerformance =
     "orchestrion-advanced-play-mode-performance";
 static constexpr const char *playModeFittedTempo =

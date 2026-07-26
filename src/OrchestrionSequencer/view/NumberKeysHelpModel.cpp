@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "NumberKeysHelpModel.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 
 namespace dgk
 {
@@ -48,15 +49,6 @@ void NumberKeysHelpModel::init()
   orchestrion()->sequencerChanged().onNotify(this,
                                              [this] { subscribeToSequencer(); });
 
-  playbackController()->isPlayingChanged().onNotify(
-      this,
-      [this]
-      {
-        // The score auto-stops at the end (or the user may stop): end the demo
-        // so the overlay hides and the tooltip can return.
-        if (m_demoActive && !playbackController()->isPlaying())
-          stop();
-      });
 
   // The Help menu replays the demo directly.
   dispatcher()->reg(this, showHelpActionCode, [this] { showMe(); });
@@ -69,6 +61,22 @@ void NumberKeysHelpModel::subscribeToSequencer()
     return;
   sequencer->HandNoteEvents().onReceive(
       this, [this](const AutoPlayEvent &event) { onHandNoteEvent(event); });
+
+  // The playback auto-stops at the end (or the user may stop): end the demo
+  // so the overlay hides and the tooltip can return. (The player lives and
+  // dies with the sequencer, hence the subscription here.)
+  orchestrion()->player()->PlayingChanged().onNotify(
+      this,
+      [this]
+      {
+        if (m_demoActive && !isPlaying())
+          stop();
+      });
+}
+
+bool NumberKeysHelpModel::isPlaying() const
+{
+  return orchestrion()->player()->IsPlaying();
 }
 
 void NumberKeysHelpModel::onHandNoteEvent(const AutoPlayEvent &event)
@@ -106,17 +114,17 @@ void NumberKeysHelpModel::showMe()
   setRightPressedKey(0);
   setDemoActive(true);
 
-  if (!playbackController()->isPlaying())
+  if (!isPlaying())
   {
     dispatcher()->dispatch("rewind");
-    dispatcher()->dispatch("play");
+    dispatcher()->dispatch(actionIds::playbackToggle);
   }
 }
 
 void NumberKeysHelpModel::stop()
 {
-  if (playbackController()->isPlaying())
-    dispatcher()->dispatch("stop");
+  if (isPlaying())
+    dispatcher()->dispatch(actionIds::playbackStop);
   setLeftPressedKey(0);
   setRightPressedKey(0);
   setDemoActive(false);

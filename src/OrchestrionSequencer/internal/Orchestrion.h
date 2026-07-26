@@ -53,8 +53,7 @@ private:
   IOrchestrionSequencerPtr sequencer() override;
   muse::async::Notification sequencerChanged() const override;
   IModifiableItemRegistryPtr modifiableItemRegistry() const override;
-  void setReplayTake(std::optional<ReplayTake> take) override;
-  bool isReplaying() const override;
+  IOrchestrionPlayerPtr player() override;
   PlayMode playMode() const override;
   void setPlayMode(PlayMode mode) override;
   muse::async::Notification playModeChanged() const override;
@@ -65,7 +64,7 @@ private:
 private:
   IOrchestrionSequencerPtr m_sequencer;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
-  std::unique_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
+  std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   muse::async::Notification m_sequencerChanged;
   // The master score whose unroll decision was already taken: the choice is
   // made once per loaded score (mid-session unrolling would pull engraved
