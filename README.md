@@ -2,15 +2,19 @@
   <img src="icons/orchestrion.png" width="120" alt="Orchestrion icon">
 </p>
 <h1 align="center">Orchestrion</h1>
-<p align="center"><em>Your students play real music — rhythm first.</em></p>
+<p align="center"><em>Second only to playing the piano.</em></p>
 
 ![Orchestrion showing the score of Frère Jacques](docs/assets/hero.png)
 
-Orchestrion turns any score into an instrument. The player taps the rhythm — on a
-MIDI keyboard or the computer keyboard — and Orchestrion plays the notes of the
-piece, at the player's own pulse. Pitch accuracy is taken out of the equation, so
-kids and beginners experience real repertoire from day one: pulse, phrasing and
-musical flow first, note-reading later.
+Orchestrion turns any score into an instrument. You tap the rhythm — on a MIDI
+keyboard or the computer keyboard — and Orchestrion plays the notes of the piece,
+at your own pulse. Pitch accuracy is taken out of the equation; what remains is
+the music itself — a secure rhythm and real nuance still make all the difference.
+
+One idea, many ways to play it: rhythm-focused practice in the music lesson, kids
+getting familiar with notation while having fun, music lovers discovering
+repertoire from the inside, covering that keyboard part your band can't do
+without, or karaoke-like sing-song around the computer.
 
 It opens MuseScore (`.mscz`) and MusicXML (`.mxl`, `.musicxml`) files and ships
 with a handful of pieces, from *Frère Jacques* to a Chopin nocturne. Built on

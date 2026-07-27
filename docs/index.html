@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Orchestrion — your students play real music, rhythm first</title>
-  <meta name="description" content="Orchestrion is a free, open-source app for music education. Students play the rhythm on any keyboard — MIDI or computer — and Orchestrion supplies the notes of a real score. Windows, macOS, Linux.">
+  <title>Orchestrion — second only to playing the piano</title>
+  <meta name="description" content="Orchestrion is a free, open-source app that turns any score into an instrument: tap the rhythm on a MIDI or computer keyboard and it plays the notes. For classrooms, kids, music lovers and bands. Windows, macOS, Linux.">
   <link rel="canonical" href="https://saintmatthieu.github.io/Orchestrion/">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <meta name="theme-color" content="#2e1a12">
-  <meta property="og:title" content="Orchestrion — your students play real music, rhythm first">
-  <meta property="og:description" content="A free, open-source app for music education: students tap the rhythm, the score supplies the pitches. Works with MuseScore and MusicXML files.">
+  <meta property="og:title" content="Orchestrion — second only to playing the piano">
+  <meta property="og:description" content="A free, open-source app: you tap the rhythm, the score supplies the pitches. Works with MuseScore and MusicXML files.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://saintmatthieu.github.io/Orchestrion/">
   <meta property="og:image" content="https://saintmatthieu.github.io/Orchestrion/assets/og-image.png">
@@ -39,11 +39,11 @@
       color: var(--cream);
       padding: 0.9rem 0;
     }
-    header.site .wrap { display: flex; align-items: center; gap: 0.75rem; }
+    header.site .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
     header.site img { width: 2.2rem; height: 2.2rem; }
     header.site .name { font-size: 1.35rem; font-style: italic; letter-spacing: 0.02em; }
-    header.site nav { margin-left: auto; display: flex; gap: 1.25rem; }
-    header.site nav a { color: var(--gold-bright); text-decoration: none; font-size: 0.95rem; }
+    header.site nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
+    header.site nav a { color: var(--gold-bright); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
     header.site nav a:hover { text-decoration: underline; }
 
     .hero {
@@ -59,13 +59,17 @@
       color: var(--gold-bright);
       max-width: 40ch;
       margin: 0 auto 1rem;
+      text-wrap: balance;
     }
     .hero p.sub {
-      max-width: 56ch;
+      max-width: 70ch;
       margin: 0 auto 2.25rem;
       font-size: 1.15rem;
       color: #e8ddc8;
+      text-wrap: balance;
     }
+    /* On narrow screens the deliberate break can't fit — let text flow. */
+    @media (max-width: 44rem) { .hero p.sub br { display: none; } }
     .video-frame {
       max-width: 50rem;
       margin: 0 auto 2.5rem;
@@ -131,20 +135,34 @@
     .step h3 { font-size: 1.2rem; margin-bottom: 0.4rem; }
     .step p { color: var(--espresso-soft); }
 
-    .teachers ul { list-style: none; max-width: 44rem; margin: 0 auto; }
-    .teachers li {
+    .uses h2 { margin-bottom: 1.1rem; }
+    .uses-intro {
+      max-width: 44rem;
+      margin: 0 auto 1.6rem;
+      text-align: center;
+      color: var(--espresso-soft);
+    }
+    .uses ul { list-style: none; max-width: 44rem; margin: 0 auto; }
+    .uses li {
       padding-left: 2rem;
       position: relative;
       margin-bottom: 1.1rem;
       color: var(--espresso-soft);
     }
-    .teachers li::before {
+    .uses li::before {
       content: "♪";
       position: absolute; left: 0;
       color: var(--gold);
       font-size: 1.1rem;
     }
-    .teachers li strong { color: var(--espresso); }
+    .uses li strong { color: var(--espresso); }
+    .uses-note {
+      max-width: 44rem;
+      margin: 1.8rem auto 0;
+      text-align: center;
+      font-style: italic;
+      color: var(--espresso-soft);
+    }
 
     footer.site {
       background: var(--espresso);
@@ -165,7 +183,7 @@
     <span class="name">Orchestrion</span>
     <nav>
       <a href="#how">How it works</a>
-      <a href="#teachers">For teachers</a>
+      <a href="#uses">What for?</a>
       <a href="#download">Download</a>
       <a href="https://github.com/saintmatthieu/Orchestrion">GitHub</a>
     </nav>
@@ -174,11 +192,10 @@
 
 <section class="hero" id="download">
   <div class="wrap">
-    <h1>Your students play real music&nbsp;— rhythm&nbsp;first.</h1>
+    <h1>Second only to playing the piano.</h1>
     <p class="sub">
-      Orchestrion turns any score into an instrument. The student taps the rhythm —
-      on a MIDI keyboard or the computer keyboard — and Orchestrion plays the notes
-      of the piece, at the student's own pulse. Real repertoire, from day one.
+      You tap the rhythm — on a MIDI keyboard or the computer keyboard —<br>
+      Orchestrion plays the notes.
     </p>
 
     <!--
@@ -226,28 +243,36 @@
       <div class="step">
         <div class="num">3</div>
         <h3>Tap the rhythm</h3>
-        <p>Each tap plays the next notes of the piece. The student owns the timing;
+        <p>Each tap plays the next notes of the piece. You own the timing;
            Orchestrion takes care of the pitches.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="band deep teachers" id="teachers">
+<section class="band deep uses" id="uses">
   <div class="wrap">
-    <h2>For music teachers</h2>
+    <h2>What for?</h2>
+    <p class="uses-intro">Orchestrion is a simple idea with many uses:</p>
     <ul>
-      <li><strong>Rhythm before note-reading.</strong> Students experience pulse, phrasing
-          and musical flow with real repertoire, before pitch accuracy becomes a hurdle.
-          Wrong-note anxiety is simply removed from the equation.</li>
-      <li><strong>Your own repertoire.</strong> Orchestrion opens MuseScore (<code>.mscz</code>)
-          and MusicXML (<code>.mxl</code>, <code>.musicxml</code>) files — use the material
+      <li><strong>In the music lesson.</strong> Let pupils focus entirely on rhythm, phrasing
+          and pulse with real repertoire — wrong-note anxiety is simply removed from the
+          equation. Orchestrion opens MuseScore (<code>.mscz</code>) and MusicXML
+          (<code>.mxl</code>, <code>.musicxml</code>) files, so it works with the material
           you already teach with.</li>
-      <li><strong>Zero setup in the classroom.</strong> The computer keyboard works out of the
-          box; a USB MIDI keyboard is detected automatically.</li>
-      <li><strong>Free and open source.</strong> GPL-3.0 licensed, no account, no ads,
-          works offline. Built on MuseScore's engraving and playback engine.</li>
+      <li><strong>For kids, at home.</strong> A playful way to get familiar with music
+          notation and sharpen a sense of rhythm — following the score is the game.</li>
+      <li><strong>For music lovers.</strong> Don't just listen to the repertoire you love —
+          play it. Discover pieces from the inside, at your own pulse, and challenge your
+          inner metronome along the way.</li>
+      <li><strong>With your band.</strong> That song where the keyboard is too central to be
+          left aside — "November Rain", "Bohemian Rhapsody", "You" — play the part yourself,
+          without years of piano lessons first.</li>
+      <li><strong>Around the piano.</strong> Karaoke-like sing-song evenings, with an
+          accompaniment that follows the singers instead of dragging them along.</li>
     </ul>
+    <p class="uses-note">Some of these scenarios will grow their own dedicated features over
+       time — the fundamentals are already here: any score, your rhythm.</p>
   </div>
 </section>
 
