@@ -20,7 +20,7 @@ It opens MuseScore (`.mscz`) and MusicXML (`.mxl`, `.musicxml`) files and ships
 with a handful of pieces, from *Frère Jacques* to a Chopin nocturne. Built on
 [MuseScore](https://musescore.org)'s engraving and playback engine.
 
-**Website: <https://saintmatthieu.github.io/Orchestrion/>**
+**Website: <https://orchestrion.app/>**
 
 ## Download
 
