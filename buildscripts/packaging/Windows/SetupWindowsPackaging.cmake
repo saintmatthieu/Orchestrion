@@ -4,6 +4,19 @@ if(NOT OS_IS_WIN)
     return()
 endif()
 
+# The MUSE_APP_* variables inherited from MuseScore/version.cmake carry the
+# upstream 4.x version and "Orchestrion 4 dev" naming. Override them with this
+# project's own version for PACKAGING ONLY: this file is included last from the
+# root CMakeLists.txt, after muse_framework_config.h has been generated, so
+# nothing at runtime (and in particular no settings path) is affected. Do not
+# move these overrides earlier.
+set(MUSE_APP_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(MUSE_APP_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(MUSE_APP_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(MUSE_APP_VERSION "${PROJECT_VERSION}")
+set(MUSE_APP_TITLE_VERSION "Orchestrion") # Add/Remove Programs name, Start-menu folder
+set(MUSE_APP_NAME_VERSION "Orchestrion")  # install directory under Program Files
+
 #! NOTE: the following is true for cmake version 3.30.5. When upgrading cmake,
 #! consider removing this if block.
 # CMake's built-in detection of MSVC_REDIST_DIR only knows about Visual Studio
@@ -42,8 +55,8 @@ include(InstallRequiredSystemLibraries)
 set(CPACK_PACKAGE_NAME ${MUSE_APP_NAME})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Orchestrion, a piano practice and performance application") 
 set(CPACK_PACKAGE_VENDOR "saintmatthieu")
-# set(CPACK_PACKAGE_CONTACT "https://musescore.org")
-# set(CPACK_PACKAGE_HOMEPAGE_URL "https://musescore.org")
+set(CPACK_PACKAGE_CONTACT "saintmatthieu@mailbox.org")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://orchestrion.app/")
 
 set(CPACK_PACKAGE_VERSION_MAJOR "${MUSE_APP_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${MUSE_APP_VERSION_MINOR}")
@@ -93,12 +106,13 @@ set(CPACK_WIX_ROOT "${PROGRAMFILES}/WiX Toolset v3.11")
 # Use custom version of WIX.template.in
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer" ${CMAKE_MODULE_PATH})
 
-if(NOT CPACK_WIX_PRODUCT_GUID)
-    set(CPACK_WIX_PRODUCT_GUID "00000000-0000-0000-0000-000000000000")
-endif()
-
-message(STATUS "[SetupWindowsPackaging.cmake] CPACK_WIX_PRODUCT_GUID: ${CPACK_WIX_PRODUCT_GUID}")
-
+# CPACK_WIX_PRODUCT_GUID (the MSI ProductCode) is intentionally NOT set: it
+# must be unique per build for MajorUpgrade to work, and CPack generates a
+# fresh one when the variable is unset. Pinning it to a constant made every
+# shipped MSI share one ProductCode, so installing a newer version over an
+# older one failed with "another version of this product is already
+# installed". The UpgradeCode below is the opposite: it identifies the product
+# across versions and MUST NEVER CHANGE — shipped installs carry it.
 if(NOT CPACK_WIX_UPGRADE_GUID)
     set(CPACK_WIX_UPGRADE_GUID "11111111-1111-1111-1111-111111111111")
 endif()

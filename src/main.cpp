@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 #else
   QCoreApplication::setApplicationName("Orchestrion");
 #endif
-  QCoreApplication::setApplicationVersion("0.1.0");
+  QCoreApplication::setApplicationVersion(ORCHESTRION_VERSION);
 
 #if (defined(_MSCVER) || defined(_MSC_VER))
   // On MSVC under Windows, we need to manually retrieve the command-line

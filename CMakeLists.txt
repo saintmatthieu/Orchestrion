@@ -2,8 +2,12 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0000 NEW)
 cmake_policy(SET CMP0079 NEW)
 
-# Set the project name and version
-project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
+# Set the project name and version.
+# This version is the single source of truth: it feeds the in-app
+# applicationVersion (ORCHESTRION_VERSION) and the Windows installer
+# (SetupWindowsPackaging.cmake overrides the MuseScore-inherited 4.x with it).
+# Bump it together with the release tag — CI fails tag builds on mismatch.
+project(Orchestrion VERSION 0.3.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
 find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
@@ -73,6 +77,10 @@ set_target_properties(Orchestrion PROPERTIES
     AUTOMOC ON
     AUTORCC ON
     AUTOUIC ON
+)
+
+target_compile_definitions(Orchestrion PRIVATE
+    ORCHESTRION_VERSION="${PROJECT_VERSION}"
 )
 
 # On Linux, the QML module creates an "Orchestrion/" directory in the build tree,

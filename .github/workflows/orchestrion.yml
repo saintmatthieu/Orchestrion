@@ -35,6 +35,21 @@ jobs:
         with:
           submodules: recursive
 
+      # The installer takes its version from project(Orchestrion VERSION x.y.z)
+      # in the root CMakeLists.txt. Fail tag builds early when it wasn't bumped
+      # to match the tag, before spending an hour compiling.
+      - name: Check project version matches tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $m = Select-String -Path CMakeLists.txt -Pattern 'project\(Orchestrion VERSION ([0-9]+\.[0-9]+\.[0-9]+)'
+          if (-not $m) { throw "Could not find project(Orchestrion VERSION x.y.z) in CMakeLists.txt" }
+          $cmakeVersion = $m.Matches[0].Groups[1].Value
+          $tagVersion = '${{ github.ref_name }}'.TrimStart('v')
+          if ($cmakeVersion -ne $tagVersion) {
+            throw "CMakeLists.txt version ($cmakeVersion) does not match tag ($tagVersion) - bump project(Orchestrion VERSION ...) before tagging"
+          }
+
       - name: Pull LFS files
         run: git lfs pull
 

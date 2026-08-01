@@ -27,9 +27,12 @@
 
         <Media Id="1" Cabinet="media1.cab" EmbedCab="yes" CompressionLevel="high" />
 
-        <MajorUpgrade
-            AllowSameVersionUpgrades="yes"
-            DowngradeErrorMessage="!(loc.DowngradeErrorMessage)" />
+        <!-- AllowDowngrades (which also covers same-version reinstalls) is
+             required for the one-time transition from the MuseScore-inherited
+             4.4.4.x product version down to Orchestrion's own 0.x versions:
+             without it, machines holding a 4.4.4.x install would reject the
+             new MSIs as downgrades. -->
+        <MajorUpgrade AllowDowngrades="yes" />
 
         <WixVariable Id="WixUILicenseRtf" Value="$(var.CPACK_WIX_LICENSE_RTF)" />
         <Property Id="WIXUI_INSTALLDIR" Value="INSTALL_ROOT" />
@@ -50,8 +53,8 @@
         <WixVariable Id="WixUIDialogBmp" Value="$(var.CPACK_WIX_UI_DIALOG)" />
         <?endif?>
 
-        <Property Id='ARPHELPLINK'>https://musescore.org</Property>
-        <Property Id='ARPURLINFOABOUT'>https://musescore.org</Property>
+        <Property Id='ARPHELPLINK'>https://github.com/saintmatthieu/Orchestrion</Property>
+        <Property Id='ARPURLINFOABOUT'>https://orchestrion.app/</Property>
         <!-- Properties from CMake -->
         <?include "properties.wxi"?>
 
