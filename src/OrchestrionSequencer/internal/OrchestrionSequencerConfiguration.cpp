@@ -31,8 +31,7 @@ const muse::Settings::Key
     NOTE_INFO_TOOLTIP_ENABLED(module_name, "NOTE_INFO_TOOLTIP_ENABLED");
 const muse::Settings::Key
     TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
-const muse::Settings::Key TIMING_FEEDBACK_ENABLED(module_name,
-                                                  "TIMING_FEEDBACK_ENABLED");
+const muse::Settings::Key GRADING_ENABLED(module_name, "GRADING_ENABLED");
 const muse::Settings::Key
     PERSISTENT_TIMING_MARKS_ENABLED(module_name,
                                     "PERSISTENT_TIMING_MARKS_ENABLED");
@@ -41,8 +40,9 @@ const muse::Settings::Key HAND_SYNC_SCORE_ENABLED(module_name,
 const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
                                                  "DYNAMICS_SCORE_ENABLED");
 const muse::Settings::Key AUTO_PLAYED_STAFF(module_name, "AUTO_PLAYED_STAFF");
-const muse::Settings::Key TIME_PROPORTIONAL_SPACING_ENABLED(
-    module_name, "TIME_PROPORTIONAL_SPACING_ENABLED");
+const muse::Settings::Key
+    TIME_PROPORTIONAL_SPACING_ENABLED(module_name,
+                                      "TIME_PROPORTIONAL_SPACING_ENABLED");
 const muse::Settings::Key TEMPO_SMOOTHING_MEMORY(module_name,
                                                  "TEMPO_SMOOTHING_MEMORY");
 const muse::Settings::Key UNROLL_REPEATS_ENABLED(module_name,
@@ -74,11 +74,11 @@ void OrchestrionSequencerConfiguration::init()
       .onReceive(this, [this](const muse::Val &)
                  { m_tempoVisualizationEnabledChanged.notify(); });
 
-  muse::settings()->setDefaultValue(TIMING_FEEDBACK_ENABLED, muse::Val{true});
+  muse::settings()->setDefaultValue(GRADING_ENABLED, muse::Val{true});
   muse::settings()
-      ->valueChanged(TIMING_FEEDBACK_ENABLED)
+      ->valueChanged(GRADING_ENABLED)
       .onReceive(this, [this](const muse::Val &)
-                 { m_timingFeedbackEnabledChanged.notify(); });
+                 { m_gradingEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(PERSISTENT_TIMING_MARKS_ENABLED,
                                     muse::Val{false});
@@ -180,20 +180,20 @@ OrchestrionSequencerConfiguration::tempoVisualizationEnabledChanged() const
   return m_tempoVisualizationEnabledChanged;
 }
 
-bool OrchestrionSequencerConfiguration::timingFeedbackEnabled() const
+bool OrchestrionSequencerConfiguration::gradingEnabled() const
 {
-  return muse::settings()->value(TIMING_FEEDBACK_ENABLED).toBool();
+  return muse::settings()->value(GRADING_ENABLED).toBool();
 }
 
-void OrchestrionSequencerConfiguration::setTimingFeedbackEnabled(bool enabled)
+void OrchestrionSequencerConfiguration::setGradingEnabled(bool enabled)
 {
-  muse::settings()->setSharedValue(TIMING_FEEDBACK_ENABLED, muse::Val{enabled});
+  muse::settings()->setSharedValue(GRADING_ENABLED, muse::Val{enabled});
 }
 
 muse::async::Notification
-OrchestrionSequencerConfiguration::timingFeedbackEnabledChanged() const
+OrchestrionSequencerConfiguration::gradingEnabledChanged() const
 {
-  return m_timingFeedbackEnabledChanged;
+  return m_gradingEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::persistentTimingMarksEnabled() const

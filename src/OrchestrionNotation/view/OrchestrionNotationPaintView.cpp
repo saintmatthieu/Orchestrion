@@ -97,9 +97,14 @@ void OrchestrionNotationPaintView::subscribe(
         if (event.type == NoteEventType::noteOn)
           m_pendingHandVelocity[event.isLeftHand ? 1 : 0] = event.velocity;
 
-        // Record the take's raw events, for the post-take replay. A note-on
-        // while the previous take's stats are stale begins a new take (this
-        // event precedes the transitions batch that restarts the stats).
+        // Record the take's raw events, for the post-take replay — part of
+        // the grading apparatus (without it, the play button is
+        // plain metronomic playback).
+        if (!sequencerConfiguration()->gradingEnabled())
+          return;
+        // A note-on while the previous take's stats are stale begins a new
+        // take (this event precedes the transitions batch that restarts the
+        // stats).
         if (orchestrion()->player()->IsReplaying())
           return; // the replay's own events aren't a new performance
         const bool newTake = event.type == NoteEventType::noteOn &&
@@ -314,7 +319,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   // staff for the right hand, below for the left — and the hand's revised
   // judgments into the overlay (moving still-showing markers, re-binning the
   // box plot). The newest onset's judgment is the window's last.
-  if (sequencerConfiguration()->timingFeedbackEnabled() && !replaying)
+  if (sequencerConfiguration()->gradingEnabled() && !replaying)
   {
     // Every sounding manual onset gets its marks (gauge, ribbon point, take
     // record) up front, in a pending state: the judgments fill them in as
@@ -355,7 +360,7 @@ void OrchestrionNotationPaintView::OnTransitions(
   // absent to distinguish the true end; a mid-piece release holds a future
   // chord or a present rest instead.)
   if (!m_finalScoreShown && !replaying &&
-      sequencerConfiguration()->timingFeedbackEnabled())
+      sequencerConfiguration()->gradingEnabled())
     if (const auto sequencer = orchestrion()->sequencer())
     {
       const auto &current = sequencer->GetCurrentTransitions();
@@ -406,9 +411,8 @@ void OrchestrionNotationPaintView::updateAutoTargets(
     AutoTargets &targets = m_autoTrackTargets[track.value];
     const IChord *present = GetPresentChord(transition);
     targets.offTick =
-        present
-            ? std::make_optional<double>(present->GetEndTick().withRepeats)
-            : std::nullopt;
+        present ? std::make_optional<double>(present->GetEndTick().withRepeats)
+                : std::nullopt;
     const IChord *future = GetFutureChord(transition);
     targets.onTick =
         future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
@@ -468,6 +472,11 @@ void OrchestrionNotationPaintView::refitTakeJudgments()
 void OrchestrionNotationPaintView::pushReplayTake()
 {
   const auto player = orchestrion()->player();
+  if (!sequencerConfiguration()->gradingEnabled())
+  {
+    player->SetReplayTake(std::nullopt);
+    return;
+  }
   if (m_replayEvents.empty() ||
       m_replayStartTick == std::numeric_limits<int>::max())
     return;
@@ -492,7 +501,8 @@ std::vector<ReplayEvent> OrchestrionNotationPaintView::fittedTempoEvents() const
   // that routes the input events.)
   std::map<bool /*isLeft*/, std::vector<std::pair<double, double>>> errors;
   for (const TakeOnsetRecord &record : m_takeOnsetRecords)
-    if (const auto error = m_timingOverlay.takeErrorAt(record.staff, record.tMs))
+    if (const auto error =
+            m_timingOverlay.takeErrorAt(record.staff, record.tMs))
       errors[record.staff > 0].emplace_back(record.eventMs, *error);
   for (auto &[isLeft, series] : errors)
     std::sort(series.begin(), series.end());
@@ -510,8 +520,8 @@ std::vector<ReplayEvent> OrchestrionNotationPaintView::fittedTempoEvents() const
       return series.front().second;
     if (ms >= series.back().first)
       return series.back().second;
-    const auto next = std::lower_bound(series.begin(), series.end(),
-                                       std::make_pair(ms, 0.0));
+    const auto next =
+        std::lower_bound(series.begin(), series.end(), std::make_pair(ms, 0.0));
     const auto prev = std::prev(next);
     const double span = next->first - prev->first;
     const double frac = span > 0.0 ? (ms - prev->first) / span : 0.0;
@@ -654,7 +664,7 @@ bool OrchestrionNotationPaintView::smoothingTunerVisible() const
 {
   return (m_timingStatsStale || m_finalScoreShown) &&
          !m_takeOnsetRecords.empty() &&
-         sequencerConfiguration()->timingFeedbackEnabled();
+         sequencerConfiguration()->gradingEnabled();
 }
 
 double OrchestrionNotationPaintView::tempoSmoothing() const
@@ -684,8 +694,7 @@ void OrchestrionNotationPaintView::applyWarpStep()
     warped = (1.0 - eased) * tick + eased * warped;
 
   const auto masterNotation = globalContext()->currentMasterNotation();
-  const auto master =
-      masterNotation ? masterNotation->masterScore() : nullptr;
+  const auto master = masterNotation ? masterNotation->masterScore() : nullptr;
   if (!master)
   {
     m_warpTimer.stop();
@@ -710,8 +719,7 @@ void OrchestrionNotationPaintView::clearPerformanceWarp()
   m_warpTable.clear();
   m_timingOverlay.setWarpProgress(0.0);
   const auto masterNotation = globalContext()->currentMasterNotation();
-  const auto master =
-      masterNotation ? masterNotation->masterScore() : nullptr;
+  const auto master = masterNotation ? masterNotation->masterScore() : nullptr;
   if (master && master->hasLayoutTickWarp())
   {
     master->setLayoutTickWarp({});
@@ -1005,7 +1013,7 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
   QString timingInfo;
   QPointF timingPos = pos;
   int placement = 0; // 0 = at the cursor
-  if (sequencerConfiguration()->timingFeedbackEnabled())
+  if (sequencerConfiguration()->gradingEnabled())
   {
     const QPointF logical(logicPos.x(), logicPos.y());
     // The hovered onset also reveals its coloured shadow copy (gliding out
@@ -1378,11 +1386,9 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
                 const auto sequencer = orchestrion()->sequencer();
                 if (staff < 0 || !sequencer)
                   return;
-                sequencer->OnInputEvent(noteOn ? NoteEventType::noteOn
-                                               : NoteEventType::noteOff,
-                                        staff > 0 ? leftHandPitch
-                                                  : rightHandPitch,
-                                        std::nullopt);
+                sequencer->OnInputEvent(
+                    noteOn ? NoteEventType::noteOn : NoteEventType::noteOff,
+                    staff > 0 ? leftHandPitch : rightHandPitch, std::nullopt);
               });
         });
     // Seed from whatever the last batch holds (after loading it covers every
@@ -1397,16 +1403,22 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   // Toggling the layout mode re-lays-out the score; every cached x is stale,
   // which is exactly what updateNotation() resets (follower, stats, marks).
   // The shadow copies only mean anything on the time-proportional canvas.
+  // The grading master switch gets the same treatment: turning
+  // it off must return the score to plain engraving and clear every mark.
+  const auto applyGradingMode = [this]
+  {
+    m_timingOverlay.setShadowsEnabled(
+        sequencerConfiguration()->gradingEnabled() &&
+        sequencerConfiguration()->timeProportionalSpacingEnabled());
+    updateNotation();
+  };
   m_timingOverlay.setShadowsEnabled(
+      sequencerConfiguration()->gradingEnabled() &&
       sequencerConfiguration()->timeProportionalSpacingEnabled());
   sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
-      this,
-      [this]
-      {
-        m_timingOverlay.setShadowsEnabled(
-            sequencerConfiguration()->timeProportionalSpacingEnabled());
-        updateNotation();
-      });
+      this, applyGradingMode);
+  sequencerConfiguration()->gradingEnabledChanged().onNotify(this,
+                                                             applyGradingMode);
 
   load();
   updateNotation();
@@ -1502,9 +1514,12 @@ void OrchestrionNotationPaintView::updateNotation()
     // Time-proportional spacing uses MuseScore's duration-proportional
     // layout (with the fork's global quantum), so equal horizontal distance
     // = equal musical time — the canvas for the tempo-warped note overlays.
-    setViewMode(sequencerConfiguration()->timeProportionalSpacingEnabled()
-                    ? mu::notation::ViewMode::HORIZONTAL_FIXED
-                    : mu::notation::ViewMode::LINE);
+    // It only serves the grading: without it, plain engraving.
+    setViewMode(
+        sequencerConfiguration()->gradingEnabled() &&
+                sequencerConfiguration()->timeProportionalSpacingEnabled()
+            ? mu::notation::ViewMode::HORIZONTAL_FIXED
+            : mu::notation::ViewMode::LINE);
     auto config = notation->interaction()->scoreConfig();
     config.isShowInvisibleElements = false;
     config.isShowUnprintableElements = false;
@@ -1772,7 +1787,7 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
 
   // Timing-judgment overlay (gauges next to the notes + box-plot HUD), on top
   // of the notation.
-  if (sequencerConfiguration()->timingFeedbackEnabled())
+  if (sequencerConfiguration()->gradingEnabled())
     m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());
 
   const auto radius = 30. / currentScaling();

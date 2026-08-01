@@ -48,12 +48,15 @@ public:
   virtual muse::async::Notification
   tempoVisualizationEnabledChanged() const = 0;
 
-  //! When enabled, each played note gets a colored flash judging its timing
-  //! against the performer's own tempo curve (gold = perfect, green = good,
-  //! blue = early, red = late). On by default.
-  virtual bool timingFeedbackEnabled() const = 0;
-  virtual void setTimingFeedbackEnabled(bool) = 0;
-  virtual muse::async::Notification timingFeedbackEnabledChanged() const = 0;
+  //! The master switch of the grading apparatus: the per-note
+  //! timing marks and deviation ribbon, the box-plot HUD and scores, the
+  //! final-score banner, the time-proportional layout and its tempo warp,
+  //! the take recording and its replay. When disabled, the score is just
+  //! displayed and played plainly — only the tempo-following scroll stays,
+  //! which is the norm in both modes. On by default.
+  virtual bool gradingEnabled() const = 0;
+  virtual void setGradingEnabled(bool) = 0;
+  virtual muse::async::Notification gradingEnabledChanged() const = 0;
 
   //! When enabled, the timing marks don't fade out: they stay on the page
   //! until the stats reset, so a whole take can be reviewed after playing it.

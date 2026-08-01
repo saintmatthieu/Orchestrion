@@ -68,11 +68,11 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setTempoVisualizationEnabled(
                           !sequencerConfig()->tempoVisualizationEnabled());
                     });
-  dispatcher()->reg(this, "orchestrion-advanced-toggle-timing-feedback",
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-grading",
                     [this]
                     {
-                      sequencerConfig()->setTimingFeedbackEnabled(
-                          !sequencerConfig()->timingFeedbackEnabled());
+                      sequencerConfig()->setGradingEnabled(
+                          !sequencerConfig()->gradingEnabled());
                     });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-persistent-timing-marks",
                     [this]
@@ -125,9 +125,8 @@ void OrchestrionActionController::init()
   dispatcher()->reg(
       this, actionIds::playModeFittedTempo,
       [this] { orchestrion()->setPlayMode(PlayMode::replayFittedTempo); });
-  dispatcher()->reg(
-      this, actionIds::playModeMetronome,
-      [this] { orchestrion()->setPlayMode(PlayMode::metronome); });
+  dispatcher()->reg(this, actionIds::playModeMetronome, [this]
+                    { orchestrion()->setPlayMode(PlayMode::metronome); });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
