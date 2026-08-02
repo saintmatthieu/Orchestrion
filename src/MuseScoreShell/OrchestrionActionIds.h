@@ -44,6 +44,10 @@ static constexpr const char *reverbCathedral =
 static constexpr const char *playbackToggle = "orchestrion-play";
 static constexpr const char *playbackStop = "orchestrion-stop";
 
+//! Opens the grading settings dialog (from the Grading menu; the top-row
+//! settings button opens it directly).
+static constexpr const char *gradingSettings = "orchestrion-grading-settings";
+
 static constexpr const char *playModePerformance =
     "orchestrion-advanced-play-mode-performance";
 static constexpr const char *playModeFittedTempo =

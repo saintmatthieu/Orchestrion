@@ -75,8 +75,8 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   setItems({makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-            makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled),
-            makeHelpMenu()});
+            makeAudioMidiMenu(), makeGradingMenu(),
+            makeAdvancedMenu(velocityRecordingEnabled), makeHelpMenu()});
 }
 
 void OrchestrionMenuModel::load()
@@ -110,31 +110,11 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
-  sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
-  sequencerConfiguration()->handSyncScoreEnabledChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
-  sequencerConfiguration()->dynamicsScoreEnabledChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
-  sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
   sequencerConfiguration()->unrollRepeatsEnabledChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
-  orchestrion()->playModeChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -372,48 +352,6 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   tempoVizItem->setSelected(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
-  const bool gradingOn =
-      sequencerConfiguration()->gradingEnabled();
-  muse::uicomponents::MenuItem *const gradingItem =
-      makeMenuItem(toggleGradingMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "&Grading"));
-  gradingItem->setSelectable(true);
-  gradingItem->setSelected(gradingOn);
-  // The following items refine the grading: inert without it.
-  const auto dependsOnGrading = [gradingOn](MenuItem *item)
-  {
-    item->setState(gradingOn ? muse::ui::UiActionState::make_enabled()
-                                   : muse::ui::UiActionState::make_disabled());
-  };
-
-  muse::uicomponents::MenuItem *const persistentMarksItem =
-      makeMenuItem(togglePersistentTimingMarksMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "&Keep timing marks on screen"));
-  persistentMarksItem->setSelectable(true);
-  persistentMarksItem->setSelected(
-      sequencerConfiguration()->persistentTimingMarksEnabled());
-  dependsOnGrading(persistentMarksItem);
-
-  muse::uicomponents::MenuItem *const handSyncScoreItem =
-      makeMenuItem(toggleHandSyncScoreMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "Score hand s&ynchronization"));
-  handSyncScoreItem->setSelectable(true);
-  handSyncScoreItem->setSelected(
-      sequencerConfiguration()->handSyncScoreEnabled());
-  dependsOnGrading(handSyncScoreItem);
-
-  muse::uicomponents::MenuItem *const dynamicsScoreItem =
-      makeMenuItem(toggleDynamicsScoreMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "Score dynamics s&moothness"));
-  dynamicsScoreItem->setSelectable(true);
-  dynamicsScoreItem->setSelected(
-      sequencerConfiguration()->dynamicsScoreEnabled());
-  dependsOnGrading(dynamicsScoreItem);
-
   const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
   muse::uicomponents::MenuItem *const autoplayLeftItem = makeMenuItem(
       autoplayLeftHandMenuId, muse::TranslatableString("appshell/menu/advanced",
@@ -428,15 +366,6 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   autoplayRightItem->setSelectable(true);
   autoplayRightItem->setSelected(autoPlayedStaff == 0);
 
-  muse::uicomponents::MenuItem *const proportionalSpacingItem =
-      makeMenuItem(toggleProportionalSpacingMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "Time-&proportional spacing"));
-  proportionalSpacingItem->setSelectable(true);
-  proportionalSpacingItem->setSelected(
-      sequencerConfiguration()->timeProportionalSpacingEnabled());
-  dependsOnGrading(proportionalSpacingItem);
-
   muse::uicomponents::MenuItem *const unrollRepeatsItem =
       makeMenuItem(toggleUnrollRepeatsMenuId,
                    muse::TranslatableString("appshell/menu/advanced",
@@ -445,61 +374,41 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   unrollRepeatsItem->setSelected(
       sequencerConfiguration()->unrollRepeatsEnabled());
 
-  MenuItem *const playModeSubmenu =
-      makePlayModeSubmenu(orchestrion()->playMode());
-  dependsOnGrading(playModeSubmenu); // replays are grading territory
-
   const QList<MenuItem *> menu{
       item,
       noteInfoItem,
       tempoVizItem,
-      gradingItem,
-      persistentMarksItem,
-      handSyncScoreItem,
-      dynamicsScoreItem,
       autoplayLeftItem,
       autoplayRightItem,
-      proportionalSpacingItem,
       unrollRepeatsItem,
-      playModeSubmenu,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
 }
 
-muse::uicomponents::MenuItem *
-OrchestrionMenuModel::makePlayModeSubmenu(PlayMode current)
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
 {
   using namespace muse::uicomponents;
-  QList<MenuItem *> items;
-  const auto addItem = [this, &items, current](
-                           const char *actionCode,
-                           const muse::TranslatableString &title, PlayMode mode)
-  {
-    auto *const item = makeMenuItem(actionCode, title);
-    IF_ASSERT_FAILED(item) return;
-    item->setSelectable(true);
-    item->setSelected(mode == current);
-    items.append(item);
-  };
 
-  addItem(
-      actionIds::playModePerformance,
-      muse::TranslatableString("appshell/menu/advanced", "Replay performance"),
-      PlayMode::replayPerformance);
-  addItem(actionIds::playModeFittedTempo,
-          muse::TranslatableString("appshell/menu/advanced",
-                                   "Replay at fitted tempo"),
-          PlayMode::replayFittedTempo);
-  addItem(
-      actionIds::playModeMetronome,
-      muse::TranslatableString("appshell/menu/advanced", "Metronomic playback"),
-      PlayMode::metronome);
+  // The master switch (also the top-row toggle button); everything it
+  // governs is configured in the grading settings dialog.
+  MenuItem *const toggleItem =
+      makeMenuItem(toggleGradingMenuId,
+                   muse::TranslatableString("appshell/menu/grading",
+                                            "&Enabled"));
+  toggleItem->setSelectable(true);
+  toggleItem->setSelected(sequencerConfiguration()->gradingEnabled());
 
-  return makeMenu(
-      muse::TranslatableString("appshell/menu/advanced", "Play &button mode"),
-      items, "menu-orchestrion-play-mode");
+  MenuItem *const settingsItem =
+      makeMenuItem(actionIds::gradingSettings,
+                   muse::TranslatableString("appshell/menu/grading",
+                                            "&Settings…"));
+
+  return makeMenu(muse::TranslatableString("appshell/menu/grading",
+                                           "&Grading"),
+                  QList<MenuItem *>{toggleItem, settingsItem},
+                  "menu-orchestrion-grading");
 }
 
 muse::uicomponents::MenuItem *

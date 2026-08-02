@@ -78,6 +78,13 @@ ApplicationWindow {
         id: onboardingModel
     }
 
+    // Shared by the top-row grading buttons, the settings dialog and the
+    // Grading menu's "Settings…" action.
+    GradingModel {
+        id: gradingModel
+        Component.onCompleted: load()
+    }
+
     OrchestrionWindowTitleProvider {
         id: titleProvider
     }
@@ -219,6 +226,19 @@ ApplicationWindow {
                     }
                 }
 
+                // The grading toggle gets the top centre to itself: it
+                // switches the app between plain playing and the graded
+                // performance, so it is the one control worth finding first.
+                GradingButton {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 8
+                    model: gradingModel
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                }
+
                 // Beginner help: number-key tooltip + "Show me!" animation.
                 // Stays put (not tied to the fading controls overlay).
                 NumberKeysHelp {
@@ -255,6 +275,23 @@ ApplicationWindow {
                     y: notationPaintView.hoveredNoteInfoPlacement === 0
                        ? notationPaintView.hoveredNoteInfoPos.y + 16
                        : notationPaintView.hoveredNoteInfoPos.y - height / 2
+                }
+
+                // The grading configuration dialog, opened from the Grading
+                // menu's "Settings…" item.
+                GradingSettingsPopup {
+                    id: gradingPopup
+                    z: 105
+                    model: gradingModel
+                    x: (parent.width - width) / 2
+                    y: (parent.height - height) / 3
+                }
+
+                Connections {
+                    target: gradingModel
+                    function onOpenSettingsRequested() {
+                        gradingPopup.open()
+                    }
                 }
 
                 // End-of-piece banner: the take's timing score, raised by the

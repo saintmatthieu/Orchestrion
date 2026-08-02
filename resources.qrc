@@ -4,6 +4,8 @@
     <file>src/qml/OrchestrionIcon.qml</file>
     <file>src/qml/FullscreenButton.qml</file>
     <file>src/qml/PlaybackButton.qml</file>
+    <file>src/qml/GradingButton.qml</file>
+    <file>src/qml/GradingSettingsPopup.qml</file>
     <file>src/qml/AttributionToast.qml</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>
@@ -14,5 +16,6 @@
     <file>icons/player/stop-sign.png</file>
     <file>icons/player/fullscreen.svg</file>
     <file>icons/player/loop.svg</file>
+    <file>icons/player/grading.svg</file>
   </qresource>
 </RCC>

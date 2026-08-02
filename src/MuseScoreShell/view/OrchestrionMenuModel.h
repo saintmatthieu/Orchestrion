@@ -86,8 +86,8 @@ private:
   muse::uicomponents::MenuItem *makeHelpMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
+  muse::uicomponents::MenuItem *makeGradingMenu();
   muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
-  muse::uicomponents::MenuItem *makePlayModeSubmenu(PlayMode current);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
 
   void createMenus(bool withSaveItem);

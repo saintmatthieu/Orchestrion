@@ -73,6 +73,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::playbackStop, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::gradingSettings, mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::playModePerformance, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::playModeFittedTempo, mu::context::UiCtxAny,
