@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "FirstRunWelcomeModel.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 
 namespace dgk
 {
@@ -32,6 +33,16 @@ void FirstRunWelcomeModel::dismiss(bool dontShowAgain)
   if (dontShowAgain)
     configuration()->setFirstRunWelcomeAcknowledged(true);
   setActive(false);
+}
+
+void FirstRunWelcomeModel::openFileMenu()
+{
+  dispatcher()->dispatch(actionIds::openFileMenu);
+}
+
+void FirstRunWelcomeModel::closeAppMenu()
+{
+  dispatcher()->dispatch(actionIds::closeAppMenu);
 }
 
 bool FirstRunWelcomeModel::active() const { return m_active; }

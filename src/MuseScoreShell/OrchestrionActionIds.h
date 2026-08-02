@@ -41,6 +41,9 @@ static const std::unordered_map<GestureControllerType, const char *>
 
 static constexpr const char *loopIn = "orchestrion-loop-in";
 static constexpr const char *loopOut = "orchestrion-loop-out";
+// Programmatic menu control, e.g. for the welcome tour's example-scores step.
+static constexpr const char *openFileMenu = "orchestrion-open-file-menu";
+static constexpr const char *closeAppMenu = "orchestrion-close-app-menu";
 static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
 static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
 static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";

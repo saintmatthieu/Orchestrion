@@ -20,6 +20,7 @@
 
 #include "OrchestrionConfiguration/IOrchestrionConfiguration.h"
 #include <QObject>
+#include <actions/iactionsdispatcher.h>
 #include <modularity/ioc.h>
 
 namespace dgk
@@ -33,12 +34,18 @@ class FirstRunWelcomeModel : public QObject, public muse::Injectable
   Q_PROPERTY(bool active READ active NOTIFY activeChanged)
 
   muse::Inject<IOrchestrionConfiguration> configuration = {this};
+  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
 
 public:
   explicit FirstRunWelcomeModel(QObject *parent = nullptr);
 
   Q_INVOKABLE void init();
   Q_INVOKABLE void dismiss(bool dontShowAgain);
+
+  //! Guides the tour's example-scores step: drops the File menu open (where
+  //! "Example scores" lives) and closes it again when leaving the step.
+  Q_INVOKABLE void openFileMenu();
+  Q_INVOKABLE void closeAppMenu();
 
   bool active() const;
 
