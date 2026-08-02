@@ -84,6 +84,12 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  // Keep the Controllers submenu check marks in sync (also covers the "T"
+  // touchpad shortcut).
+  gestureControllerSelector()->selectedControllersChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -311,11 +317,53 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   noteInfoItem->setSelected(sequencerConfiguration()->noteInfoTooltipEnabled());
 
   const QList<MenuItem *> menu{
-      item, noteInfoItem,
+      makeControllersSubmenu(), item, noteInfoItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeControllersSubmenu()
+{
+  using namespace muse::uicomponents;
+
+  const auto functional = gestureControllerSelector()->functionalControllers();
+  const auto selected = gestureControllerSelector()->selectedControllers();
+
+  // The MIDI device is always offered; the others only where functional.
+  std::vector<std::pair<GestureControllerType, muse::TranslatableString>>
+      entries{{GestureControllerType::MidiDevice,
+               muse::TranslatableString("appshell/menu/advanced",
+                                        "&MIDI keyboard")}};
+  if (functional.count(GestureControllerType::Touchpad))
+    entries.emplace_back(
+        GestureControllerType::Touchpad,
+        muse::TranslatableString("appshell/menu/advanced",
+                                 "&Touchpad (press \"T\" to toggle)"));
+  if (functional.count(GestureControllerType::Swipe))
+    entries.emplace_back(GestureControllerType::Swipe,
+                         muse::TranslatableString("appshell/menu/advanced",
+                                                  "Touchpad (&swipe mode)"));
+  if (functional.count(GestureControllerType::ComputerKeyboard))
+    entries.emplace_back(GestureControllerType::ComputerKeyboard,
+                         muse::TranslatableString("appshell/menu/advanced",
+                                                  "&Computer keyboard"));
+
+  QList<MenuItem *> items;
+  for (const auto &entry : entries)
+  {
+    auto *const item = makeMenuItem(actionIds::toggleController.at(entry.first),
+                                    entry.second);
+    IF_ASSERT_FAILED(item) continue;
+    item->setSelectable(true);
+    item->setSelected(!!selected.count(entry.first));
+    items.append(item);
+  }
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/advanced", "C&ontrollers"), items,
+      "menu-orchestrion-controllers");
 }
 
 muse::uicomponents::MenuItem *

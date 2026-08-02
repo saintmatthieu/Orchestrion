@@ -18,6 +18,9 @@
  */
 #include "MidiDeviceService.h"
 
+#include <algorithm>
+#include <cctype>
+
 namespace dgk
 {
 using namespace ExternalDevicesUtils;
@@ -118,6 +121,19 @@ muse::async::Notification MidiDeviceService::startupSelectionFinished() const
 muse::async::Notification MidiDeviceService::activityDetected() const
 {
   return m_activityDetected;
+}
+
+bool MidiDeviceService::realDeviceConnected() const
+{
+  const auto device = selectedDeviceWithoutNoDevice();
+  if (!device || !isAvailable(*device))
+    return false;
+  // ALSA ships an always-present virtual "Midi Through" port; selecting it
+  // must not read as having a device connected.
+  std::string name = deviceName(*device);
+  std::transform(name.begin(), name.end(), name.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return name.find("midi through") == std::string::npos;
 }
 
 std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const

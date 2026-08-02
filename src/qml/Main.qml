@@ -185,18 +185,20 @@ ApplicationWindow {
                     onTriggered: notationPaintView.controlsVisible = false
                 }
 
-                GestureControllerSelectionPopup {
+                // Controller status at a glance (selection lives in the
+                // Advanced ▸ Controllers menu).
+                ControllerStatusIcons {
+                    id: controllerStatusIcons
                     x: 10
                     y: 10
-                    id: selectionPopup
                     visible: opacity > 0
                     opacity: notationPaintView.controlsVisible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
                 MidiDeviceActivityPopup {
-                    x: selectionPopup.x + selectionPopup.width + 10
-                    y: selectionPopup.y
+                    x: controllerStatusIcons.x + controllerStatusIcons.width + 10
+                    y: controllerStatusIcons.y
                 }
 
                 Row {

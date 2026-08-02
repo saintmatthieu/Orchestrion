@@ -71,9 +71,25 @@ void OrchestrionActionController::init()
   dispatcher()->reg(
       this, actionIds::reverbHall,
       [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Hall); });
-  dispatcher()->reg(this, actionIds::reverbCathedral, [this] {
-    synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral);
-  });
+  dispatcher()->reg(
+      this, actionIds::reverbCathedral,
+      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral); });
+
+  for (const auto &entry : actionIds::toggleController)
+  {
+    const GestureControllerType type = entry.first;
+    dispatcher()->reg(
+        this, entry.second,
+        [this, type]
+        {
+          auto types = gestureControllerSelector()->selectedControllers();
+          if (types.count(type))
+            types.erase(type);
+          else
+            types.insert(type);
+          gestureControllerSelector()->setSelectedControllers(types);
+        });
+  }
 
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
