@@ -4,7 +4,7 @@
       "type": "lldb",
       "request": "launch",
       "name": "Launch (Linux)",
-      "program": "${workspaceFolder}/build/Debug/install/bin/Orchestrion",
+      "program": "${workspaceFolder}/build/Release/install/bin/Orchestrion",
       "preLaunchTask": "CMake: install",
       "args": [],
       "cwd": "${workspaceFolder}"

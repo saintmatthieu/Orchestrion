@@ -85,6 +85,13 @@ ApplicationWindow {
         Component.onCompleted: load()
     }
 
+    // Likewise for auto-play: the top-row button, its choice popup and the
+    // Auto-play menu.
+    AutoPlayModel {
+        id: autoPlayModel
+        Component.onCompleted: load()
+    }
+
     OrchestrionWindowTitleProvider {
         id: titleProvider
     }
@@ -226,17 +233,26 @@ ApplicationWindow {
                     }
                 }
 
-                // The grading toggle gets the top centre to itself: it
-                // switches the app between plain playing and the graded
-                // performance, so it is the one control worth finding first.
-                GradingButton {
+                // The two first-class controls get the top centre: grading
+                // switches between plain playing and the graded performance,
+                // auto-play hands one of the hands to the machine.
+                Row {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
                     anchors.topMargin: 8
-                    model: gradingModel
+                    spacing: 8
                     visible: opacity > 0
                     opacity: notationPaintView.controlsVisible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    GradingButton {
+                        model: gradingModel
+                    }
+
+                    AutoPlayButton {
+                        model: autoPlayModel
+                        onClicked: autoPlayPopup.open()
+                    }
                 }
 
                 // Beginner help: number-key tooltip + "Show me!" animation.
@@ -291,6 +307,23 @@ ApplicationWindow {
                     target: gradingModel
                     function onOpenSettingsRequested() {
                         gradingPopup.open()
+                    }
+                }
+
+                // Which hand the machine plays: opened from the top-row
+                // auto-play button and from the Auto-play menu.
+                AutoPlaySettingsPopup {
+                    id: autoPlayPopup
+                    z: 105
+                    model: autoPlayModel
+                    x: (parent.width - width) / 2
+                    y: (parent.height - height) / 3
+                }
+
+                Connections {
+                    target: autoPlayModel
+                    function onOpenSettingsRequested() {
+                        autoPlayPopup.open()
                     }
                 }
 

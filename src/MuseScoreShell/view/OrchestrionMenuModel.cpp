@@ -41,10 +41,6 @@ constexpr auto toggleHandSyncScoreMenuId =
     "orchestrion-advanced-toggle-hand-sync-score";
 constexpr auto toggleDynamicsScoreMenuId =
     "orchestrion-advanced-toggle-dynamics-score";
-constexpr auto autoplayLeftHandMenuId =
-    "orchestrion-advanced-autoplay-left-hand";
-constexpr auto autoplayRightHandMenuId =
-    "orchestrion-advanced-autoplay-right-hand";
 constexpr auto toggleProportionalSpacingMenuId =
     "orchestrion-advanced-toggle-proportional-spacing";
 constexpr auto toggleUnrollRepeatsMenuId =
@@ -75,7 +71,7 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   setItems({makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-            makeAudioMidiMenu(), makeGradingMenu(),
+            makeAudioMidiMenu(), makeGradingMenu(), makeAutoPlayMenu(),
             makeAdvancedMenu(velocityRecordingEnabled), makeHelpMenu()});
 }
 
@@ -352,20 +348,6 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   tempoVizItem->setSelected(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
-  const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
-  muse::uicomponents::MenuItem *const autoplayLeftItem = makeMenuItem(
-      autoplayLeftHandMenuId, muse::TranslatableString("appshell/menu/advanced",
-                                                       "Auto-play &left hand"));
-  autoplayLeftItem->setSelectable(true);
-  autoplayLeftItem->setSelected(autoPlayedStaff == 1);
-
-  muse::uicomponents::MenuItem *const autoplayRightItem =
-      makeMenuItem(autoplayRightHandMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "Auto-play &right hand"));
-  autoplayRightItem->setSelectable(true);
-  autoplayRightItem->setSelected(autoPlayedStaff == 0);
-
   muse::uicomponents::MenuItem *const unrollRepeatsItem =
       makeMenuItem(toggleUnrollRepeatsMenuId,
                    muse::TranslatableString("appshell/menu/advanced",
@@ -375,16 +357,45 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       sequencerConfiguration()->unrollRepeatsEnabled());
 
   const QList<MenuItem *> menu{
-      item,
-      noteInfoItem,
-      tempoVizItem,
-      autoplayLeftItem,
-      autoplayRightItem,
-      unrollRepeatsItem,
+      item, noteInfoItem, tempoVizItem, unrollRepeatsItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
+{
+  using namespace muse::uicomponents;
+
+  // Which hand the machine plays for you: a one-of-three choice, mirrored by
+  // the top-row button's popup.
+  const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
+  const auto choice = [this](const char *actionCode,
+                             const muse::TranslatableString &title,
+                             bool selected)
+  {
+    MenuItem *const item = makeMenuItem(actionCode, title);
+    item->setSelectable(true);
+    item->setSelected(selected);
+    return item;
+  };
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/autoplay", "&Auto-play"),
+      QList<MenuItem *>{
+          choice(actionIds::autoPlayNone,
+                 muse::TranslatableString("appshell/menu/autoplay", "&Off"),
+                 autoPlayedStaff < 0),
+          choice(actionIds::autoPlayLeftHand,
+                 muse::TranslatableString("appshell/menu/autoplay",
+                                          "&Left hand"),
+                 autoPlayedStaff == 1),
+          choice(actionIds::autoPlayRightHand,
+                 muse::TranslatableString("appshell/menu/autoplay",
+                                          "&Right hand"),
+                 autoPlayedStaff == 0)},
+      "menu-orchestrion-autoplay");
 }
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
