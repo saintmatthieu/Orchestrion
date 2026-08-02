@@ -3,6 +3,7 @@
         <file>qml/Orchestrion/OrchestrionSequencer/qmldir</file>
         <file>qml/Orchestrion/OrchestrionSequencer/ControllerStatusIcons.qml</file>
         <file>qml/Orchestrion/OrchestrionSequencer/MidiDeviceActivityPopup.qml</file>
+        <file>qml/Orchestrion/OrchestrionSequencer/NumberKeysAnimation.qml</file>
         <file>qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml</file>
     </qresource>
 </RCC>

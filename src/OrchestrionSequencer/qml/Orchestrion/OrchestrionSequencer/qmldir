@@ -1,4 +1,5 @@
 module Orchestrion.OrchestrionSequencer
 ControllerStatusIcons 1.0 ControllerStatusIcons.qml
 MidiDeviceActivityPopup 1.0 MidiDeviceActivityPopup.qml
+NumberKeysAnimation 1.0 NumberKeysAnimation.qml
 NumberKeysHelp 1.0 NumberKeysHelp.qml
