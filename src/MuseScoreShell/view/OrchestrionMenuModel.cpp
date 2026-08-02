@@ -131,6 +131,14 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  // Programmatic menu control (used by the welcome tour). Only top-level
+  // menus can be opened: AppMenuBar's openMenu matches menu-bar items, so a
+  // submenu like "Example scores" cannot be popped open from here.
+  dispatcher()->reg(this, actionIds::openFileMenu,
+                    [this] { openMenu("menu-orchestrion-file", false); });
+  dispatcher()->reg(this, actionIds::closeAppMenu,
+                    [this] { emit closeOpenedMenuRequested(); });
+
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -484,8 +492,8 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeControllersSubmenu()
   QList<MenuItem *> items;
   for (const auto &entry : entries)
   {
-    auto *const item = makeMenuItem(actionIds::toggleController.at(entry.first),
-                                    entry.second);
+    auto *const item =
+        makeMenuItem(actionIds::toggleController.at(entry.first), entry.second);
     IF_ASSERT_FAILED(item) continue;
     item->setSelectable(true);
     item->setSelected(!!selected.count(entry.first));

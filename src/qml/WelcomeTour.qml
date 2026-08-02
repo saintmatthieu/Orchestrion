@@ -38,12 +38,18 @@ Item {
 
     visible: model.active
 
-    // The rhythm page demoes on the score that is open behind the tour.
+    // The rhythm page demoes on the score that is open behind the tour, and
+    // the example-scores page drops the File menu open as a guide.
     onPageChanged: {
         if (page === 1)
             rhythmDemo.start()
         else
             rhythmDemo.stop()
+
+        if (page === 2)
+            model.openFileMenu()
+        else
+            model.closeAppMenu()
     }
 
     FirstRunWelcomeModel {
@@ -217,7 +223,7 @@ Item {
                     Text {
                         width: parent.width * 0.9
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("Start with the bundled pieces, or open any MuseScore or MusicXML file from the File menu, whenever you are ready.")
+                        text: qsTr("Start with the example scores, or open any MuseScore or MusicXML file from the File menu, whenever you are ready.")
                         color: "#CCCCCC"
                         font.pixelSize: 14
                         wrapMode: Text.WordWrap
@@ -280,6 +286,7 @@ Item {
                             root.page = root.page + 1
                         } else {
                             rhythmDemo.stop()
+                            model.closeAppMenu()
                             model.dismiss(dontShowAgain.checked)
                         }
                     }
