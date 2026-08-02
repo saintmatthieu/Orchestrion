@@ -18,25 +18,36 @@
  */
 #pragma once
 
-#include "OrchestrionConfigurationModule.h"
-#include "modularity/imodulesetup.h"
+#include "OrchestrionConfiguration/IOrchestrionConfiguration.h"
+#include <QObject>
+#include <modularity/ioc.h>
 
 namespace dgk
 {
-class OrchestrionConfiguration;
-
-class OrchestrionConfigurationModule : public muse::modularity::IModuleSetup
+//! First-launch welcome card: shows until dismissed, and stays away for good
+//! when dismissed with "don't show again" (persisted via configuration).
+class FirstRunWelcomeModel : public QObject, public muse::Injectable
 {
+  Q_OBJECT
+
+  Q_PROPERTY(bool active READ active NOTIFY activeChanged)
+
+  muse::Inject<IOrchestrionConfiguration> configuration = {this};
+
 public:
-  OrchestrionConfigurationModule();
+  explicit FirstRunWelcomeModel(QObject *parent = nullptr);
+
+  Q_INVOKABLE void init();
+  Q_INVOKABLE void dismiss(bool dontShowAgain);
+
+  bool active() const;
+
+signals:
+  void activeChanged();
 
 private:
-  std::string moduleName() const override;
-  void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
+  void setActive(bool);
 
-private:
-  const std::shared_ptr<OrchestrionConfiguration> m_configuration;
+  bool m_active = false;
 };
-
 } // namespace dgk
