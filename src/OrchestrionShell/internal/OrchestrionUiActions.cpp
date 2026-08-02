@@ -71,8 +71,6 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-proportional-spacing",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
-      muse::ui::UiAction("orchestrion-advanced-toggle-unroll-repeats",
-                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::playbackToggle, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::playbackStop, mu::context::UiCtxAny,

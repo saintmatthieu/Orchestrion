@@ -29,6 +29,18 @@ namespace dgk
 {
 void Orchestrion::init()
 {
+  // Unrolling repeats only serves the grading visuals (ribbon, beat grid,
+  // layout warp), so for now it is not a choice of its own: it follows the
+  // grading switch. The setting survives as the place to make it
+  // configurable again — drop this sync and give it back its menu item.
+  const auto syncUnrollRepeats = [this]
+  {
+    sequencerConfig()->setUnrollRepeatsEnabled(
+        sequencerConfig()->gradingEnabled());
+  };
+  sequencerConfig()->gradingEnabledChanged().onNotify(this, syncUnrollRepeats);
+  syncUnrollRepeats();
+
   playbackController()->isPlayAllowedChanged().onNotify(
       this,
       [&]()
@@ -44,7 +56,7 @@ void Orchestrion::init()
         // its own engraved passage: the deviation ribbon, beat grid and
         // layout warp then carry through repeats without folding passes onto
         // the same bars. Decided once per loaded score, before the sequencer
-        // reads it (a toggle change applies to the next loaded score).
+        // reads it (so switching grading applies at the next loaded score).
         if (mu::engraving::MasterScore *const master =
                 masterNotation->masterScore();
             master && master != m_unrollDecided)

@@ -33,8 +33,7 @@ constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
 constexpr auto toggleNoteInfoMenuId = "orchestrion-advanced-toggle-note-info";
 constexpr auto toggleTempoVizMenuId =
     "orchestrion-advanced-toggle-tempo-visualization";
-constexpr auto toggleGradingMenuId =
-    "orchestrion-advanced-toggle-grading";
+constexpr auto toggleGradingMenuId = "orchestrion-advanced-toggle-grading";
 constexpr auto togglePersistentTimingMarksMenuId =
     "orchestrion-advanced-toggle-persistent-timing-marks";
 constexpr auto toggleHandSyncScoreMenuId =
@@ -43,8 +42,6 @@ constexpr auto toggleDynamicsScoreMenuId =
     "orchestrion-advanced-toggle-dynamics-score";
 constexpr auto toggleProportionalSpacingMenuId =
     "orchestrion-advanced-toggle-proportional-spacing";
-constexpr auto toggleUnrollRepeatsMenuId =
-    "orchestrion-advanced-toggle-unroll-repeats";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -107,10 +104,6 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
-  sequencerConfiguration()->unrollRepeatsEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -348,16 +341,8 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   tempoVizItem->setSelected(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
-  muse::uicomponents::MenuItem *const unrollRepeatsItem =
-      makeMenuItem(toggleUnrollRepeatsMenuId,
-                   muse::TranslatableString("appshell/menu/advanced",
-                                            "&Unroll repeats"));
-  unrollRepeatsItem->setSelectable(true);
-  unrollRepeatsItem->setSelected(
-      sequencerConfiguration()->unrollRepeatsEnabled());
-
   const QList<MenuItem *> menu{
-      item, noteInfoItem, tempoVizItem, unrollRepeatsItem,
+      item, noteInfoItem, tempoVizItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
@@ -387,14 +372,14 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
           choice(actionIds::autoPlayNone,
                  muse::TranslatableString("appshell/menu/autoplay", "&Off"),
                  autoPlayedStaff < 0),
-          choice(actionIds::autoPlayLeftHand,
-                 muse::TranslatableString("appshell/menu/autoplay",
-                                          "&Left hand"),
-                 autoPlayedStaff == 1),
-          choice(actionIds::autoPlayRightHand,
-                 muse::TranslatableString("appshell/menu/autoplay",
-                                          "&Right hand"),
-                 autoPlayedStaff == 0)},
+          choice(
+              actionIds::autoPlayLeftHand,
+              muse::TranslatableString("appshell/menu/autoplay", "&Left hand"),
+              autoPlayedStaff == 1),
+          choice(
+              actionIds::autoPlayRightHand,
+              muse::TranslatableString("appshell/menu/autoplay", "&Right hand"),
+              autoPlayedStaff == 0)},
       "menu-orchestrion-autoplay");
 }
 
@@ -404,20 +389,17 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
 
   // The master switch (also the top-row toggle button); everything it
   // governs is configured in the grading settings dialog.
-  MenuItem *const toggleItem =
-      makeMenuItem(toggleGradingMenuId,
-                   muse::TranslatableString("appshell/menu/grading",
-                                            "&Enabled"));
+  MenuItem *const toggleItem = makeMenuItem(
+      toggleGradingMenuId,
+      muse::TranslatableString("appshell/menu/grading", "&Enabled"));
   toggleItem->setSelectable(true);
   toggleItem->setSelected(sequencerConfiguration()->gradingEnabled());
 
-  MenuItem *const settingsItem =
-      makeMenuItem(actionIds::gradingSettings,
-                   muse::TranslatableString("appshell/menu/grading",
-                                            "&Settings…"));
+  MenuItem *const settingsItem = makeMenuItem(
+      actionIds::gradingSettings,
+      muse::TranslatableString("appshell/menu/grading", "&Settings…"));
 
-  return makeMenu(muse::TranslatableString("appshell/menu/grading",
-                                           "&Grading"),
+  return makeMenu(muse::TranslatableString("appshell/menu/grading", "&Grading"),
                   QList<MenuItem *>{toggleItem, settingsItem},
                   "menu-orchestrion-grading");
 }

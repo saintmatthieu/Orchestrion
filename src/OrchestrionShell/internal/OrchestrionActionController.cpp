@@ -18,6 +18,7 @@
  */
 #include "OrchestrionActionController.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
+#include <async/async.h>
 #include <engraving/dom/masterscore.h>
 #include <notation/imasternotation.h>
 
@@ -107,12 +108,6 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setTimeProportionalSpacingEnabled(
                           !sequencerConfig()->timeProportionalSpacingEnabled());
                     });
-  dispatcher()->reg(this, "orchestrion-advanced-toggle-unroll-repeats",
-                    [this]
-                    {
-                      sequencerConfig()->setUnrollRepeatsEnabled(
-                          !sequencerConfig()->unrollRepeatsEnabled());
-                    });
 
   dispatcher()->reg(
       this, actionIds::playModePerformance,
@@ -166,9 +161,40 @@ void OrchestrionActionController::init()
                         seq->GoToTick(0);
                     });
 
+  // Repeats are unrolled at load time when grading is on (see
+  // Orchestrion::init) — a one-way, in-place rewrite of the score. So a
+  // grading switch only takes effect, in either direction, by reloading the
+  // score.
+  globalContext()->currentMasterNotationChanged().onNotify(
+      this, [this]
+      { m_scoreLoadedWithGrading = sequencerConfig()->gradingEnabled(); });
+  sequencerConfig()->gradingEnabledChanged().onNotify(this, [this]
+                                                      { reloadForGrading(); });
+
   projectConfiguration()->setShouldAskSaveLocationType(false);
   projectConfiguration()->setLastUsedSaveLocationType(
       mu::project::SaveLocationType::Local);
+}
+
+void OrchestrionActionController::reloadForGrading()
+{
+  const bool grading = sequencerConfig()->gradingEnabled();
+  if (grading == m_scoreLoadedWithGrading)
+    return; // the loaded score already has the repeat layout we need
+  m_scoreLoadedWithGrading = grading;
+
+  const mu::project::INotationProjectPtr project =
+      globalContext()->currentProject();
+  if (!project)
+    return;
+  const QUrl url = QUrl::fromLocalFile(project->path().toQString());
+  if (!url.isValid())
+    return;
+
+  // Deferred: the switch usually comes from a click in the score view, whose
+  // model we are about to tear down and rebuild.
+  muse::async::Async::call(this, [this, url]
+                           { openProject(mu::project::ProjectFile(url)); });
 }
 
 bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
