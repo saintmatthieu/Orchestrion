@@ -21,6 +21,7 @@
 #include "ExternalDevices/IMidiDeviceService.h"
 #include "IOrchestrion.h"
 #include "IOrchestrionSequencerConfiguration.h"
+#include "NumberKeysAlternator.h"
 
 #include "actions/actionable.h"
 #include "actions/iactionsdispatcher.h"
@@ -38,15 +39,17 @@ namespace dgk
 //! and this model reports which number key each hand is "pressing", so the QML
 //! keyboard animation can follow the music.
 class NumberKeysHelpModel : public QObject,
-                           public muse::async::Asyncable,
-                           public muse::actions::Actionable,
-                           public muse::Injectable
+                            public muse::async::Asyncable,
+                            public muse::actions::Actionable,
+                            public muse::Injectable
 {
   Q_OBJECT
 
-  Q_PROPERTY(bool tooltipVisible READ tooltipVisible NOTIFY tooltipVisibleChanged)
+  Q_PROPERTY(
+      bool tooltipVisible READ tooltipVisible NOTIFY tooltipVisibleChanged)
   Q_PROPERTY(bool demoActive READ demoActive NOTIFY demoActiveChanged)
-  Q_PROPERTY(int leftPressedKey READ leftPressedKey NOTIFY leftPressedKeyChanged)
+  Q_PROPERTY(
+      int leftPressedKey READ leftPressedKey NOTIFY leftPressedKeyChanged)
   Q_PROPERTY(
       int rightPressedKey READ rightPressedKey NOTIFY rightPressedKeyChanged)
 
@@ -95,9 +98,6 @@ private:
   bool m_tooltipVisible = false;
   int m_leftPressedKey = 0;
   int m_rightPressedKey = 0;
-  // Alternation state: each hand alternates between its two finger keys
-  // (the left/right Key constants in the .cpp).
-  bool m_leftNextIsSecond = false;
-  bool m_rightNextIsSecond = false;
+  NumberKeysAlternator m_alternator;
 };
 } // namespace dgk
