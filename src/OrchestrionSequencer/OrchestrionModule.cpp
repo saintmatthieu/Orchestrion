@@ -20,7 +20,7 @@
 #include "internal/GestureControllerConfigurator.h"
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
-#include "view/GestureControllerSelectionModel.h"
+#include "view/ControllerStatusModel.h"
 #include "view/MidiDeviceActivityPopupModel.h"
 #include "view/NumberKeysHelpModel.h"
 
@@ -51,9 +51,8 @@ void OrchestrionModule::registerExports()
 
 void OrchestrionModule::registerUiTypes()
 {
-  qmlRegisterType<GestureControllerSelectionModel>(
-      "Orchestrion.OrchestrionSequencer", 1, 0,
-      "GestureControllerSelectionModel");
+  qmlRegisterType<ControllerStatusModel>("Orchestrion.OrchestrionSequencer", 1,
+                                         0, "ControllerStatusModel");
   qmlRegisterType<MidiDeviceActivityPopupModel>(
       "Orchestrion.OrchestrionSequencer", 1, 0, "MidiDeviceActivityPopupModel");
   qmlRegisterType<NumberKeysHelpModel>("Orchestrion.OrchestrionSequencer", 1, 0,

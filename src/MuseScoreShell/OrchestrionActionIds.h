@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "GestureControllers/GestureControllerTypes.h"
 #include "MuseScoreShellTypes.h"
 #include <unordered_map>
 
@@ -27,6 +28,16 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
     {{DeviceType::MidiController, "chooseMidiControllerSubmenu"},
      {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
+
+static const std::unordered_map<GestureControllerType, const char *>
+    toggleController = {
+        {GestureControllerType::MidiDevice,
+         "orchestrion-toggle-controller-midi"},
+        {GestureControllerType::Touchpad,
+         "orchestrion-toggle-controller-touchpad"},
+        {GestureControllerType::Swipe, "orchestrion-toggle-controller-swipe"},
+        {GestureControllerType::ComputerKeyboard,
+         "orchestrion-toggle-controller-keyboard"}};
 
 static constexpr const char *loopIn = "orchestrion-loop-in";
 static constexpr const char *loopOut = "orchestrion-loop-out";

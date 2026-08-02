@@ -31,8 +31,8 @@ set(MODULE_SRC
     internal/VoiceSequencer.cpp
     internal/VoiceSequencer.h
 
-    view/GestureControllerSelectionModel.cpp
-    view/GestureControllerSelectionModel.h
+    view/ControllerStatusModel.cpp
+    view/ControllerStatusModel.h
     view/MidiDeviceActivityPopupModel.cpp
     view/MidiDeviceActivityPopupModel.h
     view/NumberKeysHelpModel.cpp

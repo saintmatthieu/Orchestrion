@@ -35,5 +35,11 @@ public:
   virtual ~IMidiDeviceService() = default;
   virtual muse::async::Notification startupSelectionFinished() const = 0;
   virtual muse::async::Notification activityDetected() const = 0;
+
+  //! Whether the selected device is a real, available device — not the
+  //! "no device" sentinel and not an always-present virtual pass-through
+  //! port (e.g. ALSA's "Midi Through"), which would otherwise make the UI
+  //! claim a keyboard is connected on any Linux machine.
+  virtual bool realDeviceConnected() const = 0;
 };
 } // namespace dgk

@@ -141,11 +141,7 @@ void NumberKeysHelpModel::dismiss()
 
 void NumberKeysHelpModel::updateNoMidiConnected()
 {
-  bool connected = false;
-  if (const auto device = midiDeviceService()->selectedDevice())
-    connected = midiDeviceService()->isAvailable(*device) &&
-                !midiDeviceService()->isNoDevice(*device);
-  m_noMidiConnected = !connected;
+  m_noMidiConnected = !midiDeviceService()->realDeviceConnected();
   updateTooltipVisible();
 }
 

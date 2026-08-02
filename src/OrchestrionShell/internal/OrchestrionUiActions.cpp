@@ -106,6 +106,10 @@ muse::ui::UiActionList makeActions(
     actions.push_back(muse::ui::UiAction(menuId, mu::context::UiCtxAny,
                                          mu::context::CTX_ANY));
 
+  for (const auto &[_, code] : actionIds::toggleController)
+    actions.push_back(
+        muse::ui::UiAction(code, mu::context::UiCtxAny, mu::context::CTX_ANY));
+
   // reserve some actions for playback device selection
   actions.reserve(100 + actions.size());
   for (auto i = 0; i < 100; ++i)

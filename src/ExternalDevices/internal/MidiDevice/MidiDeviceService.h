@@ -39,6 +39,7 @@ public:
 
   muse::async::Notification startupSelectionFinished() const override;
   muse::async::Notification activityDetected() const override;
+  bool realDeviceConnected() const override;
 
   std::vector<ExternalDeviceId> availableDevices() const override;
   muse::async::Notification availableDevicesChanged() const override;
