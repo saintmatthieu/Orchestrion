@@ -261,12 +261,12 @@ ApplicationWindow {
 
                 // Beginner help: number-key tooltip + "Show me!" animation.
                 // Stays put (not tied to the fading controls overlay). Held
-                // back while the first-run welcome is up, so it appears right
-                // after the welcome is dismissed instead of fighting it.
+                // back while the welcome tour is up, so it appears right
+                // after the tour is finished instead of fighting it.
                 NumberKeysHelp {
                     anchors.fill: parent
                     z: 100
-                    visible: !firstRunWelcome.active
+                    visible: !welcomeTour.active
                 }
 
                 // Transient credit shown when a score that must be attributed
@@ -276,9 +276,9 @@ ApplicationWindow {
                     z: 101
                 }
 
-                // First-launch welcome card, above everything else.
-                FirstRunWelcome {
-                    id: firstRunWelcome
+                // First-launch welcome tour, above everything else.
+                WelcomeTour {
+                    id: welcomeTour
                     anchors.fill: parent
                     z: 110
                 }

@@ -23,6 +23,7 @@
 #include "view/ControllerStatusModel.h"
 #include "view/MidiDeviceActivityPopupModel.h"
 #include "view/NumberKeysHelpModel.h"
+#include "view/TourRhythmDemoModel.h"
 
 #include "ui/iuiactionsregister.h"
 #include <QQmlEngine>
@@ -57,6 +58,8 @@ void OrchestrionModule::registerUiTypes()
       "Orchestrion.OrchestrionSequencer", 1, 0, "MidiDeviceActivityPopupModel");
   qmlRegisterType<NumberKeysHelpModel>("Orchestrion.OrchestrionSequencer", 1, 0,
                                        "NumberKeysHelpModel");
+  qmlRegisterType<TourRhythmDemoModel>("Orchestrion.OrchestrionSequencer", 1, 0,
+                                       "TourRhythmDemoModel");
 }
 
 void OrchestrionModule::onInit(const muse::IApplication::RunMode &)

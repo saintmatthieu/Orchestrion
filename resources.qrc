@@ -9,7 +9,7 @@
     <file>src/qml/GradingSettingsPopup.qml</file>
     <file>src/qml/AutoPlaySettingsPopup.qml</file>
     <file>src/qml/AttributionToast.qml</file>
-    <file>src/qml/FirstRunWelcome.qml</file>
+    <file>src/qml/WelcomeTour.qml</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>
     <file>icons/controllers/piano_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg</file>

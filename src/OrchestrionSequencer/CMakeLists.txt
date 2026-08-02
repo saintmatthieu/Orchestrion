@@ -35,8 +35,11 @@ set(MODULE_SRC
     view/ControllerStatusModel.h
     view/MidiDeviceActivityPopupModel.cpp
     view/MidiDeviceActivityPopupModel.h
+    view/NumberKeysAlternator.h
     view/NumberKeysHelpModel.cpp
     view/NumberKeysHelpModel.h
+    view/TourRhythmDemoModel.cpp
+    view/TourRhythmDemoModel.h
 
     IChord.h
     IMelodySegment.h

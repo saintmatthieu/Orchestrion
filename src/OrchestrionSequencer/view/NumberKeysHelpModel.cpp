@@ -23,11 +23,6 @@ namespace dgk
 {
 namespace
 {
-constexpr int leftKeyA = 2;  // left middle finger
-constexpr int leftKeyB = 3;  // left index finger
-constexpr int rightKeyA = 8; // right index finger
-constexpr int rightKeyB = 9; // right middle finger
-
 // Dispatched by the "Help" menu to (re)open the tip. Must match the UiAction
 // registered in OrchestrionUiActions and the menu item in OrchestrionMenuModel.
 constexpr auto showHelpActionCode = "orchestrion-help-number-keys";
@@ -80,26 +75,9 @@ bool NumberKeysHelpModel::isPlaying() const
 
 void NumberKeysHelpModel::onHandNoteEvent(const AutoPlayEvent &event)
 {
-  if (event.isLeftHand)
-  {
-    if (event.type == NoteEventType::noteOn)
-    {
-      setLeftPressedKey(m_leftNextIsSecond ? leftKeyB : leftKeyA);
-      m_leftNextIsSecond = !m_leftNextIsSecond;
-    }
-    else
-      setLeftPressedKey(0);
-  }
-  else
-  {
-    if (event.type == NoteEventType::noteOn)
-    {
-      setRightPressedKey(m_rightNextIsSecond ? rightKeyB : rightKeyA);
-      m_rightNextIsSecond = !m_rightNextIsSecond;
-    }
-    else
-      setRightPressedKey(0);
-  }
+  m_alternator.onEvent(event);
+  setLeftPressedKey(m_alternator.leftKey());
+  setRightPressedKey(m_alternator.rightKey());
 }
 
 void NumberKeysHelpModel::showMe()
@@ -107,8 +85,7 @@ void NumberKeysHelpModel::showMe()
   if (!playbackController()->isPlayAllowed())
     return;
 
-  m_leftNextIsSecond = false;
-  m_rightNextIsSecond = false;
+  m_alternator.reset();
   setLeftPressedKey(0);
   setRightPressedKey(0);
   setDemoActive(true);

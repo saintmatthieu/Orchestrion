@@ -21,6 +21,7 @@
 #include "ExternalDevices/IMidiDeviceService.h"
 #include "IOrchestrion.h"
 #include "IOrchestrionSequencerConfiguration.h"
+#include "NumberKeysAlternator.h"
 
 #include "actions/actionable.h"
 #include "actions/iactionsdispatcher.h"
@@ -98,9 +99,6 @@ private:
   bool m_tooltipVisible = false;
   int m_leftPressedKey = 0;
   int m_rightPressedKey = 0;
-  // Alternation state: each hand alternates between its two finger keys
-  // (the left/right Key constants in the .cpp).
-  bool m_leftNextIsSecond = false;
-  bool m_rightNextIsSecond = false;
+  NumberKeysAlternator m_alternator;
 };
 } // namespace dgk
