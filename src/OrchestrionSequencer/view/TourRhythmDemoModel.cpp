@@ -97,6 +97,8 @@ void TourRhythmDemoModel::stop()
   m_active = false;
   if (playbackController()->isPlaying())
     dispatcher()->dispatch("stop");
+  // Leave the score ready to be played from the top.
+  dispatcher()->dispatch("rewind");
   m_alternator.reset();
   updateKeys();
   if (m_muted)
