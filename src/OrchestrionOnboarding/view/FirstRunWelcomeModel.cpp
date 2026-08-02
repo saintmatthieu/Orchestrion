@@ -16,27 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#pragma once
-
-#include "OrchestrionConfigurationModule.h"
-#include "modularity/imodulesetup.h"
+#include "FirstRunWelcomeModel.h"
 
 namespace dgk
 {
-class OrchestrionConfiguration;
+FirstRunWelcomeModel::FirstRunWelcomeModel(QObject *parent) : QObject(parent) {}
 
-class OrchestrionConfigurationModule : public muse::modularity::IModuleSetup
+void FirstRunWelcomeModel::init()
 {
-public:
-  OrchestrionConfigurationModule();
+  setActive(!configuration()->firstRunWelcomeAcknowledged());
+}
 
-private:
-  std::string moduleName() const override;
-  void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
+void FirstRunWelcomeModel::dismiss(bool dontShowAgain)
+{
+  if (dontShowAgain)
+    configuration()->setFirstRunWelcomeAcknowledged(true);
+  setActive(false);
+}
 
-private:
-  const std::shared_ptr<OrchestrionConfiguration> m_configuration;
-};
+bool FirstRunWelcomeModel::active() const { return m_active; }
 
+void FirstRunWelcomeModel::setActive(bool active)
+{
+  if (m_active == active)
+    return;
+  m_active = active;
+  emit activeChanged();
+}
 } // namespace dgk
