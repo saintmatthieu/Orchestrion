@@ -18,18 +18,25 @@
  */
 #pragma once
 
+#include "OrchestrionConfiguration/IOrchestrionConfiguration.h"
+
 #include <async/asyncable.h>
 #include <global/iglobalconfiguration.h>
 #include <notation/inotationconfiguration.h>
 
 namespace dgk
 {
-class OrchestrionConfiguration : public muse::async::Asyncable
+class OrchestrionConfiguration : public IOrchestrionConfiguration,
+                                 public muse::async::Asyncable
 {
   muse::Inject<mu::notation::INotationConfiguration> notationConfiguration;
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
 
 public:
   void init();
+
+private:
+  bool firstRunWelcomeAcknowledged() const override;
+  void setFirstRunWelcomeAcknowledged(bool) override;
 };
 } // namespace dgk

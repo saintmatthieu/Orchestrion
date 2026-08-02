@@ -26,10 +26,15 @@ namespace dgk
 namespace
 {
 const std::string module_name("Orchestrion");
+const muse::Settings::Key FIRST_RUN_WELCOME_ACKNOWLEDGED(
+    module_name, "FIRST_RUN_WELCOME_ACKNOWLEDGED");
 } // namespace
 
 void OrchestrionConfiguration::init()
 {
+  muse::settings()->setDefaultValue(FIRST_RUN_WELCOME_ACKNOWLEDGED,
+                                    muse::Val{false});
+
   const auto config = globalConfiguration();
   const auto directory = config->appDataPath().toStdString() + "wallpapers";
   constexpr auto opacity = 0.0f;
@@ -41,6 +46,17 @@ void OrchestrionConfiguration::init()
   notationConfiguration()->setBackgroundUseColor(false);
   notationConfiguration()->setForegroundColor("transparent");
   notationConfiguration()->setForegroundUseColor(true);
+}
+
+bool OrchestrionConfiguration::firstRunWelcomeAcknowledged() const
+{
+  return muse::settings()->value(FIRST_RUN_WELCOME_ACKNOWLEDGED).toBool();
+}
+
+void OrchestrionConfiguration::setFirstRunWelcomeAcknowledged(bool acknowledged)
+{
+  muse::settings()->setSharedValue(FIRST_RUN_WELCOME_ACKNOWLEDGED,
+                                   muse::Val{acknowledged});
 }
 
 } // namespace dgk

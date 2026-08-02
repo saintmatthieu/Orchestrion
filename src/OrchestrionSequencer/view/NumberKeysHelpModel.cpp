@@ -22,11 +22,6 @@ namespace dgk
 {
 namespace
 {
-constexpr int leftKeyA = 2; // left middle finger
-constexpr int leftKeyB = 3; // left index finger
-constexpr int rightKeyA = 8; // right index finger
-constexpr int rightKeyB = 9; // right middle finger
-
 // Dispatched by the "Help" menu to (re)open the tip. Must match the UiAction
 // registered in OrchestrionUiActions and the menu item in OrchestrionMenuModel.
 constexpr auto showHelpActionCode = "orchestrion-help-number-keys";
@@ -45,8 +40,8 @@ void NumberKeysHelpModel::init()
       this, [this] { updateNoMidiConnected(); });
 
   subscribeToSequencer();
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this] { subscribeToSequencer(); });
+  orchestrion()->sequencerChanged().onNotify(this, [this]
+                                             { subscribeToSequencer(); });
 
   playbackController()->isPlayingChanged().onNotify(
       this,
@@ -67,32 +62,15 @@ void NumberKeysHelpModel::subscribeToSequencer()
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     return;
-  sequencer->HandNoteEvents().onReceive(
-      this, [this](const AutoPlayEvent &event) { onHandNoteEvent(event); });
+  sequencer->HandNoteEvents().onReceive(this, [this](const AutoPlayEvent &event)
+                                        { onHandNoteEvent(event); });
 }
 
 void NumberKeysHelpModel::onHandNoteEvent(const AutoPlayEvent &event)
 {
-  if (event.isLeftHand)
-  {
-    if (event.type == NoteEventType::noteOn)
-    {
-      setLeftPressedKey(m_leftNextIsSecond ? leftKeyB : leftKeyA);
-      m_leftNextIsSecond = !m_leftNextIsSecond;
-    }
-    else
-      setLeftPressedKey(0);
-  }
-  else
-  {
-    if (event.type == NoteEventType::noteOn)
-    {
-      setRightPressedKey(m_rightNextIsSecond ? rightKeyB : rightKeyA);
-      m_rightNextIsSecond = !m_rightNextIsSecond;
-    }
-    else
-      setRightPressedKey(0);
-  }
+  m_alternator.onEvent(event);
+  setLeftPressedKey(m_alternator.leftKey());
+  setRightPressedKey(m_alternator.rightKey());
 }
 
 void NumberKeysHelpModel::showMe()
@@ -100,8 +78,7 @@ void NumberKeysHelpModel::showMe()
   if (!playbackController()->isPlayAllowed())
     return;
 
-  m_leftNextIsSecond = false;
-  m_rightNextIsSecond = false;
+  m_alternator.reset();
   setLeftPressedKey(0);
   setRightPressedKey(0);
   setDemoActive(true);
@@ -134,11 +111,7 @@ void NumberKeysHelpModel::dismiss()
 
 void NumberKeysHelpModel::updateNoMidiConnected()
 {
-  bool connected = false;
-  if (const auto device = midiDeviceService()->selectedDevice())
-    connected = midiDeviceService()->isAvailable(*device) &&
-                !midiDeviceService()->isNoDevice(*device);
-  m_noMidiConnected = !connected;
+  m_noMidiConnected = !midiDeviceService()->realDeviceConnected();
   updateTooltipVisible();
 }
 

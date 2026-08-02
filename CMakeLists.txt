@@ -177,6 +177,7 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/PlaybackButton.qml"
     QML_FILES "src/qml/FullscreenButton.qml"
     QML_FILES "src/qml/AttributionToast.qml"
+    QML_FILES "src/qml/WelcomeTour.qml"
     QML_FILES "src/qml/Theme.qml"
 )
 

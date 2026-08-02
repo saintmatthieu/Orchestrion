@@ -19,6 +19,7 @@
 #pragma once
 
 #include "ExternalDevices/IMidiDeviceService.h"
+#include "GestureControllers/IGestureControllerSelector.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
@@ -47,6 +48,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
   muse::Inject<IMidiDeviceService> midiDeviceService;
+  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
   muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration;
 
@@ -84,6 +86,7 @@ private:
   muse::uicomponents::MenuItem *makeHelpMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
+  muse::uicomponents::MenuItem *makeControllersSubmenu();
   muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
 

@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "GestureControllers/GestureControllerTypes.h"
 #include "MuseScoreShellTypes.h"
 #include <unordered_map>
 
@@ -28,8 +29,21 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
      {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
 
+static const std::unordered_map<GestureControllerType, const char *>
+    toggleController = {
+        {GestureControllerType::MidiDevice,
+         "orchestrion-toggle-controller-midi"},
+        {GestureControllerType::Touchpad,
+         "orchestrion-toggle-controller-touchpad"},
+        {GestureControllerType::Swipe, "orchestrion-toggle-controller-swipe"},
+        {GestureControllerType::ComputerKeyboard,
+         "orchestrion-toggle-controller-keyboard"}};
+
 static constexpr const char *loopIn = "orchestrion-loop-in";
 static constexpr const char *loopOut = "orchestrion-loop-out";
+// Programmatic menu control, e.g. for the welcome tour's example-scores step.
+static constexpr const char *openFileMenu = "orchestrion-open-file-menu";
+static constexpr const char *closeAppMenu = "orchestrion-close-app-menu";
 static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
 static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
 static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";

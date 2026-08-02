@@ -20,9 +20,10 @@
 #include "internal/GestureControllerConfigurator.h"
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
-#include "view/GestureControllerSelectionModel.h"
+#include "view/ControllerStatusModel.h"
 #include "view/MidiDeviceActivityPopupModel.h"
 #include "view/NumberKeysHelpModel.h"
+#include "view/TourRhythmDemoModel.h"
 
 #include "ui/iuiactionsregister.h"
 #include <QQmlEngine>
@@ -51,13 +52,14 @@ void OrchestrionModule::registerExports()
 
 void OrchestrionModule::registerUiTypes()
 {
-  qmlRegisterType<GestureControllerSelectionModel>(
-      "Orchestrion.OrchestrionSequencer", 1, 0,
-      "GestureControllerSelectionModel");
+  qmlRegisterType<ControllerStatusModel>("Orchestrion.OrchestrionSequencer", 1,
+                                         0, "ControllerStatusModel");
   qmlRegisterType<MidiDeviceActivityPopupModel>(
       "Orchestrion.OrchestrionSequencer", 1, 0, "MidiDeviceActivityPopupModel");
   qmlRegisterType<NumberKeysHelpModel>("Orchestrion.OrchestrionSequencer", 1, 0,
                                        "NumberKeysHelpModel");
+  qmlRegisterType<TourRhythmDemoModel>("Orchestrion.OrchestrionSequencer", 1, 0,
+                                       "TourRhythmDemoModel");
 }
 
 void OrchestrionModule::onInit(const muse::IApplication::RunMode &)

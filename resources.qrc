@@ -5,8 +5,10 @@
     <file>src/qml/FullscreenButton.qml</file>
     <file>src/qml/PlaybackButton.qml</file>
     <file>src/qml/AttributionToast.qml</file>
+    <file>src/qml/WelcomeTour.qml</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>
+    <file>icons/controllers/piano_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg</file>
     <file>icons/player/rewind-button.png</file>
     <file>icons/player/back.png</file>
     <file>icons/player/play.png</file>
