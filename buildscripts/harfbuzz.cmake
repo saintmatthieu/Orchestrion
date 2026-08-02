@@ -15,8 +15,8 @@
 # (see .github/workflows/orchestrion.yml).
 
 function(harfbuzz_Populate remote_url local_path type arg1 arg2)
-    set(_hb_source_dir "${local_path}/harfbuzz")
-    if (EXISTS "${_hb_source_dir}/CMakeLists.txt")
+    set(_hb_wrapper_dir "${local_path}/harfbuzz")
+    if (EXISTS "${_hb_wrapper_dir}/CMakeLists.txt")
         return()
     endif()
 
@@ -40,5 +40,63 @@ function(harfbuzz_Populate remote_url local_path type arg1 arg2)
         INPUT "${_hb_archive}"
         DESTINATION "${local_path}"
     )
-    file(RENAME "${local_path}/harfbuzz-7.1.0" "${_hb_source_dir}")
+
+    # Reproduce the original muse_deps layout: a small wrapper CMake project
+    # at <local_path>/harfbuzz that builds the amalgam
+    # (harfbuzz/src/harfbuzz.cc) as a muse module, with the actual harfbuzz
+    # release nested one level deeper. SetupHarfBuzz.cmake's add_subdirectory
+    # and HARFBUZZ_INCLUDE_DIRS both assume this shape. Extracting the
+    # release directly in the wrapper's place (as this script used to do)
+    # made add_subdirectory run harfbuzz's own build system instead, whose
+    # find_package(Freetype REQUIRED) fails on the CI runners.
+    file(MAKE_DIRECTORY "${_hb_wrapper_dir}")
+    file(RENAME "${local_path}/harfbuzz-7.1.0" "${_hb_wrapper_dir}/harfbuzz")
+
+    # Byte-for-byte copy of the wrapper CMakeLists.txt that the original
+    # muse_deps populate script used to install.
+    file(WRITE "${_hb_wrapper_dir}/CMakeLists.txt" [=[
+# SPDX-License-Identifier: GPL-3.0-only
+# MuseScore-CLA-applies
+#
+# MuseScore
+# Music Composition & Notation
+#
+# Copyright (C) 2024 MuseScore BVBA and others
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+declare_module(harfbuzz)
+set(MODULE_DIR ${CMAKE_CURRENT_LIST_DIR}/harfbuzz)
+
+set(MODULE_SRC
+    ${MODULE_DIR}/src/harfbuzz.cc
+)
+
+set(MODULE_INCLUDE
+    ${FREETYPE_INCLUDE_DIRS}
+)
+
+set(MODULE_DEF
+    -DHAVE_FREETYPE
+)
+
+set(MODULE_NOT_LINK_GLOBAL ON)
+set(MODULE_PCH_DISABLED ON)
+set(MODULE_UNITY_DISABLED ON)
+setup_module()
+
+# target_no_warning(${MODULE} -Wimplicit-fallthrough=0)
+# target_no_warning(${MODULE} -Wno-conversion)
+# target_no_warning(${MODULE} -Wno-cast-function-type)
+]=])
 endfunction()
