@@ -67,9 +67,18 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
-  setItems({makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-            makeAudioMidiMenu(), makeGradingMenu(), makeAutoPlayMenu(),
-            makeAdvancedMenu(velocityRecordingEnabled), makeHelpMenu()});
+  QList<muse::uicomponents::MenuItem *> menus{
+      makeFileMenu(velocityRecordingEnabled),
+      makeViewMenu(),
+      makeAudioMidiMenu(),
+      makeGradingMenu(),
+      makeAutoPlayMenu(),
+      makeAdvancedMenu(velocityRecordingEnabled)};
+#ifdef MUSE_APP_UNSTABLE
+  menus << makeDevelopmentMenu();
+#endif
+  menus << makeHelpMenu();
+  setItems(menus);
 }
 
 void OrchestrionMenuModel::load()
@@ -382,6 +391,15 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
               autoPlayedStaff == 0)},
       "menu-orchestrion-autoplay");
 }
+
+#ifdef MUSE_APP_UNSTABLE
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
+{
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/development", "&Development"),
+      QList<muse::uicomponents::MenuItem *>{}, "menu-orchestrion-development");
+}
+#endif
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
 {

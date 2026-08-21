@@ -23,6 +23,7 @@
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
+#include "muse_framework_config.h" // MUSE_APP_UNSTABLE
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
@@ -88,6 +89,9 @@ private:
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeGradingMenu();
   muse::uicomponents::MenuItem *makeAutoPlayMenu();
+#ifdef MUSE_APP_UNSTABLE
+  muse::uicomponents::MenuItem *makeDevelopmentMenu();
+#endif
   muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
 
