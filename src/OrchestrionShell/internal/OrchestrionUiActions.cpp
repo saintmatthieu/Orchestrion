@@ -63,6 +63,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::autoPlaySettings, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::toggleAutoPlayExposure,
+                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::autoPlayNone, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::autoPlayLeftHand, mu::context::UiCtxAny,

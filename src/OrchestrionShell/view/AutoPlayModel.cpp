@@ -28,8 +28,16 @@ void AutoPlayModel::load()
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
       this, [this] { emit autoPlayedStaffChanged(); });
 
+  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
+      this, [this] { emit exposedChanged(); });
+
   dispatcher()->reg(this, actionIds::autoPlaySettings,
                     [this] { emit openSettingsRequested(); });
+}
+
+bool AutoPlayModel::exposed() const
+{
+  return sequencerConfiguration()->autoPlayExposed();
 }
 
 int AutoPlayModel::autoPlayedStaff() const

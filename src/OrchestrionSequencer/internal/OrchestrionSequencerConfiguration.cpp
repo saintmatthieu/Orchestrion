@@ -39,6 +39,7 @@ const muse::Settings::Key HAND_SYNC_SCORE_ENABLED(module_name,
                                                   "HAND_SYNC_SCORE_ENABLED");
 const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
                                                  "DYNAMICS_SCORE_ENABLED");
+const muse::Settings::Key AUTO_PLAY_EXPOSED(module_name, "AUTO_PLAY_EXPOSED");
 const muse::Settings::Key AUTO_PLAYED_STAFF(module_name, "AUTO_PLAYED_STAFF");
 const muse::Settings::Key
     TIME_PROPORTIONAL_SPACING_ENABLED(module_name,
@@ -98,6 +99,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(DYNAMICS_SCORE_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_dynamicsScoreEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(AUTO_PLAY_EXPOSED, muse::Val{false});
+  muse::settings()
+      ->valueChanged(AUTO_PLAY_EXPOSED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_autoPlayExposedChanged.notify(); });
 
   muse::settings()->setDefaultValue(AUTO_PLAYED_STAFF, muse::Val{-1});
   muse::settings()
@@ -244,6 +251,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::dynamicsScoreEnabledChanged() const
 {
   return m_dynamicsScoreEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::autoPlayExposed() const
+{
+  return muse::settings()->value(AUTO_PLAY_EXPOSED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setAutoPlayExposed(bool exposed)
+{
+  muse::settings()->setSharedValue(AUTO_PLAY_EXPOSED, muse::Val{exposed});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::autoPlayExposedChanged() const
+{
+  return m_autoPlayExposedChanged;
 }
 
 int OrchestrionSequencerConfiguration::autoPlayedStaff() const

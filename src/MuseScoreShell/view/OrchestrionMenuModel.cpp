@@ -68,12 +68,11 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   QList<muse::uicomponents::MenuItem *> menus{
-      makeFileMenu(velocityRecordingEnabled),
-      makeViewMenu(),
-      makeAudioMidiMenu(),
-      makeGradingMenu(),
-      makeAutoPlayMenu(),
-      makeAdvancedMenu(velocityRecordingEnabled)};
+      makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
+      makeAudioMidiMenu(), makeGradingMenu()};
+  if (sequencerConfiguration()->autoPlayExposed())
+    menus << makeAutoPlayMenu();
+  menus << makeAdvancedMenu(velocityRecordingEnabled);
 #ifdef MUSE_APP_UNSTABLE
   menus << makeDevelopmentMenu();
 #endif
@@ -113,6 +112,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -395,9 +398,20 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
 #ifdef MUSE_APP_UNSTABLE
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
 {
+  using namespace muse::uicomponents;
+
+  // Auto-play is still being worked on: hidden — and inert — unless a
+  // developer asks for it here.
+  MenuItem *const autoPlayItem =
+      makeMenuItem(actionIds::toggleAutoPlayExposure,
+                   muse::TranslatableString("appshell/menu/development",
+                                            "Expose &auto-play"));
+  autoPlayItem->setSelectable(true);
+  autoPlayItem->setSelected(sequencerConfiguration()->autoPlayExposed());
+
   return makeMenu(
       muse::TranslatableString("appshell/menu/development", "&Development"),
-      QList<muse::uicomponents::MenuItem *>{}, "menu-orchestrion-development");
+      QList<MenuItem *>{autoPlayItem}, "menu-orchestrion-development");
 }
 #endif
 

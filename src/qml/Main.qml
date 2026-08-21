@@ -251,6 +251,7 @@ ApplicationWindow {
 
                     AutoPlayButton {
                         model: autoPlayModel
+                        visible: autoPlayModel.exposed
                         onClicked: autoPlayPopup.open()
                     }
                 }

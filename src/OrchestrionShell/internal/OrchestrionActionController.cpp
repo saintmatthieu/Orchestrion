@@ -93,6 +93,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setDynamicsScoreEnabled(
                           !sequencerConfig()->dynamicsScoreEnabled());
                     });
+  dispatcher()->reg(this, actionIds::toggleAutoPlayExposure,
+                    [this]
+                    {
+                      sequencerConfig()->setAutoPlayExposed(
+                          !sequencerConfig()->autoPlayExposed());
+                    });
   // Tempo-following auto-play: at most one hand at a time (the other one is
   // yours — for full playback there is the playback button). A one-of-three
   // choice, so each action sets its value outright.

@@ -39,6 +39,7 @@ class AutoPlayModel : public QObject,
   //! −1 = off, 0 = the machine plays the right hand, 1 = the left.
   Q_PROPERTY(int autoPlayedStaff READ autoPlayedStaff WRITE setAutoPlayedStaff
                  NOTIFY autoPlayedStaffChanged)
+  Q_PROPERTY(bool exposed READ exposed NOTIFY exposedChanged)
 
   INJECT(IOrchestrionSequencerConfiguration, sequencerConfiguration);
   INJECT(muse::actions::IActionsDispatcher, dispatcher);
@@ -50,9 +51,11 @@ public:
 
   int autoPlayedStaff() const;
   void setAutoPlayedStaff(int);
+  bool exposed() const;
 
 signals:
   void autoPlayedStaffChanged();
+  void exposedChanged();
   //! The Auto-play menu's "Choose…" action fired: the view should open the
   //! choice popup.
   void openSettingsRequested();

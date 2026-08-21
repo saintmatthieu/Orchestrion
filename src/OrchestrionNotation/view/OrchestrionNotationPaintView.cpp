@@ -399,7 +399,9 @@ void OrchestrionNotationPaintView::OnTransitions(
 void OrchestrionNotationPaintView::updateAutoTargets(
     const std::map<TrackIndex, ChordTransition> &batch)
 {
-  const int autoStaff = sequencerConfiguration()->autoPlayedStaff();
+  const int autoStaff = sequencerConfiguration()->autoPlayExposed()
+                            ? sequencerConfiguration()->autoPlayedStaff()
+                            : -1;
   if (autoStaff < 0)
     return;
 
@@ -1370,19 +1372,27 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   // estimate reaches the auto hand's next due point; we inject the hand event
   // (deferred out of the follow tick — the resulting transitions re-enter it
   // with fresh targets).
-  const auto configureAutoPlay = [this]
+  // While auto-play is not exposed it stays inactive, whatever staff the
+  // setting holds (see IOrchestrionSequencerConfiguration::autoPlayExposed).
+  const auto autoPlayedStaff = [this]
   {
-    const int staff = sequencerConfiguration()->autoPlayedStaff();
+    return sequencerConfiguration()->autoPlayExposed()
+               ? sequencerConfiguration()->autoPlayedStaff()
+               : -1;
+  };
+  const auto configureAutoPlay = [this, autoPlayedStaff]
+  {
+    const int staff = autoPlayedStaff();
     m_autoTrackTargets.clear();
     m_follower.setAutoPlay(
         staff < 0 ? std::nullopt : std::make_optional(staff),
-        [this](bool noteOn)
+        [this, autoPlayedStaff](bool noteOn)
         {
           QTimer::singleShot(
               0, this,
-              [this, noteOn]
+              [this, noteOn, autoPlayedStaff]
               {
-                const int staff = sequencerConfiguration()->autoPlayedStaff();
+                const int staff = autoPlayedStaff();
                 const auto sequencer = orchestrion()->sequencer();
                 if (staff < 0 || !sequencer)
                   return;
@@ -1398,6 +1408,8 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   };
   configureAutoPlay();
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, configureAutoPlay);
+  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
       this, configureAutoPlay);
 
   // Toggling the layout mode re-lays-out the score; every cached x is stale,
