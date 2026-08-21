@@ -31,6 +31,7 @@
 #include "TempoVizModel.h"
 #include "TimingFeedbackOverlay.h"
 #include <QElapsedTimer>
+#include <QVariantList>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
 #include <limits>
@@ -74,6 +75,10 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   Q_PROPERTY(int finalScore READ finalScore NOTIFY finalScoreChanged)
   Q_PROPERTY(QString finalScoreBreakdown READ finalScoreBreakdown NOTIFY
                  finalScoreChanged)
+  //! The reasoning behind the banner's score, for its expandable panel: one
+  //! entry per component, each {label, score, detail}.
+  Q_PROPERTY(QVariantList finalScoreMetrics READ finalScoreMetrics NOTIFY
+                 finalScoreChanged)
   // Post-take tuning: the tempo model's smoothing memory γ, exposed as a
   // slider once the take is over — writing it re-fits the whole take (curve,
   // tooltips, stats, layout warp) so the effect is observable immediately.
@@ -104,6 +109,7 @@ public:
   bool tempoVisualizationEnabled() const;
   int finalScore() const { return m_finalScore; }
   QString finalScoreBreakdown() const { return m_finalScoreBreakdown; }
+  QVariantList finalScoreMetrics() const { return m_finalScoreMetrics; }
   Q_INVOKABLE void dismissFinalScore();
   bool smoothingTunerVisible() const;
   double tempoSmoothing() const;
@@ -281,6 +287,7 @@ private:
   bool m_finalScoreShown = false;
   int m_finalScore = -1;
   QString m_finalScoreBreakdown;
+  QVariantList m_finalScoreMetrics;
 
   struct Contact
   {

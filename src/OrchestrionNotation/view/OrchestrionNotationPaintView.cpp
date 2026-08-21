@@ -25,6 +25,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QTimer>
+#include <QVariantMap>
 #include <QWheelEvent>
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
@@ -381,6 +382,12 @@ void OrchestrionNotationPaintView::OnTransitions(
           m_finalScoreShown = true;
           m_finalScore = *score;
           m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
+          m_finalScoreMetrics.clear();
+          for (const auto &metric : m_timingOverlay.takeScoreMetrics())
+            m_finalScoreMetrics.append(QVariantMap{
+                {"label", metric.label},
+                {"score", metric.score},
+                {"detail", metric.detail}});
           emit finalScoreChanged();
           // endTake's visibility emit preceded m_finalScoreShown: re-emit.
           emit smoothingTunerVisibleChanged();
@@ -737,6 +744,7 @@ void OrchestrionNotationPaintView::dismissFinalScore()
     return;
   m_finalScore = -1;
   m_finalScoreBreakdown.clear();
+  m_finalScoreMetrics.clear();
   emit finalScoreChanged();
 }
 

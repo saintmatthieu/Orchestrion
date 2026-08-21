@@ -339,12 +339,19 @@ ApplicationWindow {
                     // properties reset the moment it is dismissed).
                     property int shownScore: 0
                     property string shownBreakdown: ""
+                    property var shownMetrics: []
+                    // The metrics panel starts collapsed and folds back for
+                    // the next take.
+                    property bool expanded: false
                     Connections {
                         target: notationPaintView
                         function onFinalScoreChanged() {
                             if (notationPaintView.finalScore >= 0) {
                                 scoreBanner.shownScore = notationPaintView.finalScore
                                 scoreBanner.shownBreakdown = notationPaintView.finalScoreBreakdown
+                                scoreBanner.shownMetrics = notationPaintView.finalScoreMetrics
+                            } else {
+                                scoreBanner.expanded = false
                             }
                         }
                     }
@@ -353,7 +360,9 @@ ApplicationWindow {
                     y: parent.height / 5
                     width: bannerColumn.width + 96
                     height: bannerColumn.height + 40
-                    radius: height / 2
+                    radius: scoreBanner.expanded ? 24 : height / 2
+                    Behavior on height { NumberAnimation { duration: 200 } }
+                    Behavior on width { NumberAnimation { duration: 200 } }
                     color: "#E8241811"
                     border.color: "#E5B84B"
                     border.width: 2
@@ -388,6 +397,70 @@ ApplicationWindow {
                             text: scoreBanner.shownBreakdown
                             color: "#C9B583"
                             font.pixelSize: 17
+                        }
+
+                        // The expander: what the score was made of.
+                        Text {
+                            id: expandArrow
+                            visible: scoreBanner.shownMetrics.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: scoreBanner.expanded ? "▴" : "▾"
+                            color: "#C9B583"
+                            font.pixelSize: 18
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -10
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: scoreBanner.expanded = !scoreBanner.expanded
+                            }
+                        }
+
+                        Column {
+                            id: metricsColumn
+                            visible: scoreBanner.expanded
+                                     && scoreBanner.shownMetrics.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            topPadding: 6
+                            spacing: 6
+
+                            Repeater {
+                                model: scoreBanner.shownMetrics
+
+                                // Intrinsic sizing throughout: the banner
+                                // sizes itself from this column, so a row
+                                // must never take its width from it.
+                                Row {
+                                    spacing: 16
+
+                                    Column {
+                                        width: 220
+                                        spacing: 1
+
+                                        Text {
+                                            text: modelData.label
+                                            color: "#F0E5C8"
+                                            font.pixelSize: 15
+                                        }
+
+                                        Text {
+                                            text: modelData.detail
+                                            color: "#C9B583"
+                                            font.pixelSize: 12
+                                        }
+                                    }
+
+                                    Text {
+                                        width: 40
+                                        horizontalAlignment: Text.AlignRight
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: modelData.score
+                                        color: "#E5B84B"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                    }
+                                }
+                            }
                         }
                     }
 

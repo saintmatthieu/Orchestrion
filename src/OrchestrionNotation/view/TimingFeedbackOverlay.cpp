@@ -95,22 +95,9 @@ constexpr double ringRadiusSp = 0.85;  // the dynamics ring around it
 // beyond the earlier one instead of painting over it.
 constexpr double stackStepSp = 2.0 * halfLenSp + 1.5;
 
-// Box-plot HUD, in physical pixels (constant apparent size).
-constexpr double hudWidthPx = 2 * 110.0;
-constexpr double hudHeightPx = 2 * 132.0;
-constexpr double hudMarginPx = 12.0;
-constexpr double hudPaddingPx = 10.0;
-constexpr double hudLabelBandPx = 12.0;
-// A small band past each ± range limit where beyond-scale values get pinned.
-constexpr double outlierBandPx = 2 * 8.0;
-constexpr double boxHalfWidthPx = 2 * 18.0;
-constexpr double whiskerCapHalfWidthPx = 2 * 9.0;
-
-// The stats' horizon: only the last minute of samples counts, and within it
-// recent samples weigh more (exponential decay), so the picture tracks how
-// you are playing *now*, not the whole session.
+// The rolling stats' horizon: samples older than this drop out (the take's
+// own, never-pruned samples are what the score is computed from).
 constexpr double sampleWindowMs = 60000.0;
-constexpr double recencyTauMs = 20000.0;
 
 // Ticks → logical px in the fork's time-proportional layout: the
 // HORIZONTAL_FIXED mode gives widthOfSegmentCell (3) staff spaces per global
@@ -132,9 +119,6 @@ constexpr double shadowGlideMs = 250.0;
 constexpr double scoreQuantile = 0.8;
 constexpr double scoreRefMs = 60.0;
 constexpr double dynamicsScoreRef = 0.12;
-// Panel band above the plot: the combined score plus a component breakdown.
-constexpr double scoreBandPx = 52.0;
-constexpr double scoreMainRowPx = 34.0;
 
 //! The \p q-quantile of |error| over (|error|, weight) pairs; the first value
 //! where the running weight reaches the requested share of the total.
@@ -559,21 +543,6 @@ void TimingFeedbackOverlay::reset()
   _hoverTimer.stop();
 }
 
-std::optional<double>
-TimingFeedbackOverlay::recentQuantile(const SampleMap &samples) const
-{
-  const qint64 now = _clock.elapsed();
-  std::vector<std::pair<double, double>> data;
-  for (const auto &[staff, staffSamples] : samples)
-    for (const auto &[onsetTMs, sample] : staffSamples)
-    {
-      const double age = static_cast<double>(now - sample.arrivalMs);
-      if (age <= sampleWindowMs)
-        data.emplace_back(std::abs(sample.errorMs),
-                          std::exp(-age / recencyTauMs));
-    }
-  return weightedAbsQuantile(std::move(data), scoreQuantile);
-}
 
 std::optional<double>
 TimingFeedbackOverlay::takeQuantile(const TakeSampleMap &samples)
@@ -585,19 +554,6 @@ TimingFeedbackOverlay::takeQuantile(const TakeSampleMap &samples)
   return weightedAbsQuantile(std::move(data), scoreQuantile);
 }
 
-std::optional<double> TimingFeedbackOverlay::recentSyncAbsErrorQuantile() const
-{
-  const qint64 now = _clock.elapsed();
-  std::vector<std::pair<double, double>> data;
-  for (const Sample &sample : _syncSamples)
-  {
-    const double age = static_cast<double>(now - sample.arrivalMs);
-    if (age <= sampleWindowMs)
-      data.emplace_back(std::abs(sample.errorMs),
-                        std::exp(-age / recencyTauMs));
-  }
-  return weightedAbsQuantile(std::move(data), scoreQuantile);
-}
 
 std::optional<double> TimingFeedbackOverlay::takeSyncAbsErrorQuantile() const
 {
@@ -624,6 +580,46 @@ QString TimingFeedbackOverlay::takeScoreBreakdown() const
       {{"tempo", takeQuantile(_takeSamples), scoreRefMs},
        {"sync", takeSyncAbsErrorQuantile(), scoreRefMs},
        {"dyn", takeQuantile(_takeDynamicsSamples), dynamicsScoreRef}});
+}
+
+std::vector<TimingFeedbackOverlay::ScoreMetric>
+TimingFeedbackOverlay::takeScoreMetrics() const
+{
+  const auto sampleCount = [](const TakeSampleMap &samples)
+  {
+    std::size_t count = 0;
+    for (const auto &[staff, staffSamples] : samples)
+      count += staffSamples.size();
+    return count;
+  };
+  const auto metric = [](const QString &label, double quantile, double ref,
+                         const QString &detail)
+  {
+    return ScoreMetric{
+        label, static_cast<int>(std::lround(scoreOf(quantile, ref))), detail};
+  };
+
+  std::vector<ScoreMetric> metrics;
+  if (const auto quantile = takeQuantile(_takeSamples))
+    metrics.push_back(
+        metric(QStringLiteral("Tempo smoothness"), *quantile, scoreRefMs,
+               QString::fromUtf8("%1 ms typical error · %2 notes")
+                   .arg(qRound(*quantile))
+                   .arg(sampleCount(_takeSamples))));
+  if (const auto quantile = takeSyncAbsErrorQuantile())
+    metrics.push_back(
+        metric(QStringLiteral("Hand synchronization"), *quantile, scoreRefMs,
+               QString::fromUtf8("%1 ms typical gap · %2 samples")
+                   .arg(qRound(*quantile))
+                   .arg(_takeSyncErrors.size())));
+  if (const auto quantile = takeQuantile(_takeDynamicsSamples))
+    metrics.push_back(
+        metric(QStringLiteral("Dynamics smoothness"), *quantile,
+               dynamicsScoreRef,
+               QString::fromUtf8("%1 % typical deviation · %2 notes")
+                   .arg(qRound(*quantile * 100))
+                   .arg(sampleCount(_takeDynamicsSamples))));
+  return metrics;
 }
 
 void TimingFeedbackOverlay::pruneSamples()
@@ -653,7 +649,7 @@ void TimingFeedbackOverlay::advance()
 }
 
 void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
-                                  double scaling) const
+                                  double /*scaling*/) const
 {
   painter.save();
   painter.setRenderHint(QPainter::Antialiasing);
@@ -690,7 +686,6 @@ void TimingFeedbackOverlay::paint(QPainter &painter, const QRectF &viewport,
       paintGauge(painter, gauge, anchorX, opacity);
   }
 
-  paintBoxPlots(painter, viewport, scaling);
 
   painter.restore();
 }
@@ -970,218 +965,4 @@ void TimingFeedbackOverlay::paintGauge(QPainter &painter, const Gauge &gauge,
   }
 }
 
-std::vector<std::pair<double, double>>
-TimingFeedbackOverlay::recentSignedSamples(const SampleMap &samples) const
-{
-  // The in-window samples (at their latest revised errors) with their recency
-  // weights: an old note counts for little, the last few notes dominate the
-  // statistics.
-  const qint64 now = _clock.elapsed();
-  std::vector<std::pair<double /*error*/, double /*weight*/>> data;
-  for (const auto &[staff, staffSamples] : samples)
-    for (const auto &[onsetTMs, sample] : staffSamples)
-    {
-      const double age = static_cast<double>(now - sample.arrivalMs);
-      if (age <= sampleWindowMs)
-        data.emplace_back(sample.errorMs, std::exp(-age / recencyTauMs));
-    }
-  return data;
-}
-
-void TimingFeedbackOverlay::paintBoxPlots(QPainter &painter,
-                                          const QRectF &viewport,
-                                          double scaling) const
-{
-  // The main (timing) panel, bottom-right, hosting the combined-score band —
-  // the same composition the final banner reports, but recency-weighted —
-  // with the per-component breakdown (hidden when only one component has
-  // samples: it would just repeat the combined score).
-  const std::vector<Component> components{
-      {"tempo", recentQuantile(_samples), scoreRefMs},
-      {"sync", recentSyncAbsErrorQuantile(), scoreRefMs},
-      {"dyn", recentQuantile(_dynamicsSamples), dynamicsScoreRef}};
-  std::optional<ScoreBandSpec> combinedBand;
-  if (const auto composite = combineScores(components))
-    combinedBand =
-        ScoreBandSpec{QStringLiteral("score"), composite->score,
-                      composite->meanErrorRatio, breakdownText(components)};
-  paintBoxPlotPanel(painter, viewport, scaling, recentSignedSamples(_samples),
-                    false, rangeMs, "early", "late",
-                    QString::fromUtf8("±%1 ms").arg(rangeMs), combinedBand);
-
-  // The dynamics panel, bottom-left, with its own sub-score. Negated so
-  // "too loud" reads upward, matching the gauges' ring.
-  std::optional<ScoreBandSpec> dynamicsBand;
-  if (const auto quantile = recentQuantile(_dynamicsSamples))
-    dynamicsBand = ScoreBandSpec{QStringLiteral("dyn score"),
-                                 scoreOf(*quantile, dynamicsScoreRef),
-                                 *quantile / dynamicsScoreRef, QString()};
-  auto dynamics = recentSignedSamples(_dynamicsSamples);
-  for (auto &[error, weight] : dynamics)
-    error = -error;
-  paintBoxPlotPanel(painter, viewport, scaling, std::move(dynamics), true,
-                    dynamicsRange, "loud", "soft",
-                    QString::fromUtf8("±%1 %").arg(dynamicsRange * 100.0),
-                    dynamicsBand);
-}
-
-void TimingFeedbackOverlay::paintBoxPlotPanel(
-    QPainter &painter, const QRectF &viewport, double scaling,
-    std::vector<std::pair<double, double>> data, bool dockLeft, double range,
-    const char *topLabel, const char *bottomLabel, const QString &rangeLabel,
-    const std::optional<ScoreBandSpec> &scoreBand) const
-{
-  if (data.empty())
-    return;
-  std::sort(data.begin(), data.end());
-
-  // Weighted quantiles: the first sample where the running weight reaches the
-  // requested share of the total.
-  double totalWeight = 0.0;
-  for (const auto &[error, weight] : data)
-    totalWeight += weight;
-  const auto quantile = [&data, totalWeight](double q)
-  {
-    const double target = q * totalWeight;
-    double cum = 0.0;
-    for (const auto &[error, weight] : data)
-    {
-      cum += weight;
-      if (cum >= target)
-        return error;
-    }
-    return data.back().first;
-  };
-  const double median = quantile(0.5);
-  const double q1 = quantile(0.25);
-  const double q3 = quantile(0.75);
-
-  // Tukey whiskers: out to the farthest samples within 1.5 IQR of the box;
-  // anything beyond is an outlier dot.
-  const double fenceLo = q1 - 1.5 * (q3 - q1);
-  const double fenceHi = q3 + 1.5 * (q3 - q1);
-  double whiskerLo = median;
-  double whiskerHi = median;
-  std::vector<double> outliers;
-  for (const auto &[error, weight] : data)
-  {
-    if (error < fenceLo || error > fenceHi)
-      outliers.push_back(error);
-    else
-    {
-      whiskerLo = std::min(whiskerLo, error);
-      whiskerHi = std::max(whiskerHi, error);
-    }
-  }
-
-  // Dock in the viewport's bottom corner at constant physical size: translate
-  // to the panel's logical origin, then undo the zoom so everything below is
-  // in physical px.
-  const double bandPx = scoreBand ? scoreBandPx : 0.0;
-  const double panelHeight = bandPx + hudHeightPx;
-  painter.save();
-  painter.translate(dockLeft ? viewport.left() + hudMarginPx / scaling
-                             : viewport.right() -
-                                   (hudWidthPx + hudMarginPx) / scaling,
-                    viewport.bottom() - (panelHeight + hudMarginPx) / scaling);
-  painter.scale(1.0 / scaling, 1.0 / scaling);
-
-  painter.setPen(Qt::NoPen);
-  painter.setBrush(QColor(0, 0, 0, 130));
-  painter.drawRoundedRect(QRectF(0, 0, hudWidthPx, panelHeight), 8, 8);
-
-  // Beyond-scale values get pinned into a small band past the ± range
-  // limits. The score band, if any, sits above the plot.
-  const double plotTop = bandPx + hudPaddingPx + hudLabelBandPx;
-  const double plotBottom = panelHeight - hudPaddingPx - hudLabelBandPx;
-  const double plotLeft = hudPaddingPx;
-  const double plotRight = hudWidthPx - hudPaddingPx;
-  const double limitTop = plotTop + outlierBandPx;
-  const double limitBottom = plotBottom - outlierBandPx;
-  const auto yOf = [&](double value)
-  {
-    if (value < -range)
-      return plotTop + 0.5 * outlierBandPx;
-    if (value > range)
-      return plotBottom - 0.5 * outlierBandPx;
-    return limitTop +
-           (value + range) / (2.0 * range) * (limitBottom - limitTop);
-  };
-
-  // The zero-error line and the always-visible ± range limits.
-  painter.setPen(QPen(QColor(235, 235, 235, 200), 1.0));
-  painter.drawLine(QPointF(plotLeft, yOf(0.0)), QPointF(plotRight, yOf(0.0)));
-  painter.setPen(QPen(QColor(235, 235, 235, 110), 1.0, Qt::DashLine));
-  for (const double y : {limitTop, limitBottom})
-    painter.drawLine(QPointF(plotLeft, y), QPointF(plotRight, y));
-
-  // Whiskers: the stem and its caps, in neutral ink.
-  const double cx = hudWidthPx / 2.0;
-  painter.setPen(QPen(QColor(235, 235, 235, 190), 1.0));
-  painter.drawLine(QPointF(cx, yOf(whiskerLo)), QPointF(cx, yOf(whiskerHi)));
-  for (const double w : {whiskerLo, whiskerHi})
-    painter.drawLine(QPointF(cx - whiskerCapHalfWidthPx, yOf(w)),
-                     QPointF(cx + whiskerCapHalfWidthPx, yOf(w)));
-
-  // The quartile box, in the median's accuracy colour, and the median line.
-  const QColor color = ratioColor(std::abs(median) / range);
-  painter.setPen(QPen(withAlpha(color, 0.9), 1.0));
-  painter.setBrush(withAlpha(color, 0.35));
-  painter.drawRect(QRectF(cx - boxHalfWidthPx, yOf(q1), 2.0 * boxHalfWidthPx,
-                          yOf(q3) - yOf(q1)));
-  painter.setPen(QPen(withAlpha(color, 1.0), 2.0));
-  painter.drawLine(QPointF(cx - boxHalfWidthPx, yOf(median)),
-                   QPointF(cx + boxHalfWidthPx, yOf(median)));
-
-  // Outlier dots, slightly jittered sideways so a cluster reads as one.
-  painter.setPen(Qt::NoPen);
-  for (std::size_t i = 0; i < outliers.size(); ++i)
-  {
-    painter.setBrush(
-        withAlpha(ratioColor(std::abs(outliers[i]) / range), 0.85));
-    const double x = cx + (static_cast<double>(i % 5) - 2.0) * 4.0;
-    painter.drawEllipse(QPointF(x, yOf(outliers[i])), 2.0, 2.0);
-  }
-
-  QFont font = painter.font();
-  font.setPixelSize(9);
-  painter.setFont(font);
-  painter.setPen(QColor(235, 235, 235, 220));
-  painter.drawText(QRectF(plotLeft, bandPx + 1, plotRight - plotLeft,
-                          hudLabelBandPx + hudPaddingPx),
-                   Qt::AlignLeft | Qt::AlignVCenter, topLabel);
-  painter.drawText(QRectF(plotLeft, bandPx + 1, plotRight - plotLeft,
-                          hudLabelBandPx + hudPaddingPx),
-                   Qt::AlignRight | Qt::AlignVCenter,
-                   QString("n=%1").arg(static_cast<int>(data.size())));
-  painter.drawText(QRectF(plotLeft, plotBottom, plotRight - plotLeft,
-                          hudLabelBandPx + hudPaddingPx - 1),
-                   Qt::AlignLeft | Qt::AlignVCenter, bottomLabel);
-  painter.drawText(QRectF(plotLeft, plotBottom, plotRight - plotLeft,
-                          hudLabelBandPx + hudPaddingPx - 1),
-                   Qt::AlignRight | Qt::AlignVCenter, rangeLabel);
-
-  // The score band: the panel's score, big, in its accuracy colour, with an
-  // optional breakdown line beneath.
-  if (scoreBand)
-  {
-    painter.drawText(QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
-                     Qt::AlignLeft | Qt::AlignVCenter, scoreBand->label);
-    painter.drawText(QRectF(plotLeft, scoreMainRowPx - 4, plotRight - plotLeft,
-                            scoreBandPx - scoreMainRowPx + 4),
-                     Qt::AlignLeft | Qt::AlignVCenter, scoreBand->breakdown);
-    QFont scoreFont = painter.font();
-    scoreFont.setPixelSize(26);
-    scoreFont.setBold(true);
-    painter.setFont(scoreFont);
-    // Colour by the error relative to the component references, expressed on
-    // the gauge's ms scale.
-    painter.setPen(
-        withAlpha(errorColor(scoreBand->errorRatio * scoreRefMs), 1.0));
-    painter.drawText(QRectF(plotLeft, 0, plotRight - plotLeft, scoreMainRowPx),
-                     Qt::AlignRight | Qt::AlignVCenter,
-                     QString::number(scoreBand->score));
-  }
-  painter.restore();
-}
 } // namespace dgk

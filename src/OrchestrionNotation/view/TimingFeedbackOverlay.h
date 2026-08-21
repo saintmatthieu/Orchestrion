@@ -54,11 +54,6 @@ namespace dgk
 //!   arrowhead past the ruler's end = outlier. The marker's colour grades
 //!   continuously from green (dead on) to red (outlier), and the marker moves
 //!   while its gauge shows if the onset gets re-judged;
-//! - short-term *box plots* of the recent errors (recency-weighted, over
-//!   roughly the last minute): median line, quartile box, Tukey whiskers and
-//!   outlier dots, re-computed from the revised errors, at a constant
-//!   physical size — timing docked bottom-right (with the score band),
-//!   dynamics bottom-left (loud up, soft down).
 //!
 //! Owns its fade timer (mirroring HighlightFader): the owner feeds it
 //! judgments and paints it on top of the notation with the painter in
@@ -178,7 +173,21 @@ public:
   //! "tempo 87 · sync 92 · dyn 85"; empty with fewer than two components.
   QString takeScoreBreakdown() const;
 
-  //! Paint gauges and box plot. The painter must be in score-logical
+  //! One line of the score's reasoning, for the banner's expandable
+  //! breakdown: the component's name, its 0–100 sub-score and the measured
+  //! quantity behind it (e.g. "±23 ms typical error · 48 notes").
+  struct ScoreMetric
+  {
+    QString label;
+    int score;
+    QString detail;
+  };
+  //! The take's components, in display order; empty while nothing was
+  //! judged.
+  std::vector<ScoreMetric> takeScoreMetrics() const;
+
+  //! Paint the marks and the deviation ribbon. The painter must be in
+  //! score-logical
   //! coordinates; \p viewport is the visible logical rect and \p scaling the
   //! zoom (physical px per logical unit), used to keep the box-plot HUD a
   //! constant physical size.
@@ -240,40 +249,13 @@ private:
   //! (they move when the layout warps), falling back to the position cached
   //! at onset time.
   double gaugeAnchorX(const Gauge &gauge) const;
-  void paintBoxPlots(QPainter &painter, const QRectF &viewport,
-                     double scaling) const;
-  //! The score band above a panel's plot: the combined score (with the
-  //! component breakdown) on the main panel, the dynamics sub-score on the
-  //! dynamics panel.
-  struct ScoreBandSpec
-  {
-    QString label;
-    int score;
-    double errorRatio; // mean error vs the components' references (colour)
-    QString breakdown; // may be empty
-  };
-  //! One box-plot panel over \p data (signed error, recency weight): docked
-  //! bottom-left or bottom-right, its axis spanning ± \p range of the data's
-  //! units, with an optional score band above the plot.
-  void paintBoxPlotPanel(QPainter &painter, const QRectF &viewport,
-                         double scaling,
-                         std::vector<std::pair<double, double>> data,
-                         bool dockLeft, double range, const char *topLabel,
-                         const char *bottomLabel, const QString &rangeLabel,
-                         const std::optional<ScoreBandSpec> &scoreBand) const;
-  std::vector<std::pair<double, double>>
-  recentSignedSamples(const SampleMap &samples) const;
   void pruneSamples();
 
   void upsertSamples(int staff,
                      const std::vector<TempoFollower::Judgment> &window,
                      SampleMap &samples, TakeSampleMap &takeSamples);
-  //! The score metric (80th percentile of |error|) over the recent window,
-  //! recency-weighted — what the live score display shows — and its
-  //! whole-take, unweighted sibling — the final verdict.
-  std::optional<double> recentQuantile(const SampleMap &samples) const;
+  //! The score metric: the 80th percentile of |error| over the whole take.
   static std::optional<double> takeQuantile(const TakeSampleMap &samples);
-  std::optional<double> recentSyncAbsErrorQuantile() const;
   std::optional<double> takeSyncAbsErrorQuantile() const;
 
   const std::function<void()> _requestRepaint;
