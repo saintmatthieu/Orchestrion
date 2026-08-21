@@ -27,6 +27,8 @@ void GradingModel::load()
 {
   sequencerConfiguration()->gradingEnabledChanged().onNotify(
       this, [this] { emit gradingEnabledChanged(); });
+  sequencerConfiguration()->gradingExposedChanged().onNotify(
+      this, [this] { emit exposedChanged(); });
   sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(
       this, [this] { emit persistentMarksChanged(); });
   sequencerConfiguration()->handSyncScoreEnabledChanged().onNotify(
@@ -41,6 +43,11 @@ void GradingModel::load()
   // The Grading menu's "Settings…" item.
   dispatcher()->reg(this, actionIds::gradingSettings,
                     [this] { emit openSettingsRequested(); });
+}
+
+bool GradingModel::exposed() const
+{
+  return sequencerConfiguration()->gradingExposed();
 }
 
 bool GradingModel::gradingEnabled() const

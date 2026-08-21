@@ -247,6 +247,7 @@ ApplicationWindow {
 
                     GradingButton {
                         model: gradingModel
+                        visible: gradingModel.exposed
                     }
 
                     AutoPlayButton {

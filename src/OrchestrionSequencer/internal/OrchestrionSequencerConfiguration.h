@@ -47,6 +47,10 @@ private:
   void setTempoVisualizationEnabled(bool) override;
   muse::async::Notification tempoVisualizationEnabledChanged() const override;
 
+  bool gradingExposed() const override;
+  void setGradingExposed(bool) override;
+  muse::async::Notification gradingExposedChanged() const override;
+
   bool gradingEnabled() const override;
   void setGradingEnabled(bool) override;
   muse::async::Notification gradingEnabledChanged() const override;
@@ -91,6 +95,7 @@ private:
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
   muse::async::Notification m_tempoVisualizationEnabledChanged;
+  muse::async::Notification m_gradingExposedChanged;
   muse::async::Notification m_gradingEnabledChanged;
   muse::async::Notification m_persistentTimingMarksEnabledChanged;
   muse::async::Notification m_handSyncScoreEnabledChanged;

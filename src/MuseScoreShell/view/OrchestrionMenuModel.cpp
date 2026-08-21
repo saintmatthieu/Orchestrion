@@ -69,7 +69,9 @@ void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   QList<muse::uicomponents::MenuItem *> menus{
       makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-      makeAudioMidiMenu(), makeGradingMenu()};
+      makeAudioMidiMenu()};
+  if (sequencerConfiguration()->gradingExposed())
+    menus << makeGradingMenu();
   if (sequencerConfiguration()->autoPlayExposed())
     menus << makeAutoPlayMenu();
   menus << makeAdvancedMenu(velocityRecordingEnabled);
@@ -112,6 +114,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->gradingExposedChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -409,9 +415,16 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
   autoPlayItem->setSelectable(true);
   autoPlayItem->setSelected(sequencerConfiguration()->autoPlayExposed());
 
+  MenuItem *const gradingItem = makeMenuItem(
+      actionIds::toggleGradingExposure,
+      muse::TranslatableString("appshell/menu/development", "Expose &grading"));
+  gradingItem->setSelectable(true);
+  gradingItem->setSelected(sequencerConfiguration()->gradingExposed());
+
   return makeMenu(
       muse::TranslatableString("appshell/menu/development", "&Development"),
-      QList<MenuItem *>{autoPlayItem}, "menu-orchestrion-development");
+      QList<MenuItem *>{gradingItem, autoPlayItem},
+      "menu-orchestrion-development");
 }
 #endif
 

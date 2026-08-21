@@ -48,12 +48,21 @@ public:
   virtual muse::async::Notification
   tempoVisualizationEnabledChanged() const = 0;
 
+  //! Whether grading is offered at all (its top-centre button and its menu).
+  //! Off by default and toggled from the Development menu: while hidden,
+  //! gradingEnabled() reads false whatever the user last chose, so the whole
+  //! apparatus is inert as well as invisible.
+  virtual bool gradingExposed() const = 0;
+  virtual void setGradingExposed(bool) = 0;
+  virtual muse::async::Notification gradingExposedChanged() const = 0;
+
   //! The master switch of the grading apparatus: the per-note
   //! timing marks and deviation ribbon, the box-plot HUD and scores, the
   //! final-score banner, the time-proportional layout and its tempo warp,
   //! the take recording and its replay. When disabled, the score is just
   //! displayed and played plainly — only the tempo-following scroll stays,
-  //! which is the norm in both modes. On by default.
+  //! which is the norm in both modes. On by default, but always false while
+  //! the feature is not exposed (see gradingExposed()).
   virtual bool gradingEnabled() const = 0;
   virtual void setGradingEnabled(bool) = 0;
   virtual muse::async::Notification gradingEnabledChanged() const = 0;

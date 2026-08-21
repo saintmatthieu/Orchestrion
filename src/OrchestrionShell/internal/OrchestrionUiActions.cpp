@@ -65,6 +65,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::toggleAutoPlayExposure,
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::toggleGradingExposure,
+                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::autoPlayNone, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::autoPlayLeftHand, mu::context::UiCtxAny,

@@ -40,6 +40,7 @@ class GradingModel : public QObject,
 
   Q_PROPERTY(bool gradingEnabled READ gradingEnabled WRITE setGradingEnabled
                  NOTIFY gradingEnabledChanged)
+  Q_PROPERTY(bool exposed READ exposed NOTIFY exposedChanged)
   Q_PROPERTY(bool persistentMarks READ persistentMarks WRITE setPersistentMarks
                  NOTIFY persistentMarksChanged)
   Q_PROPERTY(bool handSyncScore READ handSyncScore WRITE setHandSyncScore NOTIFY
@@ -50,7 +51,8 @@ class GradingModel : public QObject,
                  setProportionalSpacing NOTIFY proportionalSpacingChanged)
   //! 0 = replay performance, 1 = replay at fitted tempo, 2 = metronome
   //! (mirrors dgk::PlayMode).
-  Q_PROPERTY(int playMode READ playMode WRITE setPlayMode NOTIFY playModeChanged)
+  Q_PROPERTY(
+      int playMode READ playMode WRITE setPlayMode NOTIFY playModeChanged)
 
   INJECT(IOrchestrionSequencerConfiguration, sequencerConfiguration);
   INJECT(IOrchestrion, orchestrion);
@@ -63,6 +65,7 @@ public:
 
   bool gradingEnabled() const;
   void setGradingEnabled(bool);
+  bool exposed() const;
   bool persistentMarks() const;
   void setPersistentMarks(bool);
   bool handSyncScore() const;
@@ -76,6 +79,7 @@ public:
 
 signals:
   void gradingEnabledChanged();
+  void exposedChanged();
   void persistentMarksChanged();
   void handSyncScoreChanged();
   void dynamicsScoreChanged();

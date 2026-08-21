@@ -93,6 +93,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setDynamicsScoreEnabled(
                           !sequencerConfig()->dynamicsScoreEnabled());
                     });
+  dispatcher()->reg(this, actionIds::toggleGradingExposure,
+                    [this]
+                    {
+                      sequencerConfig()->setGradingExposed(
+                          !sequencerConfig()->gradingExposed());
+                    });
   dispatcher()->reg(this, actionIds::toggleAutoPlayExposure,
                     [this]
                     {

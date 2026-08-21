@@ -31,6 +31,7 @@ const muse::Settings::Key
     NOTE_INFO_TOOLTIP_ENABLED(module_name, "NOTE_INFO_TOOLTIP_ENABLED");
 const muse::Settings::Key
     TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
+const muse::Settings::Key GRADING_EXPOSED(module_name, "GRADING_EXPOSED");
 const muse::Settings::Key GRADING_ENABLED(module_name, "GRADING_ENABLED");
 const muse::Settings::Key
     PERSISTENT_TIMING_MARKS_ENABLED(module_name,
@@ -74,6 +75,16 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(TEMPO_VISUALIZATION_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_tempoVisualizationEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(GRADING_EXPOSED, muse::Val{false});
+  muse::settings()
+      ->valueChanged(GRADING_EXPOSED)
+      .onReceive(this,
+                 [this](const muse::Val &)
+                 {
+                   m_gradingExposedChanged.notify();
+                   m_gradingEnabledChanged.notify();
+                 });
 
   muse::settings()->setDefaultValue(GRADING_ENABLED, muse::Val{true});
   muse::settings()
@@ -187,9 +198,25 @@ OrchestrionSequencerConfiguration::tempoVisualizationEnabledChanged() const
   return m_tempoVisualizationEnabledChanged;
 }
 
+bool OrchestrionSequencerConfiguration::gradingExposed() const
+{
+  return muse::settings()->value(GRADING_EXPOSED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setGradingExposed(bool exposed)
+{
+  muse::settings()->setSharedValue(GRADING_EXPOSED, muse::Val{exposed});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::gradingExposedChanged() const
+{
+  return m_gradingExposedChanged;
+}
+
 bool OrchestrionSequencerConfiguration::gradingEnabled() const
 {
-  return muse::settings()->value(GRADING_ENABLED).toBool();
+  return gradingExposed() && muse::settings()->value(GRADING_ENABLED).toBool();
 }
 
 void OrchestrionSequencerConfiguration::setGradingEnabled(bool enabled)
