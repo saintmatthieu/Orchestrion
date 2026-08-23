@@ -274,6 +274,14 @@ private:
   qint64 _lastTickMs = 0; // for zoom-easing dt
   // Last centered position, to detect when the coast has settled (then idle).
   double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
+  //! The x the viewport is actually resting on: the anchor seen through the
+  //! loose pan filter (dead zone + first-order lag), so the page ignores the
+  //! anchor's engraving-induced note-to-note wobble.
+  double _panAnchor = std::numeric_limits<double>::quiet_NaN();
+  //! The pan's own glide speed (logical px/s, smoothed over several notes)
+  //! and the previous raw anchor it is measured from.
+  double _panSpeed = 0.0;
+  double _lastRawAnchorX = std::numeric_limits<double>::quiet_NaN();
 
   // The musical spline's smoothing memory for newly created hands.
   double _smootherMemory = 0.6;
