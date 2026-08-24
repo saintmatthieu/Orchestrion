@@ -49,29 +49,19 @@ constexpr double syncLagIntervals = 2.0;
 // anchor stays comfortably in view.
 constexpr double smoothDelayIntervals = 4.0;
 
-// The pan is deliberately *loose*. Engraved x is not proportional to time —
-// in a "4 8 8" bar the quarter and the eighths get nearly the same width, so
-// the anchor's own x-speed swings ~2:1 within every bar even for a
-// metronomically perfect performance. Following it rigidly makes the score
-// visibly stutter, so the viewport lags behind the anchor through a
-// first-order filter with a dead zone: inside the dead zone the page does
-// not move at all, and outside it the viewport eases after the anchor with
-// this time constant. The wobble (period ~0.25-0.5 s) is far shorter than
-// tauPan, so it averages out; what survives is the piece's real tempo.
-constexpr double tauPanMs = 800.0;
-// The pan runs at its own, heavily smoothed speed (this time constant), so
-// the viewport keeps gliding at the piece's tempo instead of lagging further
-// and further behind it: the position filter above then only has to absorb
-// the residual, and the anchor rests just inside the dead zone rather than
-// speed × tauPan away from where it belongs.
-constexpr double tauPanSpeedMs = 1200.0;
-// Half-width of the dead zone, as a fraction of the view width: the anchor
-// may breathe this far either side of its resting spot before the viewport
-// reacts.
-constexpr double panDeadZoneFrac = 0.06;
-// A jump this large (fraction of the view width) is a reposition, not
-// playing — a repeat, a rewind, a click: snap instead of gliding across.
-constexpr double panSnapFrac = 0.5;
+// The scroll does not follow the position estimate continuously: engraved x
+// is not proportional to time — in a "4 8 8" bar the quarter and the eighths
+// get nearly the same width — so a viewport pinned to the estimate speeds up
+// and slows down within every bar even for a metronomically perfect
+// performance. Instead the page stands still, and moves only when the next
+// event to play would otherwise pass this fraction of the view width; then
+// that event is brought back to the anchor (anchorFrac), i.e. the page turns
+// by three fifths of a screen at a time.
+constexpr double pageTriggerFrac = 2.0 / 3.0;
+// The page turn is not a teleport: it glides over this time constant (per
+// pole — the turn is two of them in series, so it settles in ~5 τ), short
+// enough that the event is in place well before it is due.
+constexpr double tauPageMs = 500.0;
 
 // Decay time constant (ms) for the offset that absorbs the small jump the
 // anchor makes at each onset (the spline re-fit plus the delay's cadence
@@ -159,10 +149,9 @@ void TempoFollower::setSmootherMemory(double memory)
   _smootherMemory = memory;
 }
 
-TempoFollower::Feedback
-TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
-                        std::optional<double> leadingAny,
-                        std::optional<double> trailingAny)
+TempoFollower::Feedback TempoFollower::onOnsets(
+    const std::map<int, Onset> &presentOnsets, std::optional<double> leadingAny,
+    std::optional<double> trailingAny, std::optional<double> nextX)
 {
   Feedback feedback;
   if (_suspended)
@@ -174,6 +163,11 @@ TempoFollower::onOnsets(const std::map<int, Onset> &presentOnsets,
       return feedback;
     reset();
   }
+
+  // What the page scroll keeps in view (see pageTriggerFrac). Held until the
+  // next batch: between events there is nothing new to react to.
+  if (nextX)
+    _focusX = nextX;
 
   // One-shot framing once we have a laid-out viewport and a position.
   if (!_framed && leadingAny && _canvas.viewWidth() > 1.0)
@@ -323,6 +317,7 @@ void TempoFollower::frame(double leadingX, double trailingX)
     scale = std::clamp(scale, _canvas.minScaling(), userScale);
   }
   _scaling = scale;
+  _pageX = _pageEaseX = _pageTargetX = leadingX;
   _canvas.centerOn(leadingX, scale);
   _framed = true;
 }
@@ -491,42 +486,42 @@ void TempoFollower::tick()
   const double dtMs = _lastTickMs > 0 ? now - _lastTickMs : 16.0;
   _lastTickMs = static_cast<qint64>(now);
 
-  // Loose pan: ease the viewport after the anchor, ignoring the note-to-note
-  // wobble that engraved spacing forces on it (see tauPanMs).
-  const double deadZone =
-      _scaling > 0.0 ? panDeadZoneFrac * _canvas.viewWidth() / _scaling : 0.0;
-  const double snapDistance =
-      _scaling > 0.0 ? panSnapFrac * _canvas.viewWidth() / _scaling : 0.0;
-  if (!std::isfinite(_panAnchor) ||
-      std::abs(*leadingAnchor - _panAnchor) > snapDistance)
-  {
-    _panAnchor = *leadingAnchor;
-    _panSpeed = 0.0;
-  }
+  // Page scroll. The event the reader needs to see next is the next one to
+  // play; while it is comfortably inside the view the page does not move at
+  // all, and when it would pass the trigger mark the page turns so that the
+  // event lands on the anchor. Note that nothing here follows the position
+  // estimate — see pageTriggerFrac for why a continuous follow stutters.
+  const double logicalWidth =
+      _scaling > 0.0 ? _canvas.viewWidth() / _scaling : 0.0;
+  const double focusX = _focusX.value_or(*leadingAnchor);
+  if (!std::isfinite(_pageTargetX) || logicalWidth <= 0.0)
+    _pageX = _pageEaseX = _pageTargetX = focusX;
   else
   {
-    // Feed-forward: track the anchor's own speed, smoothed over several
-    // notes. Spikes (a spline re-fit nudging the anchor) are clamped out.
-    if (std::isfinite(_lastRawAnchorX) && dtMs > 0.0)
-    {
-      const double rawSpeed =
-          std::clamp((*leadingAnchor - _lastRawAnchorX) / dtMs * 1000.0, 0.0,
-                     3.0 * _panSpeed + 200.0);
-      _panSpeed +=
-          (rawSpeed - _panSpeed) * (1.0 - std::exp(-dtMs / tauPanSpeedMs));
-    }
-    _panAnchor += _panSpeed * dtMs / 1000.0;
-
-    // Feedback: close whatever gap is left, but only outside the dead zone.
-    const double error = *leadingAnchor - _panAnchor;
-    const double beyond = std::abs(error) <= deadZone
-                              ? 0.0
-                              : error - std::copysign(deadZone, error);
-    _panAnchor += beyond * (1.0 - std::exp(-dtMs / tauPanMs));
+    // Where the focus sits in the view, given that _pageTargetX rests on the
+    // anchor. Off the left edge means we jumped backwards (a repeat, a
+    // rewind): reposition just the same.
+    const double frac = anchorFrac + (focusX - _pageTargetX) / logicalWidth;
+    if (frac > pageTriggerFrac || frac < 0.0)
+      _pageTargetX = focusX;
   }
-  _lastRawAnchorX = *leadingAnchor;
+  // Two identical lags in series, not one. A single pole leaves the target's
+  // jump as a step in *velocity* — v(0) = Δ/τ is its maximum — which reads as
+  // a jerk at the start of the turn. Cascading them gives the critically
+  // damped Δ·(1 − (1 + t/τ)·e^(−t/τ)), whose velocity starts from rest, peaks
+  // at t = τ and eases out again: an S-curve, at the cost of settling in
+  // ~5 τ instead of ~3 τ.
+  if (std::abs(_pageTargetX - _pageX) > 0.02 ||
+      std::abs(_pageTargetX - _pageEaseX) > 0.02)
+  {
+    const double k = 1.0 - std::exp(-dtMs / tauPageMs);
+    _pageEaseX += (_pageTargetX - _pageEaseX) * k;
+    _pageX += (_pageEaseX - _pageX) * k;
+  }
+  else
+    _pageX = _pageEaseX = _pageTargetX;
 
-  _canvas.centerOn(_panAnchor, _scaling);
+  _canvas.centerOn(_pageX, _scaling);
 
   // Once every hand has coasted to a stop and the zoom has settled there is
   // nothing left to animate: idle until the next note restarts the timer.
@@ -534,8 +529,8 @@ void TempoFollower::tick()
   const bool settled = std::isfinite(_lastLeadingX) &&
                        std::abs(*leadingAnchor - _lastLeadingX) < 0.02 &&
                        std::abs(targetScale - _scaling) < 1e-4 &&
-                       // ...and the viewport has finished catching up.
-                       std::abs(*leadingAnchor - _panAnchor) <= deadZone;
+                       // ...and the page turn has finished.
+                       _pageX == _pageTargetX;
   _lastLeadingX = *leadingAnchor;
   if (allCoasting && settled)
     _timer.stop();
@@ -576,9 +571,10 @@ void TempoFollower::reset()
   _scaling = 0.0;
   _lastTickMs = 0;
   _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
-  _panAnchor = std::numeric_limits<double>::quiet_NaN();
-  _lastRawAnchorX = std::numeric_limits<double>::quiet_NaN();
-  _panSpeed = 0.0;
+  _pageX = std::numeric_limits<double>::quiet_NaN();
+  _pageEaseX = std::numeric_limits<double>::quiet_NaN();
+  _pageTargetX = std::numeric_limits<double>::quiet_NaN();
+  _focusX.reset();
   _autoOffTick.reset();
   _autoOnTick.reset();
 }

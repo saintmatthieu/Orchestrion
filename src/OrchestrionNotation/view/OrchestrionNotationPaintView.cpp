@@ -171,6 +171,9 @@ void OrchestrionNotationPaintView::OnTransitions(
   std::map<int /*staff*/, const mu::engraving::EngravingItem *> presentAnchors;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
+  // The next event to play — the most imminent upcoming onset across the
+  // tracks — which is what the page scroll keeps in view.
+  std::optional<double> nextX;
   // Where to place a hand's timing gauge if its onset gets judged: the union
   // of the boxes of the notes it struck this batch, plus the staff's edges so
   // the gauge keeps clear of the staff lines.
@@ -201,6 +204,15 @@ void OrchestrionNotationPaintView::OnTransitions(
 
     const IMelodySegment *present = GetPresentThing(transition);
     const IChord *future = GetFutureChord(transition);
+
+    if (future)
+      if (const auto *futureSegment = chordRegistry()->GetSegment(future))
+        if (const auto *el = futureSegment->element(track.value))
+        {
+          const double x = el->pageBoundingRect().center().x();
+          nextX = nextX ? std::min(*nextX, x) : x;
+        }
+
     const auto thing = present ? present : future;
     if (!thing)
       continue;
@@ -293,7 +305,12 @@ void OrchestrionNotationPaintView::OnTransitions(
   const bool replaying = orchestrion()->player()->IsReplaying();
 
   const TempoFollower::Feedback feedback =
-      m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX);
+      m_follower.onOnsets(presentOnsets, leadingAnyX, trailingAnyX,
+                          // Not every batch pre-lights an upcoming chord —
+                          // the automatic player releases one note and
+                          // strikes the next in the same batch — so fall
+                          // back to what is sounding.
+                          nextX ? nextX : leadingAnyX);
   // The cached velocities were for this batch only.
   m_pendingHandVelocity[0].reset();
   m_pendingHandVelocity[1].reset();
@@ -384,10 +401,9 @@ void OrchestrionNotationPaintView::OnTransitions(
           m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
           m_finalScoreMetrics.clear();
           for (const auto &metric : m_timingOverlay.takeScoreMetrics())
-            m_finalScoreMetrics.append(QVariantMap{
-                {"label", metric.label},
-                {"score", metric.score},
-                {"detail", metric.detail}});
+            m_finalScoreMetrics.append(QVariantMap{{"label", metric.label},
+                                                   {"score", metric.score},
+                                                   {"detail", metric.detail}});
           emit finalScoreChanged();
           // endTake's visibility emit preceded m_finalScoreShown: re-emit.
           emit smoothingTunerVisibleChanged();

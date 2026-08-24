@@ -421,23 +421,29 @@ Six consumers:
   its recent end visibly bends into place as new onsets land); the causal
   per-frame estimate stays as a faint trace, carrying the leading edge from the
   last onset to "now", where no spline can exist yet.
-- **Scroll anchor**: the view no longer follows the causal extrapolation but
-  the smoothed position `smoothDelayIntervals` (= 4) onsets back — C¹, so the
-  pan speed is continuous too. The delay is affordable because the anchor
-  doesn't need to sit at the playhead: it rests at the **first third** of the
-  view (`anchorFrac = ⅓`), and the notes actually being played float ahead of
-  it, around mid-view. The auto-zoom keeps both edges honest: the trailing
-  active hand inside the left third, the leading hand's causal "now" inside the
-  right two thirds. Past the spline's end (the performer paused), the anchor
-  cross-fades to the causal, coast-damped state so it eases to a stop.
+- **Scroll**: the view does *not* follow the position estimate at all, and
+  deliberately so. Engraved x is not proportional to time — in a `4 8 8` bar
+  the quarter and the eighths get nearly the same width — so a viewport
+  pinned to the estimate must speed up and slow down within every bar even
+  for a metronomically perfect performance (measured: 263 ± 44 px/s, a 1.76:1
+  swing). Instead the page stands still, and turns only when the **next event
+  to play** would pass `pageTriggerFrac` (= ⅘) of the view width; that event
+  is then brought back to `anchorFrac` (= ⅕) over a two-pole ease
+  (`tauPageMs` = 500 per pole, so `Δ·(1 − (1 + t/τ)e^(−t/τ))`: velocity from
+  rest, peaking at τ — a single pole would start at its maximum speed and
+  read as a jerk), so the page advances three fifths of a screen at a time
+  and is perfectly still in between (measured: 65–77 % of frames). A
+  focus left of the view edge — a repeat, a rewind — repositions the same
+  way. The auto-zoom still keeps both edges honest: the trailing active hand
+  inside the left fifth, the leading hand's causal "now" inside the rest.
 
-  Even at that lag the raw anchor still jumps a little at each onset — the
-  spline's tail is re-fitted (`γ⁴ ≈ 13 %` of the correction) and, more, the
-  delay itself is `smoothDelayIntervals · Δ̄` where the cadence EMA `Δ̄` moves on
-  every onset of a mixed rhythm. Each jump is absorbed into a decaying offset
-  (the §6.2 trick, applied a second time at the anchor level), so the
-  *displayed* anchor is exactly continuous; a repeat's intended backward snap
-  is exempted.
+  The smoothed anchor survives for the zoom rule and as the fallback focus
+  before any event is known; it is the smoothed position `smoothDelayIntervals`
+  (= 4) onsets back, cross-fading past the spline's end to the causal,
+  coast-damped state. Its small per-onset jumps (the spline tail re-fitted,
+  `γ⁴ ≈ 13 %` of the correction, plus the cadence EMA `Δ̄` moving the delay
+  itself) are absorbed into a decaying offset — the §6.2 trick applied a
+  second time — so it stays continuous; a repeat's backward snap is exempted.
 
 ---
 
@@ -452,7 +458,9 @@ Six consumers:
 | —      | `ticksPerQuarter` | 480           | ticks→BPM conversion (MuseScore division)   |
 | —      | `smoothDelayIntervals` | 4        | scroll-anchor lag on the spline, in onsets  |
 | —      | `anchorOffsetDecayMs` | 1000      | anchor continuity-offset decay τ (ms)       |
-| —      | `anchorFrac`      | ⅓             | where the scroll anchor rests in the view   |
+| —      | `anchorFrac`      | ⅕             | where a page turn lands the next event      |
+| —      | `pageTriggerFrac` | ⅘             | how far right that event may drift first    |
+| —      | `tauPageMs`       | 500           | page-turn ease τ (ms), per pole of two      |
 
 Only `γ` is the estimator knob (shared by filter and smoother); the others
 govern the idle/transient/viewport policies.

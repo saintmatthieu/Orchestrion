@@ -35,7 +35,7 @@ namespace dgk
 //! TempoTracker + TempoSmoother per hand (= staff; the owner keys onsets by
 //! staff, since the voices on a staff share the same gestures), so each hand
 //! keeps its own tempo. A ~60 fps timer keeps the *leading* hand's scroll
-//! anchor at the playhead (the first third of the view): the anchor is the
+//! anchor at the playhead (the first fifth of the view): the anchor is the
 //! *smoothed* (spline) position a couple of onsets back — steadier than the
 //! causal extrapolation, whose delay the off-center playhead leaves room for
 //! (the notes being played float around mid-view, ahead of the anchor). A
@@ -100,10 +100,12 @@ public:
                                  const std::vector<CurvePoint> &curve) = 0;
   };
 
-  //! Where the scroll anchor rests horizontally in the view. Off-center (first
-  //! third) because the anchor trails the notes being played by the smoothing
-  //! delay — the playhead itself floats in the two thirds ahead of it.
-  static constexpr double anchorFrac = 1.0 / 3.0;
+  //! Where the scroll anchor rests horizontally in the view: where a page
+  //! turn puts the next event to play, and where centerOn() places whatever
+  //! x it is given. Well left of center (first fifth) so that the music read
+  //! ahead of it — the four fifths it then crosses before the next turn —
+  //! is as much of the page as possible.
+  static constexpr double anchorFrac = 1.0 / 10.0;
 
   explicit TempoFollower(Canvas &canvas, VizSink *viz = nullptr);
 
@@ -180,10 +182,14 @@ public:
   //! Feed one transition batch. \p presentOnsets maps each hand (staff) that is
   //! *sounding* this batch to its onset — a tempo observation for that hand.
   //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that
-  //! is sounding *or* upcoming, used once to frame the start.
+  //! is sounding *or* upcoming, used once to frame the start. \p nextX is
+  //! what the reader needs to see next — the most imminent upcoming onset,
+  //! or the leading sounding one when this batch pre-lights nothing — and is
+  //! what the page scroll keeps in view.
   Feedback onOnsets(const std::map<int, Onset> &presentOnsets,
                     std::optional<double> leadingAny,
-                    std::optional<double> trailingAny);
+                    std::optional<double> trailingAny,
+                    std::optional<double> nextX);
 
   //! Re-fit a whole take offline with a different smoothing memory γ: feed
   //! its (time ms, playback tick) observations, in order, through an
@@ -274,14 +280,15 @@ private:
   qint64 _lastTickMs = 0; // for zoom-easing dt
   // Last centered position, to detect when the coast has settled (then idle).
   double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
-  //! The x the viewport is actually resting on: the anchor seen through the
-  //! loose pan filter (dead zone + first-order lag), so the page ignores the
-  //! anchor's engraving-induced note-to-note wobble.
-  double _panAnchor = std::numeric_limits<double>::quiet_NaN();
-  //! The pan's own glide speed (logical px/s, smoothed over several notes)
-  //! and the previous raw anchor it is measured from.
-  double _panSpeed = 0.0;
-  double _lastRawAnchorX = std::numeric_limits<double>::quiet_NaN();
+  //! The page scroll: the logical x resting on the anchor (_pageX), the one
+  //! the current page turn is heading for (_pageTargetX — equal to _pageX at
+  //! rest), the intermediate between them that makes the turn an S-curve
+  //! rather than a jerk out of the gate (_pageEaseX — see tauPageMs), and the
+  //! next event to play, which triggers the turns.
+  double _pageX = std::numeric_limits<double>::quiet_NaN();
+  double _pageEaseX = std::numeric_limits<double>::quiet_NaN();
+  double _pageTargetX = std::numeric_limits<double>::quiet_NaN();
+  std::optional<double> _focusX;
 
   // The musical spline's smoothing memory for newly created hands.
   double _smootherMemory = 0.6;
