@@ -434,8 +434,12 @@ Six consumers:
   read as a jerk), so the page advances three fifths of a screen at a time
   and is perfectly still in between (measured: 65–77 % of frames). A
   focus left of the view edge — a repeat, a rewind — repositions the same
-  way. The auto-zoom still keeps both edges honest: the trailing active hand
-  inside the left fifth, the leading hand's causal "now" inside the rest.
+  way. The auto-zoom is now down to one rule — the *actively playing* hands
+  must fit in the view — since the page anchoring already guarantees the next
+  event is on screen. Its two former rules (trailing hand inside the left
+  third, causal playhead inside the right two thirds) both measured spans
+  against the smoothed anchor, and both moved with every onset: at a high user
+  zoom, where they bind, the score breathed in and out once per note.
 
   The smoothed anchor survives for the zoom rule and as the fallback focus
   before any event is known; it is the smoothed position `smoothDelayIntervals`

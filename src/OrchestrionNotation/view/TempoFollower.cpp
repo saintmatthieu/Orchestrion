@@ -62,6 +62,9 @@ constexpr double pageTriggerFrac = 2.0 / 3.0;
 // pole — the turn is two of them in series, so it settles in ~5 τ), short
 // enough that the event is in place well before it is due.
 constexpr double tauPageMs = 500.0;
+// Longest frame the easings will act on (ms). See the use site: it turns a
+// dropped frame into a slightly late glide instead of a visible lurch.
+constexpr double maxTickMs = 40.0;
 
 // Decay time constant (ms) for the offset that absorbs the small jump the
 // anchor makes at each onset (the spline re-fit plus the delay's cadence
@@ -308,12 +311,12 @@ void TempoFollower::frame(double leadingX, double trailingX)
   double scale = userScale;
   if (trailingX < leadingX)
   {
-    // Zoom out (never in) so the trailing onset fits to the left of the
-    // anchored leading onset, past a small edge margin.
-    const double availLeftPx = anchorFrac * _canvas.viewWidth() - edgeMarginPx;
+    // Zoom out (never in) so this batch's onsets all fit in the view, past a
+    // small edge margin (same criterion as the follow tick's).
+    const double availPx = _canvas.viewWidth() - 2.0 * edgeMarginPx;
     const double spanLogical = leadingX - trailingX;
-    if (availLeftPx > 0.0 && spanLogical > 1e-6)
-      scale = std::min(userScale, availLeftPx / spanLogical);
+    if (availPx > 0.0 && spanLogical > 1e-6)
+      scale = std::min(userScale, availPx / spanLogical);
     scale = std::clamp(scale, _canvas.minScaling(), userScale);
   }
   _scaling = scale;
@@ -388,7 +391,7 @@ void TempoFollower::tick()
   // *actively-playing* hand on the left side, the leading hand's own playhead
   // (running ahead of the anchor) on the right.
   std::optional<double> leadingAnchor;
-  std::optional<double> leadingNow;
+  std::optional<double> leadingActiveX;
   std::optional<double> trailingActiveX;
   bool allCoasting = true;
   std::vector<VizSink::HandTempo> vizSamples;
@@ -401,12 +404,12 @@ void TempoFollower::tick()
     const double pos = hand.tracker.positionAt(now) - hand.xOffset;
     const double anchor = anchorAt(hand, now);
     leadingAnchor = leadingAnchor ? std::max(*leadingAnchor, anchor) : anchor;
-    leadingNow = leadingNow ? std::max(*leadingNow, pos) : pos;
     const bool coasting = hand.tracker.isCoasting();
     if (!coasting)
     {
       allCoasting = false;
       trailingActiveX = trailingActiveX ? std::min(*trailingActiveX, pos) : pos;
+      leadingActiveX = leadingActiveX ? std::max(*leadingActiveX, pos) : pos;
     }
     if (_viz)
     {
@@ -453,38 +456,51 @@ void TempoFollower::tick()
   if (!leadingAnchor)
     return;
 
-  // Zoom as far in as the user's default allows, but far enough out that a
-  // lagging active hand stays just inside the left edge and the leading
-  // playhead just inside the right edge.
+  // Zoom as far in as the user's default allows, but far enough out that the
+  // hands stay on the same page: what this rule is for is one hand lagging
+  // behind the other, so it measures exactly that — the distance between the
+  // *actively playing* hands — and asks only that it fit in the view.
+  //
+  // It used to be phrased as two rules against the scroll anchor: keep the
+  // trailing hand inside the left third, keep the causal playhead inside the
+  // right two thirds. Both were artefacts of the viewport being pinned to the
+  // smoothed anchor, which trails the notes being played, so the zoom had to
+  // make room for the smoothing delay. The page scroll anchors on the next
+  // event to play instead, and its trigger keeps that event within
+  // pageTriggerFrac of the width, so nothing needs the zoom to absorb the
+  // delay any more. They were also actively harmful: the spans they measured
+  // (causal minus smoothed, anchor minus playhead) move with every onset, so
+  // at a high user zoom — where they bind hard — the whole score breathed in
+  // and out once per note, which is not a wobble but a jerk.
   const double userScale = _canvas.defaultScaling();
   double targetScale = userScale;
-  if (trailingActiveX && *trailingActiveX < *leadingAnchor)
+  if (leadingActiveX && trailingActiveX)
   {
-    const double availLeftPx = anchorFrac * _canvas.viewWidth() - edgeMarginPx;
-    const double spanLogical = *leadingAnchor - *trailingActiveX;
-    if (availLeftPx > 0.0 && spanLogical > 1e-6)
-      targetScale = std::min(targetScale, availLeftPx / spanLogical);
-  }
-  if (leadingNow && *leadingNow > *leadingAnchor)
-  {
-    const double availRightPx =
-        (1.0 - anchorFrac) * _canvas.viewWidth() - edgeMarginPx;
-    const double spanLogical = *leadingNow - *leadingAnchor;
-    if (availRightPx > 0.0 && spanLogical > 1e-6)
-      targetScale = std::min(targetScale, availRightPx / spanLogical);
+    const double availPx = _canvas.viewWidth() - 2.0 * edgeMarginPx;
+    const double spanLogical = *leadingActiveX - *trailingActiveX;
+    if (availPx > 0.0 && spanLogical > 1e-6)
+      targetScale = std::min(targetScale, availPx / spanLogical);
   }
   targetScale = std::clamp(targetScale, _canvas.minScaling(), userScale);
+
+  // Both easings below are time-based, which is what keeps them independent
+  // of the frame rate — but it also means a *lost* frame is compensated in
+  // one step: after a 300 ms hitch (an audio hiccup, a relayout, a repaint
+  // that overran) a Δ that should have taken 20 frames is applied in one, and
+  // the score visibly lurches. Cap the step at one slow frame's worth and let
+  // the remainder catch up over the following frames: the glide finishes a
+  // hair later, but never jumps. (Idling zeroes _lastTickMs, so waking after
+  // a pause starts from a nominal frame rather than from the whole pause.)
+  const double dtMs =
+      std::min(_lastTickMs > 0 ? now - _lastTickMs : 16.0, maxTickMs);
+  _lastTickMs = static_cast<qint64>(now);
 
   // Ease the zoom gently (the pan is already smooth via the smoothers).
   if (_scaling <= 0.0)
     _scaling = targetScale;
   else
-  {
-    const double dt = _lastTickMs > 0 ? (now - _lastTickMs) / 1000.0 : 0.016;
-    _scaling += (targetScale - _scaling) * (1.0 - std::exp(-dt / tauZoom));
-  }
-  const double dtMs = _lastTickMs > 0 ? now - _lastTickMs : 16.0;
-  _lastTickMs = static_cast<qint64>(now);
+    _scaling +=
+        (targetScale - _scaling) * (1.0 - std::exp(-dtMs / 1000.0 / tauZoom));
 
   // Page scroll. The event the reader needs to see next is the next one to
   // play; while it is comfortably inside the view the page does not move at
@@ -533,7 +549,10 @@ void TempoFollower::tick()
                        _pageX == _pageTargetX;
   _lastLeadingX = *leadingAnchor;
   if (allCoasting && settled)
+  {
     _timer.stop();
+    _lastTickMs = 0;
+  }
 }
 
 void TempoFollower::setAutoPlay(std::optional<int> staff,
