@@ -56,9 +56,14 @@ void OrchestrionMenuModel::setOpenedMenuId(QString openedMenuId)
 
 void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
-  setItems({makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-            makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled),
-            makeHelpMenu()});
+  QList<muse::uicomponents::MenuItem *> menus{
+      makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
+      makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled)};
+#ifdef MUSE_APP_UNSTABLE
+  menus << makeDevelopmentMenu();
+#endif
+  menus << makeHelpMenu();
+  setItems(menus);
 }
 
 void OrchestrionMenuModel::load()
@@ -209,6 +214,19 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   return makeMenu(muse::TranslatableString("appshell/menu/view", "&View"), menu,
                   "menu-orchestrion-view");
 }
+
+#ifdef MUSE_APP_UNSTABLE
+//! Home for switches that expose work in progress. Only built for unstable
+//! (development) builds, so a feature parked here is invisible in a release
+//! until it is deliberately promoted out. Empty for now: each feature adds
+//! its own toggle as it arrives.
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
+{
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/development", "&Development"),
+      QList<muse::uicomponents::MenuItem *>{}, "menu-orchestrion-development");
+}
+#endif
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeHelpMenu()
 {
