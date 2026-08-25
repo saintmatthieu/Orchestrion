@@ -11,6 +11,8 @@ set(MODULE_SRC
   view/HighlightFader.h
   view/KineticScroller.cpp
   view/KineticScroller.h
+  view/ScoreFollower.cpp
+  view/ScoreFollower.h
   view/OrchestrionNotationPaintView.cpp
   view/OrchestrionNotationPaintView.h
   ILoopBoundariesController.h

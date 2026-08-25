@@ -27,6 +27,7 @@
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
+#include "ScoreFollower.h"
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
 #include <notation/inotationconfiguration.h>
@@ -36,7 +37,8 @@
 
 namespace dgk
 {
-class OrchestrionNotationPaintView : public mu::notation::NotationPaintView
+class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
+                                     public ScoreFollower::Canvas
 {
   Q_OBJECT
   // Debug tooltip shown when hovering a note (see noteInfoTooltipEnabled).
@@ -89,6 +91,13 @@ private:
   void subscribe(const IOrchestrionSequencer &sequencer,
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
+  //! (Re)connect the follow to \p window's per-frame hook.
+  void connectFrameTick(QQuickWindow *window);
+  //! Clamp a desired viewport-left (logical) so the empty space past either
+  //! end of the system never exceeds the max padding (and a system narrower
+  //! than the view stays centered). Shared by the manual constraint and the
+  //! auto-follow.
+  double clampLeftX(double desiredLeftX, double scaling) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
@@ -125,6 +134,16 @@ private:
   void initTouchpadMidiController();
   float hitWidth() const;
 
+  // ScoreFollower::Canvas
+  double viewWidth() const override { return width(); }
+  double defaultScaling() const override
+  {
+    return m_userDefaultScaling > 0.0 ? m_userDefaultScaling : currentScaling();
+  }
+  double minScaling() const override;
+  double anchorX() const override;
+  void centerOn(double logicalX, double scaling) override;
+
   // Live highlight per track (ringing or upcoming note).
   std::unordered_map<int, Highlight> m_boxes;
   // Highlights of just-ended notes, fading out (owns its own timer/clock).
@@ -149,6 +168,17 @@ private:
   // Kinetic ("flick") horizontal scrolling: a trackpad swipe can be "thrown"
   // and the viewport keeps gliding until it slows to a stop or hits the edge.
   KineticScroller m_kineticScroller;
+
+  // Turns the played events into a page-turning scroll, zooming out to keep
+  // hands that drift apart on one page. While it drives the canvas
+  // (centerOn), m_drivingScroll makes constrainScorePosition() yield so it
+  // isn't undone.
+  ScoreFollower m_follower;
+  bool m_drivingScroll = false;
+  QMetaObject::Connection m_frameTickConnection;
+  // The user's chosen zoom (fit at load, updated on manual zoom): the
+  // auto-zoom never zooms in past it.
+  double m_userDefaultScaling = 0.0;
   QString m_hoveredNoteInfo;
   QPointF m_hoveredNoteInfoPos;
 

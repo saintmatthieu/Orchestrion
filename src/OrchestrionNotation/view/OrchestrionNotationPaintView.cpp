@@ -24,6 +24,7 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QQuickWindow>
 #include <QWheelEvent>
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
@@ -38,7 +39,8 @@ namespace dgk
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
       m_kineticScroller([this](qreal physicalDx)
-                        { return moveCanvasBy(physicalDx); })
+                        { return moveCanvasBy(physicalDx); }),
+      m_follower(*this)
 {
 }
 
@@ -64,6 +66,10 @@ void OrchestrionNotationPaintView::subscribe(
                                             [this](auto)
                                             {
                                               m_kineticScroller.stop();
+                                              // The position jumps: re-frame
+                                              // at the new location on the
+                                              // next transitions.
+                                              m_follower.jump();
                                               m_boxes.clear();
                                               m_fader.clear();
                                               update();
@@ -73,6 +79,15 @@ void OrchestrionNotationPaintView::subscribe(
 void OrchestrionNotationPaintView::OnTransitions(
     const std::map<TrackIndex, ChordTransition> &transitions)
 {
+  // Where each hand (= staff) has got to, and the outermost onsets of this
+  // batch — sounding or upcoming — which frame the start of a take.
+  std::map<int /*staff*/, double /*onsetX*/> soundingX;
+  std::optional<double> leadingAnyX;
+  std::optional<double> trailingAnyX;
+  // The next event to play — the most imminent upcoming onset across the
+  // tracks — which is what the page scroll keeps in view.
+  std::optional<double> nextX;
+
   for (const auto &[track, transition] : transitions)
   {
     if (GetPastChord(transition))
@@ -89,6 +104,15 @@ void OrchestrionNotationPaintView::OnTransitions(
 
     const IMelodySegment *present = GetPresentThing(transition);
     const IChord *future = GetFutureChord(transition);
+
+    if (future)
+      if (const auto *futureSegment = chordRegistry()->GetSegment(future))
+        if (const auto *el = futureSegment->element(track.value))
+        {
+          const double x = el->pageBoundingRect().center().x();
+          nextX = nextX ? std::min(*nextX, x) : x;
+        }
+
     const auto thing = present ? present : future;
     if (!thing)
       continue;
@@ -126,7 +150,31 @@ void OrchestrionNotationPaintView::OnTransitions(
 
     box.color = QColor(mahogany);
     box.intensity = active ? 1.0 : 0.3;
+
+    // Onset x of this track's note (page-logical), for the follow. Use the
+    // segment element rather than the hugging box, whose width includes ties.
+    if (const auto el = segment->element(track.value))
+    {
+      const double onsetX = el->pageBoundingRect().center().x();
+      leadingAnyX = leadingAnyX ? std::max(*leadingAnyX, onsetX) : onsetX;
+      trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
+      if (active)
+      {
+        // Collapse a staff's voices into one position: its rightmost onset.
+        const int hand = track.staffIndex();
+        const auto it = soundingX.find(hand);
+        if (it == soundingX.end() || onsetX > it->second)
+          soundingX[hand] = onsetX;
+      }
+    }
   }
+
+  m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX,
+                      // Not every batch pre-lights an upcoming chord — the
+                      // automatic player releases one note and strikes the
+                      // next in the same batch — so fall back to what is
+                      // sounding.
+                      nextX ? nextX : leadingAnyX);
 }
 
 std::vector<mu::engraving::EngravingItem *>
@@ -248,6 +296,7 @@ void OrchestrionNotationPaintView::onMousePressed(
     const QPointF &pos, Qt::KeyboardModifiers modifiers, Qt::MouseButton button)
 {
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
+  m_follower.suspend();     // ...and hands auto-scroll control back to the user
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
   const mu::notation::EngravingItem *hitElement =
@@ -507,6 +556,10 @@ float OrchestrionNotationPaintView::hitWidth() const
 
 void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
 {
+  // A wheel/trackpad swipe (zoom or pan) is manual navigation: hand
+  // auto-scroll control back to the user.
+  m_follower.suspend();
+
   // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
   // Ctrl-modified wheel event) zooms the score in/out about the cursor.
   if (event->modifiers() & Qt::ControlModifier)
@@ -603,6 +656,12 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   // the score start), and our next follow tick, up to 16 ms later, yanked it
   // back. One frame at the wrong x, i.e. a visible jerk, per position change.
   configuration()->setIsAutomaticallyPanEnabled(false);
+
+  // Drive the follow from the window's frame loop rather than from its own
+  // timer (see ScoreFollower::frameTick).
+  connect(this, &QQuickItem::windowChanged, this,
+          &OrchestrionNotationPaintView::connectFrameTick);
+  connectFrameTick(window());
 
   orchestrion()->sequencerChanged().onNotify(
       this,
@@ -708,12 +767,29 @@ void OrchestrionNotationPaintView::onMatrixChanged(
     const muse::draw::Transform &newMatrix, bool overrideZoomType)
 {
   NotationPaintView::onMatrixChanged(oldMatrix, newMatrix, overrideZoomType);
+
+  // Any canvas move we didn't drive ourselves — a drag, a swipe, a zoom, a
+  // relayout — moved the follower's page from under it: let it pick the page
+  // up where it now is.
+  if (!m_drivingScroll)
+    m_follower.viewMoved();
+
+  // A zoom we didn't drive ourselves (wheel, pinch, keyboard, toolbar, ...) is
+  // the user's choice: adopt it as the new default the auto-zoom won't exceed,
+  // and hand control back until they play again.
+  if (!m_drivingScroll && !qFuzzyCompare(oldMatrix.m11(), newMatrix.m11()))
+  {
+    m_userDefaultScaling = newMatrix.m11();
+    m_follower.suspend();
+  }
+
   constrainScorePosition();
 }
 
 void OrchestrionNotationPaintView::updateNotation()
 {
   m_kineticScroller.stop(); // the score changed under us; cancel any glide
+  m_follower.reset();       // and the follow state
   if (const auto notation = globalContext()->currentNotation())
   {
     setViewMode(mu::notation::ViewMode::LINE);
@@ -725,6 +801,8 @@ void OrchestrionNotationPaintView::updateNotation()
     config.isShowSoundFlags = false;
     notation->interaction()->setScoreConfig(config);
     constrainScorePosition();
+    // The fit zoom after layout is the user's default until they change it.
+    m_userDefaultScaling = currentScaling();
   }
   m_boxes.clear();
   m_fader.clear();
@@ -740,8 +818,94 @@ void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
   notation->painting()->setViewMode(mode);
 }
 
+double OrchestrionNotationPaintView::minScaling() const
+{
+  const QList<int> zooms = configuration()->possibleZoomPercentageList();
+  if (zooms.isEmpty())
+    return currentScaling() * 0.1;
+  return configuration()->scalingFromZoomPercentage(zooms.first());
+}
+
+void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
+{
+  if (m_frameTickConnection)
+    disconnect(m_frameTickConnection);
+  if (!window)
+    return;
+  // afterAnimating is emitted on the GUI thread once per frame, after the
+  // declarative animations have advanced and before the scene graph is
+  // synchronised — so the canvas placement and the repaint it dirties land in
+  // that same frame, at the display's own cadence.
+  m_frameTickConnection = connect(window, &QQuickWindow::afterAnimating, this,
+                                  [this] { m_follower.frameTick(); });
+}
+
+double OrchestrionNotationPaintView::anchorX() const
+{
+  // The inverse of centerOn()'s placement (short of its clamping).
+  return viewport().left() +
+         ScoreFollower::anchorFrac * width() / currentScaling();
+}
+
+void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
+{
+  // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
+  // viewport back to hug the content; yield to us while we place the canvas.
+  m_drivingScroll = true;
+
+  const bool zoomChanged = !qFuzzyCompare(currentScaling(), scaling);
+  if (zoomChanged)
+    setScaling(scaling, muse::PointF{0., 0.});
+
+  const double logicalWidth = width() / scaling;
+  // Rest the anchor at the follower's fraction, but never past the
+  // max-padding limit (so near the start/end of the score the anchor drifts
+  // off its spot rather than opening a gap wider than a manual zoom-out would
+  // allow).
+  const double leftX =
+      clampLeftX(logicalX - ScoreFollower::anchorFrac * logicalWidth, scaling);
+
+  const auto content = notationContentRect();
+  const double emptyAbovePhysical =
+      (height() - content.height() * scaling) / 2.;
+  const double topY = content.top() - emptyAbovePhysical / scaling;
+
+  const bool moved = moveCanvasToPosition(muse::PointF{leftX, topY});
+
+  m_drivingScroll = false;
+  // The follow runs every frame, but the page stands still between turns:
+  // repainting then would re-render the whole score (this is a
+  // QQuickPaintedItem) for an identical picture, 60 times a second.
+  if (zoomChanged || moved)
+    update();
+}
+
+double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
+                                                double scaling) const
+{
+  // Two horizontal rules (shared by the manual constraint and the
+  // auto-follow):
+  // 1. not more than maxEmptyPhysical empty pixels past either end of the
+  //    system;
+  // 2. if the system is narrower than the view, it stays centered.
+  const auto content = notationContentRect();
+  constexpr double maxEmptyPhysical = 200.;
+  const double contentWidthPhysical = content.width() * scaling;
+  if (contentWidthPhysical < width())
+    return content.left() - (width() - contentWidthPhysical) / (2 * scaling);
+  const double minLeft = content.left() - maxEmptyPhysical / scaling;
+  const double maxLeft =
+      content.right() + maxEmptyPhysical / scaling - width() / scaling;
+  return std::clamp(desiredLeftX, minLeft, maxLeft);
+}
+
 void OrchestrionNotationPaintView::constrainScorePosition()
 {
+  // While the follow logic is placing the canvas it owns the position (and
+  // centers the system vertically itself); don't fight it.
+  if (m_drivingScroll)
+    return;
+
   // moveCanvasToPosition() below feeds back into this function via
   // onMatrixChanged(). Usually that re-entrant call lands on the same position
   // and stops, but at very low zoom our constraint and the base class's canvas
@@ -756,22 +920,7 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   const auto emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
   const auto topLogicalY = content.top() - emptyAbovePhysical / scaling;
 
-  // two horizontal rules:
-  // 1. not more than 100 empty pixels left or right
-  // 2. if the score is narrower than the view, it stays centered
-  constexpr double maxEmptyPhysical = 200.;
-  const auto contentWidthPhysical = content.width() * scaling;
-  double leftLogicalX;
-  if (contentWidthPhysical < width())
-    leftLogicalX =
-        content.left() - (width() - contentWidthPhysical) / (2 * scaling);
-  else
-  {
-    const auto minLeft = content.left() - maxEmptyPhysical / scaling;
-    const auto maxLeft =
-        content.right() + maxEmptyPhysical / scaling - width() / scaling;
-    leftLogicalX = std::clamp(viewport().left(), minLeft, maxLeft);
-  }
+  const double leftLogicalX = clampLeftX(viewport().left(), scaling);
 
   moveCanvasToPosition(muse::PointF{leftLogicalX, topLogicalY});
 
