@@ -18,8 +18,9 @@
  */
 #pragma once
 
-#include "IOrchestrionSequencer.h"
 #include "IModifiableItemRegistry.h"
+#include "IOrchestrionPlayer.h"
+#include "IOrchestrionSequencer.h"
 #include <async/notification.h>
 #include <modularity/imoduleinterface.h>
 
@@ -35,5 +36,12 @@ public:
   virtual IOrchestrionSequencerPtr sequencer() = 0;
   virtual muse::async::Notification sequencerChanged() const = 0;
   virtual IModifiableItemRegistryPtr modifiableItemRegistry() const = 0;
+
+  //! The automatic player (see IOrchestrionPlayer). Never null: before a
+  //! score is loaded, a never-playing stub is returned, so consumers need
+  //! no null checks. The real player is created and destroyed with the
+  //! sequencer — sequencerChanged() also signals a new player, so
+  //! subscribers to the player's notifications must resubscribe then.
+  virtual IOrchestrionPlayerPtr player() = 0;
 };
 } // namespace dgk

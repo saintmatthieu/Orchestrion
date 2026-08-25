@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "AutomaticOrchestrionPlayer.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 #include <QTimer>
 
 namespace dgk
@@ -40,17 +41,38 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
                                                 ScheduleNext();
                                             });
 
-  playbackController()->isPlayingChanged().onNotify(
-      this,
-      [this]
-      {
-        m_playing = playbackController()->isPlaying();
-        if (m_playing)
-        {
-          ++m_generation;
-          ScheduleNext();
-        }
-      });
+  // Orchestrion owns its playing state, driven by its own transport actions
+  // (see OrchestrionActionIds.h). MuseScore's "play"/"stop" are neither
+  // handled nor dispatched: its transport machinery was built for
+  // rendered-track playback — a playhead running over the (now silent)
+  // tracks, auto-stopping at *its* score end, stopped by *its* code (e.g.
+  // the preferences dialog) — while Orchestrion playback is just scheduled
+  // gesture events. With nothing dispatching MuseScore's ids, its transport
+  // simply never runs.
+  dispatcher()->reg(this, actionIds::playbackToggle, [this] { TogglePlay(); });
+  dispatcher()->reg(this, actionIds::playbackStop, [this] { Stop(); });
+}
+
+void AutomaticOrchestrionPlayer::TogglePlay()
+{
+  if (m_playing)
+  {
+    Stop();
+    return;
+  }
+  m_playing = true;
+  ++m_generation;
+  m_playingChanged.notify();
+  ScheduleNext();
+}
+
+void AutomaticOrchestrionPlayer::Stop()
+{
+  if (!m_playing)
+    return;
+  ++m_generation; // cancels all scheduled events
+  m_playing = false;
+  m_playingChanged.notify();
 }
 
 void AutomaticOrchestrionPlayer::ScheduleNext()
@@ -61,8 +83,7 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
   const auto next = m_sequencer.WhatToPlayNext();
   if (!next)
   {
-    dispatcher()->dispatch("stop");
-    m_playing = false;
+    dispatcher()->dispatch(actionIds::playbackStop);
     return;
   }
 

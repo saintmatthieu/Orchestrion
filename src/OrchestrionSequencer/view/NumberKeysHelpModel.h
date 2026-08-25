@@ -38,15 +38,17 @@ namespace dgk
 //! and this model reports which number key each hand is "pressing", so the QML
 //! keyboard animation can follow the music.
 class NumberKeysHelpModel : public QObject,
-                           public muse::async::Asyncable,
-                           public muse::actions::Actionable,
-                           public muse::Injectable
+                            public muse::async::Asyncable,
+                            public muse::actions::Actionable,
+                            public muse::Injectable
 {
   Q_OBJECT
 
-  Q_PROPERTY(bool tooltipVisible READ tooltipVisible NOTIFY tooltipVisibleChanged)
+  Q_PROPERTY(
+      bool tooltipVisible READ tooltipVisible NOTIFY tooltipVisibleChanged)
   Q_PROPERTY(bool demoActive READ demoActive NOTIFY demoActiveChanged)
-  Q_PROPERTY(int leftPressedKey READ leftPressedKey NOTIFY leftPressedKeyChanged)
+  Q_PROPERTY(
+      int leftPressedKey READ leftPressedKey NOTIFY leftPressedKeyChanged)
   Q_PROPERTY(
       int rightPressedKey READ rightPressedKey NOTIFY rightPressedKeyChanged)
 
@@ -80,6 +82,7 @@ signals:
 
 private:
   void subscribeToSequencer();
+  bool isPlaying() const;
   void onHandNoteEvent(const AutoPlayEvent &);
   void updateNoMidiConnected();
 

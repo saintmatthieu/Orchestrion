@@ -793,7 +793,7 @@
     <seq>Ctrl+M</seq>
     </SC>
   <SC>
-    <key>play</key>
+    <key>orchestrion-play</key>
     <seq>Space</seq>
     <autorepeat>0</autorepeat>
     </SC>

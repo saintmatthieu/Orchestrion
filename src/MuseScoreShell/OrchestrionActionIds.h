@@ -30,6 +30,14 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
 
 static constexpr const char *loopIn = "orchestrion-loop-in";
 static constexpr const char *loopOut = "orchestrion-loop-out";
+//! Orchestrion's own transport actions. Deliberately NOT MuseScore's
+//! "play"/"stop": those ids are also handled — and sometimes dispatched —
+//! by MuseScore code with its rendered-track playback in mind (e.g. the
+//! preferences dialog dispatches "stop"), while Orchestrion playback is
+//! just scheduled gesture events. Own ids keep the two worlds apart.
+static constexpr const char *playbackToggle = "orchestrion-play";
+static constexpr const char *playbackStop = "orchestrion-stop";
+
 static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
 static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
 static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";

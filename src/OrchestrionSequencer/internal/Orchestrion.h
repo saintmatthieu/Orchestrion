@@ -46,6 +46,7 @@ private:
   IOrchestrionSequencerPtr sequencer() override;
   muse::async::Notification sequencerChanged() const override;
   IModifiableItemRegistryPtr modifiableItemRegistry() const override;
+  IOrchestrionPlayerPtr player() override;
 
   void setSequencer(IOrchestrionSequencerPtr sequencer);
   void wakeAudioEngine();
@@ -53,7 +54,7 @@ private:
 private:
   IOrchestrionSequencerPtr m_sequencer;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
-  std::unique_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
+  std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   muse::async::Notification m_sequencerChanged;
 };
 } // namespace dgk

@@ -18,9 +18,11 @@
  */
 #include "Orchestrion.h"
 #include "IChord.h"
+#include "OrchestrionPlayerStub.h"
 #include "OrchestrionSequencerFactory.h" // NotationProducts
 #include <async/async.h>
 #include <audio/internal/audiothread.h>
+#include <cassert>
 #include <engraving/dom/masterscore.h>
 
 namespace dgk
@@ -50,7 +52,7 @@ void Orchestrion::init()
         m_modifiableItemRegistry = products.modifiableItemRegistry;
         if (products.sequencer)
           m_autoPlayer =
-              std::make_unique<AutomaticOrchestrionPlayer>(*products.sequencer);
+              std::make_shared<AutomaticOrchestrionPlayer>(*products.sequencer);
         else
           m_autoPlayer.reset();
         setSequencer(products.sequencer);
@@ -114,5 +116,18 @@ muse::async::Notification Orchestrion::sequencerChanged() const
 IModifiableItemRegistryPtr Orchestrion::modifiableItemRegistry() const
 {
   return m_modifiableItemRegistry;
+}
+
+IOrchestrionPlayerPtr Orchestrion::player()
+{
+  if (m_autoPlayer)
+    return m_autoPlayer;
+  // No player before a score is loaded — normal, the stub covers it. But a
+  // live sequencer without its player is a broken invariant (they are
+  // created and destroyed together).
+  assert(!m_sequencer);
+  static const IOrchestrionPlayerPtr stub =
+      std::make_shared<OrchestrionPlayerStub>();
+  return stub;
 }
 } // namespace dgk

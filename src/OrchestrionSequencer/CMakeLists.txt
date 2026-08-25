@@ -19,7 +19,8 @@ set(MODULE_SRC
     internal/Orchestrion.cpp
     internal/Orchestrion.h
     internal/OrchestrionSequencer.cpp
-    internal/OrchestrionSequencer.h
+    internal/OrchestrionPlayerStub.h
+  internal/OrchestrionSequencer.h
     internal/OrchestrionSequencerConfiguration.cpp
     internal/OrchestrionSequencerConfiguration.h
     internal/OrchestrionSequencerFactory.cpp
@@ -43,7 +44,8 @@ set(MODULE_SRC
     IModifiableItemRegistry.h
     OrchestrionTypes.h
     IOrchestrion.h
-    IOrchestrionSequencer.h
+    IOrchestrionPlayer.h
+  IOrchestrionSequencer.h
     IRest.h
     OrchestrionModule.cpp
     OrchestrionModule.h
