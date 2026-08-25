@@ -140,6 +140,8 @@ private:
   void subscribe(const IOrchestrionSequencer &sequencer,
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
+  //! (Re)connect the follow to \p window's per-frame hook.
+  void connectFrameTick(QQuickWindow *window);
   //! Clamp a desired viewport-left (logical) so the empty space past either end
   //! of the system never exceeds the max padding (and a system narrower than
   //! the view stays centered). Shared by manual constraint and auto-follow.
@@ -311,6 +313,7 @@ private:
   // constrainScorePosition() yield so it isn't undone.
   TempoFollower m_follower;
   bool m_drivingScroll = false;
+  QMetaObject::Connection m_frameTickConnection;
   // The user's chosen zoom (fit at load, updated on manual zoom): the auto-zoom
   // never zooms in past it.
   double m_userDefaultScaling = 0.0;

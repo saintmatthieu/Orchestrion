@@ -179,6 +179,14 @@ public:
     std::optional<Judgment> handSync;
   };
 
+  //! Advance the follow for one rendered frame. The owner calls this from the
+  //! window's per-frame hook, so the motion is sampled in step with the
+  //! display: a free-running timer at a nominal 60 Hz instead beats against
+  //! the refresh (16 vs 16.67 ms), which shows up as a frame repeated and the
+  //! next one double-stepped a couple of times a second. No-op unless a take
+  //! is being followed.
+  void frameTick();
+
   //! Feed one transition batch. \p presentOnsets maps each hand (staff) that is
   //! *sounding* this batch to its onset — a tempo observation for that hand.
   //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that
@@ -277,7 +285,11 @@ private:
   bool _suspended =
       false;              // user took manual control; ignore onsets until reset
   double _scaling = 0.0;  // current (eased) zoom; 0 = unset
-  qint64 _lastTickMs = 0; // for zoom-easing dt
+  qint64 _lastTickMs = 0; // for easing dt
+  // When the frame hook last drove a tick, so the timer knows whether frames
+  // are flowing (then it stays out of the way) or have stopped (then it takes
+  // over, keeping the estimate, the coast and auto-play alive).
+  qint64 _lastFrameTickMs = 0;
   // Last centered position, to detect when the coast has settled (then idle).
   double _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
   //! The page scroll: the logical x resting on the anchor (_pageX), the one

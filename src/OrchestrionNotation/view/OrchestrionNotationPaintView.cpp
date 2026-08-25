@@ -24,6 +24,7 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QQuickWindow>
 #include <QTimer>
 #include <QVariantMap>
 #include <QWheelEvent>
@@ -772,13 +773,28 @@ double OrchestrionNotationPaintView::minScaling() const
   return configuration()->scalingFromZoomPercentage(zooms.first());
 }
 
+void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
+{
+  if (m_frameTickConnection)
+    disconnect(m_frameTickConnection);
+  if (!window)
+    return;
+  // afterAnimating is emitted on the GUI thread once per frame, after the
+  // declarative animations have advanced and before the scene graph is
+  // synchronised — so the canvas placement and the repaint it dirties land in
+  // that same frame, at the display's own cadence.
+  m_frameTickConnection = connect(window, &QQuickWindow::afterAnimating, this,
+                                  [this] { m_follower.frameTick(); });
+}
+
 void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
 {
   // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
   // viewport back to hug the content; yield to us while we place the canvas.
   m_drivingScroll = true;
 
-  if (!qFuzzyCompare(currentScaling(), scaling))
+  const bool zoomChanged = !qFuzzyCompare(currentScaling(), scaling);
+  if (zoomChanged)
     setScaling(scaling, muse::PointF{0., 0.});
 
   const double logicalWidth = width() / scaling;
@@ -794,10 +810,14 @@ void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
       (height() - content.height() * scaling) / 2.;
   const double topY = content.top() - emptyAbovePhysical / scaling;
 
-  moveCanvasToPosition(muse::PointF{leftX, topY});
+  const bool moved = moveCanvasToPosition(muse::PointF{leftX, topY});
 
   m_drivingScroll = false;
-  update();
+  // The follow runs every frame, but the page stands still between turns:
+  // repainting then would re-render the whole score (this is a
+  // QQuickPaintedItem) for an identical picture, 60 times a second.
+  if (zoomChanged || moved)
+    update();
 }
 
 std::vector<mu::engraving::EngravingItem *>
@@ -1310,6 +1330,12 @@ bool OrchestrionNotationPaintView::moveCanvasBy(qreal physicalDx)
 void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   qApp->installEventFilter(this);
+
+  // Drive the follow from the window's frame loop rather than from its own
+  // timer (see TempoFollower::frameTick).
+  connect(this, &QQuickItem::windowChanged, this,
+          &OrchestrionNotationPaintView::connectFrameTick);
+  connectFrameTick(window());
 
   // MuseScore pans the canvas to keep *its* playback cursor in view whenever
   // its playback position changes. Orchestrion doesn't use that playhead at

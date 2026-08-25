@@ -65,6 +65,9 @@ constexpr double tauPageMs = 500.0;
 // Longest frame the easings will act on (ms). See the use site: it turns a
 // dropped frame into a slightly late glide instead of a visible lurch.
 constexpr double maxTickMs = 40.0;
+// No frame-driven tick for this long means the window has stopped rendering
+// (hidden, occluded, or simply nothing moving): the timer then drives.
+constexpr qint64 frameStallMs = 40;
 
 // Decay time constant (ms) for the offset that absorbs the small jump the
 // anchor makes at each onset (the spline re-fit plus the delay's cadence
@@ -134,7 +137,15 @@ TempoFollower::TempoFollower(Canvas &canvas, VizSink *viz)
 {
   _clock.start();
   _timer.setInterval(16); // ~60 fps
-  _timer.callOnTimeout([this] { tick(); });
+  _timer.callOnTimeout(
+      [this]
+      {
+        // The frame hook (frameTick) drives the follow whenever the window is
+        // rendering; ticking here as well would sample the motion at times
+        // unrelated to the refresh, which is the judder frameTick avoids.
+        if (_clock.elapsed() - _lastFrameTickMs > frameStallMs)
+          tick();
+      });
 }
 
 std::vector<TempoFollower::Judgment> TempoFollower::refitTake(
@@ -380,6 +391,14 @@ double TempoFollower::anchorAt(Hand &hand, double now)
   return raw + hand.anchorOffset;
 }
 
+void TempoFollower::frameTick()
+{
+  if (!_timer.isActive())
+    return; // not following: nothing to advance
+  _lastFrameTickMs = _clock.elapsed();
+  tick();
+}
+
 void TempoFollower::tick()
 {
   const double now = static_cast<double>(_clock.elapsed());
@@ -589,6 +608,7 @@ void TempoFollower::reset()
   _suspended = false;
   _scaling = 0.0;
   _lastTickMs = 0;
+  _lastFrameTickMs = 0;
   _lastLeadingX = std::numeric_limits<double>::quiet_NaN();
   _pageX = std::numeric_limits<double>::quiet_NaN();
   _pageEaseX = std::numeric_limits<double>::quiet_NaN();
