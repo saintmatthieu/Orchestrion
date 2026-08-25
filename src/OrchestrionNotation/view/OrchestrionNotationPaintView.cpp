@@ -596,6 +596,14 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   qApp->installEventFilter(this);
 
+  // MuseScore pans the canvas to keep *its* playback cursor in view whenever
+  // its playback position changes. Orchestrion doesn't use that playhead at
+  // all — the follower owns the scroll — so the two fight: every position
+  // change yanked the canvas back to wherever MuseScore's cursor sat (near
+  // the score start), and our next follow tick, up to 16 ms later, yanked it
+  // back. One frame at the wrong x, i.e. a visible jerk, per position change.
+  configuration()->setIsAutomaticallyPanEnabled(false);
+
   orchestrion()->sequencerChanged().onNotify(
       this,
       [this]
