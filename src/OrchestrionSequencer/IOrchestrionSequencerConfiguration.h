@@ -41,6 +41,80 @@ public:
   virtual void setNoteInfoTooltipEnabled(bool) = 0;
   virtual muse::async::Notification noteInfoTooltipEnabledChanged() const = 0;
 
+  //! Debug aid: when enabled, a strip beneath the score shows the real-time
+  //! tempo model. Off by default.
+  virtual bool tempoVisualizationEnabled() const = 0;
+  virtual void setTempoVisualizationEnabled(bool) = 0;
+  virtual muse::async::Notification
+  tempoVisualizationEnabledChanged() const = 0;
+
+  //! Whether grading is offered at all (its top-centre button and its menu).
+  //! Off by default and toggled from the Development menu: while hidden,
+  //! gradingEnabled() reads false whatever the user last chose, so the whole
+  //! apparatus is inert as well as invisible.
+  virtual bool gradingExposed() const = 0;
+  virtual void setGradingExposed(bool) = 0;
+  virtual muse::async::Notification gradingExposedChanged() const = 0;
+
+  //! The master switch of the grading apparatus: the per-note
+  //! timing marks and deviation ribbon, the box-plot HUD and scores, the
+  //! final-score banner, the time-proportional layout and its tempo warp,
+  //! the take recording and its replay. When disabled, the score is just
+  //! displayed and played plainly — only the tempo-following scroll stays,
+  //! which is the norm in both modes. On by default, but always false while
+  //! the feature is not exposed (see gradingExposed()).
+  virtual bool gradingEnabled() const = 0;
+  virtual void setGradingEnabled(bool) = 0;
+  virtual muse::async::Notification gradingEnabledChanged() const = 0;
+
+  //! When enabled, the timing marks don't fade out: they stay on the page
+  //! until the stats reset, so a whole take can be reviewed after playing it.
+  //! Off by default.
+  virtual bool persistentTimingMarksEnabled() const = 0;
+  virtual void setPersistentTimingMarksEnabled(bool) = 0;
+  virtual muse::async::Notification
+  persistentTimingMarksEnabledChanged() const = 0;
+
+  //! Whether the performance score includes the hand-synchronization
+  //! component. Off by default: hand asynchrony correlates strongly with the
+  //! tempo-smoothness errors anyway, so one score usually suffices.
+  virtual bool handSyncScoreEnabled() const = 0;
+  virtual void setHandSyncScoreEnabled(bool) = 0;
+  virtual muse::async::Notification handSyncScoreEnabledChanged() const = 0;
+
+  //! Whether the performance score includes the dynamics-smoothness
+  //! component (played velocities judged against the performer's own
+  //! smoothed loudness curve). On by default; it only contributes when the
+  //! input device measures velocity.
+  virtual bool dynamicsScoreEnabled() const = 0;
+  virtual void setDynamicsScoreEnabled(bool) = 0;
+  virtual muse::async::Notification dynamicsScoreEnabledChanged() const = 0;
+
+  //! When enabled, the score is laid out time-proportionally: horizontal
+  //! note spacing is determined by durations alone, so equal distance =
+  //! equal musical time (the canvas for the tempo-warped note overlays).
+  //! Off by default.
+  virtual bool timeProportionalSpacingEnabled() const = 0;
+  virtual void setTimeProportionalSpacingEnabled(bool) = 0;
+  virtual muse::async::Notification
+  timeProportionalSpacingEnabledChanged() const = 0;
+
+  //! The tempo model's smoothing memory γ ∈ (0,1): how stiff the fitted
+  //! tempo spline is (higher = smoother, less tolerant of short-term
+  //! deviations). Tunable from the post-take slider; default 0.6.
+  virtual double tempoSmoothingMemory() const = 0;
+  virtual void setTempoSmoothingMemory(double) = 0;
+  virtual muse::async::Notification tempoSmoothingMemoryChanged() const = 0;
+
+  //! When enabled, a loaded score's repeats are unrolled in place — every
+  //! pass becomes its own engraved passage — so the deviation ribbon, beat
+  //! grid and layout warp carry through repeats without folding passes onto
+  //! the same bars. On by default; a change applies to the next loaded
+  //! score.
+  virtual bool unrollRepeatsEnabled() const = 0;
+  virtual void setUnrollRepeatsEnabled(bool) = 0;
+  virtual muse::async::Notification unrollRepeatsEnabledChanged() const = 0;
+
   //! Whether the beginner "use your number keys" help has been dismissed.
   //! Persisted so the tip auto-shows only until the user closes it.
   virtual bool keyboardHelpDismissed() const = 0;

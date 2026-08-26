@@ -18,13 +18,16 @@
  */
 #pragma once
 
+#include "IOrchestrionSequencer.h" // ReplayTake
 #include <async/notification.h>
 #include <memory>
+#include <optional>
 
 namespace dgk
 {
-//! The automatic player: machine-driven gesture events playing the score.
-//! Owns Orchestrion's playing state, driven by the orchestrion-play/-stop
+//! The automatic player: machine-driven gesture events — metronomic
+//! playback of the score, or the replay of a recorded take. Owns
+//! Orchestrion's playing state, driven by the orchestrion-play/-stop
 //! actions and deliberately independent of MuseScore's transport (whose
 //! playhead runs over the silent notation tracks and auto-stops at *its*
 //! score end — Orchestrion playback is just scheduled gesture events).
@@ -33,7 +36,16 @@ class IOrchestrionPlayer
 public:
   virtual ~IOrchestrionPlayer() = default;
 
-  //! Whether the player is producing events.
+  //! While set, play replays this recorded take — the machine re-performs
+  //! it, timing, dynamics and all — instead of the metronomic playback.
+  //! Cleared when a new take begins.
+  virtual void SetReplayTake(std::optional<ReplayTake> take) = 0;
+  //! Whether such a replay is running right now. Its re-injected events
+  //! must not be judged as a new performance.
+  virtual bool IsReplaying() const = 0;
+
+  //! Whether the player is producing events (metronomic playback or a take
+  //! replay).
   virtual bool IsPlaying() const = 0;
   virtual muse::async::Notification PlayingChanged() const = 0;
 };

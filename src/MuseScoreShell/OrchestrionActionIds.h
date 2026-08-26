@@ -30,6 +30,12 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
 
 static constexpr const char *loopIn = "orchestrion-loop-in";
 static constexpr const char *loopOut = "orchestrion-loop-out";
+static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
+static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
+static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
+static constexpr const char *reverbCathedral =
+    "orchestrion-advanced-reverb-cathedral";
+
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
 //! by MuseScore code with its rendered-track playback in mind (e.g. the
@@ -38,9 +44,18 @@ static constexpr const char *loopOut = "orchestrion-loop-out";
 static constexpr const char *playbackToggle = "orchestrion-play";
 static constexpr const char *playbackStop = "orchestrion-stop";
 
-static constexpr const char *reverbOff = "orchestrion-advanced-reverb-off";
-static constexpr const char *reverbRoom = "orchestrion-advanced-reverb-room";
-static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
-static constexpr const char *reverbCathedral =
-    "orchestrion-advanced-reverb-cathedral";
+//! Opens the grading settings dialog (from the Grading menu; the top-row
+//! settings button opens it directly).
+static constexpr const char *gradingSettings = "orchestrion-grading-settings";
+
+//! Development menu: whether grading is offered at all.
+static constexpr const char *toggleGradingExposure =
+    "orchestrion-dev-toggle-grading-exposure";
+
+static constexpr const char *playModePerformance =
+    "orchestrion-advanced-play-mode-performance";
+static constexpr const char *playModeFittedTempo =
+    "orchestrion-advanced-play-mode-fitted-tempo";
+static constexpr const char *playModeMetronome =
+    "orchestrion-advanced-play-mode-metronome";
 } // namespace dgk::actionIds

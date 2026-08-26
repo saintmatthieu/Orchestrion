@@ -43,10 +43,57 @@ private:
   void setNoteInfoTooltipEnabled(bool) override;
   muse::async::Notification noteInfoTooltipEnabledChanged() const override;
 
+  bool tempoVisualizationEnabled() const override;
+  void setTempoVisualizationEnabled(bool) override;
+  muse::async::Notification tempoVisualizationEnabledChanged() const override;
+
+  bool gradingExposed() const override;
+  void setGradingExposed(bool) override;
+  muse::async::Notification gradingExposedChanged() const override;
+
+  bool gradingEnabled() const override;
+  void setGradingEnabled(bool) override;
+  muse::async::Notification gradingEnabledChanged() const override;
+
+  bool persistentTimingMarksEnabled() const override;
+  void setPersistentTimingMarksEnabled(bool) override;
+  muse::async::Notification
+  persistentTimingMarksEnabledChanged() const override;
+
+  bool handSyncScoreEnabled() const override;
+  void setHandSyncScoreEnabled(bool) override;
+  muse::async::Notification handSyncScoreEnabledChanged() const override;
+
+  bool dynamicsScoreEnabled() const override;
+  void setDynamicsScoreEnabled(bool) override;
+  muse::async::Notification dynamicsScoreEnabledChanged() const override;
+
+  bool timeProportionalSpacingEnabled() const override;
+  void setTimeProportionalSpacingEnabled(bool) override;
+  muse::async::Notification
+  timeProportionalSpacingEnabledChanged() const override;
+
+  double tempoSmoothingMemory() const override;
+  void setTempoSmoothingMemory(double) override;
+  muse::async::Notification tempoSmoothingMemoryChanged() const override;
+
+  bool unrollRepeatsEnabled() const override;
+  void setUnrollRepeatsEnabled(bool) override;
+  muse::async::Notification unrollRepeatsEnabledChanged() const override;
+
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
+  muse::async::Notification m_tempoVisualizationEnabledChanged;
+  muse::async::Notification m_gradingExposedChanged;
+  muse::async::Notification m_gradingEnabledChanged;
+  muse::async::Notification m_persistentTimingMarksEnabledChanged;
+  muse::async::Notification m_handSyncScoreEnabledChanged;
+  muse::async::Notification m_dynamicsScoreEnabledChanged;
+  muse::async::Notification m_timeProportionalSpacingEnabledChanged;
+  muse::async::Notification m_tempoSmoothingMemoryChanged;
+  muse::async::Notification m_unrollRepeatsEnabledChanged;
 };
 } // namespace dgk

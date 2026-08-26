@@ -24,6 +24,7 @@
 
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
+#include <async/asyncable.h>
 #include <context/iglobalcontext.h>
 #include <global/iglobalconfiguration.h>
 #include <global/iinteractive.h>
@@ -38,6 +39,7 @@ namespace dgk
 {
 class OrchestrionActionController : public muse::actions::Actionable,
                                     public muse::Injectable,
+                                    public muse::async::Asyncable,
                                     public QObject
 {
   muse::Inject<IOrchestrion> orchestrion;
@@ -65,5 +67,13 @@ private:
   void openProject(const mu::project::ProjectFile &) const;
   void toggleRecording() const;
   muse::io::path_t fallbackPath() const;
+  //! Grading needs the score's repeats unrolled and plain playing needs them
+  //! intact; unrolling rewrites the loaded score in place, so switching
+  //! grading means reloading the score.
+  void reloadForGrading();
+
+  //! Whether grading was on when the current score was loaded — i.e. whether
+  //! its repeats were unrolled.
+  bool m_scoreLoadedWithGrading = false;
 };
 } // namespace dgk

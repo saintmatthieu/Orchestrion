@@ -29,6 +29,18 @@ namespace dgk
 {
 void Orchestrion::init()
 {
+  // Unrolling repeats only serves the grading visuals (ribbon, beat grid,
+  // layout warp), so for now it is not a choice of its own: it follows the
+  // grading switch. The setting survives as the place to make it
+  // configurable again — drop this sync and give it back its menu item.
+  const auto syncUnrollRepeats = [this]
+  {
+    sequencerConfig()->setUnrollRepeatsEnabled(
+        sequencerConfig()->gradingEnabled());
+  };
+  sequencerConfig()->gradingEnabledChanged().onNotify(this, syncUnrollRepeats);
+  syncUnrollRepeats();
+
   playbackController()->isPlayAllowedChanged().onNotify(
       this,
       [&]()
@@ -39,6 +51,21 @@ void Orchestrion::init()
           setSequencer(nullptr);
           return;
         }
+
+        // Unroll the score's repeats into the score itself, so every pass is
+        // its own engraved passage: the deviation ribbon, beat grid and
+        // layout warp then carry through repeats without folding passes onto
+        // the same bars. Decided once per loaded score, before the sequencer
+        // reads it (so switching grading applies at the next loaded score).
+        if (mu::engraving::MasterScore *const master =
+                masterNotation->masterScore();
+            master && master != m_unrollDecided)
+        {
+          m_unrollDecided = master;
+          if (sequencerConfig()->unrollRepeatsEnabled())
+            master->unrollRepeatsInPlace();
+        }
+
         const NotationProducts products =
             OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
 
@@ -129,5 +156,20 @@ IOrchestrionPlayerPtr Orchestrion::player()
   static const IOrchestrionPlayerPtr stub =
       std::make_shared<OrchestrionPlayerStub>();
   return stub;
+}
+
+PlayMode Orchestrion::playMode() const { return m_playMode; }
+
+void Orchestrion::setPlayMode(PlayMode mode)
+{
+  if (mode == m_playMode)
+    return;
+  m_playMode = mode;
+  m_playModeChanged.notify();
+}
+
+muse::async::Notification Orchestrion::playModeChanged() const
+{
+  return m_playModeChanged;
 }
 } // namespace dgk

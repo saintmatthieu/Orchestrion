@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 #else
   QCoreApplication::setApplicationName("Orchestrion");
 #endif
-  QCoreApplication::setApplicationVersion(ORCHESTRION_VERSION);
+  QCoreApplication::setApplicationVersion("0.1.0");
 
 #if (defined(_MSCVER) || defined(_MSC_VER))
   // On MSVC under Windows, we need to manually retrieve the command-line
@@ -187,7 +187,8 @@ int main(int argc, char **argv)
 
   if (runMode == muse::IApplication::RunMode::AudioPluginRegistration)
     qapp = new QCoreApplication(argc, argv);
-  else {
+  else
+  {
     auto app = new QApplication(argc, argv);
     app->setWindowIcon(QIcon(":/icons/orchestrion.png"));
     qapp = app;

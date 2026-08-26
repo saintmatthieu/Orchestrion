@@ -21,12 +21,18 @@
 #include "AutomaticOrchestrionPlayer.h"
 #include "IModifiableItemRegistry.h"
 #include "IOrchestrion.h"
+#include "IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
 #include <audio/internal/worker/iaudioengine.h>
 #include <context/iglobalcontext.h>
+
+namespace mu::engraving
+{
+class MasterScore;
+}
 
 namespace dgk
 {
@@ -38,6 +44,7 @@ class Orchestrion : public IOrchestrion,
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<muse::audio::IAudioEngine> audioEngine;
   muse::Inject<ISegmentRegistry> segmentRegistry;
+  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
 
 public:
   void init();
@@ -47,6 +54,9 @@ private:
   muse::async::Notification sequencerChanged() const override;
   IModifiableItemRegistryPtr modifiableItemRegistry() const override;
   IOrchestrionPlayerPtr player() override;
+  PlayMode playMode() const override;
+  void setPlayMode(PlayMode mode) override;
+  muse::async::Notification playModeChanged() const override;
 
   void setSequencer(IOrchestrionSequencerPtr sequencer);
   void wakeAudioEngine();
@@ -56,5 +66,12 @@ private:
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
   std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   muse::async::Notification m_sequencerChanged;
+  // The master score whose unroll decision was already taken: the choice is
+  // made once per loaded score (mid-session unrolling would pull engraved
+  // items out from under the review marks), and re-fires of the handler
+  // must not revisit it.
+  const mu::engraving::MasterScore *m_unrollDecided = nullptr;
+  PlayMode m_playMode = PlayMode::replayPerformance;
+  muse::async::Notification m_playModeChanged;
 };
 } // namespace dgk

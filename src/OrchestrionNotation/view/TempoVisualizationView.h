@@ -18,25 +18,34 @@
  */
 #pragma once
 
-#include "IOrchestrionPlayer.h"
+#include "TempoVizModel.h"
+
+#include <QQuickPaintedItem>
 
 namespace dgk
 {
-//! The player IOrchestrion::player() hands out while no real one exists
-//! (no score loaded yet): never playing, never replaying, never notifying —
-//! so consumers need no null checks.
-class OrchestrionPlayerStub : public IOrchestrionPlayer
+//! Real-time strip (shown beneath the score, toggled from the Advanced menu)
+//! that plots the tempo model: per hand, estimated tempo vs recent real time,
+//! with a tick at each onset the model reacted to, and coasting (overdue)
+//! stretches drawn dashed. Debug-grade for now; expected to iterate.
+class TempoVisualizationView : public QQuickPaintedItem
 {
+  Q_OBJECT
+  Q_PROPERTY(
+      dgk::TempoVizModel *model READ model WRITE setModel NOTIFY modelChanged)
+
 public:
-  void SetReplayTake(std::optional<ReplayTake>) override {}
-  bool IsReplaying() const override { return false; }
-  bool IsPlaying() const override { return false; }
-  muse::async::Notification PlayingChanged() const override
-  {
-    return m_playingChanged;
-  }
+  explicit TempoVisualizationView(QQuickItem *parent = nullptr);
+
+  TempoVizModel *model() const { return _model; }
+  void setModel(TempoVizModel *model);
+
+  void paint(QPainter *painter) override;
+
+signals:
+  void modelChanged();
 
 private:
-  muse::async::Notification m_playingChanged;
+  TempoVizModel *_model = nullptr;
 };
 } // namespace dgk

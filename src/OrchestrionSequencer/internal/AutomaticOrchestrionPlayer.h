@@ -20,6 +20,7 @@
 
 #include "IOrchestrionPlayer.h"
 #include "IOrchestrionSequencer.h"
+#include <QElapsedTimer>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
@@ -41,6 +42,8 @@ public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
 
   // IOrchestrionPlayer
+  void SetReplayTake(std::optional<ReplayTake> take) override;
+  bool IsReplaying() const override { return m_replayActive; }
   bool IsPlaying() const override { return m_playing; }
   muse::async::Notification PlayingChanged() const override
   {
@@ -53,6 +56,9 @@ private:
   void ScheduleNext();
   void FireAndContinue(const NextAutoPlayEvents &events);
   int TicksToMilliseconds(int ticks) const;
+  void StartReplay();
+  void ScheduleReplayNext();
+  void FireReplayEvent();
 
   IOrchestrionSequencer &m_sequencer;
   bool m_playing = false;
@@ -66,5 +72,13 @@ private:
   bool m_firingInputEvents = false;
 
   muse::async::Notification m_playingChanged;
+
+  std::optional<ReplayTake> m_replayTake;
+  bool m_replayActive = false;
+  // True while the replay performs its own rewind to the take's start, so
+  // that jump isn't taken for the user navigating away.
+  bool m_selfJump = false;
+  std::size_t m_replayIndex = 0;
+  QElapsedTimer m_replayClock;
 };
 } // namespace dgk
