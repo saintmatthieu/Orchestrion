@@ -99,6 +99,21 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setGradingExposed(
                           !sequencerConfig()->gradingExposed());
                     });
+  dispatcher()->reg(this, actionIds::toggleAutoPlayExposure,
+                    [this]
+                    {
+                      sequencerConfig()->setAutoPlayExposed(
+                          !sequencerConfig()->autoPlayExposed());
+                    });
+  // Tempo-following auto-play: at most one hand at a time (the other one is
+  // yours — for full playback there is the playback button). A one-of-three
+  // choice, so each action sets its value outright.
+  dispatcher()->reg(this, actionIds::autoPlayNone,
+                    [this] { sequencerConfig()->setAutoPlayedStaff(-1); });
+  dispatcher()->reg(this, actionIds::autoPlayLeftHand,
+                    [this] { sequencerConfig()->setAutoPlayedStaff(1); });
+  dispatcher()->reg(this, actionIds::autoPlayRightHand,
+                    [this] { sequencerConfig()->setAutoPlayedStaff(0); });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-proportional-spacing",
                     [this]
                     {

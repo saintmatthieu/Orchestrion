@@ -73,6 +73,16 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
                         { return moveCanvasBy(physicalDx); })
 {
   m_clock.start();
+  m_autoPlayTimer.setInterval(16); // ~60 Hz
+  m_autoPlayTimer.callOnTimeout(
+      [this]
+      {
+        const double nowMs = static_cast<double>(m_clock.elapsed());
+        // The estimate must keep advancing (and coasting) even when the page
+        // is still and no frames are being rendered.
+        m_estimator.heartbeat(nowMs);
+        fireDueAutoEvents(nowMs);
+      });
   m_warpTimer.setInterval(warpAnimStepMs);
   m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
 }
@@ -150,6 +160,9 @@ void OrchestrionNotationPaintView::subscribe(
                                               // tempo estimate and re-frame at
                                               // the new location on the next
                                               // transitions.
+                                              // The jump's transitions batch
+                                              // repopulates the ledger.
+                                              m_autoTrackTargets.clear();
                                               m_follower.jump();
                                               m_estimator.reset();
                                               m_loudness.clear();
@@ -333,9 +346,15 @@ void OrchestrionNotationPaintView::OnTransitions(
       m_estimator.onOnsets(nowMs, soundingTicks);
   const auto dynamicsJudgments =
       judgeDynamics(nowMs, soundingVelocity, resumingHands);
+  // The machine-played hand is tracked (its onsets feed the estimate and the
+  // viz) but never judged, and it is synchronised with the performer by
+  // construction: it is not a performance.
+  const int autoStaff = autoPlayedStaff();
   // Orchestrion is played with two hands: staff 0 is the right, staff 1 the
   // left. The estimator declines unless both are warmed up and playing.
-  const auto handSync = m_estimator.asynchrony(0, 1, nowMs);
+  const auto handSync = autoStaff < 0
+                            ? m_estimator.asynchrony(0, 1, nowMs)
+                            : std::optional<PositionEstimator::Judgment>{};
 
   m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX,
                       // Not every batch pre-lights an upcoming chord — the
@@ -343,6 +362,16 @@ void OrchestrionNotationPaintView::OnTransitions(
                       // next in the same batch — so fall back to what is
                       // sounding.
                       nextX ? nextX : leadingAnyX);
+
+  if (replaying)
+  {
+    // The recorded take already contains the auto hand's events: keep the
+    // trigger quiet so they don't fire twice.
+    m_autoOffTick.reset();
+    m_autoOnTick.reset();
+  }
+  else
+    updateAutoTargets(transitions);
 
   // Feed the debug tempo strip: the onsets the estimate reacted to, and each
   // hand's re-fitted curve (replaced wholesale per onset).
@@ -386,6 +415,8 @@ void OrchestrionNotationPaintView::OnTransitions(
     // only judged once the spline has warmed up.
     for (const auto &[staff, tMs] : feedback.onsetTMs)
     {
+      if (staff == autoStaff)
+        continue;
       if (const auto it = staffHits.find(staff); it != staffHits.end())
       {
         const StaffHit &hit = it->second;
@@ -402,7 +433,7 @@ void OrchestrionNotationPaintView::OnTransitions(
              presentAnchors.at(staff)});
     }
     for (const auto &[staff, window] : feedback.judgments)
-      if (!window.empty())
+      if (!window.empty() && staff != autoStaff)
         m_timingOverlay.updateJudgments(staff, window);
     if (handSync && sequencerConfiguration()->handSyncScoreEnabled())
       m_timingOverlay.addSyncSample(handSync->tMs, handSync->errorMs);
@@ -489,6 +520,120 @@ OrchestrionNotationPaintView::judgeDynamics(
     windows[staff] = std::move(window);
   }
   return windows;
+}
+
+void OrchestrionNotationPaintView::updateAutoTargets(
+    const std::map<TrackIndex, ChordTransition> &batch)
+{
+  const int autoStaff = autoPlayedStaff();
+  if (autoStaff < 0)
+    return;
+
+  // Refresh the ledger entries this batch brings for the auto staff.
+  for (const auto &[track, transition] : batch)
+  {
+    if (track.staffIndex() != autoStaff)
+      continue;
+    AutoTargets &targets = m_autoTrackTargets[track.value];
+    const IChord *present = GetPresentChord(transition);
+    targets.offTick =
+        present ? std::make_optional<double>(present->GetEndTick().withRepeats)
+                : std::nullopt;
+    const IChord *future = GetFutureChord(transition);
+    targets.onTick =
+        future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
+               : std::nullopt;
+  }
+
+  // Aggregate: the auto hand's earliest release and strike across its voices,
+  // in playback-unrolled ticks — the coordinate the manual hands' estimate
+  // lives in.
+  std::optional<double> offTick;
+  std::optional<double> onTick;
+  for (const auto &[track, targets] : m_autoTrackTargets)
+  {
+    if (targets.offTick)
+      offTick =
+          offTick ? std::min(*offTick, *targets.offTick) : targets.offTick;
+    if (targets.onTick)
+      onTick = onTick ? std::min(*onTick, *targets.onTick) : targets.onTick;
+  }
+  m_autoOffTick = offTick;
+  m_autoOnTick = onTick;
+  // Poll only while there is something to fire.
+  if (m_autoOffTick || m_autoOnTick)
+  {
+    if (!m_autoPlayTimer.isActive())
+      m_autoPlayTimer.start();
+  }
+  else
+    m_autoPlayTimer.stop();
+}
+
+int OrchestrionNotationPaintView::autoPlayedStaff() const
+{
+  // While auto-play is not exposed it stays inactive, whatever staff the
+  // setting holds (see IOrchestrionSequencerConfiguration::autoPlayExposed).
+  return sequencerConfiguration()->autoPlayExposed()
+             ? sequencerConfiguration()->autoPlayedStaff()
+             : -1;
+}
+
+void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
+{
+  // Fire the auto hand's due events once the manual hands' estimated position
+  // reaches them. Each target fires once; the resulting transitions bring the
+  // next ones. When the performer stops, the estimate coasts to a halt and
+  // the auto hand halts with it.
+  const int autoStaff = autoPlayedStaff();
+  if (autoStaff < 0 || (!m_autoOnTick && !m_autoOffTick))
+  {
+    m_autoPlayTimer.stop();
+    return;
+  }
+
+  std::optional<double> manualTicks;
+  for (int staff = 0; staff < 2; ++staff)
+  {
+    if (staff == autoStaff)
+      continue;
+    if (const auto tick = m_estimator.tickAt(staff, nowMs))
+      manualTicks = manualTicks ? std::max(*manualTicks, *tick) : *tick;
+  }
+  if (!manualTicks)
+    return;
+
+  const auto fire = [this, autoStaff](bool noteOn)
+  {
+    // Deferred out of the frame tick: the events it causes re-enter this
+    // view with fresh targets.
+    QTimer::singleShot(
+        0, this,
+        [this, noteOn]
+        {
+          const int staff = autoPlayedStaff();
+          const auto sequencer = orchestrion()->sequencer();
+          if (staff < 0 || !sequencer)
+            return;
+          sequencer->OnInputEvent(
+              noteOn ? NoteEventType::noteOn : NoteEventType::noteOff,
+              staff > 0 ? leftHandPitch : rightHandPitch, std::nullopt);
+        });
+  };
+
+  if (m_autoOnTick && *manualTicks >= *m_autoOnTick)
+  {
+    // Advancing releases the previous chord itself: the pending noteOff is
+    // superseded.
+    m_autoOnTick.reset();
+    m_autoOffTick.reset();
+    fire(true);
+  }
+  else if (m_autoOffTick && *manualTicks >= *m_autoOffTick)
+  {
+    m_autoOffTick.reset();
+    fire(false);
+  }
 }
 
 void OrchestrionNotationPaintView::endTake()
@@ -1481,6 +1626,25 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
           m_timingOverlay.clearDynamicsStats();
         update();
       });
+
+  // Auto-play: the ledger is rebuilt from scratch when the chosen hand
+  // changes (or when the feature is hidden/exposed), seeded from whatever the
+  // current batch holds — after loading it covers every voice; mid-piece it
+  // may not, and a rewind repopulates it in full.
+  const auto configureAutoPlay = [this]
+  {
+    m_autoTrackTargets.clear();
+    m_autoOffTick.reset();
+    m_autoOnTick.reset();
+    m_autoPlayTimer.stop();
+    if (const auto sequencer = orchestrion()->sequencer())
+      updateAutoTargets(sequencer->GetCurrentTransitions());
+  };
+  configureAutoPlay();
+  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, configureAutoPlay);
+  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
+      this, configureAutoPlay);
 
   // Toggling the layout mode re-lays-out the score; every cached x is stale,
   // which is exactly what updateNotation() resets (follower, stats, marks).

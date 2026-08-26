@@ -177,9 +177,20 @@ private:
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
-  //! Per rendered frame: advance the scroll and the estimate, and sample the
-  //! debug tempo strip.
+  //! Per rendered frame: advance the scroll and the estimate, sample the
+  //! debug tempo strip, and fire the auto-played hand's due events.
   void onFrameTick();
+  //! Refresh the tempo-following auto-play targets (the auto hand's next due
+  //! release/strike, in playback-unrolled ticks) from a transitions batch.
+  //! Batches only carry the *changed* tracks, so a per-voice ledger
+  //! (m_autoTrackTargets) persists the auto staff's state between batches.
+  void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
+  //! Which hand the machine plays, or −1: the setting, gated on auto-play
+  //! being exposed at all.
+  int autoPlayedStaff() const;
+  //! Fire the auto hand's due strike or release once the manual hands'
+  //! estimate has reached it.
+  void fireDueAutoEvents(double nowMs);
   //! Measure this batch's played velocities against each hand's smoothed
   //! loudness curve — the dynamics counterpart of the timing judgments.
   //! \p resumingHands are the hands whose estimate just restarted after a
@@ -251,6 +262,20 @@ private:
   // velocity-less devices), from HandNoteEvents — which fires just before the
   // transitions batch the gesture causes; consumed by that batch's onsets.
   std::optional<float> m_pendingHandVelocity[2] = {}; // [0]=right, [1]=left
+  // Per-voice ledger backing updateAutoTargets(), and the auto hand's next
+  // due release/strike aggregated from it.
+  struct AutoTargets
+  {
+    std::optional<double> offTick;
+    std::optional<double> onTick;
+  };
+  std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
+  std::optional<double> m_autoOffTick;
+  std::optional<double> m_autoOnTick;
+  // Polls those targets against the manual hands' estimate. A driver of its
+  // own, not the frame hook: between page turns nothing is animating, so no
+  // frames are rendered — and the auto hand must play on regardless.
+  QTimer m_autoPlayTimer;
 
   // The take's onsets, for baking the performance's tempo warp into the
   // layout: identity (staff, tMs) to look up the final revised error in the

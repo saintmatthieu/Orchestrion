@@ -90,6 +90,21 @@ public:
   virtual void setDynamicsScoreEnabled(bool) = 0;
   virtual muse::async::Notification dynamicsScoreEnabledChanged() const = 0;
 
+  //! Whether auto-play is offered at all (its top-row button and its menu).
+  //! Off by default and toggled from the Development menu: the feature is
+  //! still being worked on, and while it is hidden it also stays inactive,
+  //! whatever autoPlayedStaff() happens to hold.
+  virtual bool autoPlayExposed() const = 0;
+  virtual void setAutoPlayExposed(bool) = 0;
+  virtual muse::async::Notification autoPlayExposedChanged() const = 0;
+
+  //! Which hand the machine plays, following the performer's tempo: −1 =
+  //! none, 0 = the right hand (staff 0), 1 = the left. The auto-played hand
+  //! is exempt from timing judgments and scoring.
+  virtual int autoPlayedStaff() const = 0;
+  virtual void setAutoPlayedStaff(int) = 0;
+  virtual muse::async::Notification autoPlayedStaffChanged() const = 0;
+
   //! When enabled, the score is laid out time-proportionally: horizontal
   //! note spacing is determined by durations alone, so equal distance =
   //! equal musical time (the canvas for the tempo-warped note overlays).

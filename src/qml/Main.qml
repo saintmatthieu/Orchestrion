@@ -85,6 +85,13 @@ ApplicationWindow {
         Component.onCompleted: load()
     }
 
+    // Likewise for auto-play: the top-row button, its choice popup and the
+    // Auto-play menu.
+    AutoPlayModel {
+        id: autoPlayModel
+        Component.onCompleted: load()
+    }
+
     OrchestrionWindowTitleProvider {
         id: titleProvider
     }
@@ -242,6 +249,12 @@ ApplicationWindow {
                         model: gradingModel
                         visible: gradingModel.exposed
                     }
+
+                    AutoPlayButton {
+                        model: autoPlayModel
+                        visible: autoPlayModel.exposed
+                        onClicked: autoPlayPopup.open()
+                    }
                 }
 
                 // Beginner help: number-key tooltip + "Show me!" animation.
@@ -296,6 +309,23 @@ ApplicationWindow {
                     target: gradingModel
                     function onOpenSettingsRequested() {
                         gradingPopup.open()
+                    }
+                }
+
+                // Which hand the machine plays: opened from the top-row
+                // auto-play button and from the Auto-play menu.
+                AutoPlaySettingsPopup {
+                    id: autoPlayPopup
+                    z: 105
+                    model: autoPlayModel
+                    x: (parent.width - width) / 2
+                    y: (parent.height - height) / 3
+                }
+
+                Connections {
+                    target: autoPlayModel
+                    function onOpenSettingsRequested() {
+                        autoPlayPopup.open()
                     }
                 }
 

@@ -48,9 +48,17 @@ static constexpr const char *playbackStop = "orchestrion-stop";
 //! settings button opens it directly).
 static constexpr const char *gradingSettings = "orchestrion-grading-settings";
 
-//! Development menu: whether grading is offered at all.
+//! Auto-play: which hand the machine plays, and the action that opens the
+//! choice popup (the top-row button opens it directly).
+static constexpr const char *autoPlaySettings = "orchestrion-autoplay-choose";
+//! Development menu: whether auto-play / grading are offered at all.
+static constexpr const char *toggleAutoPlayExposure =
+    "orchestrion-dev-toggle-autoplay-exposure";
 static constexpr const char *toggleGradingExposure =
     "orchestrion-dev-toggle-grading-exposure";
+static constexpr const char *autoPlayNone = "orchestrion-autoplay-none";
+static constexpr const char *autoPlayLeftHand = "orchestrion-autoplay-left";
+static constexpr const char *autoPlayRightHand = "orchestrion-autoplay-right";
 
 static constexpr const char *playModePerformance =
     "orchestrion-advanced-play-mode-performance";
