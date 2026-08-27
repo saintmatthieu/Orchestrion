@@ -28,7 +28,7 @@ cmake --build build --target install
 
 `CMAKE_INSTALL_PREFIX` is forced to `${CMAKE_BINARY_DIR}/install` on Linux/Windows and to the binary dir itself on macOS — do not override it. The `.vscode/launch.json` `preLaunchTask` is `CMake: install`, not just build, for this reason.
 
-The Linux executable lives at `build/install/bin/Orchestrion`. On Linux the binary is placed in a `bin/` subdirectory of the build tree on purpose: the Qt QML module creates an `Orchestrion/` directory that would otherwise collide with the extension-less executable name (see comment in top-level `CMakeLists.txt`).
+The Linux executable lives at `build/install/bin/Orchestrion`. The un-installed `build/bin/Orchestrion` is runnable too: the app resolves resources as `<exe dir>/../share/`, and configure creates a `build/share -> build/install/share` symlink, so it works once install has run at least once (`.vscode/launch.json` relies on this to debug whatever CMake Tools launch target is selected — including test binaries, which aren't installed). On Linux the binary is placed in a `bin/` subdirectory of the build tree on purpose: the Qt QML module creates an `Orchestrion/` directory that would otherwise collide with the extension-less executable name (see comment in top-level `CMakeLists.txt`).
 
 CI mirrors this with `ci_build.cmake` (configures + builds + installs under `build.release`), invoked from `ci_build.bat` on Windows. The GitHub workflow (`.github/workflows/orchestrion.yml`) builds Windows / macOS / Linux and packages NSIS / DMG / AppImage respectively.
 

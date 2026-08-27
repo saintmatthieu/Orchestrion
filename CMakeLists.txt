@@ -90,6 +90,10 @@ if (OS_IS_LIN)
     set_target_properties(Orchestrion PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
+    # The app resolves its resources as <exe dir>/../share/. Point the build
+    # tree's share/ at the installed one so the un-installed build/bin/Orchestrion
+    # is runnable/debuggable too (after at least one install).
+    file(CREATE_LINK "${CMAKE_INSTALL_PREFIX}/share" "${CMAKE_BINARY_DIR}/share" SYMBOLIC)
 endif()
 
 if (OS_IS_WIN)

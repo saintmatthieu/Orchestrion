@@ -15,15 +15,15 @@
 		{
 			"label": "CMake: install",
 			"type": "shell",
-			"command": "cmake --build \"${workspaceFolder}/build/${command:cmake.buildType}\" --target install",
+			"command": "cmake --build \"${command:cmake.buildDirectory}\" --target install",
 			"problemMatcher": []
 		},
 		{
 			"label": "CPack: Build MSI installer",
 			"type": "shell",
-			"command": "cpack -G WIX -C ${command:cmake.buildType} -B \"${workspaceFolder}/build/${command:cmake.buildType}/package\"",
+			"command": "cpack -G WIX -C ${command:cmake.buildType} -B \"${command:cmake.buildDirectory}/package\"",
 			"options": {
-				"cwd": "${workspaceFolder}/build/${command:cmake.buildType}"
+				"cwd": "${command:cmake.buildDirectory}"
 			},
 			"dependsOn": "CMake: install",
 			"problemMatcher": []
