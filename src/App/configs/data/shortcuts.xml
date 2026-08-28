@@ -60,4 +60,14 @@
     <seq>F11</seq>
     <autorepeat>0</autorepeat>
   </SC>
+  <SC>
+    <key>zoomin</key>
+    <seq>+</seq>
+    <autorepeat>1</autorepeat>
+  </SC>
+  <SC>
+    <key>zoomout</key>
+    <seq>-</seq>
+    <autorepeat>1</autorepeat>
+  </SC>
 </Shortcuts>
