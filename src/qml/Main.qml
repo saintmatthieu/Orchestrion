@@ -199,18 +199,20 @@ ApplicationWindow {
                     onTriggered: notationPaintView.controlsVisible = false
                 }
 
-                GestureControllerSelectionPopup {
+                // Controller status at a glance (selection lives in the
+                // Advanced ▸ Controllers menu).
+                ControllerStatusIcons {
+                    id: controllerStatusIcons
                     x: 10
                     y: 10
-                    id: selectionPopup
                     visible: opacity > 0
                     opacity: notationPaintView.controlsVisible ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
                 MidiDeviceActivityPopup {
-                    x: selectionPopup.x + selectionPopup.width + 10
-                    y: selectionPopup.y
+                    x: controllerStatusIcons.x + controllerStatusIcons.width + 10
+                    y: controllerStatusIcons.y
                 }
 
                 Row {
@@ -258,10 +260,13 @@ ApplicationWindow {
                 }
 
                 // Beginner help: number-key tooltip + "Show me!" animation.
-                // Stays put (not tied to the fading controls overlay).
+                // Stays put (not tied to the fading controls overlay). Held
+                // back while the welcome tour is up, so it appears right
+                // after the tour is finished instead of fighting it.
                 NumberKeysHelp {
                     anchors.fill: parent
                     z: 100
+                    visible: !welcomeTour.active
                 }
 
                 // Transient credit shown when a score that must be attributed
@@ -269,6 +274,13 @@ ApplicationWindow {
                 AttributionToast {
                     anchors.fill: parent
                     z: 101
+                }
+
+                // First-launch welcome tour, above everything else.
+                WelcomeTour {
+                    id: welcomeTour
+                    anchors.fill: parent
+                    z: 110
                 }
 
                 // Debug aid: note info shown on hover, toggled from the

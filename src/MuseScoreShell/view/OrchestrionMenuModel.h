@@ -20,6 +20,7 @@
 
 #include "ExternalDevices/IMidiDeviceService.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
+#include "GestureControllers/IGestureControllerSelector.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
@@ -49,6 +50,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
   muse::Inject<IMidiDeviceService> midiDeviceService;
+  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
   muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration;
   muse::Inject<IOrchestrion> orchestrion;
@@ -92,6 +94,7 @@ private:
 #ifdef MUSE_APP_UNSTABLE
   muse::uicomponents::MenuItem *makeDevelopmentMenu();
 #endif
+  muse::uicomponents::MenuItem *makeControllersSubmenu();
   muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
 

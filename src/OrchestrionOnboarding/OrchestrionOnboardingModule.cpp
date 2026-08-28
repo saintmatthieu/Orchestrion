@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionOnboardingModule.h"
+#include "view/FirstRunWelcomeModel.h"
 #include "view/OrchestrionOnboardingModel.h"
 
 namespace dgk
@@ -30,5 +31,7 @@ void OrchestrionOnboardingModule::registerUiTypes()
 {
   qmlRegisterType<OrchestrionOnboardingModel>(
       "Orchestrion.OrchestrionOnboarding", 1, 0, "OrchestrionOnboardingModel");
+  qmlRegisterType<FirstRunWelcomeModel>("Orchestrion.OrchestrionOnboarding", 1,
+                                        0, "FirstRunWelcomeModel");
 }
 } // namespace dgk

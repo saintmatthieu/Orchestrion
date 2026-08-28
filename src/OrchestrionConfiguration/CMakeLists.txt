@@ -5,6 +5,7 @@ set(MODULE_SRC
   internal/ConfigurationUtils.h
   internal/OrchestrionConfiguration.cpp
   internal/OrchestrionConfiguration.h
+  IOrchestrionConfiguration.h
   OrchestrionConfigurationModule.cpp
   OrchestrionConfigurationModule.h
 )

@@ -46,7 +46,6 @@ OrchestrionOnboardingModel::getFileOpenArgs(
   {
     const muse::io::path_t path =
         globalConfiguration()->appDataPath() + "scores/AVE_MARIA.mscz";
-    // "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
     IF_ASSERT_FAILED(fileExists(path.toStdString()))
     {
       LOGE() << "File not found: " << path;
@@ -55,7 +54,7 @@ OrchestrionOnboardingModel::getFileOpenArgs(
     QUrl url{QString::fromStdString(path.toStdString())};
     url.setScheme("file");
     return muse::actions::ActionData::make_arg2<QUrl, QString>(
-        url, QString{"Chopin - Nocturne Op 9 No 2 E Flat Major"});
+        url, QString{"Schubert - Ave Maria"});
   }
   else
     return muse::actions::ActionData::make_arg2<QUrl, QString>(

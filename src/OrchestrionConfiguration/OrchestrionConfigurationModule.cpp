@@ -31,6 +31,12 @@ std::string OrchestrionConfigurationModule::moduleName() const
   return "OrchestrionConfiguration";
 }
 
+void OrchestrionConfigurationModule::registerExports()
+{
+  ioc()->registerExport<IOrchestrionConfiguration>(moduleName(),
+                                                   m_configuration);
+}
+
 void OrchestrionConfigurationModule::onInit(const muse::IApplication::RunMode &)
 {
   m_configuration->init();

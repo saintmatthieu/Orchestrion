@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "GestureControllers/IGestureControllerSelector.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
@@ -43,6 +44,7 @@ class OrchestrionActionController : public muse::actions::Actionable,
                                     public QObject
 {
   muse::Inject<IOrchestrion> orchestrion;
+  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
   muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfig;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;

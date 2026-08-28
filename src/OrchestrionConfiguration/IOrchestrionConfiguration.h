@@ -18,25 +18,20 @@
  */
 #pragma once
 
-#include "OrchestrionConfigurationModule.h"
-#include "modularity/imodulesetup.h"
+#include "framework/global/modularity/ioc.h"
 
 namespace dgk
 {
-class OrchestrionConfiguration;
-
-class OrchestrionConfigurationModule : public muse::modularity::IModuleSetup
+class IOrchestrionConfiguration : MODULE_EXPORT_INTERFACE
 {
+  INTERFACE_ID(IOrchestrionConfiguration);
+
 public:
-  OrchestrionConfigurationModule();
+  virtual ~IOrchestrionConfiguration() = default;
 
-private:
-  std::string moduleName() const override;
-  void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
-
-private:
-  const std::shared_ptr<OrchestrionConfiguration> m_configuration;
+  //! Whether the first-run welcome card was dismissed with "don't show again".
+  //! Persisted so the card auto-shows only until then.
+  virtual bool firstRunWelcomeAcknowledged() const = 0;
+  virtual void setFirstRunWelcomeAcknowledged(bool) = 0;
 };
-
 } // namespace dgk

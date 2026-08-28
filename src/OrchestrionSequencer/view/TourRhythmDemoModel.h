@@ -18,87 +18,71 @@
  */
 #pragma once
 
-#include "ExternalDevices/IMidiDeviceService.h"
 #include "IOrchestrion.h"
-#include "IOrchestrionSequencerConfiguration.h"
 #include "NumberKeysAlternator.h"
 
-#include "actions/actionable.h"
 #include "actions/iactionsdispatcher.h"
 #include "async/asyncable.h"
+#include "audio/iplayback.h"
 #include "modularity/ioc.h"
 #include "playback/iplaybackcontroller.h"
 #include <QObject>
 
 namespace dgk
 {
-//! Beginner help: when no MIDI controller is connected, the view shows a
-//! "Use your number keys to play." tooltip. It auto-shows only until the user
-//! closes it (the dismissal is persisted). The Help menu replays the demo
-//! directly. Clicking "Show me!" (or the Help menu) starts automatic playback
-//! and this model reports which number key each hand is "pressing", so the QML
-//! keyboard animation can follow the music.
-class NumberKeysHelpModel : public QObject,
+//! Drives the welcome tour's "tap the rhythm" page: auto-plays the score that
+//! is open behind the tour (looping while the page is showing) and reports
+//! which number keys the hands press, for NumberKeysAnimation to mirror.
+//! The master output can be muted while the demo keeps running.
+class TourRhythmDemoModel : public QObject,
                             public muse::async::Asyncable,
-                            public muse::actions::Actionable,
                             public muse::Injectable
 {
   Q_OBJECT
 
   Q_PROPERTY(
-      bool tooltipVisible READ tooltipVisible NOTIFY tooltipVisibleChanged)
-  Q_PROPERTY(bool demoActive READ demoActive NOTIFY demoActiveChanged)
-  Q_PROPERTY(
       int leftPressedKey READ leftPressedKey NOTIFY leftPressedKeyChanged)
   Q_PROPERTY(
       int rightPressedKey READ rightPressedKey NOTIFY rightPressedKeyChanged)
+  Q_PROPERTY(bool muted READ muted NOTIFY mutedChanged)
 
-  muse::Inject<IMidiDeviceService> midiDeviceService;
   muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<IOrchestrionSequencerConfiguration> configuration;
+  //! Only for isPlayAllowed(): whether a score is loaded and playable. The
+  //! playing state itself comes from Orchestrion's own player.
   muse::Inject<mu::playback::IPlaybackController> playbackController;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  muse::Inject<muse::audio::IPlayback> playback;
 
 public:
-  explicit NumberKeysHelpModel(QObject *parent = nullptr);
+  explicit TourRhythmDemoModel(QObject *parent = nullptr);
 
   Q_INVOKABLE void init();
-  //! Start the demo: rewind + play the score and animate the keys.
-  Q_INVOKABLE void showMe();
-  //! Stop the demo and hide the animation overlay.
+  //! Start auto-playing the open score (or as soon as it is playable).
+  Q_INVOKABLE void start();
+  //! Stop playback and restore the master output's mute state.
   Q_INVOKABLE void stop();
-  //! Close the tip and remember it (persisted) so it won't auto-show again.
-  Q_INVOKABLE void dismiss();
+  Q_INVOKABLE void toggleMuted();
 
-  bool tooltipVisible() const;
-  bool demoActive() const;
   int leftPressedKey() const;
   int rightPressedKey() const;
+  bool muted() const;
 
 signals:
-  void tooltipVisibleChanged();
-  void demoActiveChanged();
   void leftPressedKeyChanged();
   void rightPressedKeyChanged();
+  void mutedChanged();
 
 private:
   void subscribeToSequencer();
   bool isPlaying() const;
-  void onHandNoteEvent(const AutoPlayEvent &);
-  void updateNoMidiConnected();
+  void startPlayback();
+  void setMasterMuted(bool);
+  void updateKeys();
 
-  void updateTooltipVisible();
-  void setDemoActive(bool);
-  void setLeftPressedKey(int);
-  void setRightPressedKey(int);
-
-  bool m_noMidiConnected = false;
-  bool m_demoActive = false;
-  // Persisted: the user has closed the tip, so don't auto-show it.
-  bool m_dismissed = false;
-  bool m_tooltipVisible = false;
+  NumberKeysAlternator m_alternator;
+  bool m_active = false;
+  bool m_muted = false;
   int m_leftPressedKey = 0;
   int m_rightPressedKey = 0;
-  NumberKeysAlternator m_alternator;
 };
 } // namespace dgk
