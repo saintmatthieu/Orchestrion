@@ -11,6 +11,36 @@
     <autorepeat>0</autorepeat>
   </SC>
   <SC>
+    <key>orchestrion-file-save</key>
+    <seq>Ctrl+S</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>orchestrion-file-save-as</key>
+    <seq>Ctrl+Shift+S</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>orchestrion-play</key>
+    <seq>Space</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>rewind</key>
+    <seq>Home</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>prev</key>
+    <seq>Left</seq>
+    <autorepeat>1</autorepeat>
+  </SC>
+  <SC>
+    <key>next</key>
+    <seq>Right</seq>
+    <autorepeat>1</autorepeat>
+  </SC>
+  <SC>
     <key>loop</key>
     <seq>Ctrl+L</seq>
     <autorepeat>0</autorepeat>
@@ -23,6 +53,11 @@
   <SC>
     <key>orchestrion-loop-out</key>
     <seq>O</seq>
+    <autorepeat>0</autorepeat>
+  </SC>
+  <SC>
+    <key>view-toggle-fullscreen</key>
+    <seq>F11</seq>
     <autorepeat>0</autorepeat>
   </SC>
 </Shortcuts>
