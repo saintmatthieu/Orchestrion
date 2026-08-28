@@ -147,6 +147,16 @@ private:
   //! of the system never exceeds the max padding (and a system narrower than
   //! the view stays centered). Shared by manual constraint and auto-follow.
   double clampLeftX(double desiredLeftX, double scaling) const;
+  //! The next barline past which the reading does not carry on from unrolled
+  //! (playback) tick \p utick, and where it resumes — see
+  //! ScoreFollower::Barrier. Found from the score's expanded repeat list,
+  //! whose unrolled ticks are the sequencer's: the reading is linear through
+  //! consecutive unrolled segments as long as each starts at the score tick
+  //! where the previous ends; the first that doesn't (a jump back at a
+  //! repeat's end, a volta skipped, a D.S./coda) or the last one is left at
+  //! the end of its last measure, and the reading resumes at the start of the
+  //! segment after it.
+  std::optional<ScoreFollower::Barrier> nextBarrier(int utick) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;

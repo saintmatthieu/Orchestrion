@@ -37,6 +37,11 @@ constexpr double tauZoom = 0.35;
 // most of a screen — at a time, and stands still in between.
 constexpr double pageTriggerFrac = 4.0 / 5.0;
 
+// The barrier framing's margins (physical px; see the class comment): the last
+// turn before a barrier brings it at least this far inside the right edge, and
+// lets at most this much of what precedes the repeat's start show at the left.
+constexpr double barrierMarginPx = 100.0;
+
 // The page turn is not a teleport: it glides over this time constant (per
 // pole — the turn is two of them in series, so it settles in ~5 τ), short
 // enough that the event is in place well before it is due.
@@ -82,7 +87,8 @@ ScoreFollower::ScoreFollower(Canvas &canvas) : _canvas{canvas}
 void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
                              std::optional<double> leadingAny,
                              std::optional<double> trailingAny,
-                             std::optional<double> nextX)
+                             std::optional<double> nextX,
+                             std::optional<Barrier> barrier)
 {
   if (_suspended)
   {
@@ -95,11 +101,15 @@ void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
     jump();
   }
 
-  // What the page keeps in view (see pageTriggerFrac). Held until the next
-  // batch: between events there is nothing new to react to.
+  // What the page keeps in view (see pageTriggerFrac), and the barrier ahead
+  // of it (see barrierMarginPx). Held until the next batch: between events
+  // there is nothing new to react to.
   const bool focusMoved = nextX && (!_focusX || *nextX != *_focusX);
   if (nextX)
+  {
     _focusX = nextX;
+    _barrier = barrier;
+  }
 
   // One-shot framing once we have a laid-out viewport and a position.
   if (!_framed && leadingAny && _canvas.viewWidth() > 1.0)
@@ -131,20 +141,57 @@ void ScoreFollower::frame(double leadingX, double trailingX)
     scale = std::clamp(scale, _canvas.minScaling(), userScale);
   }
   _scaling = scale;
+  // Never past the barrier framing (see the class comment): a take that
+  // starts inside a short repeated section opens on the section's start, not
+  // on what follows the repeat.
+  const double targetX = std::min(leadingX, barrierAnchorX(scale, leadingX));
   if (std::isfinite(_pageX))
   {
     // The page is still where the previous take (or the position before a
     // jump) left it: glide from there rather than cut.
-    _pageTargetX = leadingX;
+    _pageTargetX = targetX;
     _pageTauMs = tauRelocateMs;
     _canvas.centerOn(_pageX, scale);
   }
   else
   {
-    _pageX = _pageEaseX = _pageTargetX = leadingX;
-    _canvas.centerOn(leadingX, scale);
+    _pageX = _pageEaseX = _pageTargetX = targetX;
+    _canvas.centerOn(targetX, scale);
   }
   _framed = true;
+}
+
+bool ScoreFollower::barrierInView(double focusX, double scaling) const
+{
+  if (!_barrier || scaling <= 0.0)
+    return false;
+  // With the focus on the anchor, the view reaches (1 - anchorFrac) of the
+  // width beyond it.
+  const double logicalWidth = _canvas.viewWidth() / scaling;
+  return _barrier->x < focusX + (1.0 - anchorFrac) * logicalWidth;
+}
+
+double ScoreFollower::barrierAnchorX(double scaling, double focusX) const
+{
+  if (!_barrier || scaling <= 0.0)
+    return std::numeric_limits<double>::infinity();
+  const double logicalWidth = _canvas.viewWidth() / scaling;
+  const double margin = barrierMarginPx / scaling;
+  // The right edge: at least the margin beyond the barrier, and — for a
+  // repeat — at least the width less the margin beyond the section's start,
+  // so that no more than the margin of what precedes the start shows. Both
+  // are floors; the higher decides.
+  double rightX = _barrier->x + margin;
+  if (_barrier->resumeX && *_barrier->resumeX < _barrier->x)
+    rightX = std::max(rightX, *_barrier->resumeX - margin + logicalWidth);
+  // The anchor is (1 - anchorFrac) of the width short of the right edge.
+  const double x = rightX - (1.0 - anchorFrac) * logicalWidth;
+  // A section start on the page puts the focus (past it) comfortably in view.
+  // Without one on the page — the final barline, a long section — the barrier
+  // may lie nearer the focus than the margin supposes; never let the framing
+  // push the focus off the left edge.
+  return std::min(x,
+                  focusX + anchorFrac * logicalWidth - edgeMarginPx / scaling);
 }
 
 void ScoreFollower::frameTick()
@@ -224,14 +271,26 @@ void ScoreFollower::tick()
     // which glides too, but over a fixed short duration (see
     // relocateDurationMs).
     const double frac = anchorFrac + (focusX - _pageTargetX) / logicalWidth;
+    // Where either would put the anchor: on the focus — unless that would
+    // bring the barrier into view, which makes this the last turn before it,
+    // and the barrier framing (see the class comment) what it does instead.
+    // The zoom is heading for targetScale, and gets there well before the
+    // glide does, so that is the width the rest is judged at.
+    const double turnX = barrierInView(focusX, targetScale)
+                             ? barrierAnchorX(targetScale, focusX)
+                             : focusX;
     if (frac < 0.0 || frac > 1.0)
     {
-      _pageTargetX = focusX;
+      _pageTargetX = turnX;
       _pageTauMs = tauRelocateMs;
     }
-    else if (frac > pageTriggerFrac)
+    else if (frac > pageTriggerFrac && turnX > _pageTargetX)
     {
-      _pageTargetX = focusX;
+      // (A turn only ever advances: once the framing is in place, the focus
+      // drifting on past the trigger asks for the same framing again — or,
+      // when the page already shows more than it, for a step back — and the
+      // page stands still, the focus in view all the way to the barrier.)
+      _pageTargetX = turnX;
       _pageTauMs = tauPageMs;
     }
   }
@@ -302,5 +361,6 @@ void ScoreFollower::reset()
   _pageTargetX = std::numeric_limits<double>::quiet_NaN();
   _pageTauMs = tauPageMs;
   _focusX.reset();
+  _barrier.reset();
 }
 } // namespace dgk

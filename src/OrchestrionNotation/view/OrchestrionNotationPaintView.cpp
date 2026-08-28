@@ -33,6 +33,7 @@
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/measure.h>
 #include <engraving/dom/note.h>
+#include <engraving/dom/repeatlist.h>
 #include <engraving/dom/segment.h>
 #include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
@@ -197,8 +198,12 @@ void OrchestrionNotationPaintView::OnTransitions(
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
   // The next event to play — the most imminent upcoming onset across the
-  // tracks — which is what the page scroll keeps in view.
+  // tracks — which is what the page scroll keeps in view; with its unrolled
+  // tick (as leadingAnyX's), which locates the barrier ahead of it
+  // (nextBarrier).
   std::optional<double> nextX;
+  std::optional<int> nextUtick;
+  std::optional<int> leadingAnyUtick;
   // Where to place a hand's timing gauge if its onset gets judged: the union
   // of the boxes of the notes it struck this batch, plus the staff's edges so
   // the gauge keeps clear of the staff lines.
@@ -235,7 +240,11 @@ void OrchestrionNotationPaintView::OnTransitions(
         if (const auto *el = futureSegment->element(track.value))
         {
           const double x = el->pageBoundingRect().center().x();
-          nextX = nextX ? std::min(*nextX, x) : x;
+          if (!nextX || x < *nextX)
+          {
+            nextX = x;
+            nextUtick = future->GetBeginTick().withRepeats;
+          }
         }
 
     const auto thing = present ? present : future;
@@ -299,7 +308,11 @@ void OrchestrionNotationPaintView::OnTransitions(
     if (const auto el = segment->element(track.value))
     {
       const double onsetX = el->pageBoundingRect().center().x();
-      leadingAnyX = leadingAnyX ? std::max(*leadingAnyX, onsetX) : onsetX;
+      if (!leadingAnyX || onsetX > *leadingAnyX)
+      {
+        leadingAnyX = onsetX;
+        leadingAnyUtick = thing->GetBeginTick().withRepeats;
+      }
       trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
       if (active)
       {
@@ -356,12 +369,13 @@ void OrchestrionNotationPaintView::OnTransitions(
                             ? m_estimator.asynchrony(0, 1, nowMs)
                             : std::optional<PositionEstimator::Judgment>{};
 
-  m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX,
-                      // Not every batch pre-lights an upcoming chord — the
-                      // automatic player releases one note and strikes the
-                      // next in the same batch — so fall back to what is
-                      // sounding.
-                      nextX ? nextX : leadingAnyX);
+  // Not every batch pre-lights an upcoming chord — the automatic player
+  // releases one note and strikes the next in the same batch — so fall back
+  // to what is sounding.
+  const std::optional<double> focusX = nextX ? nextX : leadingAnyX;
+  const std::optional<int> focusUtick = nextX ? nextUtick : leadingAnyUtick;
+  m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX, focusX,
+                      focusUtick ? nextBarrier(*focusUtick) : std::nullopt);
 
   if (replaying)
   {
@@ -1837,6 +1851,45 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   moveCanvasToPosition(muse::PointF{leftLogicalX, topLogicalY});
 
   m_constrainingScorePosition = false;
+}
+
+std::optional<ScoreFollower::Barrier>
+OrchestrionNotationPaintView::nextBarrier(int utick) const
+{
+  const auto notation = this->notation();
+  if (!notation)
+    return std::nullopt;
+  const mu::engraving::Score *score = notation->elements()->msScore();
+  if (!score)
+    return std::nullopt;
+  // The expanded list is the one the sequencer unrolled the score with (see
+  // OrchestrionSequencerFactory), so its uticks are the chords'.
+  const mu::engraving::RepeatList &repeats = score->repeatList(true);
+  for (std::size_t i = 0; i < repeats.size(); ++i)
+  {
+    const mu::engraving::RepeatSegment *segment = repeats[i];
+    if (utick >= segment->utick + segment->len())
+      continue; // not there yet
+    // The reading carries on from one unrolled segment into the next as long
+    // as the next starts at the score tick where this one ends (the list is
+    // also cut at repeat starts and voltas that are simply played through).
+    while (i + 1 < repeats.size() &&
+           repeats[i + 1]->tick == segment->tick + segment->len())
+      segment = repeats[++i];
+    const mu::engraving::Measure *last = segment->lastMeasure();
+    if (!last)
+      return std::nullopt;
+    ScoreFollower::Barrier barrier;
+    barrier.x = last->pageBoundingRect().right();
+    // Where the reading resumes — the start of the next unrolled segment —
+    // matters to the framing only when it lies behind the barrier (a repeat).
+    if (i + 1 < repeats.size())
+      if (const mu::engraving::Measure *first = repeats[i + 1]->firstMeasure())
+        if (const double x = first->pageBoundingRect().left(); x < barrier.x)
+          barrier.resumeX = x;
+    return barrier;
+  }
+  return std::nullopt;
 }
 
 double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,

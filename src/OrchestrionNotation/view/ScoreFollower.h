@@ -37,6 +37,20 @@ namespace dgk
 //! then brought back to anchorFrac over a short ease. Between turns nothing
 //! moves at all.
 //!
+//! The one exception to "the next event lands on the anchor" is the last turn
+//! before a barrier — the barline past which the reading does not carry on:
+//! a repeat's end on the pass that jumps back, or the final barline. What the
+//! reader needs then is the way to the barrier and, for a repeat, the section
+//! start it jumps back to; what precedes that start is past, and of no
+//! interest. So the turn that would bring the barrier into view frames these
+//! instead: it scrolls just far enough that the barrier is at least
+//! barrierMarginPx inside the right edge *and* no more than barrierMarginPx
+//! of what precedes the repeat's start shows at the left. Whichever of the
+//! two asks for the further scroll decides — a long section leaves its start
+//! off the page, a short one leaves more than the margin of what follows the
+//! barrier on it, both fine — and when the start is on the page, the jump
+//! back finds it there and the page does not move at all.
+//!
 //! It follows *events*, not a tempo estimate: everything here is score
 //! geometry (where the next note is engraved) and time (how long the turn
 //! takes). Qt-free apart from the timers; the viewport is reached through a
@@ -73,6 +87,20 @@ public:
   //! the page as possible.
   static constexpr double anchorFrac = 1.0 / 10.0;
 
+  //! The barline past which the reading does not carry on from the focus (see
+  //! the class comment), and where it resumes.
+  struct Barrier
+  {
+    //! Engraved x of the barline: the right edge of the last measure read
+    //! before the jump (or of the score).
+    double x = 0.0;
+    //! Engraved x where the reading resumes after the barrier, when that is
+    //! *behind* it — the start of the repeated section, which the last turn
+    //! keeps on the page when it can. Unset for the final barline and for a
+    //! jump ahead (a volta skipped, a coda): nothing to keep there.
+    std::optional<double> resumeX;
+  };
+
   explicit ScoreFollower(Canvas &canvas);
 
   ScoreFollower(const ScoreFollower &) = delete;
@@ -86,9 +114,15 @@ public:
   //! \p nextX is what the reader needs to see next — the most imminent
   //! upcoming onset, or the leading sounding one when this batch pre-lights
   //! nothing — and is what the page keeps in view.
+  //! \p barrier is the next barline past which the reading does not carry on
+  //! from \p nextX — a repeat's end on the pass that jumps back, the point a
+  //! volta or a jump leaves from, or the final barline — and, for a repeat,
+  //! where it resumes (see Barrier). The last turn before it frames it rather
+  //! than the focus (see the class comment).
   void onEvents(const std::map<int /*staff*/, double /*onsetX*/> &soundingX,
                 std::optional<double> leadingAny,
-                std::optional<double> trailingAny, std::optional<double> nextX);
+                std::optional<double> trailingAny, std::optional<double> nextX,
+                std::optional<Barrier> barrier);
 
   //! Advance the follow for one rendered frame. The owner calls this from the
   //! window's per-frame hook, so the motion is sampled in step with the
@@ -122,6 +156,14 @@ private:
   //! zooming out if \p trailingX would not fit in the view with it.
   void frame(double leadingX, double trailingX);
 
+  //! Whether resting \p focusX on the anchor at \p scaling would bring the
+  //! barrier into view — which makes that turn the last one before it, and
+  //! the barrier framing (below) what it does instead.
+  bool barrierInView(double focusX, double scaling) const;
+  //! The barrier framing's anchor at \p scaling (see the class comment) —
+  //! short of pushing \p focusX off the left edge.
+  double barrierAnchorX(double scaling, double focusX) const;
+
   Canvas &_canvas;
   QElapsedTimer _clock; // wall clock for event timestamps (ms)
   QTimer _timer;        // fallback driver when no frames are being rendered
@@ -147,6 +189,8 @@ private:
   //! relocation's.
   double _pageTauMs = 500.0;
   std::optional<double> _focusX;
+  //! The barline the reading will not carry on through (see onEvents).
+  std::optional<Barrier> _barrier;
 
   //! Where each hand last struck, and when. The auto-zoom uses it to keep
   //! hands that are playing at once on the same page; the timestamp is what
