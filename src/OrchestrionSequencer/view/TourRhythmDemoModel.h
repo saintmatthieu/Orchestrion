@@ -47,6 +47,8 @@ class TourRhythmDemoModel : public QObject,
   Q_PROPERTY(bool muted READ muted NOTIFY mutedChanged)
 
   muse::Inject<IOrchestrion> orchestrion;
+  //! Only for isPlayAllowed(): whether a score is loaded and playable. The
+  //! playing state itself comes from Orchestrion's own player.
   muse::Inject<mu::playback::IPlaybackController> playbackController;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<muse::audio::IPlayback> playback;
@@ -72,6 +74,7 @@ signals:
 
 private:
   void subscribeToSequencer();
+  bool isPlaying() const;
   void startPlayback();
   void setMasterMuted(bool);
   void updateKeys();

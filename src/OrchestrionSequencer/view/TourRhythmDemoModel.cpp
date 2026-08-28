@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "TourRhythmDemoModel.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 
 #include "audio/iaudiooutput.h"
 
@@ -30,33 +31,32 @@ void TourRhythmDemoModel::init()
   orchestrion()->sequencerChanged().onNotify(this, [this]
                                              { subscribeToSequencer(); });
 
-  // Loop: when the score reaches the end while the page is showing, start
-  // over. (Our own stop() flips m_active off before dispatching "stop".)
-  playbackController()->isPlayingChanged().onNotify(
-      this,
-      [this]
-      {
-        if (playbackController()->isPlaying())
-          return;
-        m_alternator.reset();
-        updateKeys();
-        if (m_active)
-          startPlayback();
-      });
-
   // The score may still be loading when the page appears.
   playbackController()->isPlayAllowedChanged().onNotify(
       this,
       [this]
       {
-        if (m_active && playbackController()->isPlayAllowed() &&
-            !playbackController()->isPlaying())
+        if (m_active && playbackController()->isPlayAllowed() && !isPlaying())
           startPlayback();
       });
 }
 
 void TourRhythmDemoModel::subscribeToSequencer()
 {
+  // Loop: when the piece reaches its end while the page is showing, start
+  // over. (Our own stop() flips m_active off before dispatching stop.) The
+  // player lives and dies with the sequencer, hence the subscription here.
+  orchestrion()->player()->PlayingChanged().onNotify(this,
+                                                     [this]
+                                                     {
+                                                       if (isPlaying())
+                                                         return;
+                                                       m_alternator.reset();
+                                                       updateKeys();
+                                                       if (m_active)
+                                                         startPlayback();
+                                                     });
+
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     return;
@@ -77,17 +77,22 @@ void TourRhythmDemoModel::start()
   m_active = true;
   m_alternator.reset();
   updateKeys();
-  if (playbackController()->isPlayAllowed() &&
-      !playbackController()->isPlaying())
+  if (playbackController()->isPlayAllowed() && !isPlaying())
     startPlayback();
+}
+
+bool TourRhythmDemoModel::isPlaying() const
+{
+  return orchestrion()->player()->IsPlaying();
 }
 
 void TourRhythmDemoModel::startPlayback()
 {
-  if (!playbackController()->isPlayAllowed())
+  if (!playbackController()->isPlayAllowed() || isPlaying())
     return;
   dispatcher()->dispatch("rewind");
-  dispatcher()->dispatch("play");
+  // Orchestrion's own transport, not MuseScore's "play" (see actionIds).
+  dispatcher()->dispatch(actionIds::playbackToggle);
 }
 
 void TourRhythmDemoModel::stop()
@@ -95,8 +100,8 @@ void TourRhythmDemoModel::stop()
   if (!m_active)
     return;
   m_active = false;
-  if (playbackController()->isPlaying())
-    dispatcher()->dispatch("stop");
+  if (isPlaying())
+    dispatcher()->dispatch(actionIds::playbackStop);
   // Leave the score ready to be played from the top.
   dispatcher()->dispatch("rewind");
   m_alternator.reset();
