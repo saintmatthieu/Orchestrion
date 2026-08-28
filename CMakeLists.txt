@@ -3,7 +3,8 @@ cmake_policy(SET CMP0000 NEW)
 cmake_policy(SET CMP0079 NEW)
 
 # Set the project name and version
-project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
+# The three components (x.y.z) are needed for WiX's Product/@Version attribute.
+project(Orchestrion VERSION 1.0.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
 find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
