@@ -154,7 +154,9 @@ jobs:
 
   build_mac:
     if: ${{ !contains(github.event.head_commit.message, '[skip mac]') }}
-    runs-on: macos-latest
+    # Pinned (not macos-latest): macOS 26 / Xcode 26's SDK dropped AGL.framework,
+    # which Qt 6.9.1 still unconditionally links against.
+    runs-on: macos-15
 
     steps:
       - name: Install libsndfile
