@@ -3,6 +3,7 @@ declare_module(OrchestrionSequencer)
 set(MODULE_SRC
     internal/AutomaticOrchestrionPlayer.cpp
     internal/AutomaticOrchestrionPlayer.h
+    internal/OrchestrionPlayerStub.h
     internal/ChordTransitionUtil.cpp
     internal/ChordTransitionUtil.h
     internal/GestureControllerConfigurator.cpp
@@ -43,6 +44,7 @@ set(MODULE_SRC
     IModifiableItemRegistry.h
     OrchestrionTypes.h
     IOrchestrion.h
+    IOrchestrionPlayer.h
     IOrchestrionSequencer.h
     IRest.h
     OrchestrionModule.cpp

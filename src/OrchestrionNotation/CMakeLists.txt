@@ -11,16 +11,22 @@ set(MODULE_SRC
   view/HighlightFader.h
   view/KineticScroller.cpp
   view/KineticScroller.h
-  view/ScoreFollower.cpp
-  view/ScoreFollower.h
   view/OrchestrionNotationPaintView.cpp
   view/OrchestrionNotationPaintView.h
   ILoopBoundariesController.h
+  view/ScoreFollower.cpp
+  view/ScoreFollower.h
+  view/TempoVisualizationView.cpp
+  view/TempoVisualizationView.h
+  view/TempoVizModel.cpp
+  view/TempoVizModel.h
+  view/TimingFeedbackOverlay.cpp
+  view/TimingFeedbackOverlay.h
   IOrchestrionNotationInteractionProcessor.h
   OrchestrionNotationModule.cpp
   OrchestrionNotationModule.h
 )
 
-set(MODULE_LINK notation)
+set(MODULE_LINK notation PositionEstimation)
 
 setup_module()

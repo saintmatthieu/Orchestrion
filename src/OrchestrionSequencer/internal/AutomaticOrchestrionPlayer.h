@@ -18,15 +18,21 @@
  */
 #pragma once
 
+#include "IOrchestrionPlayer.h"
 #include "IOrchestrionSequencer.h"
+#include <QElapsedTimer>
+#include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
+#include <async/notification.h>
 #include <modularity/ioc.h>
 #include <playback/iplaybackcontroller.h>
 
 namespace dgk
 {
-class AutomaticOrchestrionPlayer : public muse::async::Asyncable,
+class AutomaticOrchestrionPlayer : public IOrchestrionPlayer,
+                                   public muse::async::Asyncable,
+                                   public muse::actions::Actionable,
                                    public muse::Injectable
 {
   muse::Inject<mu::playback::IPlaybackController> playbackController;
@@ -35,10 +41,24 @@ class AutomaticOrchestrionPlayer : public muse::async::Asyncable,
 public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
 
+  // IOrchestrionPlayer
+  void SetReplayTake(std::optional<ReplayTake> take) override;
+  bool IsReplaying() const override { return m_replayActive; }
+  bool IsPlaying() const override { return m_playing; }
+  muse::async::Notification PlayingChanged() const override
+  {
+    return m_playingChanged;
+  }
+
 private:
+  void TogglePlay();
+  void Stop();
   void ScheduleNext();
   void FireAndContinue(const NextAutoPlayEvents &events);
   int TicksToMilliseconds(int ticks) const;
+  void StartReplay();
+  void ScheduleReplayNext();
+  void FireReplayEvent();
 
   IOrchestrionSequencer &m_sequencer;
   bool m_playing = false;
@@ -50,5 +70,15 @@ private:
   // from the AboutToJumpPosition notification — the sequencer state is not
   // settled yet, and FireAndContinue reschedules after they return anyway.
   bool m_firingInputEvents = false;
+
+  muse::async::Notification m_playingChanged;
+
+  std::optional<ReplayTake> m_replayTake;
+  bool m_replayActive = false;
+  // True while the replay performs its own rewind to the take's start, so
+  // that jump isn't taken for the user navigating away.
+  bool m_selfJump = false;
+  std::size_t m_replayIndex = 0;
+  QElapsedTimer m_replayClock;
 };
 } // namespace dgk

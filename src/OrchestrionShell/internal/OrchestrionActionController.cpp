@@ -18,6 +18,7 @@
  */
 #include "OrchestrionActionController.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
+#include <async/async.h>
 #include <engraving/dom/masterscore.h>
 #include <notation/imasternotation.h>
 
@@ -62,6 +63,72 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setNoteInfoTooltipEnabled(
                           !sequencerConfig()->noteInfoTooltipEnabled());
                     });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-tempo-visualization",
+                    [this]
+                    {
+                      sequencerConfig()->setTempoVisualizationEnabled(
+                          !sequencerConfig()->tempoVisualizationEnabled());
+                    });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-grading",
+                    [this]
+                    {
+                      sequencerConfig()->setGradingEnabled(
+                          !sequencerConfig()->gradingEnabled());
+                    });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-persistent-timing-marks",
+                    [this]
+                    {
+                      sequencerConfig()->setPersistentTimingMarksEnabled(
+                          !sequencerConfig()->persistentTimingMarksEnabled());
+                    });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-hand-sync-score",
+                    [this]
+                    {
+                      sequencerConfig()->setHandSyncScoreEnabled(
+                          !sequencerConfig()->handSyncScoreEnabled());
+                    });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-dynamics-score",
+                    [this]
+                    {
+                      sequencerConfig()->setDynamicsScoreEnabled(
+                          !sequencerConfig()->dynamicsScoreEnabled());
+                    });
+  dispatcher()->reg(this, actionIds::toggleGradingExposure,
+                    [this]
+                    {
+                      sequencerConfig()->setGradingExposed(
+                          !sequencerConfig()->gradingExposed());
+                    });
+  dispatcher()->reg(this, actionIds::toggleAutoPlayExposure,
+                    [this]
+                    {
+                      sequencerConfig()->setAutoPlayExposed(
+                          !sequencerConfig()->autoPlayExposed());
+                    });
+  // Tempo-following auto-play: at most one hand at a time (the other one is
+  // yours — for full playback there is the playback button). A one-of-three
+  // choice, so each action sets its value outright.
+  dispatcher()->reg(this, actionIds::autoPlayNone,
+                    [this] { sequencerConfig()->setAutoPlayedStaff(-1); });
+  dispatcher()->reg(this, actionIds::autoPlayLeftHand,
+                    [this] { sequencerConfig()->setAutoPlayedStaff(1); });
+  dispatcher()->reg(this, actionIds::autoPlayRightHand,
+                    [this] { sequencerConfig()->setAutoPlayedStaff(0); });
+  dispatcher()->reg(this, "orchestrion-advanced-toggle-proportional-spacing",
+                    [this]
+                    {
+                      sequencerConfig()->setTimeProportionalSpacingEnabled(
+                          !sequencerConfig()->timeProportionalSpacingEnabled());
+                    });
+
+  dispatcher()->reg(
+      this, actionIds::playModePerformance,
+      [this] { orchestrion()->setPlayMode(PlayMode::replayPerformance); });
+  dispatcher()->reg(
+      this, actionIds::playModeFittedTempo,
+      [this] { orchestrion()->setPlayMode(PlayMode::replayFittedTempo); });
+  dispatcher()->reg(this, actionIds::playModeMetronome, [this]
+                    { orchestrion()->setPlayMode(PlayMode::metronome); });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
@@ -71,9 +138,9 @@ void OrchestrionActionController::init()
   dispatcher()->reg(
       this, actionIds::reverbHall,
       [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Hall); });
-  dispatcher()->reg(this, actionIds::reverbCathedral, [this] {
-    synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral);
-  });
+  dispatcher()->reg(
+      this, actionIds::reverbCathedral,
+      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral); });
 
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
@@ -106,9 +173,40 @@ void OrchestrionActionController::init()
                         seq->GoToTick(0);
                     });
 
+  // Repeats are unrolled at load time when grading is on (see
+  // Orchestrion::init) — a one-way, in-place rewrite of the score. So a
+  // grading switch only takes effect, in either direction, by reloading the
+  // score.
+  globalContext()->currentMasterNotationChanged().onNotify(
+      this, [this]
+      { m_scoreLoadedWithGrading = sequencerConfig()->gradingEnabled(); });
+  sequencerConfig()->gradingEnabledChanged().onNotify(this, [this]
+                                                      { reloadForGrading(); });
+
   projectConfiguration()->setShouldAskSaveLocationType(false);
   projectConfiguration()->setLastUsedSaveLocationType(
       mu::project::SaveLocationType::Local);
+}
+
+void OrchestrionActionController::reloadForGrading()
+{
+  const bool grading = sequencerConfig()->gradingEnabled();
+  if (grading == m_scoreLoadedWithGrading)
+    return; // the loaded score already has the repeat layout we need
+  m_scoreLoadedWithGrading = grading;
+
+  const mu::project::INotationProjectPtr project =
+      globalContext()->currentProject();
+  if (!project)
+    return;
+  const QUrl url = QUrl::fromLocalFile(project->path().toQString());
+  if (!url.isValid())
+    return;
+
+  // Deferred: the switch usually comes from a click in the score view, whose
+  // model we are about to tear down and rebuild.
+  muse::async::Async::call(this, [this, url]
+                           { openProject(mu::project::ProjectFile(url)); });
 }
 
 bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)

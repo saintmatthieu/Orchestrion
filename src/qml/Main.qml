@@ -78,6 +78,20 @@ ApplicationWindow {
         id: onboardingModel
     }
 
+    // Shared by the top-row grading buttons, the settings dialog and the
+    // Grading menu's "Settings…" action.
+    GradingModel {
+        id: gradingModel
+        Component.onCompleted: load()
+    }
+
+    // Likewise for auto-play: the top-row button, its choice popup and the
+    // Auto-play menu.
+    AutoPlayModel {
+        id: autoPlayModel
+        Component.onCompleted: load()
+    }
+
     OrchestrionWindowTitleProvider {
         id: titleProvider
     }
@@ -219,6 +233,30 @@ ApplicationWindow {
                     }
                 }
 
+                // The two first-class controls get the top centre: grading
+                // switches between plain playing and the graded performance,
+                // auto-play hands one of the hands to the machine.
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 8
+                    spacing: 8
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    GradingButton {
+                        model: gradingModel
+                        visible: gradingModel.exposed
+                    }
+
+                    AutoPlayButton {
+                        model: autoPlayModel
+                        visible: autoPlayModel.exposed
+                        onClicked: autoPlayPopup.open()
+                    }
+                }
+
                 // Beginner help: number-key tooltip + "Show me!" animation.
                 // Stays put (not tied to the fading controls overlay).
                 NumberKeysHelp {
@@ -243,10 +281,269 @@ ApplicationWindow {
                     delay: 0
                     visible: notationPaintView.hoveredNoteInfo.length > 0
                     text: notationPaintView.hoveredNoteInfo
-                    x: notationPaintView.hoveredNoteInfoPos.x + 16
-                    y: notationPaintView.hoveredNoteInfoPos.y + 16
+                    // Below-right of the cursor by default; a timing gauge's
+                    // tip anchors beside the onset's noteheads instead —
+                    // left of an early note's coloured copy, right of a late
+                    // one's — so it covers neither the black nor the
+                    // coloured notes.
+                    x: notationPaintView.hoveredNoteInfoPlacement === 1
+                       ? notationPaintView.hoveredNoteInfoPos.x - width
+                       : notationPaintView.hoveredNoteInfoPos.x
+                         + (notationPaintView.hoveredNoteInfoPlacement === 2 ? 0 : 16)
+                    y: notationPaintView.hoveredNoteInfoPlacement === 0
+                       ? notationPaintView.hoveredNoteInfoPos.y + 16
+                       : notationPaintView.hoveredNoteInfoPos.y - height / 2
+                }
+
+                // The grading configuration dialog, opened from the Grading
+                // menu's "Settings…" item.
+                GradingSettingsPopup {
+                    id: gradingPopup
+                    z: 105
+                    model: gradingModel
+                    x: (parent.width - width) / 2
+                    y: (parent.height - height) / 3
+                }
+
+                Connections {
+                    target: gradingModel
+                    function onOpenSettingsRequested() {
+                        gradingPopup.open()
+                    }
+                }
+
+                // Which hand the machine plays: opened from the top-row
+                // auto-play button and from the Auto-play menu.
+                AutoPlaySettingsPopup {
+                    id: autoPlayPopup
+                    z: 105
+                    model: autoPlayModel
+                    x: (parent.width - width) / 2
+                    y: (parent.height - height) / 3
+                }
+
+                Connections {
+                    target: autoPlayModel
+                    function onOpenSettingsRequested() {
+                        autoPlayPopup.open()
+                    }
+                }
+
+                // End-of-piece banner: the take's timing score, raised by the
+                // paint view when the last notes are released. Closes with
+                // the cross, Escape, or by starting to play again.
+                Rectangle {
+                    id: scoreBanner
+                    z: 103
+
+                    // Keep the last real score during the fade-out (the
+                    // properties reset the moment it is dismissed).
+                    property int shownScore: 0
+                    property string shownBreakdown: ""
+                    property var shownMetrics: []
+                    // The metrics panel starts collapsed and folds back for
+                    // the next take.
+                    property bool expanded: false
+                    Connections {
+                        target: notationPaintView
+                        function onFinalScoreChanged() {
+                            if (notationPaintView.finalScore >= 0) {
+                                scoreBanner.shownScore = notationPaintView.finalScore
+                                scoreBanner.shownBreakdown = notationPaintView.finalScoreBreakdown
+                                scoreBanner.shownMetrics = notationPaintView.finalScoreMetrics
+                            } else {
+                                scoreBanner.expanded = false
+                            }
+                        }
+                    }
+
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: parent.height / 5
+                    width: bannerColumn.width + 96
+                    height: bannerColumn.height + 40
+                    radius: scoreBanner.expanded ? 24 : height / 2
+                    Behavior on height { NumberAnimation { duration: 200 } }
+                    Behavior on width { NumberAnimation { duration: 200 } }
+                    color: "#E8241811"
+                    border.color: "#E5B84B"
+                    border.width: 2
+                    visible: opacity > 0
+                    opacity: notationPaintView.finalScore >= 0 ? 1 : 0
+                    scale: notationPaintView.finalScore >= 0 ? 1 : 0.7
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 350
+                            easing.type: Easing.OutBack
+                        }
+                    }
+
+                    Column {
+                        id: bannerColumn
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Text {
+                            id: scoreBannerText
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: qsTr("You scored %1 !").arg(scoreBanner.shownScore)
+                            color: "#E5B84B"
+                            font.pixelSize: 40
+                            font.bold: true
+                        }
+
+                        Text {
+                            visible: scoreBanner.shownBreakdown.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: scoreBanner.shownBreakdown
+                            color: "#C9B583"
+                            font.pixelSize: 17
+                        }
+
+                        // The expander: what the score was made of.
+                        Text {
+                            id: expandArrow
+                            visible: scoreBanner.shownMetrics.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: scoreBanner.expanded ? "▴" : "▾"
+                            color: "#C9B583"
+                            font.pixelSize: 18
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -10
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: scoreBanner.expanded = !scoreBanner.expanded
+                            }
+                        }
+
+                        Column {
+                            id: metricsColumn
+                            visible: scoreBanner.expanded
+                                     && scoreBanner.shownMetrics.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            topPadding: 6
+                            spacing: 6
+
+                            Repeater {
+                                model: scoreBanner.shownMetrics
+
+                                // Intrinsic sizing throughout: the banner
+                                // sizes itself from this column, so a row
+                                // must never take its width from it.
+                                Row {
+                                    spacing: 16
+
+                                    Column {
+                                        width: 220
+                                        spacing: 1
+
+                                        Text {
+                                            text: modelData.label
+                                            color: "#F0E5C8"
+                                            font.pixelSize: 15
+                                        }
+
+                                        Text {
+                                            text: modelData.detail
+                                            color: "#C9B583"
+                                            font.pixelSize: 12
+                                        }
+                                    }
+
+                                    Text {
+                                        width: 40
+                                        horizontalAlignment: Text.AlignRight
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: modelData.score
+                                        color: "#E5B84B"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "✕"
+                        color: "#B8A88F"
+                        font.pixelSize: 16
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.topMargin: 10
+                        anchors.rightMargin: 14
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -8
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: notationPaintView.dismissFinalScore()
+                        }
+                    }
+
+                    Shortcut {
+                        sequence: "Escape"
+                        enabled: scoreBanner.visible
+                        onActivated: notationPaintView.dismissFinalScore()
+                    }
+                }
+
+                // Post-take tuning panel: the tempo model's smoothing memory.
+                // Dragging the slider re-fits the finished take live, so the
+                // effect on the curve, marks and warp is directly observable.
+                Rectangle {
+                    id: smoothingTuner
+                    z: 104
+
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 24
+                    width: tunerRow.width + 48
+                    height: tunerRow.height + 24
+                    radius: height / 2
+                    color: "#E8241811"
+                    border.color: "#E5B84B"
+                    border.width: 1
+                    visible: opacity > 0
+                    opacity: notationPaintView.smoothingTunerVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    Row {
+                        id: tunerRow
+                        anchors.centerIn: parent
+                        spacing: 12
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("tempo smoothing: %1")
+                                      .arg(notationPaintView.tempoSmoothing.toFixed(2))
+                            color: "#C9B583"
+                            font.pixelSize: 15
+                        }
+
+                        Slider {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 220
+                            from: 0.3
+                            to: 0.95
+                            value: notationPaintView.tempoSmoothing
+                            onMoved: notationPaintView.tempoSmoothing = value
+                        }
+                    }
                 }
             }
+        }
+
+        // Debug aid: real-time tempo-model visualization, toggled from the
+        // Advanced menu ("Show tempo visualization"). Sits beneath the score
+        // with a small margin; reserves no space when hidden.
+        TempoVisualizationView {
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 120 : 0
+            Layout.margins: visible ? 8 : 0
+            visible: notationPaintView.tempoVisualizationEnabled
+            model: notationPaintView.tempoVizModel
         }
     }
 

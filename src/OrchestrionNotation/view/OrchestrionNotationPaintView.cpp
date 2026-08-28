@@ -25,23 +25,71 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QQuickWindow>
+#include <QTimer>
+#include <QVariantMap>
 #include <QWheelEvent>
+#include <algorithm>
 #include <engraving/dom/chord.h>
 #include <engraving/dom/masterscore.h>
+#include <engraving/dom/measure.h>
 #include <engraving/dom/note.h>
 #include <engraving/dom/segment.h>
+#include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
+#include <notation/imasternotation.h>
 
 #include <cmath>
+#include <optional>
 
 namespace dgk
 {
+namespace
+{
+// No dynamics verdict until the loudness curve holds this many gestures: a
+// curve through two or three points fits the performer by construction (the
+// same reasoning as the timing judgments' window).
+constexpr std::size_t dynamicsMinKnots = 4;
+
+// The sequencer routes input events to hands by pitch (< 60 = left hand, see
+// OrchestrionSequencer::OnInputEventRecursive) — the same sentinels the
+// automatic player uses.
+constexpr int rightHandPitch = 60;
+constexpr int leftHandPitch = 59;
+
+// The warp-bake animation: the score morphs from ideal to performed spacing
+// (each step is a full horizontal relayout — cheap in linear view mode).
+constexpr int warpAnimSteps = 18;
+constexpr int warpAnimStepMs = 40;
+
+// The post-take beat grid: one line per quarter note (the sequencer's tick
+// resolution is 480 per quarter).
+constexpr int beatGridTicks = 480;
+} // namespace
+
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
     : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
+      m_timingOverlay([this] { update(); }), m_follower(*this),
       m_kineticScroller([this](qreal physicalDx)
-                        { return moveCanvasBy(physicalDx); }),
-      m_follower(*this)
+                        { return moveCanvasBy(physicalDx); })
 {
+  m_clock.start();
+  m_autoPlayTimer.setInterval(16); // ~60 Hz
+  m_autoPlayTimer.callOnTimeout(
+      [this]
+      {
+        const double nowMs = static_cast<double>(m_clock.elapsed());
+        // The estimate must keep advancing (and coasting) even when the page
+        // is still and no frames are being rendered.
+        m_estimator.heartbeat(nowMs);
+        fireDueAutoEvents(nowMs);
+      });
+  m_warpTimer.setInterval(warpAnimStepMs);
+  m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
+}
+
+bool OrchestrionNotationPaintView::tempoVisualizationEnabled() const
+{
+  return sequencerConfiguration()->tempoVisualizationEnabled();
 }
 
 void OrchestrionNotationPaintView::subscribe(
@@ -58,6 +106,48 @@ void OrchestrionNotationPaintView::subscribe(
 
   registry.ModifiedChanged().onNotify(this, [this] { update(); });
 
+  // The raw controller velocity of each gesture, for the dynamics scoring:
+  // the event precedes the transitions batch the gesture causes.
+  sequencer.HandNoteEvents().onReceive(
+      this,
+      [this](const AutoPlayEvent &event)
+      {
+        if (event.type == NoteEventType::noteOn)
+          m_pendingHandVelocity[event.isLeftHand ? 1 : 0] = event.velocity;
+
+        // Record the take's raw events, for the post-take replay — part of
+        // the grading apparatus (without it, the play button is
+        // plain metronomic playback).
+        if (!sequencerConfiguration()->gradingEnabled())
+          return;
+        // A note-on while the previous take's stats are stale begins a new
+        // take (this event precedes the transitions batch that restarts the
+        // stats).
+        if (orchestrion()->player()->IsReplaying())
+          return; // the replay's own events aren't a new performance
+        const bool newTake = event.type == NoteEventType::noteOn &&
+                             (m_timingStatsStale || m_replayEvents.empty());
+        if (newTake)
+        {
+          m_replayEvents.clear();
+          m_replayClock.restart();
+          m_replayStartTick = std::numeric_limits<int>::max();
+          m_takeOver = false;
+          // From here on, the play button is the metronomic playback again —
+          // until this take, in turn, is over.
+          orchestrion()->player()->SetReplayTake(std::nullopt);
+        }
+        else if (m_replayEvents.empty())
+          return; // a stray release before any take began
+        m_replayEvents.push_back(
+            {newTake ? 0 : static_cast<int>(m_replayClock.elapsed()),
+             event.type, event.isLeftHand, event.velocity});
+        // A release arriving after the take ended still belongs to it: keep
+        // the pushed copy complete, so replayed notes don't ring forever.
+        if (m_timingStatsStale && !newTake)
+          pushReplayTake();
+      });
+
   if (const auto &transitions = sequencer.GetCurrentTransitions();
       !transitions.empty())
     OnTransitions(transitions);
@@ -66,12 +156,24 @@ void OrchestrionNotationPaintView::subscribe(
                                             [this](auto)
                                             {
                                               m_kineticScroller.stop();
-                                              // The position jumps: re-frame
-                                              // at the new location on the
-                                              // next transitions.
+                                              // The position jumps: forget the
+                                              // tempo estimate and re-frame at
+                                              // the new location on the next
+                                              // transitions.
+                                              // The jump's transitions batch
+                                              // repopulates the ledger.
+                                              m_autoTrackTargets.clear();
                                               m_follower.jump();
+                                              m_estimator.reset();
+                                              m_loudness.clear();
+                                              m_tempoVizModel.clear();
                                               m_boxes.clear();
                                               m_fader.clear();
+                                              // An interruption: the timing
+                                              // stats restart when playing
+                                              // resumes (readable until then).
+                                              m_timingStatsStale = true;
+                                              endTake();
                                               update();
                                             });
 }
@@ -79,14 +181,37 @@ void OrchestrionNotationPaintView::subscribe(
 void OrchestrionNotationPaintView::OnTransitions(
     const std::map<TrackIndex, ChordTransition> &transitions)
 {
-  // Where each hand (= staff) has got to, and the outermost onsets of this
-  // batch — sounding or upcoming — which frame the start of a take.
+  // Onsets driving the follow, grouped per hand (= staff): the voices on a
+  // staff are played by the same gestures, so they share one tracker. Each
+  // hand's sounding onset is a tempo observation for it; the leading/trailing
+  // of all onsets (sounding or upcoming) feed the one-shot initial framing.
+  // Each sounding hand's onset: its engraved x (what the page scroll needs)
+  // and its playback-unrolled tick (what the estimate is built on).
   std::map<int /*staff*/, double /*onsetX*/> soundingX;
+  std::map<int /*staff*/, double /*utick*/> soundingTicks;
+  // The gesture's controller velocity per hand, when the device measures one:
+  // the dynamics judgments' input.
+  std::map<int /*staff*/, double> soundingVelocity;
+  std::map<int /*staff*/, int> presentScoreTicks; // engraved position
+  std::map<int /*staff*/, const mu::engraving::EngravingItem *> presentAnchors;
   std::optional<double> leadingAnyX;
   std::optional<double> trailingAnyX;
   // The next event to play — the most imminent upcoming onset across the
   // tracks — which is what the page scroll keeps in view.
   std::optional<double> nextX;
+  // Where to place a hand's timing gauge if its onset gets judged: the union
+  // of the boxes of the notes it struck this batch, plus the staff's edges so
+  // the gauge keeps clear of the staff lines.
+  struct StaffHit
+  {
+    QRectF rect;
+    double spatium = 1.0;
+    double staffTop = 0.0;
+    double staffBottom = 0.0;
+    // The struck notes' engraving items, for the tempo-warped shadow copies.
+    std::vector<mu::engraving::EngravingItem *> items;
+  };
+  std::map<int /*staff*/, StaffHit> staffHits;
 
   for (const auto &[track, transition] : transitions)
   {
@@ -151,6 +276,24 @@ void OrchestrionNotationPaintView::OnTransitions(
     box.color = QColor(mahogany);
     box.intensity = active ? 1.0 : 0.3;
 
+    if (active)
+    {
+      StaffHit &hit = staffHits[track.staffIndex()];
+      hit.rect = hit.rect.isNull() ? box.rect : hit.rect.united(box.rect);
+      hit.spatium = spatium;
+      hit.items.insert(hit.items.end(), items.begin(), items.end());
+      if (const mu::engraving::System *system = segment->measure()->system())
+      {
+        hit.staffTop = system->staffYpage(track.staffIndex());
+        hit.staffBottom = hit.staffTop + 4.0 * spatium; // the 5 staff lines
+      }
+      else
+      {
+        hit.staffTop = hit.rect.top();
+        hit.staffBottom = hit.rect.bottom();
+      }
+    }
+
     // Onset x of this track's note (page-logical), for the follow. Use the
     // segment element rather than the hugging box, whose width includes ties.
     if (const auto el = segment->element(track.value))
@@ -160,14 +303,58 @@ void OrchestrionNotationPaintView::OnTransitions(
       trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
       if (active)
       {
-        // Collapse a staff's voices into one position: its rightmost onset.
+        // Collapse a staff's voices into one onset (its rightmost), carrying
+        // the playback-unrolled tick — continuous through repeats, voltas and
+        // jumps — for the musical-tempo readout and the timing judgments.
         const int hand = track.staffIndex();
+        // The gesture's controller velocity (cached from HandNoteEvents just
+        // before this batch), for the dynamics judgments.
+        const std::optional<float> &velocity =
+            m_pendingHandVelocity[hand > 0 ? 1 : 0];
         const auto it = soundingX.find(hand);
         if (it == soundingX.end() || onsetX > it->second)
+        {
           soundingX[hand] = onsetX;
+          soundingTicks[hand] =
+              static_cast<double>(present->GetBeginTick().withRepeats);
+          if (velocity)
+            soundingVelocity[hand] = *velocity;
+          else
+            soundingVelocity.erase(hand);
+          presentScoreTicks[hand] = segment->tick().ticks();
+          presentAnchors[hand] = el;
+        }
       }
     }
   }
+
+  // A replay of the finished take: the review visuals (marks, ribbon, warp,
+  // stats) stay frozen for comparison with what is heard; only the follower
+  // (scroll) and the note highlights track the replayed events.
+  const bool replaying = orchestrion()->player()->IsReplaying();
+
+  // Which hands are about to have their estimate restarted (they had coasted
+  // to a stop): their loudness curve restarts with it. Asked before the
+  // estimator consumes this batch, which is what clears the coast.
+  std::vector<int> resumingHands;
+  for (const auto &[staff, utick] : soundingTicks)
+    if (m_estimator.isCoasting(staff))
+      resumingHands.push_back(staff);
+
+  const double nowMs = static_cast<double>(m_clock.elapsed());
+  const PositionEstimator::Feedback feedback =
+      m_estimator.onOnsets(nowMs, soundingTicks);
+  const auto dynamicsJudgments =
+      judgeDynamics(nowMs, soundingVelocity, resumingHands);
+  // The machine-played hand is tracked (its onsets feed the estimate and the
+  // viz) but never judged, and it is synchronised with the performer by
+  // construction: it is not a performance.
+  const int autoStaff = autoPlayedStaff();
+  // Orchestrion is played with two hands: staff 0 is the right, staff 1 the
+  // left. The estimator declines unless both are warmed up and playing.
+  const auto handSync = autoStaff < 0
+                            ? m_estimator.asynchrony(0, 1, nowMs)
+                            : std::optional<PositionEstimator::Judgment>{};
 
   m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX,
                       // Not every batch pre-lights an upcoming chord — the
@@ -175,6 +362,664 @@ void OrchestrionNotationPaintView::OnTransitions(
                       // next in the same batch — so fall back to what is
                       // sounding.
                       nextX ? nextX : leadingAnyX);
+
+  if (replaying)
+  {
+    // The recorded take already contains the auto hand's events: keep the
+    // trigger quiet so they don't fire twice.
+    m_autoOffTick.reset();
+    m_autoOnTick.reset();
+  }
+  else
+    updateAutoTargets(transitions);
+
+  // Feed the debug tempo strip: the onsets the estimate reacted to, and each
+  // hand's re-fitted curve (replaced wholesale per onset).
+  for (const auto &[staff, tMs] : feedback.onsetTMs)
+  {
+    m_tempoVizModel.addOnset(tMs, staff);
+    m_tempoVizModel.setSmoothedCurve(staff,
+                                     m_estimator.smoothedBpmCurve(staff));
+  }
+  // The cached velocities were for this batch only.
+  m_pendingHandVelocity[0].reset();
+  m_pendingHandVelocity[1].reset();
+
+  // Track the take's earliest struck score tick: where its replay rewinds to.
+  if (!replaying)
+    for (const auto &[staff, tick] : presentScoreTicks)
+      m_replayStartTick = std::min(m_replayStartTick, tick);
+
+  // Playing has resumed after an interruption: the error stats start a fresh
+  // take. (It stays readable while interrupted; only the resume clears it.)
+  if (m_timingStatsStale && !soundingTicks.empty() && !replaying)
+  {
+    m_timingOverlay.reset();
+    m_timingStatsStale = false;
+    m_finalScoreShown = false;
+    m_takeOnsetRecords.clear();
+    clearPerformanceWarp();
+    dismissFinalScore();
+    emit smoothingTunerVisibleChanged();
+  }
+
+  // The game feedback: an error gauge next to the struck notes — above the
+  // staff for the right hand, below for the left — and the hand's revised
+  // judgments into the overlay (moving still-showing markers, re-binning the
+  // box plot). The newest onset's judgment is the window's last.
+  if (sequencerConfiguration()->gradingEnabled() && !replaying)
+  {
+    // Every sounding manual onset gets its marks (gauge, ribbon point, take
+    // record) up front, in a pending state: the judgments fill them in as
+    // they arrive — retroactively for the take's first onsets, which are
+    // only judged once the spline has warmed up.
+    for (const auto &[staff, tMs] : feedback.onsetTMs)
+    {
+      if (staff == autoStaff)
+        continue;
+      if (const auto it = staffHits.find(staff); it != staffHits.end())
+      {
+        const StaffHit &hit = it->second;
+        const bool below = staff > 0; // left hand
+        m_timingOverlay.addGauge(staff, tMs, hit.rect, hit.spatium, below,
+                                 below ? hit.staffBottom : hit.staffTop,
+                                 hit.items);
+      }
+      if (const auto tickIt = presentScoreTicks.find(staff);
+          tickIt != presentScoreTicks.end())
+        m_takeOnsetRecords.push_back(
+            {staff, tMs, tickIt->second, soundingTicks.at(staff),
+             static_cast<double>(m_replayClock.elapsed()),
+             presentAnchors.at(staff)});
+    }
+    for (const auto &[staff, window] : feedback.judgments)
+      if (!window.empty() && staff != autoStaff)
+        m_timingOverlay.updateJudgments(staff, window);
+    if (handSync && sequencerConfiguration()->handSyncScoreEnabled())
+      m_timingOverlay.addSyncSample(handSync->tMs, handSync->errorMs);
+    if (sequencerConfiguration()->dynamicsScoreEnabled())
+      for (const auto &[staff, window] : dynamicsJudgments)
+        m_timingOverlay.updateDynamicsJudgments(staff, window);
+  }
+
+  // End of the piece: nothing is sounding (notes *and* rests) and nothing is
+  // upcoming on any voice — the last notes were just released — so raise the
+  // final-score banner, once. (While a chord sounds or a rest passes, its
+  // transition is a *present* state carrying no future, so both must be
+  // absent to distinguish the true end; a mid-piece release holds a future
+  // chord or a present rest instead.)
+  if (!m_finalScoreShown && !replaying &&
+      sequencerConfiguration()->gradingEnabled())
+    if (const auto sequencer = orchestrion()->sequencer())
+    {
+      const auto &current = sequencer->GetCurrentTransitions();
+      const bool done = !current.empty() &&
+                        std::all_of(current.begin(), current.end(),
+                                    [](const auto &entry) {
+                                      return !GetFutureChord(entry.second) &&
+                                             !GetPresentThing(entry.second);
+                                    });
+      if (done)
+      {
+        // The take is over: review time. Ends (and re-fits) the take before
+        // the banner reads its score, so the verdict is the full-hindsight
+        // one.
+        endTake();
+        if (const auto score = m_timingOverlay.takeFinalScore())
+        {
+          m_finalScoreShown = true;
+          m_finalScore = *score;
+          m_finalScoreBreakdown = m_timingOverlay.takeScoreBreakdown();
+          m_finalScoreMetrics.clear();
+          for (const auto &metric : m_timingOverlay.takeScoreMetrics())
+            m_finalScoreMetrics.append(QVariantMap{{"label", metric.label},
+                                                   {"score", metric.score},
+                                                   {"detail", metric.detail}});
+          emit finalScoreChanged();
+          // endTake's visibility emit preceded m_finalScoreShown: re-emit.
+          emit smoothingTunerVisibleChanged();
+        }
+      }
+    }
+}
+
+std::map<int, std::vector<PositionEstimator::Judgment>>
+OrchestrionNotationPaintView::judgeDynamics(
+    double nowMs, const std::map<int, double> &velocities,
+    const std::vector<int> &resumingHands)
+{
+  // The same retrospective principle as the timing judgments, over a loudness
+  // curve instead of a position one: a gesture's velocity is (re-)measured
+  // against the smoothed swell as later gestures refine it. The residual is
+  // already the error (a velocity fraction) — no time conversion. Only
+  // gestures whose device measures velocity contribute.
+  std::map<int, std::vector<PositionEstimator::Judgment>> windows;
+  for (const auto &[staff, velocity] : velocities)
+  {
+    auto it = m_loudness.find(staff);
+    if (it == m_loudness.end())
+      it = m_loudness
+               .emplace(staff,
+                        PositionSmoother{
+                            sequencerConfiguration()->tempoSmoothingMemory()})
+               .first;
+    else if (std::find(resumingHands.begin(), resumingHands.end(), staff) !=
+             resumingHands.end())
+      // The performer stopped and resumed: the wound-down swell says nothing
+      // about the dynamics they resume with.
+      it->second.reset();
+    PositionSmoother &smoother = it->second;
+    smoother.addObservation(nowMs, velocity);
+    if (smoother.knots().size() < dynamicsMinKnots)
+      continue;
+    std::vector<PositionEstimator::Judgment> window;
+    const auto residuals = smoother.residuals();
+    window.reserve(residuals.size());
+    for (const auto &residual : residuals)
+      window.push_back({residual.time, residual.error});
+    windows[staff] = std::move(window);
+  }
+  return windows;
+}
+
+void OrchestrionNotationPaintView::updateAutoTargets(
+    const std::map<TrackIndex, ChordTransition> &batch)
+{
+  const int autoStaff = autoPlayedStaff();
+  if (autoStaff < 0)
+    return;
+
+  // Refresh the ledger entries this batch brings for the auto staff.
+  for (const auto &[track, transition] : batch)
+  {
+    if (track.staffIndex() != autoStaff)
+      continue;
+    AutoTargets &targets = m_autoTrackTargets[track.value];
+    const IChord *present = GetPresentChord(transition);
+    targets.offTick =
+        present ? std::make_optional<double>(present->GetEndTick().withRepeats)
+                : std::nullopt;
+    const IChord *future = GetFutureChord(transition);
+    targets.onTick =
+        future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
+               : std::nullopt;
+  }
+
+  // Aggregate: the auto hand's earliest release and strike across its voices,
+  // in playback-unrolled ticks — the coordinate the manual hands' estimate
+  // lives in.
+  std::optional<double> offTick;
+  std::optional<double> onTick;
+  for (const auto &[track, targets] : m_autoTrackTargets)
+  {
+    if (targets.offTick)
+      offTick =
+          offTick ? std::min(*offTick, *targets.offTick) : targets.offTick;
+    if (targets.onTick)
+      onTick = onTick ? std::min(*onTick, *targets.onTick) : targets.onTick;
+  }
+  m_autoOffTick = offTick;
+  m_autoOnTick = onTick;
+  // Poll only while there is something to fire.
+  if (m_autoOffTick || m_autoOnTick)
+  {
+    if (!m_autoPlayTimer.isActive())
+      m_autoPlayTimer.start();
+  }
+  else
+    m_autoPlayTimer.stop();
+}
+
+int OrchestrionNotationPaintView::autoPlayedStaff() const
+{
+  // While auto-play is not exposed it stays inactive, whatever staff the
+  // setting holds (see IOrchestrionSequencerConfiguration::autoPlayExposed).
+  return sequencerConfiguration()->autoPlayExposed()
+             ? sequencerConfiguration()->autoPlayedStaff()
+             : -1;
+}
+
+void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
+{
+  // Fire the auto hand's due events once the manual hands' estimated position
+  // reaches them. Each target fires once; the resulting transitions bring the
+  // next ones. When the performer stops, the estimate coasts to a halt and
+  // the auto hand halts with it.
+  const int autoStaff = autoPlayedStaff();
+  if (autoStaff < 0 || (!m_autoOnTick && !m_autoOffTick))
+  {
+    m_autoPlayTimer.stop();
+    return;
+  }
+
+  std::optional<double> manualTicks;
+  for (int staff = 0; staff < 2; ++staff)
+  {
+    if (staff == autoStaff)
+      continue;
+    if (const auto tick = m_estimator.tickAt(staff, nowMs))
+      manualTicks = manualTicks ? std::max(*manualTicks, *tick) : *tick;
+  }
+  if (!manualTicks)
+    return;
+
+  const auto fire = [this, autoStaff](bool noteOn)
+  {
+    // Deferred out of the frame tick: the events it causes re-enter this
+    // view with fresh targets.
+    QTimer::singleShot(
+        0, this,
+        [this, noteOn]
+        {
+          const int staff = autoPlayedStaff();
+          const auto sequencer = orchestrion()->sequencer();
+          if (staff < 0 || !sequencer)
+            return;
+          sequencer->OnInputEvent(
+              noteOn ? NoteEventType::noteOn : NoteEventType::noteOff,
+              staff > 0 ? leftHandPitch : rightHandPitch, std::nullopt);
+        });
+  };
+
+  if (m_autoOnTick && *manualTicks >= *m_autoOnTick)
+  {
+    // Advancing releases the previous chord itself: the pending noteOff is
+    // superseded.
+    m_autoOnTick.reset();
+    m_autoOffTick.reset();
+    fire(true);
+  }
+  else if (m_autoOffTick && *manualTicks >= *m_autoOffTick)
+  {
+    m_autoOffTick.reset();
+    fire(false);
+  }
+}
+
+void OrchestrionNotationPaintView::endTake()
+{
+  if (!m_takeOver)
+  {
+    m_takeOver = true;
+    // The live judgments freeze with whatever hindsight the bounded
+    // smoothing window happened to give them; the take's final verdicts
+    // (ribbon, marks, stats, warp) come from one full-hindsight re-fit —
+    // the same fit the γ slider explores, so the slider then only changes
+    // anything when γ actually changes.
+    refitTakeJudgments();
+  }
+  pushReplayTake();
+  bakePerformanceWarp();
+}
+
+void OrchestrionNotationPaintView::refitTakeJudgments()
+{
+  if (m_takeOnsetRecords.empty())
+    return;
+  const double memory = sequencerConfiguration()->tempoSmoothingMemory();
+
+  // Per staff, the take's raw observations, in onset order.
+  std::map<int, std::vector<std::pair<double, double>>> observations;
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    observations[record.staff].emplace_back(record.tMs, record.utick);
+  for (const auto &[staff, obs] : observations)
+  {
+    const auto window = PositionEstimator::refitTake(obs, memory);
+    if (!window.empty())
+      m_timingOverlay.updateJudgments(staff, window);
+  }
+}
+
+void OrchestrionNotationPaintView::pushReplayTake()
+{
+  const auto player = orchestrion()->player();
+  if (!sequencerConfiguration()->gradingEnabled())
+  {
+    player->SetReplayTake(std::nullopt);
+    return;
+  }
+  if (m_replayEvents.empty() ||
+      m_replayStartTick == std::numeric_limits<int>::max())
+    return;
+  switch (orchestrion()->playMode())
+  {
+  case PlayMode::replayPerformance:
+    player->SetReplayTake(ReplayTake{m_replayStartTick, m_replayEvents});
+    break;
+  case PlayMode::replayFittedTempo:
+    player->SetReplayTake(ReplayTake{m_replayStartTick, fittedTempoEvents()});
+    break;
+  case PlayMode::metronome:
+    player->SetReplayTake(std::nullopt);
+    break;
+  }
+}
+
+std::vector<ReplayEvent> OrchestrionNotationPaintView::fittedTempoEvents() const
+{
+  // Per hand, the take onsets' final fitted errors over the recording's
+  // clock. (Staff 0 is the right hand, the rest the left — the same grouping
+  // that routes the input events.)
+  std::map<bool /*isLeft*/, std::vector<std::pair<double, double>>> errors;
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    if (const auto error =
+            m_timingOverlay.takeErrorAt(record.staff, record.tMs))
+      errors[record.staff > 0].emplace_back(record.eventMs, *error);
+  for (auto &[isLeft, series] : errors)
+    std::sort(series.begin(), series.end());
+
+  // The fitted error at any event time, by linear interpolation between the
+  // hand's onsets (clamped at the take's ends). The auto-played hand has no
+  // judgments, hence no series: its events replay as recorded.
+  const auto errorAt = [&errors](bool isLeft, double ms)
+  {
+    const auto it = errors.find(isLeft);
+    if (it == errors.end() || it->second.empty())
+      return 0.0;
+    const auto &series = it->second;
+    if (ms <= series.front().first)
+      return series.front().second;
+    if (ms >= series.back().first)
+      return series.back().second;
+    const auto next =
+        std::lower_bound(series.begin(), series.end(), std::make_pair(ms, 0.0));
+    const auto prev = std::prev(next);
+    const double span = next->first - prev->first;
+    const double frac = span > 0.0 ? (ms - prev->first) / span : 0.0;
+    return prev->second + frac * (next->second - prev->second);
+  };
+
+  std::vector<ReplayEvent> events = m_replayEvents;
+  // error = actual − fitted, so the fitted arrival is the shift-back.
+  double lastMs[2] = {-std::numeric_limits<double>::infinity(),
+                      -std::numeric_limits<double>::infinity()};
+  for (ReplayEvent &event : events)
+  {
+    double ms = event.ms - errorAt(event.isLeftHand, event.ms);
+    // Keep each hand's event order: a release hopping over the next strike
+    // would make the sequencer cut the wrong chord.
+    double &prev = lastMs[event.isLeftHand ? 1 : 0];
+    ms = std::max(ms, prev);
+    prev = ms;
+    event.ms = static_cast<int>(std::lround(ms));
+  }
+  std::stable_sort(events.begin(), events.end(),
+                   [](const ReplayEvent &a, const ReplayEvent &b)
+                   { return a.ms < b.ms; });
+  if (!events.empty())
+  {
+    const int firstMs = events.front().ms;
+    for (ReplayEvent &event : events)
+      event.ms -= firstMs;
+  }
+  return events;
+}
+
+void OrchestrionNotationPaintView::bakePerformanceWarp(bool animate)
+{
+  // The take is (or may be) over: the tuning slider shows/hides with it.
+  emit smoothingTunerVisibleChanged();
+
+  if (m_warpBaked ||
+      !sequencerConfiguration()->timeProportionalSpacingEnabled() ||
+      m_takeOnsetRecords.size() < 2)
+    return;
+
+  // Each onset's final, spline-settled fitted arrival time.
+  struct Point
+  {
+    int scoreTick;
+    double utick;
+    double fittedMs;
+    double tMs;
+  };
+  std::vector<Point> points;
+  points.reserve(m_takeOnsetRecords.size());
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    if (const auto error =
+            m_timingOverlay.takeErrorAt(record.staff, record.tMs))
+      points.push_back(
+          {record.scoreTick, record.utick, record.tMs - *error, record.tMs});
+  if (points.size() < 2)
+    return;
+  std::sort(points.begin(), points.end(),
+            [](const Point &a, const Point &b) { return a.tMs < b.tMs; });
+
+  // The take's constant-tempo reference: the line through its end onsets.
+  const Point &first = points.front();
+  const Point &last = points.back();
+  const double span = last.fittedMs - first.fittedMs;
+  if (span <= 0.0 || last.utick <= first.utick)
+    return;
+  const double refTempo = (last.utick - first.utick) / span;
+
+  // The warped position per onset, folded back into score-tick space (a
+  // repeat pass's tick offset cancels within the pass); the engraved bar of
+  // a repeated section gets its *last* pass.
+  std::map<int, std::pair<double /*tMs*/, double /*warped*/>> byScoreTick;
+  for (const Point &p : points)
+  {
+    const double warpedUtick =
+        first.utick + refTempo * (p.fittedMs - first.fittedMs);
+    const double warped = warpedUtick - (p.utick - p.scoreTick);
+    const auto it = byScoreTick.find(p.scoreTick);
+    if (it == byScoreTick.end() || it->second.first < p.tMs)
+      byScoreTick[p.scoreTick] = {p.tMs, warped};
+  }
+
+  // Assemble the layout table: sorted, monotonic, anchored so the first
+  // onset keeps its place and the rest warps around it.
+  std::vector<std::pair<int, double>> table;
+  table.reserve(byScoreTick.size());
+  double running = std::numeric_limits<double>::lowest();
+  for (const auto &[tick, entry] : byScoreTick)
+  {
+    running = std::max(running, entry.second);
+    table.emplace_back(tick, running);
+  }
+  const double shift = table.front().first - table.front().second;
+  for (auto &[tick, warped] : table)
+    warped += shift;
+
+  m_warpTable = std::move(table);
+  m_warpBaked = true;
+  if (animate)
+  {
+    m_warpProgress = 0.0;
+    m_warpTimer.start();
+    return;
+  }
+
+  // Instant (re-tuning): apply the final table in one step.
+  m_warpTimer.stop();
+  m_warpProgress = 1.0;
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (const auto master =
+          masterNotation ? masterNotation->masterScore() : nullptr)
+  {
+    master->setLayoutTickWarp(m_warpTable);
+    master->doLayout();
+  }
+  m_timingOverlay.setWarpProgress(1.0);
+  constrainScorePosition();
+  update();
+}
+
+void OrchestrionNotationPaintView::retuneTake()
+{
+  refitTakeJudgments();
+
+  // The layout warp and the fitted-tempo replay derive from the fitted
+  // errors: rebuild them in place, without the animation.
+  if (m_warpBaked)
+  {
+    m_warpBaked = false;
+    bakePerformanceWarp(false);
+  }
+  if (m_takeOver)
+    pushReplayTake();
+  update();
+}
+
+bool OrchestrionNotationPaintView::smoothingTunerVisible() const
+{
+  return (m_timingStatsStale || m_finalScoreShown) &&
+         !m_takeOnsetRecords.empty() &&
+         sequencerConfiguration()->gradingEnabled();
+}
+
+double OrchestrionNotationPaintView::tempoSmoothing() const
+{
+  return sequencerConfiguration()->tempoSmoothingMemory();
+}
+
+void OrchestrionNotationPaintView::setTempoSmoothing(double memory)
+{
+  memory = std::clamp(memory, 0.05, 0.98);
+  if (qFuzzyCompare(memory, sequencerConfiguration()->tempoSmoothingMemory()))
+    return;
+  sequencerConfiguration()->setTempoSmoothingMemory(memory);
+  m_estimator.setMemory(memory); // future takes fit live with it
+  retuneTake();                  // this take re-fits right now
+  emit tempoSmoothingChanged();
+}
+
+void OrchestrionNotationPaintView::applyWarpStep()
+{
+  m_warpProgress =
+      std::min(1.0, m_warpProgress + 1.0 / static_cast<double>(warpAnimSteps));
+  // Ease out: fast start, gentle landing.
+  const double eased = 1.0 - std::pow(1.0 - m_warpProgress, 3.0);
+  auto table = m_warpTable;
+  for (auto &[tick, warped] : table)
+    warped = (1.0 - eased) * tick + eased * warped;
+
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto master = masterNotation ? masterNotation->masterScore() : nullptr;
+  if (!master)
+  {
+    m_warpTimer.stop();
+    return;
+  }
+  master->setLayoutTickWarp(std::move(table));
+  master->doLayout();
+  m_timingOverlay.setWarpProgress(eased);
+  if (m_warpProgress >= 1.0)
+  {
+    m_warpTimer.stop();
+    constrainScorePosition();
+  }
+  update();
+}
+
+void OrchestrionNotationPaintView::clearPerformanceWarp()
+{
+  m_warpTimer.stop();
+  m_warpProgress = 0.0;
+  m_warpBaked = false;
+  m_warpTable.clear();
+  m_timingOverlay.setWarpProgress(0.0);
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto master = masterNotation ? masterNotation->masterScore() : nullptr;
+  if (master && master->hasLayoutTickWarp())
+  {
+    master->setLayoutTickWarp({});
+    master->doLayout();
+    constrainScorePosition();
+    update();
+  }
+}
+
+void OrchestrionNotationPaintView::dismissFinalScore()
+{
+  if (m_finalScore < 0)
+    return;
+  m_finalScore = -1;
+  m_finalScoreBreakdown.clear();
+  m_finalScoreMetrics.clear();
+  emit finalScoreChanged();
+}
+
+double OrchestrionNotationPaintView::minScaling() const
+{
+  const QList<int> zooms = configuration()->possibleZoomPercentageList();
+  if (zooms.isEmpty())
+    return currentScaling() * 0.1;
+  return configuration()->scalingFromZoomPercentage(zooms.first());
+}
+
+void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
+{
+  if (m_frameTickConnection)
+    disconnect(m_frameTickConnection);
+  if (!window)
+    return;
+  // afterAnimating is emitted on the GUI thread once per frame, after the
+  // declarative animations have advanced and before the scene graph is
+  // synchronised — so the canvas placement and the repaint it dirties land in
+  // that same frame, at the display's own cadence.
+  m_frameTickConnection = connect(window, &QQuickWindow::afterAnimating, this,
+                                  [this] { onFrameTick(); });
+}
+
+void OrchestrionNotationPaintView::onFrameTick()
+{
+  const double nowMs = static_cast<double>(m_clock.elapsed());
+  // The scroll advances in step with the display; the estimate is told that
+  // time has passed, so a hand whose next note is overdue winds down instead
+  // of extrapolating for ever.
+  m_follower.frameTick();
+  m_estimator.heartbeat(nowMs);
+
+  // The debug tempo strip's live trace: each tracked hand's current tempo.
+  if (!sequencerConfiguration()->tempoVisualizationEnabled())
+    return;
+  std::vector<TempoVizModel::HandTempo> samples;
+  for (int staff = 0; staff < 2; ++staff)
+    if (const auto bpm = m_estimator.bpm(staff))
+      samples.push_back({staff, *bpm, m_estimator.isCoasting(staff)});
+  if (!samples.empty())
+    m_tempoVizModel.addTempoSample(nowMs, samples);
+}
+
+double OrchestrionNotationPaintView::anchorX() const
+{
+  // The inverse of centerOn()'s placement (short of its clamping).
+  return viewport().left() +
+         ScoreFollower::anchorFrac * width() / currentScaling();
+}
+
+void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
+{
+  // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
+  // viewport back to hug the content; yield to us while we place the canvas.
+  m_drivingScroll = true;
+
+  const bool zoomChanged = !qFuzzyCompare(currentScaling(), scaling);
+  if (zoomChanged)
+    setScaling(scaling, muse::PointF{0., 0.});
+
+  const double logicalWidth = width() / scaling;
+  // Rest the anchor at the follower's playhead fraction, but never past the
+  // max-padding limit (so near the start/end of the score the anchor drifts
+  // off its spot rather than opening a gap wider than a manual zoom-out would
+  // allow).
+  const double leftX =
+      clampLeftX(logicalX - ScoreFollower::anchorFrac * logicalWidth, scaling);
+
+  const auto content = notationContentRect();
+  const double emptyAbovePhysical =
+      (height() - content.height() * scaling) / 2.;
+  const double topY = content.top() - emptyAbovePhysical / scaling;
+
+  const bool moved = moveCanvasToPosition(muse::PointF{leftX, topY});
+
+  m_drivingScroll = false;
+  // The follow runs every frame, but the page stands still between turns:
+  // repainting then would re-render the whole score (this is a
+  // QQuickPaintedItem) for an identical picture, 60 times a second.
+  if (zoomChanged || moved)
+    update();
 }
 
 std::vector<mu::engraving::EngravingItem *>
@@ -297,6 +1142,8 @@ void OrchestrionNotationPaintView::onMousePressed(
 {
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   m_follower.suspend();     // ...and hands auto-scroll control back to the user
+  m_timingStatsStale = true; // timing stats restart when playing resumes
+  endTake();                 // an interruption ends the take: review time
   const muse::PointF logicPos = toLogical(pos);
   const auto interaction = notationInteraction();
   const mu::notation::EngravingItem *hitElement =
@@ -408,10 +1255,43 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 
   interactionProcessor()->onMouseMoved(logicPos, hitWidth());
 
-  if (sequencerConfiguration()->noteInfoTooltipEnabled())
-    updateHoveredNoteInfo(pos);
-  else if (!m_hoveredNoteInfo.isEmpty())
-    setHoveredNoteInfo({}, pos);
+  // A timing gauge under the cursor tells its onset's error; anywhere else
+  // along the deviation curve tells the smoothed tempo there; otherwise fall
+  // back to the note-info debug tooltip (which has its own toggle).
+  QString timingInfo;
+  QPointF timingPos = pos;
+  int placement = 0; // 0 = at the cursor
+  if (sequencerConfiguration()->gradingEnabled())
+  {
+    const QPointF logical(logicPos.x(), logicPos.y());
+    // The hovered onset also reveals its coloured shadow copy (gliding out
+    // from the engraved notes to its error position); its tooltip anchors
+    // beside the noteheads, on the copy-free side.
+    m_timingOverlay.updateHover(logical);
+    if (const auto tip = m_timingOverlay.gaugeTipAt(logical))
+    {
+      timingInfo = tip->text;
+      const muse::PointF anchor =
+          fromLogical(muse::PointF(tip->anchor.x(), tip->anchor.y()));
+      timingPos = QPointF(anchor.x(), anchor.y());
+      placement = tip->leftOfAnchor ? 1 : 2;
+    }
+    else
+      timingInfo = m_timingOverlay.ribbonInfoAt(logical);
+  }
+  if (!timingInfo.isEmpty())
+  {
+    m_hoveredNoteInfoPlacement = placement;
+    setHoveredNoteInfo(timingInfo, timingPos);
+  }
+  else
+  {
+    m_hoveredNoteInfoPlacement = 0;
+    if (sequencerConfiguration()->noteInfoTooltipEnabled())
+      updateHoveredNoteInfo(pos);
+    else if (!m_hoveredNoteInfo.isEmpty())
+      setHoveredNoteInfo({}, pos);
+  }
 }
 
 std::optional<mu::notation::LoopBoundaryType>
@@ -556,9 +1436,12 @@ float OrchestrionNotationPaintView::hitWidth() const
 
 void OrchestrionNotationPaintView::wheelEvent(QWheelEvent *event)
 {
-  // A wheel/trackpad swipe (zoom or pan) is manual navigation: hand
-  // auto-scroll control back to the user.
+  // A wheel/trackpad swipe (zoom or pan) is manual navigation: hand auto-scroll
+  // control back to the user. An interruption also restarts the timing stats
+  // once playing resumes, and ends the take: review time.
   m_follower.suspend();
+  m_timingStatsStale = true;
+  endTake();
 
   // Ctrl + wheel (or Ctrl + two-finger trackpad swipe, which Qt delivers as a
   // Ctrl-modified wheel event) zooms the score in/out about the cursor.
@@ -632,6 +1515,7 @@ void OrchestrionNotationPaintView::zoomBy(const QWheelEvent &event)
   }
 
   setScaling(scaling, muse::PointF::fromQPointF(event.position()));
+  // onMatrixChanged() records this as the user's new default zoom.
 }
 
 bool OrchestrionNotationPaintView::moveCanvasBy(qreal physicalDx)
@@ -649,6 +1533,12 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   qApp->installEventFilter(this);
 
+  // Drive the follow from the window's frame loop rather than from its own
+  // timer (see ScoreFollower::frameTick).
+  connect(this, &QQuickItem::windowChanged, this,
+          &OrchestrionNotationPaintView::connectFrameTick);
+  connectFrameTick(window());
+
   // MuseScore pans the canvas to keep *its* playback cursor in view whenever
   // its playback position changes. Orchestrion doesn't use that playhead at
   // all — the follower owns the scroll — so the two fight: every position
@@ -656,12 +1546,6 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   // the score start), and our next follow tick, up to 16 ms later, yanked it
   // back. One frame at the wrong x, i.e. a visible jerk, per position change.
   configuration()->setIsAutomaticallyPanEnabled(false);
-
-  // Drive the follow from the window's frame loop rather than from its own
-  // timer (see ScoreFollower::frameTick).
-  connect(this, &QQuickItem::windowChanged, this,
-          &OrchestrionNotationPaintView::connectFrameTick);
-  connectFrameTick(window());
 
   orchestrion()->sequencerChanged().onNotify(
       this,
@@ -697,6 +1581,90 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         if (!sequencerConfiguration()->noteInfoTooltipEnabled())
           setHoveredNoteInfo({}, m_hoveredNoteInfoPos);
       });
+
+  sequencerConfiguration()->tempoVisualizationEnabledChanged().onNotify(
+      this, [this] { emit tempoVisualizationEnabledChanged(); });
+
+  m_estimator.setMemory(sequencerConfiguration()->tempoSmoothingMemory());
+
+  // Re-arm (or disarm) the finished take when the play mode changes. A
+  // half-recorded take stays unarmed; endTake will push it with the new mode.
+  orchestrion()->playModeChanged().onNotify(this,
+                                            [this]
+                                            {
+                                              if (m_takeOver)
+                                                pushReplayTake();
+                                            });
+
+  m_timingOverlay.setPersistent(
+      sequencerConfiguration()->persistentTimingMarksEnabled());
+  sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        m_timingOverlay.setPersistent(
+            sequencerConfiguration()->persistentTimingMarksEnabled());
+        update();
+      });
+
+  sequencerConfiguration()->handSyncScoreEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        // Toggled off: stale sync samples shouldn't linger in the verdict.
+        // (Toggling on starts collecting from here on, nothing to do.)
+        if (!sequencerConfiguration()->handSyncScoreEnabled())
+          m_timingOverlay.clearSyncStats();
+        update();
+      });
+
+  sequencerConfiguration()->dynamicsScoreEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        if (!sequencerConfiguration()->dynamicsScoreEnabled())
+          m_timingOverlay.clearDynamicsStats();
+        update();
+      });
+
+  // Auto-play: the ledger is rebuilt from scratch when the chosen hand
+  // changes (or when the feature is hidden/exposed), seeded from whatever the
+  // current batch holds — after loading it covers every voice; mid-piece it
+  // may not, and a rewind repopulates it in full.
+  const auto configureAutoPlay = [this]
+  {
+    m_autoTrackTargets.clear();
+    m_autoOffTick.reset();
+    m_autoOnTick.reset();
+    m_autoPlayTimer.stop();
+    if (const auto sequencer = orchestrion()->sequencer())
+      updateAutoTargets(sequencer->GetCurrentTransitions());
+  };
+  configureAutoPlay();
+  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, configureAutoPlay);
+  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
+      this, configureAutoPlay);
+
+  // Toggling the layout mode re-lays-out the score; every cached x is stale,
+  // which is exactly what updateNotation() resets (follower, stats, marks).
+  // The shadow copies only mean anything on the time-proportional canvas.
+  // The grading master switch gets the same treatment: turning
+  // it off must return the score to plain engraving and clear every mark.
+  const auto applyGradingMode = [this]
+  {
+    m_timingOverlay.setShadowsEnabled(
+        sequencerConfiguration()->gradingEnabled() &&
+        sequencerConfiguration()->timeProportionalSpacingEnabled());
+    updateNotation();
+  };
+  m_timingOverlay.setShadowsEnabled(
+      sequencerConfiguration()->gradingEnabled() &&
+      sequencerConfiguration()->timeProportionalSpacingEnabled());
+  sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
+      this, applyGradingMode);
+  sequencerConfiguration()->gradingEnabledChanged().onNotify(this,
+                                                             applyGradingMode);
 
   load();
   updateNotation();
@@ -781,6 +1749,8 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   {
     m_userDefaultScaling = newMatrix.m11();
     m_follower.suspend();
+    m_timingStatsStale = true;
+    endTake();
   }
 
   constrainScorePosition();
@@ -790,9 +1760,20 @@ void OrchestrionNotationPaintView::updateNotation()
 {
   m_kineticScroller.stop(); // the score changed under us; cancel any glide
   m_follower.reset();       // and the follow state
+  m_estimator.reset();      // and the position estimate
+  m_loudness.clear();
+  m_tempoVizModel.clear();
   if (const auto notation = globalContext()->currentNotation())
   {
-    setViewMode(mu::notation::ViewMode::LINE);
+    // Time-proportional spacing uses MuseScore's duration-proportional
+    // layout (with the fork's global quantum), so equal horizontal distance
+    // = equal musical time — the canvas for the tempo-warped note overlays.
+    // It only serves the grading: without it, plain engraving.
+    setViewMode(
+        sequencerConfiguration()->gradingEnabled() &&
+                sequencerConfiguration()->timeProportionalSpacingEnabled()
+            ? mu::notation::ViewMode::HORIZONTAL_FIXED
+            : mu::notation::ViewMode::LINE);
     auto config = notation->interaction()->scoreConfig();
     config.isShowInvisibleElements = false;
     config.isShowUnprintableElements = false;
@@ -806,6 +1787,18 @@ void OrchestrionNotationPaintView::updateNotation()
   }
   m_boxes.clear();
   m_fader.clear();
+  // A different score: the error stats start over immediately.
+  m_timingOverlay.reset();
+  m_timingStatsStale = false;
+  m_finalScoreShown = false;
+  m_takeOnsetRecords.clear();
+  m_replayEvents.clear();
+  m_replayStartTick = std::numeric_limits<int>::max();
+  m_takeOver = false;
+  orchestrion()->player()->SetReplayTake(std::nullopt);
+  clearPerformanceWarp();
+  dismissFinalScore();
+  emit smoothingTunerVisibleChanged();
   update();
 }
 
@@ -816,87 +1809,6 @@ void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
     return;
   notation->viewState()->setViewMode(mode);
   notation->painting()->setViewMode(mode);
-}
-
-double OrchestrionNotationPaintView::minScaling() const
-{
-  const QList<int> zooms = configuration()->possibleZoomPercentageList();
-  if (zooms.isEmpty())
-    return currentScaling() * 0.1;
-  return configuration()->scalingFromZoomPercentage(zooms.first());
-}
-
-void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
-{
-  if (m_frameTickConnection)
-    disconnect(m_frameTickConnection);
-  if (!window)
-    return;
-  // afterAnimating is emitted on the GUI thread once per frame, after the
-  // declarative animations have advanced and before the scene graph is
-  // synchronised — so the canvas placement and the repaint it dirties land in
-  // that same frame, at the display's own cadence.
-  m_frameTickConnection = connect(window, &QQuickWindow::afterAnimating, this,
-                                  [this] { m_follower.frameTick(); });
-}
-
-double OrchestrionNotationPaintView::anchorX() const
-{
-  // The inverse of centerOn()'s placement (short of its clamping).
-  return viewport().left() +
-         ScoreFollower::anchorFrac * width() / currentScaling();
-}
-
-void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
-{
-  // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
-  // viewport back to hug the content; yield to us while we place the canvas.
-  m_drivingScroll = true;
-
-  const bool zoomChanged = !qFuzzyCompare(currentScaling(), scaling);
-  if (zoomChanged)
-    setScaling(scaling, muse::PointF{0., 0.});
-
-  const double logicalWidth = width() / scaling;
-  // Rest the anchor at the follower's fraction, but never past the
-  // max-padding limit (so near the start/end of the score the anchor drifts
-  // off its spot rather than opening a gap wider than a manual zoom-out would
-  // allow).
-  const double leftX =
-      clampLeftX(logicalX - ScoreFollower::anchorFrac * logicalWidth, scaling);
-
-  const auto content = notationContentRect();
-  const double emptyAbovePhysical =
-      (height() - content.height() * scaling) / 2.;
-  const double topY = content.top() - emptyAbovePhysical / scaling;
-
-  const bool moved = moveCanvasToPosition(muse::PointF{leftX, topY});
-
-  m_drivingScroll = false;
-  // The follow runs every frame, but the page stands still between turns:
-  // repainting then would re-render the whole score (this is a
-  // QQuickPaintedItem) for an identical picture, 60 times a second.
-  if (zoomChanged || moved)
-    update();
-}
-
-double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
-                                                double scaling) const
-{
-  // Two horizontal rules (shared by the manual constraint and the
-  // auto-follow):
-  // 1. not more than maxEmptyPhysical empty pixels past either end of the
-  //    system;
-  // 2. if the system is narrower than the view, it stays centered.
-  const auto content = notationContentRect();
-  constexpr double maxEmptyPhysical = 200.;
-  const double contentWidthPhysical = content.width() * scaling;
-  if (contentWidthPhysical < width())
-    return content.left() - (width() - contentWidthPhysical) / (2 * scaling);
-  const double minLeft = content.left() - maxEmptyPhysical / scaling;
-  const double maxLeft =
-      content.right() + maxEmptyPhysical / scaling - width() / scaling;
-  return std::clamp(desiredLeftX, minLeft, maxLeft);
 }
 
 void OrchestrionNotationPaintView::constrainScorePosition()
@@ -927,6 +1839,70 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   m_constrainingScorePosition = false;
 }
 
+double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
+                                                double scaling) const
+{
+  // Two horizontal rules (shared by the manual constraint and the auto-follow):
+  // 1. not more than maxEmptyPhysical empty pixels past either end of the
+  // system;
+  // 2. if the system is narrower than the view, it stays centered.
+  const auto content = notationContentRect();
+  constexpr double maxEmptyPhysical = 200.;
+  const double contentWidthPhysical = content.width() * scaling;
+  if (contentWidthPhysical < width())
+    return content.left() - (width() - contentWidthPhysical) / (2 * scaling);
+  const double minLeft = content.left() - maxEmptyPhysical / scaling;
+  const double maxLeft =
+      content.right() + maxEmptyPhysical / scaling - width() / scaling;
+  return std::clamp(desiredLeftX, minLeft, maxLeft);
+}
+
+void OrchestrionNotationPaintView::paintBeatLines(QPainter *painter)
+{
+  if (!m_takeOver || m_takeOnsetRecords.size() < 2)
+    return;
+
+  // The onsets' (utick, live x): the anchors are the engraved elements, so
+  // the grid follows the warp morph and the γ-slider re-fits. Between
+  // onsets, both the utick→x layout and the utick→time fit are linear, so
+  // beats interpolate exactly.
+  std::vector<std::pair<double, double>> points;
+  points.reserve(m_takeOnsetRecords.size());
+  for (const TakeOnsetRecord &record : m_takeOnsetRecords)
+    if (record.anchor)
+      points.emplace_back(record.utick,
+                          record.anchor->pageBoundingRect().center().x());
+  std::sort(points.begin(), points.end());
+  if (points.size() < 2)
+    return;
+
+  const QRectF view = viewport().toQRectF();
+  painter->save();
+  QPen pen(QColor(90, 43, 37, 60)); // faint mahogany hairline
+  pen.setWidthF(0.0);
+  pen.setCosmetic(true);
+  painter->setPen(pen);
+
+  auto lower = points.begin();
+  for (double beat =
+           std::ceil(points.front().first / beatGridTicks) * beatGridTicks;
+       beat <= points.back().first; beat += beatGridTicks)
+  {
+    while (lower + 1 != points.end() && (lower + 1)->first <= beat)
+      ++lower;
+    if (lower + 1 == points.end())
+      break;
+    const auto &[u0, x0] = *lower;
+    const auto &[u1, x1] = *(lower + 1);
+    // x jumping backwards = a repeat seam: no grid across the page jump.
+    if (u1 <= u0 || x1 < x0)
+      continue;
+    const double x = x0 + (beat - u0) / (u1 - u0) * (x1 - x0);
+    painter->drawLine(QPointF(x, view.top()), QPointF(x, view.bottom()));
+  }
+  painter->restore();
+}
+
 void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
 {
   // Called by the base view once the painter carries the score's world
@@ -934,6 +1910,7 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
   paintLoopRegionUnderlay(painter);
+  paintBeatLines(painter);
 
   if (m_boxes.empty() && m_fader.empty())
     return;
@@ -1060,6 +2037,11 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   painter->setOpacity(1.0);
 
   const auto view = viewport();
+
+  // Timing-judgment overlay (gauges next to the notes + box-plot HUD), on top
+  // of the notation.
+  if (sequencerConfiguration()->gradingEnabled())
+    m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());
 
   const auto radius = 30. / currentScaling();
 

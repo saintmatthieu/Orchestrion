@@ -18,13 +18,25 @@
  */
 #pragma once
 
-#include "IOrchestrionSequencer.h"
 #include "IModifiableItemRegistry.h"
+#include "IOrchestrionPlayer.h"
+#include "IOrchestrionSequencer.h"
 #include <async/notification.h>
 #include <modularity/imoduleinterface.h>
 
 namespace dgk
 {
+//! What the play button does while a finished take is on record: replay the
+//! performance verbatim, re-perform it on its *fitted* tempo curve (the
+//! spline the judgments compare against — the performance minus its per-note
+//! jitter), or the plain metronomic playback.
+enum class PlayMode
+{
+  replayPerformance,
+  replayFittedTempo,
+  metronome,
+};
+
 class IOrchestrion : MODULE_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrion);
@@ -35,5 +47,18 @@ public:
   virtual IOrchestrionSequencerPtr sequencer() = 0;
   virtual muse::async::Notification sequencerChanged() const = 0;
   virtual IModifiableItemRegistryPtr modifiableItemRegistry() const = 0;
+
+  //! The automatic player (see IOrchestrionPlayer). Never null: before a
+  //! score is loaded, a never-playing stub is returned, so consumers need
+  //! no null checks. The real player is created and destroyed with the
+  //! sequencer — sequencerChanged() also signals a new player, so
+  //! subscribers to the player's notifications must resubscribe then.
+  virtual IOrchestrionPlayerPtr player() = 0;
+
+  //! Session-only (deliberately not persisted): a review/tuning aid. Lives
+  //! here, not on the player, so it survives player swaps (score changes).
+  virtual PlayMode playMode() const = 0;
+  virtual void setPlayMode(PlayMode mode) = 0;
+  virtual muse::async::Notification playModeChanged() const = 0;
 };
 } // namespace dgk

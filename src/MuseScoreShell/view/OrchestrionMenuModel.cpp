@@ -31,6 +31,17 @@ constexpr auto audioMidiMenuId = "menu-audio-midi";
 constexpr auto keyboardMenuId = "menu-keyboard";
 constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
 constexpr auto toggleNoteInfoMenuId = "orchestrion-advanced-toggle-note-info";
+constexpr auto toggleTempoVizMenuId =
+    "orchestrion-advanced-toggle-tempo-visualization";
+constexpr auto toggleGradingMenuId = "orchestrion-advanced-toggle-grading";
+constexpr auto togglePersistentTimingMarksMenuId =
+    "orchestrion-advanced-toggle-persistent-timing-marks";
+constexpr auto toggleHandSyncScoreMenuId =
+    "orchestrion-advanced-toggle-hand-sync-score";
+constexpr auto toggleDynamicsScoreMenuId =
+    "orchestrion-advanced-toggle-dynamics-score";
+constexpr auto toggleProportionalSpacingMenuId =
+    "orchestrion-advanced-toggle-proportional-spacing";
 } // namespace
 
 OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
@@ -58,7 +69,12 @@ void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   QList<muse::uicomponents::MenuItem *> menus{
       makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-      makeAudioMidiMenu(), makeAdvancedMenu(velocityRecordingEnabled)};
+      makeAudioMidiMenu()};
+  if (sequencerConfiguration()->gradingExposed())
+    menus << makeGradingMenu();
+  if (sequencerConfiguration()->autoPlayExposed())
+    menus << makeAutoPlayMenu();
+  menus << makeAdvancedMenu(velocityRecordingEnabled);
 #ifdef MUSE_APP_UNSTABLE
   menus << makeDevelopmentMenu();
 #endif
@@ -86,6 +102,26 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->noteInfoTooltipEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->tempoVisualizationEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->gradingEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->gradingExposedChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -215,19 +251,6 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
                   "menu-orchestrion-view");
 }
 
-#ifdef MUSE_APP_UNSTABLE
-//! Home for switches that expose work in progress. Only built for unstable
-//! (development) builds, so a feature parked here is invisible in a release
-//! until it is deliberately promoted out. Empty for now: each feature adds
-//! its own toggle as it arrives.
-muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
-{
-  return makeMenu(
-      muse::TranslatableString("appshell/menu/development", "&Development"),
-      QList<muse::uicomponents::MenuItem *>{}, "menu-orchestrion-development");
-}
-#endif
-
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeHelpMenu()
 {
   QList<muse::uicomponents::MenuItem *> menu{
@@ -328,12 +351,102 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   noteInfoItem->setSelectable(true);
   noteInfoItem->setSelected(sequencerConfiguration()->noteInfoTooltipEnabled());
 
+  muse::uicomponents::MenuItem *const tempoVizItem =
+      makeMenuItem(toggleTempoVizMenuId,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "Show &tempo visualization"));
+  tempoVizItem->setSelectable(true);
+  tempoVizItem->setSelected(
+      sequencerConfiguration()->tempoVisualizationEnabled());
+
   const QList<MenuItem *> menu{
-      item, noteInfoItem,
+      item, noteInfoItem, tempoVizItem,
       makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
+{
+  using namespace muse::uicomponents;
+
+  // Which hand the machine plays for you: a one-of-three choice, mirrored by
+  // the top-row button's popup.
+  const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
+  const auto choice = [this](const char *actionCode,
+                             const muse::TranslatableString &title,
+                             bool selected)
+  {
+    MenuItem *const item = makeMenuItem(actionCode, title);
+    item->setSelectable(true);
+    item->setSelected(selected);
+    return item;
+  };
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/autoplay", "&Auto-play"),
+      QList<MenuItem *>{
+          choice(actionIds::autoPlayNone,
+                 muse::TranslatableString("appshell/menu/autoplay", "&Off"),
+                 autoPlayedStaff < 0),
+          choice(
+              actionIds::autoPlayLeftHand,
+              muse::TranslatableString("appshell/menu/autoplay", "&Left hand"),
+              autoPlayedStaff == 1),
+          choice(
+              actionIds::autoPlayRightHand,
+              muse::TranslatableString("appshell/menu/autoplay", "&Right hand"),
+              autoPlayedStaff == 0)},
+      "menu-orchestrion-autoplay");
+}
+
+#ifdef MUSE_APP_UNSTABLE
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
+{
+  using namespace muse::uicomponents;
+
+  // Auto-play is still being worked on: hidden — and inert — unless a
+  // developer asks for it here.
+  MenuItem *const autoPlayItem =
+      makeMenuItem(actionIds::toggleAutoPlayExposure,
+                   muse::TranslatableString("appshell/menu/development",
+                                            "Expose &auto-play"));
+  autoPlayItem->setSelectable(true);
+  autoPlayItem->setSelected(sequencerConfiguration()->autoPlayExposed());
+
+  MenuItem *const gradingItem = makeMenuItem(
+      actionIds::toggleGradingExposure,
+      muse::TranslatableString("appshell/menu/development", "Expose &grading"));
+  gradingItem->setSelectable(true);
+  gradingItem->setSelected(sequencerConfiguration()->gradingExposed());
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/development", "&Development"),
+      QList<MenuItem *>{gradingItem, autoPlayItem},
+      "menu-orchestrion-development");
+}
+#endif
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
+{
+  using namespace muse::uicomponents;
+
+  // The master switch (also the top-row toggle button); everything it
+  // governs is configured in the grading settings dialog.
+  MenuItem *const toggleItem = makeMenuItem(
+      toggleGradingMenuId,
+      muse::TranslatableString("appshell/menu/grading", "&Enabled"));
+  toggleItem->setSelectable(true);
+  toggleItem->setSelected(sequencerConfiguration()->gradingEnabled());
+
+  MenuItem *const settingsItem = makeMenuItem(
+      actionIds::gradingSettings,
+      muse::TranslatableString("appshell/menu/grading", "&Settings…"));
+
+  return makeMenu(muse::TranslatableString("appshell/menu/grading", "&Grading"),
+                  QList<MenuItem *>{toggleItem, settingsItem},
+                  "menu-orchestrion-grading");
 }
 
 muse::uicomponents::MenuItem *

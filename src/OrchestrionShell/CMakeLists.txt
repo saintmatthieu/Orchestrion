@@ -25,6 +25,10 @@ set(MODULE_SRC
   view/NotationPaintViewLoaderModel.h
   view/OrchestrionWindowTitleProvider.cpp
   view/OrchestrionWindowTitleProvider.h
+  view/AutoPlayModel.cpp
+  view/AutoPlayModel.h
+  view/GradingModel.cpp
+  view/GradingModel.h
   view/PlaybackButtonModel.cpp
   view/PlaybackButtonModel.h
   view/ScoreAttributionModel.cpp

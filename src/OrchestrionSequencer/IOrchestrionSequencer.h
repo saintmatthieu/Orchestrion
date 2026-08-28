@@ -31,6 +31,11 @@ struct AutoPlayEvent
 {
   NoteEventType type;
   bool isLeftHand;
+  //! The gesture's raw controller velocity — empty when the input device
+  //! doesn't measure one (e.g. the computer keyboard) and for note-offs.
+  //! Consumers judging played dynamics must ignore derived velocities, so
+  //! only the genuine measurement travels here.
+  std::optional<float> velocity;
 };
 
 struct NextAutoPlayEvents
@@ -38,6 +43,25 @@ struct NextAutoPlayEvents
   int deltaTicks = 0;
   std::optional<NoteEventType> leftHandEvent;
   std::optional<NoteEventType> rightHandEvent;
+};
+
+//! One raw input event of a recorded take, for replaying the performance:
+//! when it happened (relative to the take's first event) and the same
+//! routing and velocity information the live gesture carried.
+struct ReplayEvent
+{
+  int ms = 0;
+  NoteEventType type = NoteEventType::noteOn;
+  bool isLeftHand = false;
+  std::optional<float> velocity;
+};
+
+//! A finished take, replayable by the automatic player: the earliest score
+//! tick it struck — where the replay rewinds to — and its input events.
+struct ReplayTake
+{
+  int startTick = 0;
+  std::vector<ReplayEvent> events;
 };
 
 class IOrchestrionSequencer

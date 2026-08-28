@@ -17,13 +17,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "NumberKeysHelpModel.h"
+#include "MuseScoreShell/OrchestrionActionIds.h"
 
 namespace dgk
 {
 namespace
 {
-constexpr int leftKeyA = 2; // left middle finger
-constexpr int leftKeyB = 3; // left index finger
+constexpr int leftKeyA = 2;  // left middle finger
+constexpr int leftKeyB = 3;  // left index finger
 constexpr int rightKeyA = 8; // right index finger
 constexpr int rightKeyB = 9; // right middle finger
 
@@ -45,18 +46,8 @@ void NumberKeysHelpModel::init()
       this, [this] { updateNoMidiConnected(); });
 
   subscribeToSequencer();
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this] { subscribeToSequencer(); });
-
-  playbackController()->isPlayingChanged().onNotify(
-      this,
-      [this]
-      {
-        // The score auto-stops at the end (or the user may stop): end the demo
-        // so the overlay hides and the tooltip can return.
-        if (m_demoActive && !playbackController()->isPlaying())
-          stop();
-      });
+  orchestrion()->sequencerChanged().onNotify(this, [this]
+                                             { subscribeToSequencer(); });
 
   // The Help menu replays the demo directly.
   dispatcher()->reg(this, showHelpActionCode, [this] { showMe(); });
@@ -67,8 +58,24 @@ void NumberKeysHelpModel::subscribeToSequencer()
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     return;
-  sequencer->HandNoteEvents().onReceive(
-      this, [this](const AutoPlayEvent &event) { onHandNoteEvent(event); });
+  sequencer->HandNoteEvents().onReceive(this, [this](const AutoPlayEvent &event)
+                                        { onHandNoteEvent(event); });
+
+  // The playback auto-stops at the end (or the user may stop): end the demo
+  // so the overlay hides and the tooltip can return. (The player lives and
+  // dies with the sequencer, hence the subscription here.)
+  orchestrion()->player()->PlayingChanged().onNotify(this,
+                                                     [this]
+                                                     {
+                                                       if (m_demoActive &&
+                                                           !isPlaying())
+                                                         stop();
+                                                     });
+}
+
+bool NumberKeysHelpModel::isPlaying() const
+{
+  return orchestrion()->player()->IsPlaying();
 }
 
 void NumberKeysHelpModel::onHandNoteEvent(const AutoPlayEvent &event)
@@ -106,17 +113,17 @@ void NumberKeysHelpModel::showMe()
   setRightPressedKey(0);
   setDemoActive(true);
 
-  if (!playbackController()->isPlaying())
+  if (!isPlaying())
   {
     dispatcher()->dispatch("rewind");
-    dispatcher()->dispatch("play");
+    dispatcher()->dispatch(actionIds::playbackToggle);
   }
 }
 
 void NumberKeysHelpModel::stop()
 {
-  if (playbackController()->isPlaying())
-    dispatcher()->dispatch("stop");
+  if (isPlaying())
+    dispatcher()->dispatch(actionIds::playbackStop);
   setLeftPressedKey(0);
   setRightPressedKey(0);
   setDemoActive(false);

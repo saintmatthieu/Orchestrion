@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "OrchestrionSequencer/IOrchestrion.h"
 #include "actions/iactionsdispatcher.h"
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
@@ -36,6 +37,7 @@ class PlaybackButtonModel : public QObject, public muse::async::Asyncable
 
   INJECT(mu::playback::IPlaybackController, playbackController);
   INJECT(muse::actions::IActionsDispatcher, dispatcher);
+  INJECT(IOrchestrion, orchestrion);
 
 public:
   explicit PlaybackButtonModel(QObject *parent = nullptr);

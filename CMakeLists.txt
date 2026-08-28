@@ -2,12 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 cmake_policy(SET CMP0000 NEW)
 cmake_policy(SET CMP0079 NEW)
 
-# Set the project name and version.
-# This version is the single source of truth: it feeds the in-app
-# applicationVersion (ORCHESTRION_VERSION) and the Windows installer
-# (SetupWindowsPackaging.cmake overrides the MuseScore-inherited 4.x with it).
-# Bump it together with the release tag — CI fails tag builds on mismatch.
-project(Orchestrion VERSION 0.3.0 LANGUAGES C CXX)
+# Set the project name and version
+project(Orchestrion VERSION 1.0 LANGUAGES C CXX)
 
 # Find the Qt6 packages
 find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
@@ -48,6 +44,14 @@ else()
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation prefix for other OS" FORCE)
 endif()
 
+# Unit tests (off by default in this fork). The framework ships googletest but
+# only adds it from its own CMakeLists, which we don't include — so bring in the
+# gmock/gtest target here when tests are enabled, before the modules that use it.
+if (MUSE_ENABLE_UNIT_TESTS)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    add_subdirectory(MuseScore/src/framework/testing/thirdparty/googletest)
+endif()
+
 add_subdirectory(src/ExternalDevices)
 add_subdirectory(src/GestureControllers)
 add_subdirectory(src/MuseScoreShell)
@@ -58,6 +62,7 @@ add_subdirectory(src/OrchestrionSequencer)
 add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
+add_subdirectory(src/PositionEstimation)
 add_subdirectory(src/stubs/audioplugins)
 
 set(MACOSX_BUNDLE_ICON_FILE icons/orchestrion.icns)
@@ -77,10 +82,6 @@ set_target_properties(Orchestrion PROPERTIES
     AUTOMOC ON
     AUTORCC ON
     AUTOUIC ON
-)
-
-target_compile_definitions(Orchestrion PRIVATE
-    ORCHESTRION_VERSION="${PROJECT_VERSION}"
 )
 
 # On Linux, the QML module creates an "Orchestrion/" directory in the build tree,
@@ -180,6 +181,10 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/Main.qml"
     QML_FILES "src/qml/PlaybackButton.qml"
     QML_FILES "src/qml/FullscreenButton.qml"
+    QML_FILES "src/qml/GradingButton.qml"
+    QML_FILES "src/qml/AutoPlayButton.qml"
+    QML_FILES "src/qml/GradingSettingsPopup.qml"
+    QML_FILES "src/qml/AutoPlaySettingsPopup.qml"
     QML_FILES "src/qml/AttributionToast.qml"
     QML_FILES "src/qml/Theme.qml"
 )

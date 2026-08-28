@@ -26,10 +26,16 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
+#include "PositionEstimation/PositionEstimator.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "ScoreFollower.h"
+#include "TempoVizModel.h"
+#include "TimingFeedbackOverlay.h"
+#include <QElapsedTimer>
+#include <QVariantList>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
+#include <limits>
 #include <notation/inotationconfiguration.h>
 #include <notation/view/notationpaintview.h>
 #include <unordered_map>
@@ -47,10 +53,40 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
                  hoveredNoteInfoChanged)
   Q_PROPERTY(QPointF hoveredNoteInfoPos READ hoveredNoteInfoPos NOTIFY
                  hoveredNoteInfoChanged)
+  // How the tooltip sits relative to hoveredNoteInfoPos: 0 = below-right of
+  // the cursor; 1 / 2 = vertically centred to the left / right of a timing
+  // gauge's anchor (beside the onset's noteheads, clear of the coloured
+  // copy — left for an early note, right for a late one).
+  Q_PROPERTY(int hoveredNoteInfoPlacement READ hoveredNoteInfoPlacement NOTIFY
+                 hoveredNoteInfoChanged)
   // Whether the last right-click hit a chord — enables the "set loop
   // start/end" context-menu items.
   Q_PROPERTY(bool contextMenuHasTarget READ contextMenuHasTarget NOTIFY
                  contextMenuTargetChanged)
+  // Real-time tempo-model visualization (shown beneath the score, toggled from
+  // the Advanced menu). The model is fed by the follower; the flag mirrors the
+  // persisted config setting.
+  Q_PROPERTY(dgk::TempoVizModel *tempoVizModel READ tempoVizModel CONSTANT)
+  Q_PROPERTY(bool tempoVisualizationEnabled READ tempoVisualizationEnabled
+                 NOTIFY tempoVisualizationEnabledChanged)
+  // The take's final score (0–100) and its component breakdown (e.g.
+  // "tempo 87 · sync 92"), set when the piece's last notes are released;
+  // −1 = no banner. QML shows them as the end-of-piece banner and dismisses
+  // via dismissFinalScore().
+  Q_PROPERTY(int finalScore READ finalScore NOTIFY finalScoreChanged)
+  Q_PROPERTY(QString finalScoreBreakdown READ finalScoreBreakdown NOTIFY
+                 finalScoreChanged)
+  //! The reasoning behind the banner's score, for its expandable panel: one
+  //! entry per component, each {label, score, detail}.
+  Q_PROPERTY(QVariantList finalScoreMetrics READ finalScoreMetrics NOTIFY
+                 finalScoreChanged)
+  // Post-take tuning: the tempo model's smoothing memory γ, exposed as a
+  // slider once the take is over — writing it re-fits the whole take (curve,
+  // tooltips, stats, layout warp) so the effect is observable immediately.
+  Q_PROPERTY(bool smoothingTunerVisible READ smoothingTunerVisible NOTIFY
+                 smoothingTunerVisibleChanged)
+  Q_PROPERTY(double tempoSmoothing READ tempoSmoothing WRITE setTempoSmoothing
+                 NOTIFY tempoSmoothingChanged)
 
   muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
   muse::Inject<ILoopBoundariesController> loopBoundariesController;
@@ -69,6 +105,16 @@ public:
 
   QString hoveredNoteInfo() const;
   QPointF hoveredNoteInfoPos() const;
+  int hoveredNoteInfoPlacement() const { return m_hoveredNoteInfoPlacement; }
+  TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
+  bool tempoVisualizationEnabled() const;
+  int finalScore() const { return m_finalScore; }
+  QString finalScoreBreakdown() const { return m_finalScoreBreakdown; }
+  QVariantList finalScoreMetrics() const { return m_finalScoreMetrics; }
+  Q_INVOKABLE void dismissFinalScore();
+  bool smoothingTunerVisible() const;
+  double tempoSmoothing() const;
+  void setTempoSmoothing(double memory);
 
   bool contextMenuHasTarget() const;
   Q_INVOKABLE void contextMenuSetLoopStart();
@@ -82,6 +128,10 @@ signals:
   //! Right-click: ask QML to pop up the loop context menu at \p position
   //! (view-local coordinates).
   void contextMenuRequested(QPointF position);
+  void tempoVisualizationEnabledChanged();
+  void finalScoreChanged();
+  void smoothingTunerVisibleChanged();
+  void tempoSmoothingChanged();
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -93,10 +143,9 @@ private:
   void constrainScorePosition();
   //! (Re)connect the follow to \p window's per-frame hook.
   void connectFrameTick(QQuickWindow *window);
-  //! Clamp a desired viewport-left (logical) so the empty space past either
-  //! end of the system never exceeds the max padding (and a system narrower
-  //! than the view stays centered). Shared by the manual constraint and the
-  //! auto-follow.
+  //! Clamp a desired viewport-left (logical) so the empty space past either end
+  //! of the system never exceeds the max padding (and a system narrower than
+  //! the view stays centered). Shared by manual constraint and auto-follow.
   double clampLeftX(double desiredLeftX, double scaling) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -107,6 +156,11 @@ private:
   //! cream tint across the looped span.
   void paintLoopMarkers(muse::draw::Painter *painter) override;
   void paintLoopRegionUnderlay(QPainter *painter);
+  //! Post-take: a vertical grid line behind the score at each beat of the
+  //! fitted tempo curve. With the performance warp baked (x = performed
+  //! time), the lines' spacing is the performed beat duration: they spread
+  //! where the performer slowed and bunch where they rushed.
+  void paintBeatLines(QPainter *painter);
   void onMousePressed(const QPointF &pos, Qt::KeyboardModifiers modifiers,
                       Qt::MouseButton button);
   void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
@@ -123,16 +177,57 @@ private:
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
+  //! Per rendered frame: advance the scroll and the estimate, sample the
+  //! debug tempo strip, and fire the auto-played hand's due events.
+  void onFrameTick();
+  //! Refresh the tempo-following auto-play targets (the auto hand's next due
+  //! release/strike, in playback-unrolled ticks) from a transitions batch.
+  //! Batches only carry the *changed* tracks, so a per-voice ledger
+  //! (m_autoTrackTargets) persists the auto staff's state between batches.
+  void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
+  //! Which hand the machine plays, or −1: the setting, gated on auto-play
+  //! being exposed at all.
+  int autoPlayedStaff() const;
+  //! Fire the auto hand's due strike or release once the manual hands'
+  //! estimate has reached it.
+  void fireDueAutoEvents(double nowMs);
+  //! Measure this batch's played velocities against each hand's smoothed
+  //! loudness curve — the dynamics counterpart of the timing judgments.
+  //! \p resumingHands are the hands whose estimate just restarted after a
+  //! stop, so their swell restarts too.
+  std::map<int /*staff*/, std::vector<PositionEstimator::Judgment>>
+  judgeDynamics(double nowMs, const std::map<int /*staff*/, double> &velocities,
+                const std::vector<int> &resumingHands);
+  //! Bake the take's fitted tempo curve into the score layout, so the page
+  //! shows performed time and the coloured performance notes sit at
+  //! residual-only offsets. Fires once per take, when it is over (end of
+  //! piece or an interruption); self-guards on the proportional-spacing
+  //! mode. Animated by default; instant when re-tuning.
+  void bakePerformanceWarp(bool animate = true);
+  void applyWarpStep();
+  //! The take is over (interruption or end of piece): hand its recording to
+  //! the automatic player — the play button now replays the performance —
+  //! and bake its tempo curve into the layout.
+  void endTake();
+  //! Arm (or disarm) the play button with the finished take, per the current
+  //! play mode: the raw performance, its fitted-tempo idealization, or
+  //! nothing (metronomic playback).
+  void pushReplayTake();
+  //! The take's events time-warped onto the fitted tempo curve: each event
+  //! shifted by the (interpolated) fitted error at its time, so what plays
+  //! is the spline — the performance minus its per-note jitter.
+  std::vector<ReplayEvent> fittedTempoEvents() const;
+  //! Re-fit the whole take with the configured smoothing memory and refresh
+  //! everything derived from it (ribbon, tooltips, stats, layout warp).
+  void retuneTake();
+  //! The re-fit itself: judge every take onset against one full-hindsight
+  //! (unbounded-window) spline and push the verdicts through the
+  //! display/stats pipeline. Runs once when the take ends — the live,
+  //! bounded-window verdicts are provisional — and again per γ retune.
+  void refitTakeJudgments();
+  //! Back to the ideal (notated) spacing — a fresh take is starting.
+  void clearPerformanceWarp();
   void updateNotation();
-  void wheelEvent(QWheelEvent *event) override;
-  //! Zoom the score in/out about the cursor in response to a Ctrl-modified
-  //! wheel event (mouse wheel or two-finger trackpad swipe).
-  void zoomBy(const QWheelEvent &event);
-  //! Pan the canvas by \p physicalDx physical pixels; returns whether it moved
-  //! (false ⇒ clamped at an edge). Drives the KineticScroller.
-  bool moveCanvasBy(qreal physicalDx);
-  void initTouchpadMidiController();
-  float hitWidth() const;
 
   // ScoreFollower::Canvas
   double viewWidth() const override { return width(); }
@@ -143,11 +238,82 @@ private:
   double minScaling() const override;
   double anchorX() const override;
   void centerOn(double logicalX, double scaling) override;
+  void wheelEvent(QWheelEvent *event) override;
+  //! Zoom the score in/out about the cursor in response to a Ctrl-modified
+  //! wheel event (mouse wheel or two-finger trackpad swipe).
+  void zoomBy(const QWheelEvent &event);
+  //! Pan the canvas by \p physicalDx physical pixels; returns whether it moved
+  //! (false ⇒ clamped at an edge). Drives the KineticScroller.
+  bool moveCanvasBy(qreal physicalDx);
+  void initTouchpadMidiController();
+  float hitWidth() const;
 
   // Live highlight per track (ringing or upcoming note).
   std::unordered_map<int, Highlight> m_boxes;
   // Highlights of just-ended notes, fading out (owns its own timer/clock).
   HighlightFader m_fader;
+  // Timing-judgment feedback: per-onset error gauges next to the notes plus
+  // the recent-error box plot, drawn on top of the notation.
+  TimingFeedbackOverlay m_timingOverlay;
+  // Set on any interruption of play (stop/jump, click, swipe, manual zoom):
+  // the stats stay readable, but start over when playing resumes.
+  bool m_timingStatsStale = false;
+  // The latest gesture's raw controller velocity per hand (empty for
+  // velocity-less devices), from HandNoteEvents — which fires just before the
+  // transitions batch the gesture causes; consumed by that batch's onsets.
+  std::optional<float> m_pendingHandVelocity[2] = {}; // [0]=right, [1]=left
+  // Per-voice ledger backing updateAutoTargets(), and the auto hand's next
+  // due release/strike aggregated from it.
+  struct AutoTargets
+  {
+    std::optional<double> offTick;
+    std::optional<double> onTick;
+  };
+  std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
+  std::optional<double> m_autoOffTick;
+  std::optional<double> m_autoOnTick;
+  // Polls those targets against the manual hands' estimate. A driver of its
+  // own, not the frame hook: between page turns nothing is animating, so no
+  // frames are rendered — and the auto hand must play on regardless.
+  QTimer m_autoPlayTimer;
+
+  // The take's onsets, for baking the performance's tempo warp into the
+  // layout: identity (staff, tMs) to look up the final revised error in the
+  // overlay, plus the onset's engraved (score) tick and playback tick.
+  struct TakeOnsetRecord
+  {
+    int staff;
+    double tMs;
+    int scoreTick;
+    double utick;
+    // The same instant on the replay recording's clock, linking the onset's
+    // fitted error to the recorded events (for the fitted-tempo replay).
+    double eventMs;
+    // The onset's engraved segment element, for its live x (follows the
+    // warp morph) — anchors the post-take beat grid.
+    const mu::engraving::EngravingItem *anchor = nullptr;
+  };
+  std::vector<TakeOnsetRecord> m_takeOnsetRecords;
+  // The take's raw input events (times relative to its first event) for the
+  // post-take replay, and the earliest score tick it struck — where the
+  // replay rewinds to.
+  std::vector<ReplayEvent> m_replayEvents;
+  QElapsedTimer m_replayClock;
+  int m_replayStartTick = std::numeric_limits<int>::max();
+  // Whether the recorded take is finished (armed for replay): a play-mode
+  // change may then re-arm it, but never a half-recorded one.
+  bool m_takeOver = false;
+  // The baked warp (score tick → warped ticks) and its ease-in animation.
+  std::vector<std::pair<int, double>> m_warpTable;
+  QTimer m_warpTimer;
+  double m_warpProgress = 0.0;
+  bool m_warpBaked = false;
+  // The final-score banner fires once per take, when the piece's last notes
+  // are released; re-armed when the stats restart. −1 = no banner showing.
+  bool m_finalScoreShown = false;
+  int m_finalScore = -1;
+  QString m_finalScoreBreakdown;
+  QVariantList m_finalScoreMetrics;
 
   struct Contact
   {
@@ -160,6 +326,31 @@ private:
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
 
+  // Rolling state of the tempo model for the visualization strip; fed by the
+  // follower. Declared before m_follower so it exists when the follower (which
+  // writes to it) is constructed.
+  TempoVizModel m_tempoVizModel;
+
+  // Turns the played events into a page-turning scroll, zooming out to keep
+  // hands that drift apart on one page. While it drives the canvas
+  // (centerOn), m_drivingScroll makes constrainScorePosition() yield so it
+  // isn't undone.
+  ScoreFollower m_follower;
+  // Where each hand has got to, and how far each onset fell from the
+  // performer's own smooth curve: the grading's raw material. Its clock is
+  // this view's — the timestamps it hands back identify the onsets.
+  PositionEstimator m_estimator;
+  QElapsedTimer m_clock;
+  // The loudness curves the dynamics judgments are measured against: one per
+  // hand, fed the controller velocities. Not the estimator's business —
+  // loudness is not position — but the same smoother serves.
+  std::map<int /*staff*/, PositionSmoother> m_loudness;
+  bool m_drivingScroll = false;
+  QMetaObject::Connection m_frameTickConnection;
+  // The user's chosen zoom (fit at load, updated on manual zoom): the auto-zoom
+  // never zooms in past it.
+  double m_userDefaultScaling = 0.0;
+
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.
   bool m_canvasDragging = false;
@@ -168,19 +359,9 @@ private:
   // Kinetic ("flick") horizontal scrolling: a trackpad swipe can be "thrown"
   // and the viewport keeps gliding until it slows to a stop or hits the edge.
   KineticScroller m_kineticScroller;
-
-  // Turns the played events into a page-turning scroll, zooming out to keep
-  // hands that drift apart on one page. While it drives the canvas
-  // (centerOn), m_drivingScroll makes constrainScorePosition() yield so it
-  // isn't undone.
-  ScoreFollower m_follower;
-  bool m_drivingScroll = false;
-  QMetaObject::Connection m_frameTickConnection;
-  // The user's chosen zoom (fit at load, updated on manual zoom): the
-  // auto-zoom never zooms in past it.
-  double m_userDefaultScaling = 0.0;
   QString m_hoveredNoteInfo;
   QPointF m_hoveredNoteInfoPos;
+  int m_hoveredNoteInfoPlacement = 0;
 
   // Chord under the last right-click, acted on by the context-menu items.
   std::optional<ILoopBoundariesController::ChordTicks> m_contextMenuTarget;
