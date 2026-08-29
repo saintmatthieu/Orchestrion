@@ -55,6 +55,11 @@ constexpr double tauPageMs = 500.0;
 constexpr double relocateDurationMs = 750.0;
 constexpr double tauRelocateMs = relocateDurationMs / 5.0;
 
+// The anticipated move to where the reading resumes after a jump (see the
+// class comment) is a relocation, and is to be over this long before the first
+// note after the jump is due — so it starts relocateDurationMs earlier still.
+constexpr double jumpLeadMs = 1000.0;
+
 // Longest frame the easings will act on (ms). See the use site: it turns a
 // dropped frame into a slightly late glide instead of a visible lurch.
 constexpr double maxTickMs = 40.0;
@@ -82,6 +87,13 @@ ScoreFollower::ScoreFollower(Canvas &canvas) : _canvas{canvas}
         if (_clock.elapsed() - _lastFrameTickMs > frameStallMs)
           tick();
       });
+  _jumpWake.setSingleShot(true);
+  _jumpWake.callOnTimeout(
+      [this]
+      {
+        if (!_timer.isActive())
+          _timer.start();
+      });
 }
 
 void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
@@ -108,6 +120,12 @@ void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
   if (nextX)
   {
     _focusX = nextX;
+    // A different barrier — the reading is through the old one — releases
+    // the anticipated move (see _jumping).
+    const bool sameBarrier =
+        barrier && _barrier && barrier->utick == _barrier->utick;
+    if (!sameBarrier)
+      _jumping = false;
     _barrier = barrier;
   }
 
@@ -260,13 +278,22 @@ void ScoreFollower::tick()
       _scaling > 0.0 ? _canvas.viewWidth() / _scaling : 0.0;
   if (!_focusX)
     return; // nothing played yet: nowhere to be
-  // The reading is about to jump: what is left before the barrier the
-  // performer has under their fingers, and what they need to see is where it
-  // resumes — so that is the focus from here on. Plain, without the barrier
-  // framing, which concerns the section being left: the resume point lands
-  // on the anchor if it is off the page (or past the trigger), and nothing
-  // moves if it is not.
-  const bool jumping = _barrier && _barrier->imminent && _barrier->resumeX;
+  // The jump ahead is anticipated (see the class comment): from the moment a
+  // glide started now would be over jumpLeadMs before the first note after
+  // it is due, the reading is as good as through the barrier. What is left
+  // before it the performer has under their fingers; what they need to see is
+  // where it resumes — so that is the focus from here on. Plain, without the
+  // barrier framing, which concerns the section being left: the resume point
+  // lands on the anchor if it is off the page (or past the trigger), and
+  // nothing moves if it is not.
+  std::optional<double> resumeInMs;
+  if (!_jumping && _barrier && _barrier->resumeX)
+  {
+    resumeInMs = _canvas.resumeExpectedInMs();
+    if (resumeInMs && *resumeInMs <= jumpLeadMs + relocateDurationMs)
+      _jumping = true;
+  }
+  const bool jumping = _jumping && _barrier && _barrier->resumeX;
   const double focusX = jumping ? *_barrier->resumeX : *_focusX;
   if (!std::isfinite(_pageTargetX) || logicalWidth <= 0.0)
     _pageX = _pageEaseX = _pageTargetX = focusX;
@@ -297,8 +324,10 @@ void ScoreFollower::tick()
       // drifting on past the trigger asks for the same framing again — or,
       // when the page already shows more than it, for a step back — and the
       // page stands still, the focus in view all the way to the barrier.)
+      // A jump is a relocation even when its target is on the page: quick,
+      // and over when the lead says.
       _pageTargetX = turnX;
-      _pageTauMs = tauPageMs;
+      _pageTauMs = jumping ? tauRelocateMs : tauPageMs;
     }
   }
 
@@ -322,13 +351,19 @@ void ScoreFollower::tick()
 
   // Nothing moves between page turns, so once the turn and the zoom have
   // settled there is nothing left to animate: idle until the next event
-  // restarts the timer.
+  // restarts the timer — or, with a jump ahead, until it would be due at the
+  // estimate just seen: a note held into the jump brings no event to wake up
+  // to. (Looked at afresh then: a performer who has frozen meanwhile has not
+  // got any nearer to it.)
   const bool settled =
       _pageX == _pageTargetX && std::abs(targetScale - _scaling) < 1e-4;
   if (settled)
   {
     _timer.stop();
     _lastTickMs = 0;
+    if (resumeInMs && !_jumping)
+      _jumpWake.start(static_cast<int>(
+          std::max(16.0, *resumeInMs - jumpLeadMs - relocateDurationMs)));
   }
 }
 
@@ -336,6 +371,7 @@ void ScoreFollower::suspend()
 {
   _suspended = true;
   _timer.stop();
+  _jumpWake.stop();
 }
 
 void ScoreFollower::viewMoved()
@@ -358,6 +394,7 @@ void ScoreFollower::reset()
 {
   _hands.clear();
   _timer.stop();
+  _jumpWake.stop();
   _framed = false;
   _suspended = false;
   _scaling = 0.0;
@@ -369,5 +406,6 @@ void ScoreFollower::reset()
   _pageTauMs = tauPageMs;
   _focusX.reset();
   _barrier.reset();
+  _jumping = false;
 }
 } // namespace dgk

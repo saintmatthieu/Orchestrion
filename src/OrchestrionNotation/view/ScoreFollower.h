@@ -52,10 +52,11 @@ namespace dgk
 //! back finds it there and the page does not move at all.
 //!
 //! The jump itself is anticipated. The last notes before it the performer can
-//! hold in their fingers; the first notes after it they cannot. So once the
-//! reading has reached the second-last beat before the barrier, the page
-//! moves on to where it resumes — back for a repeat, ahead for a volta
-//! skipped or a coda — if that is not on the page already.
+//! hold in their fingers; the first notes after it they cannot. So the page
+//! moves on to where the reading resumes — back for a repeat, ahead for a
+//! volta skipped or a coda — if that is not on the page already, timed by
+//! the performer's own tempo so that the glide is over jumpLeadMs before the
+//! first note after the jump is due.
 //!
 //! It follows *events*, not a tempo estimate: everything here is score
 //! geometry (where the next note is engraved) and time (how long the turn
@@ -84,6 +85,11 @@ public:
     //! Place logical x \p logicalX at the anchor at \p scaling, keeping the
     //! system vertically centered, and request a repaint.
     virtual void centerOn(double logicalX, double scaling) = 0;
+    //! When the first note after the jump ahead of the focus is expected to
+    //! be played, in ms from now, at the performer's live tempo — or nothing
+    //! without a live estimate. Asked every tick, and once more at the moment
+    //! it names (see the class comment on anticipation).
+    virtual std::optional<double> resumeExpectedInMs() const = 0;
   };
 
   //! Where the anchor rests horizontally in the view: where a page turn puts
@@ -100,15 +106,14 @@ public:
     //! Engraved x of the barline: the right edge of the last measure read
     //! before the jump (or of the score).
     double x = 0.0;
+    //! The unrolled (playback) tick the barrier stands at: tells one pass of
+    //! a repeated barline from the next, which is the same x.
+    int utick = 0;
     //! Engraved x where the reading resumes after the barrier: behind it for
     //! a repeat — the start of the repeated section, which the last turn
     //! keeps on the page when it can — or ahead of it for a volta skipped or
     //! a coda. Unset for the final barline.
     std::optional<double> resumeX;
-    //! Whether the focus has reached the second-last beat before the barrier:
-    //! the reading is as good as through it, and the page moves on to
-    //! resumeX (see the class comment).
-    bool imminent = false;
   };
 
   explicit ScoreFollower(Canvas &canvas);
@@ -201,6 +206,14 @@ private:
   std::optional<double> _focusX;
   //! The barline the reading will not carry on through (see onEvents).
   std::optional<Barrier> _barrier;
+  //! Whether the anticipated move to the resume point is under way — latched
+  //! until the barrier changes: the tempo estimate wavers, and a page that
+  //! has moved on does not swing back.
+  bool _jumping = false;
+  //! Idle, the follower does not tick; but a jump ahead may fall due with no
+  //! event to wake up to (a note held into it). This one-shot fires when the
+  //! jump would be due at the estimate last seen, to look again.
+  QTimer _jumpWake;
 
   //! Where each hand last struck, and when. The auto-zoom uses it to keep
   //! hands that are playing at once on the same page; the timestamp is what

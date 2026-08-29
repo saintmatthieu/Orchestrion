@@ -155,9 +155,15 @@ private:
   //! where the previous ends; the first that doesn't (a jump back at a
   //! repeat's end, a volta skipped, a D.S./coda) or the last one is left at
   //! the end of its last measure, and the reading resumes at the start of the
-  //! segment after it. The barrier is imminent once \p utick is within two
-  //! beats (the time signature's) of that end.
-  std::optional<ScoreFollower::Barrier> nextBarrier(int utick) const;
+  //! segment after it. With it, the unrolled tick of the first note after the
+  //! jump — the first chord (any track) in the segment resumed at, or the
+  //! jump itself — for the anticipation (see resumeExpectedInMs()).
+  struct BarrierAhead
+  {
+    ScoreFollower::Barrier barrier;
+    std::optional<int> resumeUtick;
+  };
+  std::optional<BarrierAhead> nextBarrier(int utick) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
@@ -249,6 +255,15 @@ private:
   double minScaling() const override;
   double anchorX() const override;
   void centerOn(double logicalX, double scaling) override;
+  //! From the live tempo and position of the hands being tracked (the
+  //! earliest of them) to m_resumeUtick — or nothing while none is. The
+  //! estimated position is never taken past the next note to play
+  //! (m_focusUtick): between onsets the tracker extrapolates at the last
+  //! tempo, through a hesitation as through a held note, and a jump must not
+  //! be anticipated on notes the performer has not got to yet. So a freeze
+  //! leaves the expected time at what separates the next note from the jump,
+  //! while a note held before the jump lets it run down to the lead.
+  std::optional<double> resumeExpectedInMs() const override;
   void wheelEvent(QWheelEvent *event) override;
   //! Zoom the score in/out about the cursor in response to a Ctrl-modified
   //! wheel event (mouse wheel or two-finger trackpad swipe).
@@ -352,6 +367,11 @@ private:
   // this view's — the timestamps it hands back identify the onsets.
   PositionEstimator m_estimator;
   QElapsedTimer m_clock;
+  //! The unrolled tick of the focus — the next note to play — and of the
+  //! first note after the jump ahead of it, when there is one (see
+  //! nextBarrier / resumeExpectedInMs).
+  std::optional<int> m_focusUtick;
+  std::optional<int> m_resumeUtick;
   // The loudness curves the dynamics judgments are measured against: one per
   // hand, fed the controller velocities. Not the estimator's business —
   // loudness is not position — but the same smoother serves.

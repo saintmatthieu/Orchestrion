@@ -35,9 +35,9 @@
 #include <engraving/dom/note.h>
 #include <engraving/dom/repeatlist.h>
 #include <engraving/dom/segment.h>
-#include <engraving/dom/sig.h>
 #include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
+#include <engraving/types/constants.h>
 #include <notation/imasternotation.h>
 
 #include <cmath>
@@ -166,6 +166,8 @@ void OrchestrionNotationPaintView::subscribe(
                                               // repopulates the ledger.
                                               m_autoTrackTargets.clear();
                                               m_follower.jump();
+                                              m_focusUtick.reset();
+                                              m_resumeUtick.reset();
                                               m_estimator.reset();
                                               m_loudness.clear();
                                               m_tempoVizModel.clear();
@@ -375,8 +377,12 @@ void OrchestrionNotationPaintView::OnTransitions(
   // to what is sounding.
   const std::optional<double> focusX = nextX ? nextX : leadingAnyX;
   const std::optional<int> focusUtick = nextX ? nextUtick : leadingAnyUtick;
+  const std::optional<BarrierAhead> ahead =
+      focusUtick ? nextBarrier(*focusUtick) : std::nullopt;
+  m_focusUtick = focusUtick;
+  m_resumeUtick = ahead ? ahead->resumeUtick : std::nullopt;
   m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX, focusX,
-                      focusUtick ? nextBarrier(*focusUtick) : std::nullopt);
+                      ahead ? std::optional{ahead->barrier} : std::nullopt);
 
   if (replaying)
   {
@@ -980,11 +986,12 @@ void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
 void OrchestrionNotationPaintView::onFrameTick()
 {
   const double nowMs = static_cast<double>(m_clock.elapsed());
-  // The scroll advances in step with the display; the estimate is told that
-  // time has passed, so a hand whose next note is overdue winds down instead
-  // of extrapolating for ever.
-  m_follower.frameTick();
+  // The estimate is told that time has passed, so a hand whose next note is
+  // overdue winds down instead of extrapolating for ever; then the scroll
+  // advances in step with the display (asking the estimate about the jump
+  // ahead, if any).
   m_estimator.heartbeat(nowMs);
+  m_follower.frameTick();
 
   // The debug tempo strip's live trace: each tracked hand's current tempo.
   if (!sequencerConfiguration()->tempoVisualizationEnabled())
@@ -1854,7 +1861,7 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   m_constrainingScorePosition = false;
 }
 
-std::optional<ScoreFollower::Barrier>
+std::optional<OrchestrionNotationPaintView::BarrierAhead>
 OrchestrionNotationPaintView::nextBarrier(int utick) const
 {
   const auto notation = this->notation();
@@ -1880,21 +1887,61 @@ OrchestrionNotationPaintView::nextBarrier(int utick) const
     const mu::engraving::Measure *last = segment->lastMeasure();
     if (!last)
       return std::nullopt;
-    ScoreFollower::Barrier barrier;
-    barrier.x = last->pageBoundingRect().right();
+    BarrierAhead ahead;
+    ahead.barrier.x = last->pageBoundingRect().right();
+    ahead.barrier.utick = segment->utick + segment->len();
+    if (i + 1 >= repeats.size())
+      return ahead; // the final barline: nowhere to resume
     // Where the reading resumes: the start of the next unrolled segment.
-    if (i + 1 < repeats.size())
-      if (const mu::engraving::Measure *first = repeats[i + 1]->firstMeasure())
-        barrier.resumeX = first->pageBoundingRect().left();
-    // Imminent from the second-last beat before it (the beat being the time
-    // signature's — a dotted quarter in 6/8).
-    const int endUtick = segment->utick + segment->len();
-    const int beatTicks =
-        mu::engraving::TimeSigFrac(last->timesig()).beatTicks();
-    barrier.imminent = utick >= endUtick - 2 * beatTicks;
-    return barrier;
+    const mu::engraving::RepeatSegment *next = repeats[i + 1];
+    const mu::engraving::Measure *first = next->firstMeasure();
+    if (!first)
+      return ahead;
+    ahead.barrier.resumeX = first->pageBoundingRect().left();
+    // The first note after the jump: the first chord (any track) in the
+    // segment resumed at — or, failing one, the jump itself.
+    ahead.resumeUtick = next->utick;
+    for (const mu::engraving::Measure *measure : next->measureList())
+      for (const mu::engraving::Segment *seg =
+               measure->first(mu::engraving::SegmentType::ChordRest);
+           seg; seg = seg->next(mu::engraving::SegmentType::ChordRest))
+        for (const mu::engraving::EngravingItem *el : seg->elist())
+          if (el && el->isChord())
+          {
+            ahead.resumeUtick = next->utick + seg->tick().ticks() - next->tick;
+            return ahead;
+          }
+    return ahead;
   }
   return std::nullopt;
+}
+
+std::optional<double> OrchestrionNotationPaintView::resumeExpectedInMs() const
+{
+  if (!m_resumeUtick)
+    return std::nullopt;
+  const double nowMs = static_cast<double>(m_clock.elapsed());
+  constexpr double ticksPerQuarter = mu::engraving::Constants::DIVISION;
+  std::optional<double> expectedInMs;
+  for (int staff = 0; staff < 2; ++staff)
+  {
+    // A hand not yet tracked has no say; one coasting — its next note
+    // overdue, winding down — has none either: it would only extrapolate a
+    // tempo it has stopped keeping.
+    if (!m_estimator.ready(staff) || m_estimator.isCoasting(staff))
+      continue;
+    std::optional<double> position = m_estimator.tickAt(staff, nowMs);
+    const std::optional<double> bpm = m_estimator.bpm(staff);
+    if (!position || !bpm || *bpm <= 1.0)
+      continue;
+    // Not past the next note to play (see the declaration).
+    if (m_focusUtick)
+      position = std::min(*position, static_cast<double>(*m_focusUtick));
+    const double ticksPerMs = *bpm * ticksPerQuarter / 60000.0;
+    const double ms = (*m_resumeUtick - *position) / ticksPerMs;
+    expectedInMs = expectedInMs ? std::min(*expectedInMs, ms) : ms;
+  }
+  return expectedInMs;
 }
 
 double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
