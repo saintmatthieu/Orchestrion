@@ -218,18 +218,15 @@ ApplicationWindow {
                     viewHeight: parent.height
                 }
 
-                GestureControllerSelectionPopup {
+                // Stays up while hovered (its panel is read there), even
+                // though hovering isn't mouse activity for the overlay.
+                MidiKeyboardIcon {
+                    id: midiKeyboardIcon
                     x: 10
                     y: 10
-                    id: selectionPopup
-                    visible: opacity > 0
-                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    visible: shown && opacity > 0
+                    opacity: notationPaintView.controlsVisible || hovered ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
-                }
-
-                MidiDeviceActivityPopup {
-                    x: selectionPopup.x + selectionPopup.width + 10
-                    y: selectionPopup.y
                 }
 
                 Row {

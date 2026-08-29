@@ -23,8 +23,7 @@
 
 namespace dgk
 {
-class GestureControllerConfiguration;
-class GestureControllerSelector;
+class GestureInput;
 class ComputerKeyboard;
 
 class GestureControllersModule : public muse::modularity::IModuleSetup
@@ -38,8 +37,7 @@ private:
   void onInit(const muse::IApplication::RunMode &mode) override;
   void onPreInit(const muse::IApplication::RunMode &mode) override;
 
-  const std::shared_ptr<GestureControllerConfiguration> m_configuration;
-  const std::shared_ptr<GestureControllerSelector> m_selector;
+  const std::shared_ptr<GestureInput> m_gestureInput;
   const std::shared_ptr<ComputerKeyboard> m_keyboard;
 };
 

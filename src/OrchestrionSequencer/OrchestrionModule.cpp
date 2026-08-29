@@ -17,11 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionModule.h"
-#include "internal/GestureControllerConfigurator.h"
+#include "internal/GestureInputConnector.h"
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
-#include "view/GestureControllerSelectionModel.h"
-#include "view/MidiDeviceActivityPopupModel.h"
 #include "view/NumberKeysHelpModel.h"
 
 #include "ui/iuiactionsregister.h"
@@ -31,8 +29,7 @@ namespace dgk
 {
 OrchestrionModule::OrchestrionModule()
     : m_orchestrion(std::make_shared<Orchestrion>()),
-      m_midiControllerConfigurator(
-          std::make_shared<GestureControllerConfigurator>()),
+      m_gestureInputConnector(std::make_shared<GestureInputConnector>()),
       m_sequencerConfiguration(
           std::make_shared<OrchestrionSequencerConfiguration>())
 {
@@ -43,19 +40,12 @@ std::string OrchestrionModule::moduleName() const { return "Orchestrion"; }
 void OrchestrionModule::registerExports()
 {
   ioc()->registerExport<IOrchestrion>(moduleName(), m_orchestrion);
-  ioc()->registerExport<IGestureControllerConfigurator>(
-      moduleName(), m_midiControllerConfigurator);
   ioc()->registerExport<IOrchestrionSequencerConfiguration>(
       moduleName(), m_sequencerConfiguration);
 }
 
 void OrchestrionModule::registerUiTypes()
 {
-  qmlRegisterType<GestureControllerSelectionModel>(
-      "Orchestrion.OrchestrionSequencer", 1, 0,
-      "GestureControllerSelectionModel");
-  qmlRegisterType<MidiDeviceActivityPopupModel>(
-      "Orchestrion.OrchestrionSequencer", 1, 0, "MidiDeviceActivityPopupModel");
   qmlRegisterType<NumberKeysHelpModel>("Orchestrion.OrchestrionSequencer", 1, 0,
                                        "NumberKeysHelpModel");
 }
@@ -63,7 +53,7 @@ void OrchestrionModule::registerUiTypes()
 void OrchestrionModule::onInit(const muse::IApplication::RunMode &)
 {
   m_orchestrion->init();
-  m_midiControllerConfigurator->init();
+  m_gestureInputConnector->init();
   m_sequencerConfiguration->init();
 }
 } // namespace dgk

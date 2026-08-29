@@ -25,43 +25,26 @@ using namespace ExternalDevicesUtils;
 namespace
 {
 const ExternalDeviceId noDevice{muse::midi::NONE_DEVICE_ID};
+
+//! MuseScore's device ids read "<enumeration index>:<client>:<port>" (see
+//! muse::midi::makeUniqueDeviceId), and the index shifts when an earlier
+//! device goes away — so a device is recognised by the rest of its id.
+std::string deviceKey(const ExternalDeviceId &id)
+{
+  const auto colon = id.value.find(':');
+  return colon == std::string::npos ? id.value : id.value.substr(colon + 1);
 }
+
+bool sameDevice(const ExternalDeviceId &a, const ExternalDeviceId &b)
+{
+  return deviceKey(a) == deviceKey(b);
+}
+} // namespace
 
 void MidiDeviceService::init()
 {
-  midiInPort()->eventReceived().onReceive(
-      this, [this](const muse::midi::tick_t, const muse::midi::Event &event)
-      { m_activityDetected.notify(); });
-
   midiInPort()->availableDevicesChanged().onNotify(
-      this,
-      [this]
-      {
-        const auto configDevice = configuration()->readSelectedMidiDevice();
-        if (!configDevice)
-        {
-          const auto selected = selectedDeviceWithoutNoDevice();
-          const auto available = availableDevicesWithoutNoDevice();
-          if (!selected)
-          {
-            ScopedTrue scope{m_deviceChangeExpected};
-            doSelectDevice(available.empty() ? noDevice : available.front());
-          }
-          else if (selected == noDevice && !available.empty())
-          {
-            ScopedTrue scope{m_deviceChangeExpected};
-            doSelectDevice(available.front());
-          }
-          return;
-        }
-
-        const auto available = isAvailable(*configDevice);
-        if (available && selectedDevice() == configDevice)
-          return;
-
-        ScopedTrue scope{m_deviceChangeExpected};
-        doSelectDevice(available ? *configDevice : noDevice);
-      });
+      this, [this] { onAvailableDevicesChanged(); });
 
   midiInPort()->deviceChanged().onNotify(
       this,
@@ -77,47 +60,65 @@ void MidiDeviceService::init()
 
         if (m_deviceChangeExpected)
           m_selectedDeviceChanged.notify();
-        else if (const auto configDevice =
-                     configuration()->readSelectedMidiDevice())
-        {
-          ScopedTrue scope{m_deviceChangeExpected};
-          // MuseScore's midimodule reads from its own configuration on startup.
-          // Catch this call and reset the device to our configuration.
-          doSelectDevice(*configDevice);
-        }
         else
+        {
+          // MuseScore's midimodule reads from its own configuration on startup.
+          // Catch this call and reset the device to our choice.
+          ScopedTrue scope{m_deviceChangeExpected};
+          doSelectDevice(preferredDevice(std::nullopt, false));
           m_selectedDeviceChanged.notify();
+        }
       });
 }
 
 void MidiDeviceService::onAllInited()
 {
-  if (const auto configDevice = configuration()->readSelectedMidiDevice())
-  {
-    ScopedTrue scope{m_deviceChangeExpected};
-    doSelectDevice(*configDevice);
-  }
-  else
-  {
-    const auto available = availableDevicesWithoutNoDevice();
-    doSelectDevice(available.empty() ? noDevice : available.front());
-  }
+  // MuseScore's midi module may already have connected the device it
+  // remembers; that is not our choice, so it gets no precedence here.
+  m_knownDevices = availableDevicesWithoutNoDevice();
+  doSelectDevice(preferredDevice(std::nullopt, false));
 
   // We don't want this post-init, start-up selection to trigger configuration
   // writing. Since device selection implementation for MIDI is synchronous, we
   // can do this.
   m_postInitCalled = true;
-  m_startupSelectionFinished.notify();
 }
 
-muse::async::Notification MidiDeviceService::startupSelectionFinished() const
+void MidiDeviceService::onAvailableDevicesChanged()
 {
-  return m_startupSelectionFinished;
+  // The in-port has already dropped the connection if the device in use went
+  // away; here we pick whatever should be used now.
+  const auto available = availableDevicesWithoutNoDevice();
+  std::optional<ExternalDeviceId> newcomer;
+  for (const auto &id : available)
+    if (std::none_of(m_knownDevices.begin(), m_knownDevices.end(),
+                     [&id](const ExternalDeviceId &known)
+                     { return sameDevice(known, id); }))
+      newcomer = id;
+  m_knownDevices = available;
+
+  ScopedTrue scope{m_deviceChangeExpected};
+  doSelectDevice(preferredDevice(newcomer, true));
 }
 
-muse::async::Notification MidiDeviceService::activityDetected() const
+ExternalDeviceId MidiDeviceService::preferredDevice(
+    const std::optional<ExternalDeviceId> &newcomer, bool keepCurrent) const
 {
-  return m_activityDetected;
+  // An express choice from the menu wins while it can be honoured.
+  if (const auto chosen = configuration()->readSelectedMidiDevice())
+    for (const auto &candidate : availableDevices())
+      if (sameDevice(candidate, *chosen))
+        return candidate;
+
+  // Otherwise greedy: the device that just got plugged in, else the one in
+  // use if it's still there, else the most recently enumerated one.
+  if (newcomer)
+    return *newcomer;
+  if (const auto current = selectedDeviceWithoutNoDevice();
+      keepCurrent && current && isAvailable(*current))
+    return *current;
+  const auto available = availableDevicesWithoutNoDevice();
+  return available.empty() ? noDevice : available.back();
 }
 
 std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const

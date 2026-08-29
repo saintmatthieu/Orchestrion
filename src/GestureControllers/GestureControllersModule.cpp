@@ -18,15 +18,13 @@
  */
 #include "GestureControllersModule.h"
 #include "internal/ComputerKeyboard/ComputerKeyboard.h"
-#include "internal/GestureControllerConfiguration.h"
-#include "internal/GestureControllerSelector.h"
+#include "internal/GestureInput.h"
 #include <ui/iuiactionsregister.h>
 
 namespace dgk
 {
 GestureControllersModule::GestureControllersModule()
-    : m_configuration{std::make_shared<GestureControllerConfiguration>()},
-      m_selector{std::make_shared<GestureControllerSelector>()},
+    : m_gestureInput{std::make_shared<GestureInput>()},
       m_keyboard{std::make_shared<ComputerKeyboard>()}
 {
 }
@@ -38,15 +36,13 @@ std::string GestureControllersModule::moduleName() const
 
 void GestureControllersModule::registerExports()
 {
-  ioc()->registerExport<IGestureControllerSelector>(moduleName(), m_selector);
+  ioc()->registerExport<IGestureInput>(moduleName(), m_gestureInput);
   ioc()->registerExport<IComputerKeyboard>(moduleName(), m_keyboard);
-  ioc()->registerExport<IGestureControllerConfiguration>(moduleName(),
-                                                         m_configuration);
 }
 
 void GestureControllersModule::onInit(const muse::IApplication::RunMode &)
 {
-  m_selector->init();
+  m_gestureInput->init();
 }
 
 void GestureControllersModule::onPreInit(const muse::IApplication::RunMode &)

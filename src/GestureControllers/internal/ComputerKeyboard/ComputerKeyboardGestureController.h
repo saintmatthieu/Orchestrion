@@ -35,8 +35,6 @@ class ComputerKeyboardGestureController : public IGestureController,
 public:
   ComputerKeyboardGestureController();
 
-  static bool isFunctional() { return true; }
-
 private:
   void keyPressed(char);
   void keyReleased(char);

@@ -94,6 +94,10 @@ private:
   bool keyboardHelpDismissed() const override;
   void setKeyboardHelpDismissed(bool) override;
 
+  bool midiKeyboardIconVisible() const override;
+  void setMidiKeyboardIconVisible(bool) override;
+  muse::async::Notification midiKeyboardIconVisibleChanged() const override;
+
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
   muse::async::Notification m_tempoVisualizationEnabledChanged;
@@ -108,5 +112,6 @@ private:
   muse::async::Notification m_timeProportionalSpacingEnabledChanged;
   muse::async::Notification m_tempoSmoothingMemoryChanged;
   muse::async::Notification m_unrollRepeatsEnabledChanged;
+  muse::async::Notification m_midiKeyboardIconVisibleChanged;
 };
 } // namespace dgk

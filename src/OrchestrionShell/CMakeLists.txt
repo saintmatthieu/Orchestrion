@@ -30,6 +30,8 @@ set(MODULE_SRC
   view/AutoPlayModel.h
   view/GradingModel.cpp
   view/GradingModel.h
+  view/MidiKeyboardIconModel.cpp
+  view/MidiKeyboardIconModel.h
   view/PlaybackButtonModel.cpp
   view/PlaybackButtonModel.h
   view/ScoreAttributionModel.cpp

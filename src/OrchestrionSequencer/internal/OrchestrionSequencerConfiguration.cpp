@@ -53,6 +53,8 @@ const muse::Settings::Key UNROLL_REPEATS_ENABLED(module_name,
                                                  "UNROLL_REPEATS_ENABLED");
 const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
+const muse::Settings::Key
+    MIDI_KEYBOARD_ICON_VISIBLE(module_name, "MIDI_KEYBOARD_ICON_VISIBLE");
 } // namespace
 
 void OrchestrionSequencerConfiguration::init()
@@ -152,6 +154,13 @@ void OrchestrionSequencerConfiguration::init()
                  { m_unrollRepeatsEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
+
+  muse::settings()->setDefaultValue(MIDI_KEYBOARD_ICON_VISIBLE,
+                                    muse::Val{true});
+  muse::settings()
+      ->valueChanged(MIDI_KEYBOARD_ICON_VISIBLE)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_midiKeyboardIconVisibleChanged.notify(); });
 }
 
 bool OrchestrionSequencerConfiguration::velocityRecordingEnabled() const
@@ -397,6 +406,23 @@ void OrchestrionSequencerConfiguration::setKeyboardHelpDismissed(bool dismissed)
 {
   muse::settings()->setSharedValue(KEYBOARD_HELP_DISMISSED,
                                    muse::Val{dismissed});
+}
+
+bool OrchestrionSequencerConfiguration::midiKeyboardIconVisible() const
+{
+  return muse::settings()->value(MIDI_KEYBOARD_ICON_VISIBLE).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setMidiKeyboardIconVisible(bool visible)
+{
+  muse::settings()->setSharedValue(MIDI_KEYBOARD_ICON_VISIBLE,
+                                   muse::Val{visible});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::midiKeyboardIconVisibleChanged() const
+{
+  return m_midiKeyboardIconVisibleChanged;
 }
 
 } // namespace dgk

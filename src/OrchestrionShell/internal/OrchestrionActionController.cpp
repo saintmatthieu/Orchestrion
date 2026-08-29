@@ -148,6 +148,13 @@ void OrchestrionActionController::init()
       this, actionIds::reverbCathedral,
       [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral); });
 
+  dispatcher()->reg(this, actionIds::toggleMidiKeyboardIcon,
+                    [this]
+                    {
+                      sequencerConfig()->setMidiKeyboardIconVisible(
+                          !sequencerConfig()->midiKeyboardIconVisible());
+                    });
+
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
                     {

@@ -69,7 +69,7 @@ The Orchestrion modules (registered in `OrchestrionAppFactory::newGuiApp`):
 | `OrchestrionSynthesis` | Wires per-track VST synthesisers into MuseScore's mixer (see `src/OrchestrionSynthesis/classDiagram.md`) |
 | `ScoreAnimation` | Visual feedback synced to playback (segment registry, animator) |
 | `ExternalDevices` | MIDI / audio device discovery and connection |
-| `GestureControllers` | Touchpad / computer-keyboard / generic gesture-controller abstractions |
+| `GestureControllers` | Computer-keyboard and MIDI-device gesture controllers, always on, merged into one note-event stream (`IGestureInput`) |
 | `OrchestrionConfiguration` | App-wide configuration / preferences |
 
 The factory lives in `src/App/OrchestrionAppFactory.cpp` — when adding a new module, register it there alongside the existing `app->addModule(...)` calls and add it to the top-level `CMakeLists.txt` (`add_subdirectory` + `target_link_libraries`).

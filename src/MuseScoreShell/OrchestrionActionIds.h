@@ -41,6 +41,11 @@ static constexpr const char *reverbCathedral =
 static constexpr const char *toggleJumpAnticipation =
     "orchestrion-view-toggle-jump-anticipation";
 
+//! View menu: shows/hides the MIDI keyboard indicator (the icon in the score
+//! view's top-left corner, which its own cross hides).
+static constexpr const char *toggleMidiKeyboardIcon =
+    "orchestrion-view-toggle-midi-keyboard-icon";
+
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
 //! by MuseScore code with its rendered-track playback in mind (e.g. the

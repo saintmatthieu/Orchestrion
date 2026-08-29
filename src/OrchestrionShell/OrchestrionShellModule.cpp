@@ -29,6 +29,7 @@
 #include "ui/iuiactionsregister.h"
 #include "view/AutoPlayModel.h"
 #include "view/GradingModel.h"
+#include "view/MidiKeyboardIconModel.h"
 #include "view/NotationPaintViewLoaderModel.h"
 #include "view/OrchestrionWindowTitleProvider.h"
 #include "view/PlaybackButtonModel.h"
@@ -85,6 +86,8 @@ void OrchestrionShellModule::registerUiTypes()
                                        "PlaybackButtonModel");
   qmlRegisterType<GradingModel>("Orchestrion.OrchestrionShell", 1, 0,
                                 "GradingModel");
+  qmlRegisterType<MidiKeyboardIconModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                         "MidiKeyboardIconModel");
   qmlRegisterType<AutoPlayModel>("Orchestrion.OrchestrionShell", 1, 0,
                                  "AutoPlayModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,

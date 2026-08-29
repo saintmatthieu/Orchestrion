@@ -101,6 +101,10 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  sequencerConfiguration()->midiKeyboardIconVisibleChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   sequencerConfiguration()->noteInfoTooltipEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
@@ -259,11 +263,21 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   jumpAnticipationItem->setSelected(
       sequencerConfiguration()->jumpAnticipationEnabled());
 
-  const QList<MenuItem *> menu{
+  // The MIDI keyboard indicator can be dismissed with its own cross; this is
+  // where it comes back.
+  MenuItem *const midiIconItem = makeMenuItem(
+      actionIds::toggleMidiKeyboardIcon,
+      muse::TranslatableString("appshell/menu/view", "&MIDI keyboard icon"));
+  midiIconItem->setSelectable(true);
+  midiIconItem->setSelected(
+      sequencerConfiguration()->midiKeyboardIconVisible());
+
+  QList<muse::uicomponents::MenuItem *> menu{
+      jumpAnticipationItem, midiIconItem,
       makeMenuItem(
           "view-toggle-fullscreen",
-          muse::TranslatableString("appshell/menu/view", "&Fullscreen")),
-      jumpAnticipationItem};
+          muse::TranslatableString("appshell/menu/view", "&Fullscreen"))};
+
   return makeMenu(muse::TranslatableString("appshell/menu/view", "&View"), menu,
                   "menu-orchestrion-view");
 }

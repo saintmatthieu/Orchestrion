@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>touchpad_testapp_main.qml</file>
-    </qresource>
-</RCC>

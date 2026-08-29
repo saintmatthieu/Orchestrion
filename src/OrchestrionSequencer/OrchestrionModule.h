@@ -24,7 +24,7 @@ namespace dgk
 {
 class Orchestrion;
 class OrchestrionSequencerConfiguration;
-class GestureControllerConfigurator;
+class GestureInputConnector;
 
 class OrchestrionModule : public muse::modularity::IModuleSetup
 {
@@ -38,8 +38,7 @@ private:
   void registerUiTypes() override;
 
   const std::shared_ptr<Orchestrion> m_orchestrion;
-  const std::shared_ptr<GestureControllerConfigurator>
-      m_midiControllerConfigurator;
+  const std::shared_ptr<GestureInputConnector> m_gestureInputConnector;
   const std::shared_ptr<OrchestrionSequencerConfiguration>
       m_sequencerConfiguration;
 };

@@ -20,19 +20,6 @@
     </message>
 </context>
 <context>
-    <name>GestureControllerSelectionPopup</name>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="21"/>
-        <source>Controllers</source>
-        <translation>Contrôleurs</translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/GestureControllerSelectionPopup.qml" line="60"/>
-        <source>No active controller, click to select</source>
-        <translation>Aucun contrôleur actif, cliquez pour en sélectionner un</translation>
-    </message>
-</context>
-<context>
     <name>KDDockWidgets::Debug::DebugWindow</name>
     <message>
         <location filename="../../MuseScore/src/framework/dockwindow/thirdparty/KDDockWidgets/src/private/DebugWindow.cpp" line="123"/>
@@ -100,21 +87,21 @@
     </message>
 </context>
 <context>
-    <name>MidiDeviceActivityPopup</name>
+    <name>MidiKeyboardIcon</name>
     <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/MidiDeviceActivityPopup.qml" line="26"/>
-        <source>Activity detected on MIDI device. Use it as controller?</source>
-        <translation>Activité détectée sur le périphérique MIDI. L&apos;utiliser comme contrôleur&#x2009;?</translation>
+        <location filename="../../src/qml/MidiKeyboardIcon.qml" line="137"/>
+        <source>MIDI keyboard: connected</source>
+        <translation>Clavier MIDI : connecté</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/MidiDeviceActivityPopup.qml" line="38"/>
-        <source>Yes</source>
-        <translation>Oui</translation>
+        <location filename="../../src/qml/MidiKeyboardIcon.qml" line="138"/>
+        <source>MIDI keyboard: disconnected</source>
+        <translation>Clavier MIDI : déconnecté</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/MidiDeviceActivityPopup.qml" line="51"/>
-        <source>No</source>
-        <translation>Non</translation>
+        <location filename="../../src/qml/MidiKeyboardIcon.qml" line="145"/>
+        <source>Use a MIDI keyboard to get better control over nuances</source>
+        <translation>Utilisez un clavier MIDI pour un meilleur contrôle des nuances</translation>
     </message>
 </context>
 <context>
@@ -429,6 +416,11 @@
         <source>&amp;View</source>
         <translation>&amp;Affichage</translation>
     </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="231"/>
+        <source>&amp;MIDI keyboard icon</source>
+        <translation>Icône du clavier &amp;MIDI</translation>
+    </message>
 </context>
 <context>
     <name>audio</name>
@@ -478,29 +470,6 @@
         <location filename="../../MuseScore/src/framework/cloud/internal/oauthhttpserverreplyhandler.cpp" line="184"/>
         <source>Sign in successful! You're good to go back to MuseScore Studio.</source>
         <translation>Connexion réussie ! Vous pouvez retourner dans MuseScore Studio.</translation>
-    </message>
-</context>
-<context>
-    <name>dgk::GestureControllerSelectionModel</name>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="100"/>
-        <source>Midi Device</source>
-        <translation>Périphérique MIDI</translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="102"/>
-        <source>Touchpad (press &quot;T&quot; to toggle)</source>
-        <translation>Pavé tactile (appuyez sur «&#x2009;T&#x2009;» pour basculer)</translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="104"/>
-        <source>Touchpad (Swipe mode)</source>
-        <translation>Pavé tactile (mode balayage)</translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/view/GestureControllerSelectionModel.cpp" line="106"/>
-        <source>Computer Keyboard</source>
-        <translation>Clavier de l&apos;ordinateur</translation>
     </message>
 </context>
 <context>
@@ -1222,14 +1191,6 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
         <location filename="../../MuseScore/src/framework/global/io/ioretcodes.h" line="63"/>
         <source>An error occurred when moving the file</source>
         <translation>Une erreur s&apos;est produite lors du déplacement du fichier</translation>
-    </message>
-</context>
-<context>
-    <name>touchpad_testapp_main</name>
-    <message>
-        <location filename="../../src/GestureControllers/internal/Touchpad/testapp/touchpad_testapp_main.qml" line="9"/>
-        <source>Minimal Qml</source>
-        <translation>QML minimal</translation>
     </message>
 </context>
 <context>

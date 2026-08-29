@@ -16,25 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-#include "Touchpad.h"
-#include "OperatingSystemTouchpadFactory.h"
-#include "SteadyClock.h"
+#pragma once
 
-#include <log.h>
+#include "IGestureController.h"
+
+#include <modularity/imoduleinterface.h>
 
 namespace dgk
 {
-Touchpad::Touchpad()
-    : m_osTouchpad{createOperatingSystemTouchpad(
-          [this](const TouchpadScan &scan) { m_processor.process(scan); })},
-      m_processor{std::make_unique<SteadyClock>()}
+//! The note events of every gesture controller, merged into one stream: the
+//! computer keyboard, always, and the MIDI device chosen in the Audio/MIDI
+//! menu, whenever one is connected. There is nothing to select — whatever can
+//! produce notes does.
+class IGestureInput : public IGestureController, MODULE_EXPORT_INTERFACE
 {
-}
+  INTERFACE_ID(IGestureInput);
 
-bool Touchpad::isAvailable() const { return m_osTouchpad->isAvailable(); }
-
-muse::async::Channel<Contacts> Touchpad::contactChanged() const
-{
-  return m_processor.contactChanged();
-}
+public:
+  virtual ~IGestureInput() = default;
+};
 } // namespace dgk

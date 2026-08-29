@@ -18,14 +18,28 @@
  */
 #pragma once
 
-#include <chrono>
+#include "GestureControllers/IGestureInput.h"
+#include "IOrchestrion.h"
+
+#include "async/asyncable.h"
+#include "modularity/ioc.h"
+
+#include <optional>
 
 namespace dgk
 {
-class IClock
+//! Feeds the gesture controllers' note events to the sequencer.
+class GestureInputConnector : public muse::Injectable,
+                              public muse::async::Asyncable
 {
+  muse::Inject<IOrchestrion> orchestrion;
+  muse::Inject<IGestureInput> gestureInput;
+
 public:
-  virtual ~IClock() = default;
-  virtual std::chrono::time_point<std::chrono::steady_clock> now() const = 0;
+  void init();
+
+private:
+  void onNoteOn(int pitch, std::optional<float> velocity);
+  void onNoteOff(int pitch);
 };
 } // namespace dgk

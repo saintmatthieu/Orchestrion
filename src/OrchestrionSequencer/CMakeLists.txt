@@ -6,9 +6,8 @@ set(MODULE_SRC
     internal/OrchestrionPlayerStub.h
     internal/ChordTransitionUtil.cpp
     internal/ChordTransitionUtil.h
-    internal/GestureControllerConfigurator.cpp
-    internal/GestureControllerConfigurator.h
-    internal/IGestureControllerConfigurator.h
+    internal/GestureInputConnector.cpp
+    internal/GestureInputConnector.h
     internal/ModifiableItemRegistry.cpp
     internal/ModifiableItemRegistry.h
     internal/MuseChord.cpp
@@ -31,10 +30,6 @@ set(MODULE_SRC
     internal/VoiceSequencer.cpp
     internal/VoiceSequencer.h
 
-    view/GestureControllerSelectionModel.cpp
-    view/GestureControllerSelectionModel.h
-    view/MidiDeviceActivityPopupModel.cpp
-    view/MidiDeviceActivityPopupModel.h
     view/NumberKeysHelpModel.cpp
     view/NumberKeysHelpModel.h
 

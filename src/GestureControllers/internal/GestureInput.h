@@ -18,35 +18,28 @@
  */
 #pragma once
 
-#include "ITouchpad.h"
-#include "ITouchpadGestureController.h"
+#include "IGestureController.h"
+#include "IGestureInput.h"
 
 #include <async/asyncable.h>
-#include <modularity/ioc.h>
 
 #include <memory>
+#include <vector>
 
 namespace dgk
 {
-class TouchpadGestureController : public ITouchpadGestureController,
-                                  public muse::Injectable,
-                                  public muse::async::Asyncable
+class GestureInput : public IGestureInput, public muse::async::Asyncable
 {
 public:
-  TouchpadGestureController(const ITouchpad &touchpad);
-  ~TouchpadGestureController() override = default;
+  //! Creates the controllers; needs the IoC container populated (module init).
+  void init();
 
-  static bool isFunctional();
-
-private:
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
-  muse::async::Channel<Contacts> contactChanged() const override;
-
-  const ITouchpad &m_touchpad;
+private:
+  std::vector<std::unique_ptr<IGestureController>> m_controllers;
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
-  std::unordered_map<int, int> m_pressedKeys;
 };
 } // namespace dgk

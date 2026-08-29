@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include "GestureControllers/IGestureControllerSelector.h"
 #include "HighlightFader.h"
 #include "ILoopBoundariesController.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
@@ -94,7 +93,6 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   muse::Inject<mu::notation::INotationConfiguration> configuration;
   muse::Inject<mu::context::IGlobalContext> globalContext;
   muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<IGestureControllerSelector> gestureControllerSelector;
   muse::Inject<ISegmentRegistry> chordRegistry;
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
@@ -268,7 +266,6 @@ private:
   //! Pan the canvas by \p physicalDx physical pixels; returns whether it moved
   //! (false ⇒ clamped at an edge). Drives the KineticScroller.
   bool moveCanvasBy(qreal physicalDx);
-  void initTouchpadMidiController();
   float hitWidth() const;
 
   // Live highlight per track (ringing or upcoming note).
@@ -338,14 +335,6 @@ private:
   QString m_finalScoreBreakdown;
   QVariantList m_finalScoreMetrics;
 
-  struct Contact
-  {
-    const bool isLeft;
-    double x = 0.;
-    double y = 0.;
-  };
-
-  std::unordered_map<int, Contact> m_contacts;
   bool m_constrainingScorePosition = false;
   QPoint m_lastCursorPos{-1, -1};
 

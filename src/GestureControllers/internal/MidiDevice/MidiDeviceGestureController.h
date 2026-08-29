@@ -37,8 +37,6 @@ class MidiDeviceGestureController : public IGestureController,
 public:
   MidiDeviceGestureController();
 
-  static bool isFunctional() { return true; }
-
 private:
   void onMidiEventReceived(const muse::midi::Event &event);
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
