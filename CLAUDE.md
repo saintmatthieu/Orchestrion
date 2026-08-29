@@ -93,3 +93,10 @@ Top-level QML is registered via `qt_add_qml_module(Orchestrion URI Orchestrion .
 - **Linux-only link-order workaround** at the bottom of the root `CMakeLists.txt`: `vst_sdk_3` must explicitly depend on `sdk_common`. Don't "clean up" that block.
 - **GCC needs `-include cstring`** added globally (top of root `CMakeLists.txt`) because some MuseScore sources use `memset`/`memcpy` without including the header. Keep it.
 - License headers: existing files use a GPL-3.0-or-later header (`Copyright (C) 2024 Matthieu Hodgkinson`). Match it on new files.
+- **Doc comments**: for class and method documentation use the multiline Javadoc-style block
+  ```cpp
+  /**
+   * comment
+   */
+  ```
+  rather than `//! comment` (existing `//!` comments are legacy; don't introduce new ones).
