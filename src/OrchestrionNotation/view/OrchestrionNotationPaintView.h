@@ -27,6 +27,7 @@
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "PositionEstimation/PositionEstimator.h"
+#include "ReadingFocus.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "ScoreFollower.h"
 #include "TempoVizModel.h"
@@ -248,13 +249,9 @@ private:
 
   // ScoreFollower::Canvas
   double viewWidth() const override { return width(); }
-  double defaultScaling() const override
-  {
-    return m_userDefaultScaling > 0.0 ? m_userDefaultScaling : currentScaling();
-  }
-  double minScaling() const override;
+  double viewScaling() const override { return currentScaling(); }
   double anchorX() const override;
-  void centerOn(double logicalX, double scaling) override;
+  void centerOn(double logicalX) override;
   //! From the live tempo and position of the hands being tracked (the
   //! earliest of them) to m_resumeUtick — or nothing while none is. The
   //! estimated position is never taken past the next note to play
@@ -357,10 +354,13 @@ private:
   // writes to it) is constructed.
   TempoVizModel m_tempoVizModel;
 
-  // Turns the played events into a page-turning scroll, zooming out to keep
-  // hands that drift apart on one page. While it drives the canvas
-  // (centerOn), m_drivingScroll makes constrainScorePosition() yield so it
-  // isn't undone.
+  // Where each hand has got to, and the event the page keeps in view — the
+  // leading hand's reading (see ReadingFocus). Cleared when the position
+  // jumps; the jump's transitions batch repopulates it.
+  ReadingFocus m_readingFocus;
+  // Turns the played events into a page-turning scroll at the user's zoom.
+  // While it drives the canvas (centerOn), m_drivingScroll makes
+  // constrainScorePosition() yield so it isn't undone.
   ScoreFollower m_follower;
   // Where each hand has got to, and how far each onset fell from the
   // performer's own smooth curve: the grading's raw material. Its clock is
@@ -378,9 +378,6 @@ private:
   std::map<int /*staff*/, PositionSmoother> m_loudness;
   bool m_drivingScroll = false;
   QMetaObject::Connection m_frameTickConnection;
-  // The user's chosen zoom (fit at load, updated on manual zoom): the auto-zoom
-  // never zooms in past it.
-  double m_userDefaultScaling = 0.0;
 
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.

@@ -165,6 +165,7 @@ void OrchestrionNotationPaintView::subscribe(
                                               // The jump's transitions batch
                                               // repopulates the ledger.
                                               m_autoTrackTargets.clear();
+                                              m_readingFocus.clear();
                                               m_follower.jump();
                                               m_focusUtick.reset();
                                               m_resumeUtick.reset();
@@ -185,28 +186,17 @@ void OrchestrionNotationPaintView::subscribe(
 void OrchestrionNotationPaintView::OnTransitions(
     const std::map<TrackIndex, ChordTransition> &transitions)
 {
-  // Onsets driving the follow, grouped per hand (= staff): the voices on a
+  // Onsets driving the estimate, grouped per hand (= staff): the voices on a
   // staff are played by the same gestures, so they share one tracker. Each
-  // hand's sounding onset is a tempo observation for it; the leading/trailing
-  // of all onsets (sounding or upcoming) feed the one-shot initial framing.
-  // Each sounding hand's onset: its engraved x (what the page scroll needs)
-  // and its playback-unrolled tick (what the estimate is built on).
-  std::map<int /*staff*/, double /*onsetX*/> soundingX;
+  // hand's sounding onset is a tempo observation for it, at its
+  // playback-unrolled tick. (The page scroll is fed per voice, through
+  // m_readingFocus, below.)
   std::map<int /*staff*/, double /*utick*/> soundingTicks;
   // The gesture's controller velocity per hand, when the device measures one:
   // the dynamics judgments' input.
   std::map<int /*staff*/, double> soundingVelocity;
   std::map<int /*staff*/, int> presentScoreTicks; // engraved position
   std::map<int /*staff*/, const mu::engraving::EngravingItem *> presentAnchors;
-  std::optional<double> leadingAnyX;
-  std::optional<double> trailingAnyX;
-  // The next event to play — the most imminent upcoming onset across the
-  // tracks — which is what the page scroll keeps in view; with its unrolled
-  // tick (as leadingAnyX's), which locates the barrier ahead of it
-  // (nextBarrier).
-  std::optional<double> nextX;
-  std::optional<int> nextUtick;
-  std::optional<int> leadingAnyUtick;
   // Where to place a hand's timing gauge if its onset gets judged: the union
   // of the boxes of the notes it struck this batch, plus the staff's edges so
   // the gauge keeps clear of the staff lines.
@@ -238,17 +228,26 @@ void OrchestrionNotationPaintView::OnTransitions(
     const IMelodySegment *present = GetPresentThing(transition);
     const IChord *future = GetFutureChord(transition);
 
-    if (future)
-      if (const auto *futureSegment = chordRegistry()->GetSegment(future))
-        if (const auto *el = futureSegment->element(track.value))
-        {
-          const double x = el->pageBoundingRect().center().x();
-          if (!nextX || x < *nextX)
-          {
-            nextX = x;
-            nextUtick = future->GetBeginTick().withRepeats;
-          }
-        }
+    // The onset of a thing on this track — its engraved x (the follow's
+    // coordinate) and unrolled tick — taken from the segment element rather
+    // than the hugging box, whose width includes ties. Nothing for a voice
+    // blank, which no engraving segment represents.
+    const auto onsetOf =
+        [&](const IMelodySegment *item) -> std::optional<ReadingFocus::Onset>
+    {
+      if (!item)
+        return std::nullopt;
+      const auto *segment = chordRegistry()->GetSegment(item);
+      const auto *el = segment ? segment->element(track.value) : nullptr;
+      if (!el)
+        return std::nullopt;
+      return ReadingFocus::Onset{item->GetBeginTick().withRepeats,
+                                 el->pageBoundingRect().center().x()};
+    };
+    // Fed for every track in the batch, gap rests included: the sequencer has
+    // moved the hand there, visible or not.
+    m_readingFocus.onTransition(track.staffIndex(), track.value,
+                                onsetOf(present), onsetOf(future));
 
     const auto thing = present ? present : future;
     if (!thing)
@@ -306,40 +305,34 @@ void OrchestrionNotationPaintView::OnTransitions(
       }
     }
 
-    // Onset x of this track's note (page-logical), for the follow. Use the
-    // segment element rather than the hugging box, whose width includes ties.
-    if (const auto el = segment->element(track.value))
+    // This track's struck chord, for the estimate. A rest is "present" too —
+    // the voice moves onto it as the chord before it is released — but that
+    // is not an onset: fed as one, it lands a few ms after the release, and
+    // the tracker reads a note's worth of ticks over next to no time as a
+    // tempo of thousands of bpm.
+    if (const auto el = segment->element(track.value);
+        el && GetPresentChord(transition))
     {
-      const double onsetX = el->pageBoundingRect().center().x();
-      if (!leadingAnyX || onsetX > *leadingAnyX)
+      // Collapse a staff's voices into one onset (its latest), carrying the
+      // playback-unrolled tick — continuous through repeats, voltas and jumps
+      // — for the musical-tempo readout and the timing judgments.
+      const int hand = track.staffIndex();
+      const double utick =
+          static_cast<double>(present->GetBeginTick().withRepeats);
+      // The gesture's controller velocity (cached from HandNoteEvents just
+      // before this batch), for the dynamics judgments.
+      const std::optional<float> &velocity =
+          m_pendingHandVelocity[hand > 0 ? 1 : 0];
+      const auto it = soundingTicks.find(hand);
+      if (it == soundingTicks.end() || utick > it->second)
       {
-        leadingAnyX = onsetX;
-        leadingAnyUtick = thing->GetBeginTick().withRepeats;
-      }
-      trailingAnyX = trailingAnyX ? std::min(*trailingAnyX, onsetX) : onsetX;
-      if (active)
-      {
-        // Collapse a staff's voices into one onset (its rightmost), carrying
-        // the playback-unrolled tick — continuous through repeats, voltas and
-        // jumps — for the musical-tempo readout and the timing judgments.
-        const int hand = track.staffIndex();
-        // The gesture's controller velocity (cached from HandNoteEvents just
-        // before this batch), for the dynamics judgments.
-        const std::optional<float> &velocity =
-            m_pendingHandVelocity[hand > 0 ? 1 : 0];
-        const auto it = soundingX.find(hand);
-        if (it == soundingX.end() || onsetX > it->second)
-        {
-          soundingX[hand] = onsetX;
-          soundingTicks[hand] =
-              static_cast<double>(present->GetBeginTick().withRepeats);
-          if (velocity)
-            soundingVelocity[hand] = *velocity;
-          else
-            soundingVelocity.erase(hand);
-          presentScoreTicks[hand] = segment->tick().ticks();
-          presentAnchors[hand] = el;
-        }
+        soundingTicks[hand] = utick;
+        if (velocity)
+          soundingVelocity[hand] = *velocity;
+        else
+          soundingVelocity.erase(hand);
+        presentScoreTicks[hand] = segment->tick().ticks();
+        presentAnchors[hand] = el;
       }
     }
   }
@@ -372,16 +365,19 @@ void OrchestrionNotationPaintView::OnTransitions(
                             ? m_estimator.asynchrony(0, 1, nowMs)
                             : std::optional<PositionEstimator::Judgment>{};
 
-  // Not every batch pre-lights an upcoming chord — the automatic player
-  // releases one note and strikes the next in the same batch — so fall back
-  // to what is sounding.
-  const std::optional<double> focusX = nextX ? nextX : leadingAnyX;
-  const std::optional<int> focusUtick = nextX ? nextUtick : leadingAnyUtick;
+  // What the page keeps in view — the leading hand's reading (see
+  // ReadingFocus) — and the barrier ahead of it.
+  const std::optional<ReadingFocus::Onset> focus = m_readingFocus.focus();
+  const std::optional<ReadingFocus::Onset> leader =
+      m_readingFocus.leaderOnset();
   const std::optional<BarrierAhead> ahead =
-      focusUtick ? nextBarrier(*focusUtick) : std::nullopt;
-  m_focusUtick = focusUtick;
+      focus ? nextBarrier(focus->utick) : std::nullopt;
+  m_focusUtick = focus ? std::optional{focus->utick} : std::nullopt;
   m_resumeUtick = ahead ? ahead->resumeUtick : std::nullopt;
-  m_follower.onEvents(soundingX, leadingAnyX, trailingAnyX, focusX,
+  const auto xOf = [](const std::optional<ReadingFocus::Onset> &onset)
+  { return onset ? std::optional{onset->x} : std::nullopt; };
+  m_follower.onEvents(!soundingTicks.empty(), xOf(leader ? leader : focus),
+                      xOf(focus),
                       ahead ? std::optional{ahead->barrier} : std::nullopt);
 
   if (replaying)
@@ -961,14 +957,6 @@ void OrchestrionNotationPaintView::dismissFinalScore()
   emit finalScoreChanged();
 }
 
-double OrchestrionNotationPaintView::minScaling() const
-{
-  const QList<int> zooms = configuration()->possibleZoomPercentageList();
-  if (zooms.isEmpty())
-    return currentScaling() * 0.1;
-  return configuration()->scalingFromZoomPercentage(zooms.first());
-}
-
 void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
 {
   if (m_frameTickConnection)
@@ -1011,16 +999,13 @@ double OrchestrionNotationPaintView::anchorX() const
          ScoreFollower::anchorFrac * width() / currentScaling();
 }
 
-void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
+void OrchestrionNotationPaintView::centerOn(double logicalX)
 {
   // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
   // viewport back to hug the content; yield to us while we place the canvas.
   m_drivingScroll = true;
 
-  const bool zoomChanged = !qFuzzyCompare(currentScaling(), scaling);
-  if (zoomChanged)
-    setScaling(scaling, muse::PointF{0., 0.});
-
+  const double scaling = currentScaling();
   const double logicalWidth = width() / scaling;
   // Rest the anchor at the follower's playhead fraction, but never past the
   // max-padding limit (so near the start/end of the score the anchor drifts
@@ -1040,7 +1025,7 @@ void OrchestrionNotationPaintView::centerOn(double logicalX, double scaling)
   // The follow runs every frame, but the page stands still between turns:
   // repainting then would re-render the whole score (this is a
   // QQuickPaintedItem) for an identical picture, 60 times a second.
-  if (zoomChanged || moved)
+  if (moved)
     update();
 }
 
@@ -1764,12 +1749,11 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   if (!m_drivingScroll)
     m_follower.viewMoved();
 
-  // A zoom we didn't drive ourselves (wheel, pinch, keyboard, toolbar, ...) is
-  // the user's choice: adopt it as the new default the auto-zoom won't exceed,
-  // and hand control back until they play again.
+  // A zoom (wheel, pinch, keyboard, toolbar, ...) is the user's choice — the
+  // follower never zooms — and manual navigation: hand control back until
+  // they play again.
   if (!m_drivingScroll && !qFuzzyCompare(oldMatrix.m11(), newMatrix.m11()))
   {
-    m_userDefaultScaling = newMatrix.m11();
     m_follower.suspend();
     m_timingStatsStale = true;
     endTake();
@@ -1782,7 +1766,8 @@ void OrchestrionNotationPaintView::updateNotation()
 {
   m_kineticScroller.stop(); // the score changed under us; cancel any glide
   m_follower.reset();       // and the follow state
-  m_estimator.reset();      // and the position estimate
+  m_readingFocus.clear();
+  m_estimator.reset(); // and the position estimate
   m_loudness.clear();
   m_tempoVizModel.clear();
   if (const auto notation = globalContext()->currentNotation())
@@ -1804,8 +1789,6 @@ void OrchestrionNotationPaintView::updateNotation()
     config.isShowSoundFlags = false;
     notation->interaction()->setScoreConfig(config);
     constrainScorePosition();
-    // The fit zoom after layout is the user's default until they change it.
-    m_userDefaultScaling = currentScaling();
   }
   m_boxes.clear();
   m_fader.clear();

@@ -25,12 +25,9 @@ namespace dgk
 {
 namespace
 {
-// Keep the outermost onsets this far inside the view when zooming out for
-// hands that have drifted apart.
+// The barrier framing never pushes the focus nearer than this to the left
+// edge (physical px).
 constexpr double edgeMarginPx = 48.0;
-
-// Time constant (s) of the auto-zoom easing.
-constexpr double tauZoom = 0.35;
 
 // How far right the next event to play may drift before the page turns. It is
 // then brought back to anchorFrac, so the page advances by the difference —
@@ -67,11 +64,6 @@ constexpr double maxTickMs = 40.0;
 // No frame-driven tick for this long means the window has stopped rendering
 // (hidden, occluded, or simply nothing moving): the timer then drives.
 constexpr qint64 frameStallMs = 40;
-
-// A hand that has not struck for this long is no longer "playing": it stops
-// counting towards the zoom-out that keeps the hands on one page, so a hand
-// resting through a passage doesn't hold the view wide open.
-constexpr qint64 handIdleMs = 2000;
 } // namespace
 
 ScoreFollower::ScoreFollower(Canvas &canvas) : _canvas{canvas}
@@ -96,10 +88,8 @@ ScoreFollower::ScoreFollower(Canvas &canvas) : _canvas{canvas}
       });
 }
 
-void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
-                             std::optional<double> leadingAny,
-                             std::optional<double> trailingAny,
-                             std::optional<double> nextX,
+void ScoreFollower::onEvents(bool struck, std::optional<double> startX,
+                             std::optional<double> focusX,
                              std::optional<Barrier> barrier)
 {
   if (_suspended)
@@ -108,7 +98,7 @@ void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
     // actually played again, and start fresh so we re-frame where the
     // performer now is — gliding there from wherever the view is (see
     // viewMoved()).
-    if (soundingX.empty())
+    if (!struck)
       return;
     jump();
   }
@@ -116,10 +106,10 @@ void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
   // What the page keeps in view (see pageTriggerFrac), and the barrier ahead
   // of it (see barrierMarginPx). Held until the next batch: between events
   // there is nothing new to react to.
-  const bool focusMoved = nextX && (!_focusX || *nextX != *_focusX);
-  if (nextX)
+  const bool focusMoved = focusX && (!_focusX || *focusX != *_focusX);
+  if (focusX)
   {
-    _focusX = nextX;
+    _focusX = focusX;
     // A different barrier — the reading is through the old one — releases
     // the anticipated move (see _jumping).
     const bool sameBarrier =
@@ -130,57 +120,41 @@ void ScoreFollower::onEvents(const std::map<int, double> &soundingX,
   }
 
   // One-shot framing once we have a laid-out viewport and a position.
-  if (!_framed && leadingAny && _canvas.viewWidth() > 1.0)
-    frame(*leadingAny, trailingAny.value_or(*leadingAny));
-
-  const qint64 now = _clock.elapsed();
-  for (const auto &[staff, x] : soundingX)
-    _hands[staff] = Hand{x, now};
+  if (!_framed && startX && _canvas.viewWidth() > 1.0)
+    frame(*startX);
 
   // A batch that only pre-lights the next chord still moves the focus, and
   // may be the one that puts it past the trigger: wake up for that too, not
   // just for a struck note.
-  if ((focusMoved || !soundingX.empty()) && !_timer.isActive())
+  if ((focusMoved || struck) && !_timer.isActive())
     _timer.start();
 }
 
-void ScoreFollower::frame(double leadingX, double trailingX)
+void ScoreFollower::frame(double startX)
 {
-  const double userScale = _canvas.defaultScaling();
-  double scale = userScale;
-  if (trailingX < leadingX)
-  {
-    // Zoom out (never in) so this batch's onsets all fit in the view, past a
-    // small edge margin (same criterion as the follow tick's).
-    const double availPx = _canvas.viewWidth() - 2.0 * edgeMarginPx;
-    const double spanLogical = leadingX - trailingX;
-    if (availPx > 0.0 && spanLogical > 1e-6)
-      scale = std::min(userScale, availPx / spanLogical);
-    scale = std::clamp(scale, _canvas.minScaling(), userScale);
-  }
-  _scaling = scale;
   // Never past the barrier framing (see the class comment): a take that
   // starts inside a short repeated section opens on the section's start, not
   // on what follows the repeat.
-  const double targetX = std::min(leadingX, barrierAnchorX(scale, leadingX));
+  const double targetX = std::min(startX, barrierAnchorX(startX));
   if (std::isfinite(_pageX))
   {
     // The page is still where the previous take (or the position before a
     // jump) left it: glide from there rather than cut.
     _pageTargetX = targetX;
     _pageTauMs = tauRelocateMs;
-    _canvas.centerOn(_pageX, scale);
+    _canvas.centerOn(_pageX);
   }
   else
   {
     _pageX = _pageEaseX = _pageTargetX = targetX;
-    _canvas.centerOn(targetX, scale);
+    _canvas.centerOn(targetX);
   }
   _framed = true;
 }
 
-bool ScoreFollower::barrierInView(double focusX, double scaling) const
+bool ScoreFollower::barrierInView(double focusX) const
 {
+  const double scaling = _canvas.viewScaling();
   if (!_barrier || scaling <= 0.0)
     return false;
   // With the focus on the anchor, the view reaches (1 - anchorFrac) of the
@@ -189,8 +163,9 @@ bool ScoreFollower::barrierInView(double focusX, double scaling) const
   return _barrier->x < focusX + (1.0 - anchorFrac) * logicalWidth;
 }
 
-double ScoreFollower::barrierAnchorX(double scaling, double focusX) const
+double ScoreFollower::barrierAnchorX(double focusX) const
 {
+  const double scaling = _canvas.viewScaling();
   if (!_barrier || scaling <= 0.0)
     return std::numeric_limits<double>::infinity();
   const double logicalWidth = _canvas.viewWidth() / scaling;
@@ -224,58 +199,25 @@ void ScoreFollower::tick()
 {
   const double now = static_cast<double>(_clock.elapsed());
 
-  // Zoom as far in as the user's default allows, but far enough out that the
-  // hands stay on the same page: what this rule is for is one hand lagging
-  // behind the other, so it measures exactly that — the distance between the
-  // hands that are currently playing — and asks only that it fit in the view.
-  std::optional<double> leadingActiveX;
-  std::optional<double> trailingActiveX;
-  for (const auto &[staff, hand] : _hands)
-  {
-    if (now - hand.lastOnsetMs > handIdleMs)
-      continue; // that hand has stopped playing
-    leadingActiveX =
-        leadingActiveX ? std::max(*leadingActiveX, hand.x) : hand.x;
-    trailingActiveX =
-        trailingActiveX ? std::min(*trailingActiveX, hand.x) : hand.x;
-  }
-
-  const double userScale = _canvas.defaultScaling();
-  double targetScale = userScale;
-  if (leadingActiveX && trailingActiveX)
-  {
-    const double availPx = _canvas.viewWidth() - 2.0 * edgeMarginPx;
-    const double spanLogical = *leadingActiveX - *trailingActiveX;
-    if (availPx > 0.0 && spanLogical > 1e-6)
-      targetScale = std::min(targetScale, availPx / spanLogical);
-  }
-  targetScale = std::clamp(targetScale, _canvas.minScaling(), userScale);
-
-  // Both easings below are time-based, which is what keeps them independent
-  // of the frame rate — but it also means a *lost* frame is compensated in
-  // one step: after a 300 ms hitch (an audio hiccup, a relayout, a repaint
-  // that overran) a Δ that should have taken 20 frames is applied in one, and
-  // the score visibly lurches. Cap the step at one slow frame's worth and let
-  // the remainder catch up over the following frames: the glide finishes a
-  // hair later, but never jumps. (Idling zeroes _lastTickMs, so waking after
-  // a pause starts from a nominal frame rather than from the whole pause.)
+  // The easing below is time-based, which is what keeps it independent of
+  // the frame rate — but it also means a *lost* frame is compensated in one
+  // step: after a 300 ms hitch (an audio hiccup, a relayout, a repaint that
+  // overran) a Δ that should have taken 20 frames is applied in one, and the
+  // score visibly lurches. Cap the step at one slow frame's worth and let the
+  // remainder catch up over the following frames: the glide finishes a hair
+  // later, but never jumps. (Idling zeroes _lastTickMs, so waking after a
+  // pause starts from a nominal frame rather than from the whole pause.)
   const double dtMs =
       std::min(_lastTickMs > 0 ? now - _lastTickMs : 16.0, maxTickMs);
   _lastTickMs = static_cast<qint64>(now);
-
-  // Ease the zoom gently.
-  if (_scaling <= 0.0)
-    _scaling = targetScale;
-  else
-    _scaling +=
-        (targetScale - _scaling) * (1.0 - std::exp(-dtMs / 1000.0 / tauZoom));
 
   // Page scroll. The event the reader needs to see next is the next one to
   // play; while it is comfortably inside the view the page does not move at
   // all, and when it would pass the trigger mark the page turns so that the
   // event lands on the anchor.
+  const double scaling = _canvas.viewScaling();
   const double logicalWidth =
-      _scaling > 0.0 ? _canvas.viewWidth() / _scaling : 0.0;
+      scaling > 0.0 ? _canvas.viewWidth() / scaling : 0.0;
   if (!_focusX)
     return; // nothing played yet: nowhere to be
   // The jump ahead is anticipated (see the class comment): from the moment a
@@ -308,11 +250,8 @@ void ScoreFollower::tick()
     // Where either would put the anchor: on the focus — unless that would
     // bring the barrier into view, which makes this the last turn before it,
     // and the barrier framing (see the class comment) what it does instead.
-    // The zoom is heading for targetScale, and gets there well before the
-    // glide does, so that is the width the rest is judged at.
-    const double turnX = !jumping && barrierInView(focusX, targetScale)
-                             ? barrierAnchorX(targetScale, focusX)
-                             : focusX;
+    const double turnX =
+        !jumping && barrierInView(focusX) ? barrierAnchorX(focusX) : focusX;
     if (frac < 0.0 || frac > 1.0)
     {
       _pageTargetX = turnX;
@@ -347,17 +286,14 @@ void ScoreFollower::tick()
   else
     _pageX = _pageEaseX = _pageTargetX;
 
-  _canvas.centerOn(_pageX, _scaling);
+  _canvas.centerOn(_pageX);
 
-  // Nothing moves between page turns, so once the turn and the zoom have
-  // settled there is nothing left to animate: idle until the next event
-  // restarts the timer — or, with a jump ahead, until it would be due at the
-  // estimate just seen: a note held into the jump brings no event to wake up
-  // to. (Looked at afresh then: a performer who has frozen meanwhile has not
-  // got any nearer to it.)
-  const bool settled =
-      _pageX == _pageTargetX && std::abs(targetScale - _scaling) < 1e-4;
-  if (settled)
+  // Nothing moves between page turns, so once the turn has settled there is
+  // nothing left to animate: idle until the next event restarts the timer —
+  // or, with a jump ahead, until it would be due at the estimate just seen: a
+  // note held into the jump brings no event to wake up to. (Looked at afresh
+  // then: a performer who has frozen meanwhile has not got any nearer to it.)
+  if (_pageX == _pageTargetX)
   {
     _timer.stop();
     _lastTickMs = 0;
@@ -392,12 +328,10 @@ void ScoreFollower::jump()
 
 void ScoreFollower::reset()
 {
-  _hands.clear();
   _timer.stop();
   _jumpWake.stop();
   _framed = false;
   _suspended = false;
-  _scaling = 0.0;
   _lastTickMs = 0;
   _lastFrameTickMs = 0;
   _pageX = std::numeric_limits<double>::quiet_NaN();
