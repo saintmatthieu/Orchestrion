@@ -27,6 +27,7 @@
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "PositionEstimation/PositionEstimator.h"
+#include "ReadingFocus.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "ScoreFollower.h"
 #include "TempoVizModel.h"
@@ -155,8 +156,15 @@ private:
   //! where the previous ends; the first that doesn't (a jump back at a
   //! repeat's end, a volta skipped, a D.S./coda) or the last one is left at
   //! the end of its last measure, and the reading resumes at the start of the
-  //! segment after it.
-  std::optional<ScoreFollower::Barrier> nextBarrier(int utick) const;
+  //! segment after it. With it, the unrolled tick of the first note after the
+  //! jump — the first chord (any track) in the segment resumed at, or the
+  //! jump itself — for the anticipation (see resumeExpectedInMs()).
+  struct BarrierAhead
+  {
+    ScoreFollower::Barrier barrier;
+    std::optional<int> resumeUtick;
+  };
+  std::optional<BarrierAhead> nextBarrier(int utick) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
@@ -241,13 +249,18 @@ private:
 
   // ScoreFollower::Canvas
   double viewWidth() const override { return width(); }
-  double defaultScaling() const override
-  {
-    return m_userDefaultScaling > 0.0 ? m_userDefaultScaling : currentScaling();
-  }
-  double minScaling() const override;
+  double viewScaling() const override { return currentScaling(); }
   double anchorX() const override;
-  void centerOn(double logicalX, double scaling) override;
+  void centerOn(double logicalX) override;
+  //! From the live tempo and position of the hands being tracked (the
+  //! earliest of them) to m_resumeUtick — or nothing while none is. The
+  //! estimated position is never taken past the next note to play
+  //! (m_focusUtick): between onsets the tracker extrapolates at the last
+  //! tempo, through a hesitation as through a held note, and a jump must not
+  //! be anticipated on notes the performer has not got to yet. So a freeze
+  //! leaves the expected time at what separates the next note from the jump,
+  //! while a note held before the jump lets it run down to the lead.
+  std::optional<double> resumeExpectedInMs() const override;
   void wheelEvent(QWheelEvent *event) override;
   //! Zoom the score in/out about the cursor in response to a Ctrl-modified
   //! wheel event (mouse wheel or two-finger trackpad swipe).
@@ -341,25 +354,30 @@ private:
   // writes to it) is constructed.
   TempoVizModel m_tempoVizModel;
 
-  // Turns the played events into a page-turning scroll, zooming out to keep
-  // hands that drift apart on one page. While it drives the canvas
-  // (centerOn), m_drivingScroll makes constrainScorePosition() yield so it
-  // isn't undone.
+  // Where each hand has got to, and the event the page keeps in view — the
+  // leading hand's reading (see ReadingFocus). Cleared when the position
+  // jumps; the jump's transitions batch repopulates it.
+  ReadingFocus m_readingFocus;
+  // Turns the played events into a page-turning scroll at the user's zoom.
+  // While it drives the canvas (centerOn), m_drivingScroll makes
+  // constrainScorePosition() yield so it isn't undone.
   ScoreFollower m_follower;
   // Where each hand has got to, and how far each onset fell from the
   // performer's own smooth curve: the grading's raw material. Its clock is
   // this view's — the timestamps it hands back identify the onsets.
   PositionEstimator m_estimator;
   QElapsedTimer m_clock;
+  //! The unrolled tick of the focus — the next note to play — and of the
+  //! first note after the jump ahead of it, when there is one (see
+  //! nextBarrier / resumeExpectedInMs).
+  std::optional<int> m_focusUtick;
+  std::optional<int> m_resumeUtick;
   // The loudness curves the dynamics judgments are measured against: one per
   // hand, fed the controller velocities. Not the estimator's business —
   // loudness is not position — but the same smoother serves.
   std::map<int /*staff*/, PositionSmoother> m_loudness;
   bool m_drivingScroll = false;
   QMetaObject::Connection m_frameTickConnection;
-  // The user's chosen zoom (fit at load, updated on manual zoom): the auto-zoom
-  // never zooms in past it.
-  double m_userDefaultScaling = 0.0;
 
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.

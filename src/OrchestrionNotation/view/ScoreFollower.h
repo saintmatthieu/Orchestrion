@@ -21,7 +21,6 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include <limits>
-#include <map>
 #include <optional>
 
 namespace dgk
@@ -51,11 +50,20 @@ namespace dgk
 //! barrier on it, both fine — and when the start is on the page, the jump
 //! back finds it there and the page does not move at all.
 //!
+//! The jump itself is anticipated. The last notes before it the performer can
+//! hold in their fingers; the first notes after it they cannot. So the page
+//! moves on to where the reading resumes — back for a repeat, ahead for a
+//! volta skipped or a coda — if that is not on the page already, timed by
+//! the performer's own tempo so that the glide is over jumpLeadMs before the
+//! first note after the jump is due.
+//!
 //! It follows *events*, not a tempo estimate: everything here is score
 //! geometry (where the next note is engraved) and time (how long the turn
-//! takes). Qt-free apart from the timers; the viewport is reached through a
-//! Canvas interface the owner implements (mirroring HighlightFader /
-//! KineticScroller).
+//! takes). The zoom is the user's and is never touched: the owner decides
+//! which event the page keeps in view (see ReadingFocus) and the follower
+//! only scrolls. Qt-free apart from the timers; the viewport is reached
+//! through a Canvas interface the owner implements (mirroring HighlightFader
+//! / KineticScroller).
 class ScoreFollower
 {
 public:
@@ -68,16 +76,20 @@ public:
     virtual ~Canvas() = default;
     //! Viewport width in physical pixels.
     virtual double viewWidth() const = 0;
-    //! The user's chosen zoom — the most zoomed-in the auto-zoom will ever go.
-    virtual double defaultScaling() const = 0;
-    //! Smallest zoom the auto zoom-out may reach.
-    virtual double minScaling() const = 0;
+    //! The current zoom (physical px per logical unit) — the user's; the
+    //! follower only reads it.
+    virtual double viewScaling() const = 0;
     //! The logical x currently resting on the anchor (see anchorFrac) — the
     //! inverse of centerOn(), read back after someone else moved the view.
     virtual double anchorX() const = 0;
-    //! Place logical x \p logicalX at the anchor at \p scaling, keeping the
-    //! system vertically centered, and request a repaint.
-    virtual void centerOn(double logicalX, double scaling) = 0;
+    //! Place logical x \p logicalX at the anchor, keeping the system
+    //! vertically centered, and request a repaint.
+    virtual void centerOn(double logicalX) = 0;
+    //! When the first note after the jump ahead of the focus is expected to
+    //! be played, in ms from now, at the performer's live tempo — or nothing
+    //! without a live estimate. Asked every tick, and once more at the moment
+    //! it names (see the class comment on anticipation).
+    virtual std::optional<double> resumeExpectedInMs() const = 0;
   };
 
   //! Where the anchor rests horizontally in the view: where a page turn puts
@@ -94,10 +106,13 @@ public:
     //! Engraved x of the barline: the right edge of the last measure read
     //! before the jump (or of the score).
     double x = 0.0;
-    //! Engraved x where the reading resumes after the barrier, when that is
-    //! *behind* it — the start of the repeated section, which the last turn
-    //! keeps on the page when it can. Unset for the final barline and for a
-    //! jump ahead (a volta skipped, a coda): nothing to keep there.
+    //! The unrolled (playback) tick the barrier stands at: tells one pass of
+    //! a repeated barline from the next, which is the same x.
+    int utick = 0;
+    //! Engraved x where the reading resumes after the barrier: behind it for
+    //! a repeat — the start of the repeated section, which the last turn
+    //! keeps on the page when it can — or ahead of it for a volta skipped or
+    //! a coda. Unset for the final barline.
     std::optional<double> resumeX;
   };
 
@@ -107,22 +122,19 @@ public:
   ScoreFollower &operator=(const ScoreFollower &) = delete;
 
   //! Feed one transition batch.
-  //! \p soundingX maps each hand (staff) that is *sounding* this batch to the
-  //! engraved x of its onset — where that hand has got to on the page.
-  //! \p leadingAny / \p trailingAny are the rightmost / leftmost onset x that
-  //! is sounding *or* upcoming, used once to frame the start.
-  //! \p nextX is what the reader needs to see next — the most imminent
-  //! upcoming onset, or the leading sounding one when this batch pre-lights
-  //! nothing — and is what the page keeps in view.
+  //! \p struck: whether a note was struck this batch (as opposed to released,
+  //! or merely pre-lit) — what resumes a suspended follow.
+  //! \p startX is where the performer is on the page — the leading hand's
+  //! last onset — used once to frame the start of a take.
+  //! \p focusX is what the reader needs to see next (the owner's ReadingFocus)
+  //! and is what the page keeps in view.
   //! \p barrier is the next barline past which the reading does not carry on
-  //! from \p nextX — a repeat's end on the pass that jumps back, the point a
+  //! from \p focusX — a repeat's end on the pass that jumps back, the point a
   //! volta or a jump leaves from, or the final barline — and, for a repeat,
   //! where it resumes (see Barrier). The last turn before it frames it rather
   //! than the focus (see the class comment).
-  void onEvents(const std::map<int /*staff*/, double /*onsetX*/> &soundingX,
-                std::optional<double> leadingAny,
-                std::optional<double> trailingAny, std::optional<double> nextX,
-                std::optional<Barrier> barrier);
+  void onEvents(bool struck, std::optional<double> startX,
+                std::optional<double> focusX, std::optional<Barrier> barrier);
 
   //! Advance the follow for one rendered frame. The owner calls this from the
   //! window's per-frame hook, so the motion is sampled in step with the
@@ -152,17 +164,16 @@ public:
 private:
   void tick();
 
-  //! One-shot framing at the start of a take: put \p leadingX on the anchor,
-  //! zooming out if \p trailingX would not fit in the view with it.
-  void frame(double leadingX, double trailingX);
+  //! One-shot framing at the start of a take: put \p startX on the anchor.
+  void frame(double startX);
 
-  //! Whether resting \p focusX on the anchor at \p scaling would bring the
-  //! barrier into view — which makes that turn the last one before it, and
-  //! the barrier framing (below) what it does instead.
-  bool barrierInView(double focusX, double scaling) const;
-  //! The barrier framing's anchor at \p scaling (see the class comment) —
-  //! short of pushing \p focusX off the left edge.
-  double barrierAnchorX(double scaling, double focusX) const;
+  //! Whether resting \p focusX on the anchor would bring the barrier into
+  //! view — which makes that turn the last one before it, and the barrier
+  //! framing (below) what it does instead.
+  bool barrierInView(double focusX) const;
+  //! The barrier framing's anchor (see the class comment) — short of pushing
+  //! \p focusX off the left edge.
+  double barrierAnchorX(double focusX) const;
 
   Canvas &_canvas;
   QElapsedTimer _clock; // wall clock for event timestamps (ms)
@@ -170,7 +181,6 @@ private:
   bool _framed = false;
   //! User took manual control; ignore events until reset.
   bool _suspended = false;
-  double _scaling = 0.0;  // current (eased) zoom; 0 = unset
   qint64 _lastTickMs = 0; // for easing dt
   //! When the frame hook last drove a tick, so the timer knows whether frames
   //! are flowing (then it stays out of the way) or have stopped (then it
@@ -191,15 +201,13 @@ private:
   std::optional<double> _focusX;
   //! The barline the reading will not carry on through (see onEvents).
   std::optional<Barrier> _barrier;
-
-  //! Where each hand last struck, and when. The auto-zoom uses it to keep
-  //! hands that are playing at once on the same page; the timestamp is what
-  //! lets a hand that has stopped playing drop out of that reckoning.
-  struct Hand
-  {
-    double x = 0.0;
-    qint64 lastOnsetMs = 0;
-  };
-  std::map<int /*staff*/, Hand> _hands;
+  //! Whether the anticipated move to the resume point is under way — latched
+  //! until the barrier changes: the tempo estimate wavers, and a page that
+  //! has moved on does not swing back.
+  bool _jumping = false;
+  //! Idle, the follower does not tick; but a jump ahead may fall due with no
+  //! event to wake up to (a note held into it). This one-shot fires when the
+  //! jump would be due at the estimate last seen, to look again.
+  QTimer _jumpWake;
 };
 } // namespace dgk

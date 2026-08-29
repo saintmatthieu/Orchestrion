@@ -13,6 +13,8 @@ set(MODULE_SRC
   view/KineticScroller.h
   view/OrchestrionNotationPaintView.cpp
   view/OrchestrionNotationPaintView.h
+  view/ReadingFocus.cpp
+  view/ReadingFocus.h
   ILoopBoundariesController.h
   view/ScoreFollower.cpp
   view/ScoreFollower.h
