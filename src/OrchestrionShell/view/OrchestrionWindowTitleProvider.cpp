@@ -21,10 +21,33 @@
  */
 #include "OrchestrionWindowTitleProvider.h"
 #include "OrchestrionSequencer/IModifiableItemRegistry.h"
+#include "OrchestrionShell/internal/MuseScorePlaceholderMetaTags.h"
+#include "io/path.h"
 #include "translation.h"
+
+#include <QStringList>
+#include <algorithm>
+#include <iterator>
 
 namespace dgk
 {
+namespace
+{
+//! Whether `text` is one of MuseScore's new-score placeholder texts (in any
+//! language), i.e. a meta tag the author never actually filled in.
+template <size_t N>
+bool isPlaceholder(const QString &text,
+                   const char16_t *const (&placeholders)[N])
+{
+  return std::any_of(std::begin(placeholders), std::end(placeholders),
+                     [&](const char16_t *placeholder)
+                     {
+                       return text.compare(QString::fromUtf16(placeholder),
+                                           Qt::CaseInsensitive) == 0;
+                     });
+}
+} // namespace
+
 OrchestrionWindowTitleProvider::OrchestrionWindowTitleProvider(QObject *parent)
     : QObject(parent)
 {
@@ -61,6 +84,16 @@ void OrchestrionWindowTitleProvider::load()
 
 QString OrchestrionWindowTitleProvider::title() const { return m_title; }
 
+QString OrchestrionWindowTitleProvider::scoreTitle() const
+{
+  return m_scoreTitle;
+}
+
+QString OrchestrionWindowTitleProvider::scoreComposer() const
+{
+  return m_scoreComposer;
+}
+
 QString OrchestrionWindowTitleProvider::filePath() const { return m_filePath; }
 
 bool OrchestrionWindowTitleProvider::fileModified() const
@@ -77,6 +110,29 @@ void OrchestrionWindowTitleProvider::setTitle(const QString &title)
 
   m_title = title;
   emit titleChanged(title);
+}
+
+void OrchestrionWindowTitleProvider::setScoreTitle(const QString &scoreTitle)
+{
+  if (scoreTitle == m_scoreTitle)
+  {
+    return;
+  }
+
+  m_scoreTitle = scoreTitle;
+  emit scoreTitleChanged(scoreTitle);
+}
+
+void OrchestrionWindowTitleProvider::setScoreComposer(
+    const QString &scoreComposer)
+{
+  if (scoreComposer == m_scoreComposer)
+  {
+    return;
+  }
+
+  m_scoreComposer = scoreComposer;
+  emit scoreComposerChanged(scoreComposer);
 }
 
 void OrchestrionWindowTitleProvider::setFilePath(const QString &filePath)
@@ -109,6 +165,8 @@ void OrchestrionWindowTitleProvider::update()
   if (!project || !notation)
   {
     setTitle(muse::qtrc("appshell", "Orchestrion"));
+    setScoreTitle("");
+    setScoreComposer("");
     setFilePath("");
     setFileModified(false);
     return;
@@ -119,6 +177,32 @@ void OrchestrionWindowTitleProvider::update()
       registry->Modified())
     title += " *";
   setTitle(title);
+  const mu::project::ProjectMeta meta = project->metaInfo();
+  QString scoreTitle = meta.title.simplified();
+  if (isPlaceholder(scoreTitle, musescore_placeholders::titles))
+    scoreTitle.clear();
+  if (scoreTitle.isEmpty())
+  {
+    // Untitled score: fall back to the file name, made presentable — no
+    // extension, and the underscores that stand for spaces in downloaded
+    // scores turned back into spaces.
+    scoreTitle = muse::io::completeBasename(project->path())
+                     .toQString()
+                     .replace('_', ' ')
+                     .simplified();
+  }
+  if (scoreTitle.isEmpty())
+    scoreTitle = project->displayName();
+  setScoreTitle(scoreTitle);
+  // Multi-line tags ("Music: X\nArrangement: Y") go on the one line the
+  // ornament offers, separated rather than run together.
+  QStringList composerLines;
+  for (const QString &line : meta.composer.split('\n'))
+    if (const QString simplified = line.simplified();
+        !simplified.isEmpty() &&
+        !isPlaceholder(simplified, musescore_placeholders::composers))
+      composerLines << simplified;
+  setScoreComposer(composerLines.join(QStringLiteral(" \u00B7 ")));
 
   setFilePath((project->isNewlyCreated() || project->isCloudProject())
                   ? ""

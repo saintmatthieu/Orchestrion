@@ -17,6 +17,7 @@ set(MODULE_SRC
   internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
+  internal/MuseScorePlaceholderMetaTags.h
   internal/SleepInhibitor.cpp
   internal/SleepInhibitor.h
   internal/SynthesizerMenuManager.cpp

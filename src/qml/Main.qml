@@ -199,6 +199,25 @@ ApplicationWindow {
                     onTriggered: notationPaintView.controlsVisible = false
                 }
 
+                // The backdrop's gold lining, mirrored top and bottom; the top
+                // one carries the score's title and composer. Declared first
+                // so that every control and popup draws above it.
+                GoldOrnament {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: parent.height * 0.15 - height / 2
+                    viewWidth: parent.width
+                    viewHeight: parent.height
+                    title: titleProvider.scoreTitle
+                    subtitle: titleProvider.scoreComposer
+                }
+
+                GoldOrnament {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: parent.height * 0.85 - height / 2
+                    viewWidth: parent.width
+                    viewHeight: parent.height
+                }
+
                 GestureControllerSelectionPopup {
                     x: 10
                     y: 10

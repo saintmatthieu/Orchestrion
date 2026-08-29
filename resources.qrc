@@ -9,6 +9,8 @@
     <file>src/qml/GradingSettingsPopup.qml</file>
     <file>src/qml/AutoPlaySettingsPopup.qml</file>
     <file>src/qml/AttributionToast.qml</file>
+    <file>src/qml/GoldOrnament.qml</file>
+    <file>fonts/CinzelDecorative/CinzelDecorative-Regular.ttf</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>
     <file>icons/player/rewind-button.png</file>
