@@ -260,7 +260,14 @@ void ScoreFollower::tick()
       _scaling > 0.0 ? _canvas.viewWidth() / _scaling : 0.0;
   if (!_focusX)
     return; // nothing played yet: nowhere to be
-  const double focusX = *_focusX;
+  // The reading is about to jump: what is left before the barrier the
+  // performer has under their fingers, and what they need to see is where it
+  // resumes — so that is the focus from here on. Plain, without the barrier
+  // framing, which concerns the section being left: the resume point lands
+  // on the anchor if it is off the page (or past the trigger), and nothing
+  // moves if it is not.
+  const bool jumping = _barrier && _barrier->imminent && _barrier->resumeX;
+  const double focusX = jumping ? *_barrier->resumeX : *_focusX;
   if (!std::isfinite(_pageTargetX) || logicalWidth <= 0.0)
     _pageX = _pageEaseX = _pageTargetX = focusX;
   else
@@ -276,7 +283,7 @@ void ScoreFollower::tick()
     // and the barrier framing (see the class comment) what it does instead.
     // The zoom is heading for targetScale, and gets there well before the
     // glide does, so that is the width the rest is judged at.
-    const double turnX = barrierInView(focusX, targetScale)
+    const double turnX = !jumping && barrierInView(focusX, targetScale)
                              ? barrierAnchorX(targetScale, focusX)
                              : focusX;
     if (frac < 0.0 || frac > 1.0)

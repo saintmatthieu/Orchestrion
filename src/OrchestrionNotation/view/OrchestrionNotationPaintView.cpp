@@ -35,6 +35,7 @@
 #include <engraving/dom/note.h>
 #include <engraving/dom/repeatlist.h>
 #include <engraving/dom/segment.h>
+#include <engraving/dom/sig.h>
 #include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
 #include <notation/imasternotation.h>
@@ -1881,12 +1882,16 @@ OrchestrionNotationPaintView::nextBarrier(int utick) const
       return std::nullopt;
     ScoreFollower::Barrier barrier;
     barrier.x = last->pageBoundingRect().right();
-    // Where the reading resumes — the start of the next unrolled segment —
-    // matters to the framing only when it lies behind the barrier (a repeat).
+    // Where the reading resumes: the start of the next unrolled segment.
     if (i + 1 < repeats.size())
       if (const mu::engraving::Measure *first = repeats[i + 1]->firstMeasure())
-        if (const double x = first->pageBoundingRect().left(); x < barrier.x)
-          barrier.resumeX = x;
+        barrier.resumeX = first->pageBoundingRect().left();
+    // Imminent from the second-last beat before it (the beat being the time
+    // signature's — a dotted quarter in 6/8).
+    const int endUtick = segment->utick + segment->len();
+    const int beatTicks =
+        mu::engraving::TimeSigFrac(last->timesig()).beatTicks();
+    barrier.imminent = utick >= endUtick - 2 * beatTicks;
     return barrier;
   }
   return std::nullopt;

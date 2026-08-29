@@ -51,6 +51,12 @@ namespace dgk
 //! barrier on it, both fine — and when the start is on the page, the jump
 //! back finds it there and the page does not move at all.
 //!
+//! The jump itself is anticipated. The last notes before it the performer can
+//! hold in their fingers; the first notes after it they cannot. So once the
+//! reading has reached the second-last beat before the barrier, the page
+//! moves on to where it resumes — back for a repeat, ahead for a volta
+//! skipped or a coda — if that is not on the page already.
+//!
 //! It follows *events*, not a tempo estimate: everything here is score
 //! geometry (where the next note is engraved) and time (how long the turn
 //! takes). Qt-free apart from the timers; the viewport is reached through a
@@ -94,11 +100,15 @@ public:
     //! Engraved x of the barline: the right edge of the last measure read
     //! before the jump (or of the score).
     double x = 0.0;
-    //! Engraved x where the reading resumes after the barrier, when that is
-    //! *behind* it — the start of the repeated section, which the last turn
-    //! keeps on the page when it can. Unset for the final barline and for a
-    //! jump ahead (a volta skipped, a coda): nothing to keep there.
+    //! Engraved x where the reading resumes after the barrier: behind it for
+    //! a repeat — the start of the repeated section, which the last turn
+    //! keeps on the page when it can — or ahead of it for a volta skipped or
+    //! a coda. Unset for the final barline.
     std::optional<double> resumeX;
+    //! Whether the focus has reached the second-last beat before the barrier:
+    //! the reading is as good as through it, and the page moves on to
+    //! resumeX (see the class comment).
+    bool imminent = false;
   };
 
   explicit ScoreFollower(Canvas &canvas);

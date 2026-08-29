@@ -155,7 +155,8 @@ private:
   //! where the previous ends; the first that doesn't (a jump back at a
   //! repeat's end, a volta skipped, a D.S./coda) or the last one is left at
   //! the end of its last measure, and the reading resumes at the start of the
-  //! segment after it.
+  //! segment after it. The barrier is imminent once \p utick is within two
+  //! beats (the time signature's) of that end.
   std::optional<ScoreFollower::Barrier> nextBarrier(int utick) const;
   void setViewMode(mu::notation::ViewMode);
   bool eventFilter(QObject *watched, QEvent *event) override;
