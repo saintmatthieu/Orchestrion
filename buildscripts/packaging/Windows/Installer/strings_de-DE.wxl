@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <WixLocalization Culture="de-DE" xmlns="http://schemas.microsoft.com/wix/2006/localization">
     <String Id="DowngradeErrorMessage">Eine neuere Version von [ProductName] ist bereits installiert. Das Setup wird jetzt beendet.</String>
-    <String Id="ExitDialogLaunchText">[ProductName] starten</String>
+    <!-- The exit-dialog checkbox control does not format [ProductName], so the name is spelled out. -->
+    <String Id="ExitDialogLaunchText">Orchestrion starten</String>
 </WixLocalization>
