@@ -33,8 +33,9 @@ namespace dgk
 //! speed up and slow down within every bar even for a metronomically perfect
 //! performance. Instead the page stands still, and turns only when the next
 //! event to play would drift past pageTriggerFrac of the width; that event is
-//! then brought back to anchorFrac over a short ease. Between turns nothing
-//! moves at all.
+//! then brought back to anchorFrac over an ease whose pace follows the
+//! performer's own — speedFactor times it, so the page pulls ahead and
+//! rests. Between turns nothing moves at all.
 //!
 //! The one exception to "the next event lands on the anchor" is the last turn
 //! before a barrier — the barline past which the reading does not carry on:
@@ -48,22 +49,32 @@ namespace dgk
 //! two asks for the further scroll decides — a long section leaves its start
 //! off the page, a short one leaves more than the margin of what follows the
 //! barrier on it, both fine — and when the start is on the page, the jump
-//! back finds it there and the page does not move at all.
+//! back finds it there and the page does not move at all. This last turn is
+//! also triggered earlier than an ordinary one (barrierTriggerFrac): the
+//! sooner it lands, the longer what it frames stands in view before the
+//! jump.
 //!
 //! The jump itself is anticipated. The last notes before it the performer can
 //! hold in their fingers; the first notes after it they cannot. So the page
 //! moves on to where the reading resumes — back for a repeat, ahead for a
 //! volta skipped or a coda — if that is not on the page already, timed by
 //! the performer's own tempo so that the glide is over jumpLeadMs before the
-//! first note after the jump is due.
+//! first note after the jump is due. Never, though, before the framing
+//! stands: the page at rest, the barrier at least barrierMarginPx inside the
+//! right edge (barrierFramed()) — the last notes before the barrier are what
+//! the framing brings into view, and moving on mid-turn would take them off
+//! the page unseen. A lead that falls due first starts the framing turn
+//! right away (trigger or no trigger) and hurries it; the move follows it,
+//! late but complete.
 //!
-//! It follows *events*, not a tempo estimate: everything here is score
-//! geometry (where the next note is engraved) and time (how long the turn
-//! takes). The zoom is the user's and is never touched: the owner decides
-//! which event the page keeps in view (see ReadingFocus) and the follower
-//! only scrolls. Qt-free apart from the timers; the viewport is reached
-//! through a Canvas interface the owner implements (mirroring HighlightFader
-//! / KineticScroller).
+//! It follows *events*: everything here is score geometry (where the next
+//! note is engraved) and time (when it was played) — the reading's pace is
+//! measured from those (see _speedX); only the jump anticipation asks the
+//! owner for a tempo-based estimate (resumeExpectedInMs). The zoom is the
+//! user's and is never touched: the owner decides which event the page keeps in
+//! view (see ReadingFocus) and the follower only scrolls. Qt-free apart from
+//! the timers; the viewport is reached through a Canvas interface the owner
+//! implements (mirroring HighlightFader / KineticScroller).
 class ScoreFollower
 {
 public:
@@ -174,6 +185,13 @@ private:
   //! The barrier framing's anchor (see the class comment) — short of pushing
   //! \p focusX off the left edge.
   double barrierAnchorX(double focusX) const;
+  //! Whether the page stands at rest with the barrier at least
+  //! barrierMarginPx inside the right edge — what must hold before the
+  //! anticipated move to the resume point may begin (see the class comment).
+  bool barrierFramed() const;
+  //! The τ that makes a turn over \p distance glide at speedFactor times the
+  //! reading's measured pace (see _speedX), clamped to sanity.
+  double turnTauMs(double distance) const;
 
   Canvas &_canvas;
   QElapsedTimer _clock; // wall clock for event timestamps (ms)
@@ -195,13 +213,14 @@ private:
   double _pageX = std::numeric_limits<double>::quiet_NaN();
   double _pageEaseX = std::numeric_limits<double>::quiet_NaN();
   double _pageTargetX = std::numeric_limits<double>::quiet_NaN();
-  //! The time constant of the glide in progress: a page turn's or, shorter, a
-  //! relocation's.
+  //! The time constant of the glide in progress: a turn's (tempo-
+  //! proportional — see turnTauMs) or a relocation's.
   double _pageTauMs = 500.0;
   std::optional<double> _focusX;
   //! The barline the reading will not carry on through (see onEvents).
   std::optional<Barrier> _barrier;
   //! Whether the anticipated move to the resume point is under way — latched
+  //! (no sooner than the barrier framing settles — see the class comment)
   //! until the barrier changes: the tempo estimate wavers, and a page that
   //! has moved on does not swing back.
   bool _jumping = false;
@@ -209,5 +228,14 @@ private:
   //! event to wake up to (a note held into it). This one-shot fires when the
   //! jump would be due at the estimate last seen, to look again.
   QTimer _jumpWake;
+
+  //! The reading's pace across the page (logical x per ms), measured from the
+  //! focus's own movement and smoothed over speedSmoothingMs of playing: what
+  //! the turns' pace follows (see speedFactor / turnTauMs). Zero until two
+  //! onsets apart in x have been seen.
+  double _speedX = 0.0;
+  //! The last focus sample the pace was measured against (see onEvents).
+  double _speedSampleX = std::numeric_limits<double>::quiet_NaN();
+  qint64 _speedSampleMs = 0;
 };
 } // namespace dgk

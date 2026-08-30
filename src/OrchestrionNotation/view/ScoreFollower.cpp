@@ -34,15 +34,38 @@ constexpr double edgeMarginPx = 48.0;
 // most of a screen — at a time, and stands still in between.
 constexpr double pageTriggerFrac = 4.0 / 5.0;
 
+// The last turn before a barrier is triggered this early — well before
+// pageTriggerFrac: the sooner the framing lands and settles, the longer the
+// last notes before the barrier stand in view before the anticipated move to
+// the resume point (see the class comment).
+constexpr double barrierTriggerFrac = 1.0 / 2.0;
+
 // The barrier framing's margins (physical px; see the class comment): the last
 // turn before a barrier brings it at least this far inside the right edge, and
 // lets at most this much of what precedes the repeat's start show at the left.
 constexpr double barrierMarginPx = 100.0;
 
-// The page turn is not a teleport: it glides over this time constant (per
-// pole — the turn is two of them in series, so it settles in ~5 τ), short
-// enough that the event is in place well before it is due.
+// A page turn moves at the performer's own pace times this (see turnTauMs):
+// 1 would only just keep up with the reading; higher turns the page quicker
+// and lets it rest longer.
+constexpr double speedFactor = 2.5;
+// The pace estimate's smoothing time constant (see onEvents): long enough to
+// iron the engraving out of it — in a "4 8 8" bar the quarter and the eighths
+// get nearly the same width — short enough to follow a tempo change within a
+// phrase.
+constexpr double speedSmoothingMs = 3000.0;
+// An onset gap longer than this is a pause, not a pace: it restarts the
+// measurement instead of collapsing the estimate (see onEvents).
+constexpr double maxSpeedSampleGapMs = 4000.0;
+
+// The turn glide's time constant until the reading's own pace has been
+// measured (per pole — the turn is two of them in series, so it settles in
+// ~5 τ); with a pace in hand, turnTauMs derives it instead.
 constexpr double tauPageMs = 500.0;
+// Clamps on the tempo-proportional τ (see turnTauMs): never snappier than a
+// relocation, and never so slow that a stale estimate freezes the page.
+constexpr double minTurnTauMs = 150.0;
+constexpr double maxTurnTauMs = 3000.0;
 // A relocation — a rewind, a repeat, a jump to elsewhere in the score — is
 // not a page turn: there is no music to follow across the gap, so it must be
 // quick, and a cut is disorienting. It glides with the same critically damped
@@ -55,7 +78,7 @@ constexpr double tauRelocateMs = relocateDurationMs / 5.0;
 // The anticipated move to where the reading resumes after a jump (see the
 // class comment) is a relocation, and is to be over this long before the first
 // note after the jump is due — so it starts relocateDurationMs earlier still.
-constexpr double jumpLeadMs = 1000.0;
+constexpr double jumpLeadMs = 500.0;
 
 // Longest frame the easings will act on (ms). See the use site: it turns a
 // dropped frame into a slightly late glide instead of a visible lurch.
@@ -107,6 +130,25 @@ void ScoreFollower::onEvents(bool struck, std::optional<double> startX,
   // of it (see barrierMarginPx). Held until the next batch: between events
   // there is nothing new to react to.
   const bool focusMoved = focusX && (!_focusX || *focusX != *_focusX);
+  if (focusMoved)
+  {
+    // The reading's pace (see _speedX): a time-weighted smoothing, so a run
+    // of close onsets counts for no more than the time it spans. A backward
+    // step (a repeat, a rewind) and a gap too long to be playing (a pause)
+    // restart the measurement but keep the estimate: the position jumps, the
+    // tempo does not.
+    const qint64 nowMs = _clock.elapsed();
+    const double dtMs = static_cast<double>(nowMs - _speedSampleMs);
+    if (std::isfinite(_speedSampleX) && *focusX > _speedSampleX && dtMs > 0.0 &&
+        dtMs <= maxSpeedSampleGapMs)
+    {
+      const double v = (*focusX - _speedSampleX) / dtMs;
+      const double k = 1.0 - std::exp(-dtMs / speedSmoothingMs);
+      _speedX = _speedX > 0.0 ? _speedX + (v - _speedX) * k : v;
+    }
+    _speedSampleX = *focusX;
+    _speedSampleMs = nowMs;
+  }
   if (focusX)
   {
     _focusX = focusX;
@@ -161,6 +203,31 @@ bool ScoreFollower::barrierInView(double focusX) const
   // width beyond it.
   const double logicalWidth = _canvas.viewWidth() / scaling;
   return _barrier->x < focusX + (1.0 - anchorFrac) * logicalWidth;
+}
+
+bool ScoreFollower::barrierFramed() const
+{
+  const double scaling = _canvas.viewScaling();
+  if (!_barrier || scaling <= 0.0 || _pageX != _pageTargetX)
+    return false;
+  // Only the barrier's own margin: the framing's other ask — the section
+  // start on the page — is a nicety the focus's edge protection may put out
+  // of reach for good (see barrierAnchorX), and not what the reader is owed
+  // before the move to the resume point.
+  const double logicalWidth = _canvas.viewWidth() / scaling;
+  return _barrier->x + barrierMarginPx / scaling <=
+         _pageTargetX + (1.0 - anchorFrac) * logicalWidth;
+}
+
+double ScoreFollower::turnTauMs(double distance) const
+{
+  // The two-pole ease (see tick) settles in ~5 τ, so the glide's average
+  // speed is distance / (5 τ): pin that to speedFactor times the reading's
+  // own pace. Without a pace measured yet, the fixed fallback.
+  if (_speedX <= 0.0)
+    return tauPageMs;
+  return std::clamp(distance / (5.0 * speedFactor * _speedX), minTurnTauMs,
+                    maxTurnTauMs);
 }
 
 double ScoreFollower::barrierAnchorX(double focusX) const
@@ -229,10 +296,17 @@ void ScoreFollower::tick()
   // lands on the anchor if it is off the page (or past the trigger), and
   // nothing moves if it is not.
   std::optional<double> resumeInMs;
+  bool jumpDue = false;
   if (!_jumping && _barrier && _barrier->resumeX)
   {
     resumeInMs = _canvas.resumeExpectedInMs();
-    if (resumeInMs && *resumeInMs <= jumpLeadMs + relocateDurationMs)
+    jumpDue = resumeInMs && *resumeInMs <= jumpLeadMs + relocateDurationMs;
+    // ... but never before the framing stands (see barrierFramed): the last
+    // notes before the barrier are what it brings into view, and moving on
+    // mid-turn would take them off the page unseen. If the lead falls due
+    // first, the framing turn is started (and hurried) below, and the move
+    // follows it, late but complete.
+    if (jumpDue && barrierFramed())
       _jumping = true;
   }
   const bool jumping = _jumping && _barrier && _barrier->resumeX;
@@ -250,24 +324,34 @@ void ScoreFollower::tick()
     // Where either would put the anchor: on the focus — unless that would
     // bring the barrier into view, which makes this the last turn before it,
     // and the barrier framing (see the class comment) what it does instead.
-    const double turnX =
-        !jumping && barrierInView(focusX) ? barrierAnchorX(focusX) : focusX;
+    // That turn is also triggered earlier (see barrierTriggerFrac): the
+    // sooner it lands, the longer what it frames stands in view.
+    const bool framing = !jumping && barrierInView(focusX);
+    const double turnX = framing ? barrierAnchorX(focusX) : focusX;
+    const double triggerFrac = framing ? barrierTriggerFrac : pageTriggerFrac;
     if (frac < 0.0 || frac > 1.0)
     {
       _pageTargetX = turnX;
       _pageTauMs = tauRelocateMs;
     }
-    else if (frac > pageTriggerFrac && turnX > _pageTargetX)
+    else if ((frac > triggerFrac || (jumpDue && !jumping)) &&
+             turnX > _pageTargetX)
     {
       // (A turn only ever advances: once the framing is in place, the focus
       // drifting on past the trigger asks for the same framing again — or,
       // when the page already shows more than it, for a step back — and the
       // page stands still, the focus in view all the way to the barrier.)
       // A jump is a relocation even when its target is on the page: quick,
-      // and over when the lead says.
+      // and over when the lead says. And its lead falling due does not wait
+      // for the trigger: a framing still to be made is made now, so the move
+      // it holds up (see the latch above) is held up no longer than it must.
       _pageTargetX = turnX;
-      _pageTauMs = jumping ? tauRelocateMs : tauPageMs;
+      _pageTauMs = jumping ? tauRelocateMs : turnTauMs(turnX - _pageX);
     }
+    // The lead falling due also hurries whatever framing glide is under way:
+    // the sooner it settles, the sooner the move to the resume point begins.
+    if (jumpDue)
+      _pageTauMs = std::min(_pageTauMs, tauRelocateMs);
   }
 
   // Two identical lags in series, not one. A single pole leaves the target's
@@ -320,10 +404,12 @@ void ScoreFollower::viewMoved()
 void ScoreFollower::jump()
 {
   // Keep the page where it is — the glide to the new location starts there —
-  // and forget the rest.
+  // and the pace: the position jumps, the tempo does not. Forget the rest.
   const double pageX = _pageX;
+  const double speedX = _speedX;
   reset();
   _pageX = _pageEaseX = pageX;
+  _speedX = speedX;
 }
 
 void ScoreFollower::reset()
@@ -341,5 +427,8 @@ void ScoreFollower::reset()
   _focusX.reset();
   _barrier.reset();
   _jumping = false;
+  _speedX = 0.0;
+  _speedSampleX = std::numeric_limits<double>::quiet_NaN();
+  _speedSampleMs = 0;
 }
 } // namespace dgk
