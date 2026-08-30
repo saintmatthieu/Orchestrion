@@ -119,16 +119,19 @@ endif()
 
 message(STATUS "[SetupWindowsPackaging.cmake] CPACK_WIX_UPGRADE_GUID: ${CPACK_WIX_UPGRADE_GUID}")
 
-set(CPACK_WIX_LICENSE_RTF "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/LICENSE.rtf")
 set(CPACK_WIX_PRODUCT_ICON "${PROJECT_SOURCE_DIR}/icons/orchestrion.ico")
 
 # Installer UI language. Defaults to en-US for the existing single-MSI flow.
-# When CI builds per-language MSIs it overrides CPACK_WIX_CULTURES (and
-# CPACK_WIX_LICENSE_RTF) via `cpack -D`. The matching strings_<culture>.wxl
-# supplies localized strings referenced from WIX.template.in as !(loc.Id).
+# When CI builds per-language MSIs it overrides CPACK_WIX_CULTURES,
+# CPACK_WIX_LICENSE_RTF and CPACK_WIX_LIGHT_EXTRA_FLAGS via `cpack -D` — the
+# paths derived from the culture below are baked into CPackConfig.cmake at
+# configure time, so overriding the culture alone is not enough. The matching
+# strings_<culture>.wxl supplies localized strings referenced from
+# WIX.template.in as !(loc.Id); LICENSE_<culture>.rtf is the license page.
 if(NOT CPACK_WIX_CULTURES)
     set(CPACK_WIX_CULTURES "en-US")
 endif()
+set(CPACK_WIX_LICENSE_RTF "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/LICENSE_${CPACK_WIX_CULTURES}.rtf")
 list(APPEND CPACK_WIX_LIGHT_EXTRA_FLAGS
     "-loc" "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/strings_${CPACK_WIX_CULTURES}.wxl"
 )

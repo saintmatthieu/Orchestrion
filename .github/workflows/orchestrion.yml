@@ -117,11 +117,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null
           foreach ($lang in @('en-US','fr-FR','de-DE')) {
             $stage = "${{github.workspace}}/${{env.BUILD_DIR}}/package-$lang"
-            # Override CPACK_WIX_LIGHT_EXTRA_FLAGS as well as CULTURES so the
-            # -loc path matches the requested culture (the value baked into
-            # CPackConfig.cmake at configure time is locked to en-US).
+            # Override the license and -loc paths as well as CULTURES so they
+            # match the requested culture (the values baked into
+            # CPackConfig.cmake at configure time are locked to en-US).
             cpack -G WIX -C $env:BUILD_TYPE -B $stage `
               -D "CPACK_WIX_CULTURES=$lang" `
+              -D "CPACK_WIX_LICENSE_RTF=$wxlDir/LICENSE_$lang.rtf" `
               -D "CPACK_WIX_LIGHT_EXTRA_FLAGS=-loc;$wxlDir/strings_$lang.wxl"
             if ($LASTEXITCODE -ne 0) { throw "cpack failed for $lang" }
             $msi = Get-ChildItem "$stage/Orchestrion-*.msi" | Select-Object -First 1
