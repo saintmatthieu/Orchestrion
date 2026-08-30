@@ -1,6 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <WixLocalization Culture="fr-FR" xmlns="http://schemas.microsoft.com/wix/2006/localization">
-    <String Id="DowngradeErrorMessage">Une version plus récente de [ProductName] est déjà installée. L'installation va maintenant se terminer.</String>
+    <String Id="DowngradeErrorMessage">Une version plus récente d'[ProductName] est déjà installée. L'installation va maintenant se terminer.</String>
     <!-- The exit-dialog checkbox control does not format [ProductName], so the name is spelled out. -->
     <String Id="ExitDialogLaunchText">Lancer Orchestrion</String>
+
+    <!-- Overrides of WixUIExtension's fr-FR strings: the stock translations
+         say "de [ProductName]", which fails to elide before a vowel
+         ("de Orchestrion"). Same text with "d'[ProductName]" instead. -->
+    <String Id="BrowseDlg_Title">Installation d'[ProductName]</String>
+    <String Id="CancelDlg_Title">Installation d'[ProductName]</String>
+    <String Id="DiskCostDlg_Title">Installation d'[ProductName]</String>
+    <String Id="ErrorDlg_Title">Installation d'[ProductName]</String>
+    <String Id="ExitDialog_Title">Installation d'[ProductName]</String>
+    <String Id="FatalError_Title">Installation d'[ProductName]</String>
+    <String Id="FilesInUse_Title">Installation d'[ProductName]</String>
+    <String Id="InstallDirDlg_Title">Installation d'[ProductName]</String>
+    <String Id="InvalidDirDlg_Title">Installation d'[ProductName]</String>
+    <String Id="LicenseAgreementDlg_Title">Installation d'[ProductName]</String>
+    <String Id="MaintenanceTypeDlg_Title">Installation d'[ProductName]</String>
+    <String Id="MaintenanceWelcomeDlg_Title">Installation d'[ProductName]</String>
+    <String Id="MsiRMFilesInUse_Title">Installation d'[ProductName]</String>
+    <String Id="OutOfDiskDlg_Title">Installation d'[ProductName]</String>
+    <String Id="OutOfRbDiskDlg_Title">Installation d'[ProductName]</String>
+    <String Id="PrepareDlg_Title">Installation d'[ProductName]</String>
+    <String Id="ProgressDlg_Title">Installation d'[ProductName]</String>
+    <String Id="ResumeDlg_Title">Installation d'[ProductName]</String>
+    <String Id="UserExit_Title">Installation d'[ProductName]</String>
+    <String Id="VerifyReadyDlg_Title">Installation d'[ProductName]</String>
+    <String Id="WaitForCostingDlg_Title">Installation d'[ProductName]</String>
+    <String Id="WelcomeDlg_Title">Installation d'[ProductName]</String>
+
+    <String Id="CancelDlgText">Êtes-vous sûr de vouloir annuler l'installation d'[ProductName] ?</String>
+    <String Id="ExitDialogTitle">{\WixUI_Font_Bigger}Assistant Installation d'[ProductName] terminé</String>
+    <String Id="FatalErrorDescription1">Une erreur a causé la fin prématurée de l'Assistant Installation d'[ProductName]. Votre système n'a pas été modifié. Pour installer ce programme ultérieurement, réexécutez l'Assistant Installation.</String>
+    <String Id="MaintenanceWelcomeDlgDescription">L'Assistant Installation vous permet de modifier la façon dont les composants d'[ProductName] sont installés sur votre ordinateur ou de supprimer celui-ci. Cliquez sur Suivant pour continuer ou sur Annuler pour quitter l'Assistant Installation.</String>
+    <String Id="MaintenanceWelcomeDlgTitle">{\WixUI_Font_Bigger}Bienvenue dans l'Assistant Installation d'[ProductName]</String>
+    <String Id="PrepareDlgTitle">{\WixUI_Font_Bigger}Bienvenue dans l'Assistant Installation d'[ProductName]</String>
+    <String Id="ProgressDlgTitleInstalling">{\WixUI_Font_Title}Installation d'[ProductName]</String>
+    <String Id="ProgressDlgTitleChanging">{\WixUI_Font_Title}Modification d'[ProductName]</String>
+    <String Id="ProgressDlgTitleRepairing">{\WixUI_Font_Title}Réparation d'[ProductName]</String>
+    <String Id="ProgressDlgTitleRemoving">{\WixUI_Font_Title}Suppression d'[ProductName]</String>
+    <String Id="ProgressDlgTitleUpdating">{\WixUI_Font_Title}Mise à jour d'[ProductName]</String>
+    <String Id="ResumeDlgDescription">L'Assistant Installation va terminer l'installation d'[ProductName] sur l'ordinateur. Cliquez sur Installer pour continuer, ou sur Annuler pour quitter l'Assistant Installation.</String>
+    <String Id="ResumeDlgTitle">{\WixUI_Font_Bigger}Reprise de l'installation d'[ProductName]</String>
+    <String Id="UserExitTitle">{\WixUI_Font_Bigger}L'Assistant Installation d'[ProductName] a été interrompu</String>
+    <String Id="UserExitDescription1">L'installation d'[ProductName] a été interrompue. Votre système n'a pas été modifié. Pour installer ce programme ultérieurement, réexécutez l'installation.</String>
+    <String Id="VerifyReadyDlgRepairText">Cliquez sur Réparer pour réparer l'installation d'[ProductName]. Cliquez sur Précédent pour consulter ou modifier vos paramètres d'installation. Cliquez sur Annuler pour quitter l'Assistant Installation.</String>
+    <String Id="WelcomeDlgTitle">{\WixUI_Font_Bigger}Bienvenue dans l'Assistant Installation d'[ProductName]</String>
+    <String Id="Error32">L'installation d'[ProductName] s'est terminée correctement.</String>
+    <String Id="Error33">Échec de l'installation d'[ProductName].</String>
 </WixLocalization>
