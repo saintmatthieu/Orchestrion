@@ -18,6 +18,7 @@
  */
 #include "OrchestrionSequencer.h"
 #include "IChord.h"
+#include "OrchestrionCommon/PerfTrace.h"
 #include <algorithm>
 #include <engraving/dom/note.h>
 #include <iterator>
@@ -100,7 +101,16 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
           for (auto &entry : entries)
           {
             if (entry.time.has_value())
+            {
               std::this_thread::sleep_until(*entry.time);
+              if (PerfTrace::enabled())
+                PerfTrace::event(
+                    "notethread", "wake_late",
+                    std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - *entry.time)
+                        .count());
+            }
+            PerfTrace::Scope perf{"notethread", "send"};
             cb(std::move(entry.event));
           }
         }
@@ -343,6 +353,7 @@ auto GetCursorTick(const OrchestrionSequencer::HandVoices &hand,
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                         std::optional<float> velocity)
 {
+  PerfTrace::Scope perf{"gui", "input_event"};
   const auto loopEnabled = globalContext()
                                ->currentMasterNotation()
                                ->playback()
@@ -455,6 +466,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
 void OrchestrionSequencer::GoToTick(int tick)
 {
+  PerfTrace::Scope perf{"gui", "goto_tick"};
   m_aboutToJumpPosition.send(tick);
   {
     std::map<TrackIndex, ChordTransition> transitions;

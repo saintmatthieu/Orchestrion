@@ -86,6 +86,10 @@ The console-app construction path is `OrchestrionAppFactory::newConsoleApp` (don
 
 Top-level QML is registered via `qt_add_qml_module(Orchestrion URI Orchestrion ...)` in the root `CMakeLists.txt` (currently `Main.qml`, `PlaybackButton.qml`). Module-internal QML lives under each module's `qml/` and is imported via `MODULE_QML_IMPORT` from that module's `CMakeLists.txt`. See `qml-architecture.md` for the high-level shell composition (`AppWindow → WindowContent → {HomePage, NotationPage, DockToolBar, ...}`).
 
+## Runtime timing traces
+
+Set `ORCHESTRION_PERF_LOG=/dev/shm/orchestrion-perf.log` (tmpfs — never a journalled disk, a blocking write there is itself a 100+ ms stall) to enable the probes in `src/OrchestrionCommon/PerfTrace.h` (GUI heartbeat lateness, frame gaps with process CPU/fault deltas, paint / transitions / layout durations, auto-play onset lateness, the sequencer note thread's wake lateness) and their mirror in the fork's audio layer (`MuseScore/src/framework/audio/internal/perftraceprobe.h`: driver callback/write times, `xrun`, empty/short ring-buffer pops, mixer render cost). Unset, each probe is one branch. Run `buildscripts/perf_thread_sampler.py <pid> <file>` alongside to record per-thread state/wchan from `/proc`, then `buildscripts/perf_trace_report.py trace.log --threads threads.log` to attribute every stall, late onset and dropout. `buildscripts/perf_wakeup_test.c` is the Orchestrion-free control: if its sleepers show the same stalls, the platform is at fault.
+
 ## Conventions to respect
 
 - **Namespace**: project-local code is in `namespace dgk` (see `OrchestrionAppFactory`, `CommandLineParser`, etc.). MuseScore code uses `mu::` / `muse::`.

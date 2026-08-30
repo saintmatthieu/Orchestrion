@@ -33,6 +33,7 @@
 #include "TempoVizModel.h"
 #include "TimingFeedbackOverlay.h"
 #include <QElapsedTimer>
+#include <QTimer>
 #include <QVariantList>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
@@ -378,6 +379,13 @@ private:
   std::map<int /*staff*/, PositionSmoother> m_loudness;
   bool m_drivingScroll = false;
   QMetaObject::Connection m_frameTickConnection;
+  /**
+   * With ORCHESTRION_PERF_LOG set (see PerfTrace): a precise 10 ms timer whose
+   * own lateness measures the GUI event loop's latency — the delay a note
+   * onset scheduled on this thread suffers — whether or not frames are being
+   * rendered (a long frame gap alone may just be an idle page).
+   */
+  QTimer m_perfHeartbeat;
 
   // Background left-drag pans the canvas (done by the base view); we sample the
   // drag so releasing it adds a kinetic throw via m_kineticScroller.

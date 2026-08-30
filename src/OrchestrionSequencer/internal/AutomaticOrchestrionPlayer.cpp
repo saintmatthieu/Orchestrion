@@ -18,6 +18,7 @@
  */
 #include "AutomaticOrchestrionPlayer.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
+#include "OrchestrionCommon/PerfTrace.h"
 #include <QTimer>
 #include <cmath>
 
@@ -124,9 +125,13 @@ void AutomaticOrchestrionPlayer::ScheduleReplayNext()
   if (delay > 0)
   {
     const int gen = m_generation;
+    const long long dueUs = PerfTrace::nowUs() + 1000LL * delay;
     QTimer::singleShot(delay, Qt::PreciseTimer,
-                       [this, gen]
+                       [this, gen, dueUs]
                        {
+                         // How late the GUI thread got round to this timer.
+                         PerfTrace::event("gui", "replay_late",
+                                          PerfTrace::nowUs() - dueUs);
                          if (gen == m_generation)
                            FireReplayEvent();
                        });
@@ -166,9 +171,15 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
     // auto-played onsets land close to their intended times even while the UI
     // thread is busy painting; that arrival time is what the tempo model
     // timestamps, so timer jitter shows up as tempo dents.
-    QTimer::singleShot(TicksToMilliseconds(next->deltaTicks), Qt::PreciseTimer,
-                       [this, events = *next, gen]
+    const int delayMs = TicksToMilliseconds(next->deltaTicks);
+    const long long dueUs = PerfTrace::nowUs() + 1000LL * delayMs;
+    QTimer::singleShot(delayMs, Qt::PreciseTimer,
+                       [this, events = *next, gen, dueUs]
                        {
+                         // How late the GUI thread got round to this timer:
+                         // the onset's jitter, before anything downstream.
+                         PerfTrace::event("gui", "autoplay_late",
+                                          PerfTrace::nowUs() - dueUs);
                          if (gen == m_generation)
                            FireAndContinue(events);
                        });

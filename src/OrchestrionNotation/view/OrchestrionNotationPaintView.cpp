@@ -18,6 +18,7 @@
  */
 #include "OrchestrionNotationPaintView.h"
 #include "GestureControllers/ITouchpadGestureController.h"
+#include "OrchestrionCommon/PerfTrace.h"
 #include "OrchestrionSequencer/IChord.h"
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include "OrchestrionSequencer/IRest.h"
@@ -39,6 +40,7 @@
 #include <engraving/dom/tie.h>
 #include <engraving/types/constants.h>
 #include <notation/imasternotation.h>
+#include <sys/resource.h>
 
 #include <cmath>
 #include <optional>
@@ -87,6 +89,24 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
       });
   m_warpTimer.setInterval(warpAnimStepMs);
   m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
+
+  if (PerfTrace::enabled())
+  {
+    constexpr int heartbeatMs = 10;
+    m_perfHeartbeat.setTimerType(Qt::PreciseTimer);
+    m_perfHeartbeat.setInterval(heartbeatMs);
+    m_perfHeartbeat.callOnTimeout(
+        [this]
+        {
+          static long long lastUs = 0;
+          const long long nowUs = PerfTrace::nowUs();
+          if (lastUs > 0)
+            PerfTrace::event("gui", "heartbeat_late",
+                             nowUs - lastUs - 1000LL * heartbeatMs);
+          lastUs = nowUs;
+        });
+    m_perfHeartbeat.start();
+  }
 }
 
 bool OrchestrionNotationPaintView::tempoVisualizationEnabled() const
@@ -186,6 +206,7 @@ void OrchestrionNotationPaintView::subscribe(
 void OrchestrionNotationPaintView::OnTransitions(
     const std::map<TrackIndex, ChordTransition> &transitions)
 {
+  PerfTrace::Scope perf{"gui", "transitions"};
   // Onsets driving the estimate, grouped per hand (= staff): the voices on a
   // staff are played by the same gestures, so they share one tracker. Each
   // hand's sounding onset is a tempo observation for it, at its
@@ -855,7 +876,10 @@ void OrchestrionNotationPaintView::bakePerformanceWarp(bool animate)
           masterNotation ? masterNotation->masterScore() : nullptr)
   {
     master->setLayoutTickWarp(m_warpTable);
-    master->doLayout();
+    {
+      PerfTrace::Scope perf{"gui", "doLayout"};
+      master->doLayout();
+    }
   }
   m_timingOverlay.setWarpProgress(1.0);
   constrainScorePosition();
@@ -919,7 +943,10 @@ void OrchestrionNotationPaintView::applyWarpStep()
     return;
   }
   master->setLayoutTickWarp(std::move(table));
-  master->doLayout();
+  {
+    PerfTrace::Scope perf{"gui", "doLayout"};
+    master->doLayout();
+  }
   m_timingOverlay.setWarpProgress(eased);
   if (m_warpProgress >= 1.0)
   {
@@ -941,7 +968,10 @@ void OrchestrionNotationPaintView::clearPerformanceWarp()
   if (master && master->hasLayoutTickWarp())
   {
     master->setLayoutTickWarp({});
-    master->doLayout();
+    {
+      PerfTrace::Scope perf{"gui", "doLayout"};
+      master->doLayout();
+    }
     constrainScorePosition();
     update();
   }
@@ -974,6 +1004,35 @@ void OrchestrionNotationPaintView::connectFrameTick(QQuickWindow *window)
 void OrchestrionNotationPaintView::onFrameTick()
 {
   const double nowMs = static_cast<double>(m_clock.elapsed());
+  if (PerfTrace::enabled())
+  {
+    // The interval between rendered frames: a long one is a GUI-thread stall.
+    // With it, how the whole process fared over that interval — CPU time it
+    // got, major page faults it took, times it was pre-empted — which tells a
+    // stall of our own making (CPU time keeps pace) from one the system dealt
+    // us (it doesn't).
+    static long long lastFrameUs = 0;
+    static rusage lastUsage{};
+    rusage usage{};
+    getrusage(RUSAGE_SELF, &usage);
+    const long long frameUs = PerfTrace::nowUs();
+    if (lastFrameUs > 0)
+    {
+      const auto ms = [](const timeval &a, const timeval &b) {
+        return (a.tv_sec - b.tv_sec) * 1000.0 +
+               (a.tv_usec - b.tv_usec) / 1000.0;
+      };
+      char extra[96];
+      std::snprintf(extra, sizeof extra, "cpu=%.1fms majflt=%ld nivcsw=%ld",
+                    ms(usage.ru_utime, lastUsage.ru_utime) +
+                        ms(usage.ru_stime, lastUsage.ru_stime),
+                    usage.ru_majflt - lastUsage.ru_majflt,
+                    usage.ru_nivcsw - lastUsage.ru_nivcsw);
+      PerfTrace::event("gui", "frame_gap", frameUs - lastFrameUs, extra);
+    }
+    lastFrameUs = frameUs;
+    lastUsage = usage;
+  }
   // The estimate is told that time has passed, so a hand whose next note is
   // overdue winds down instead of extrapolating for ever; then the scroll
   // advances in step with the display (asking the estimate about the jump
@@ -1001,6 +1060,7 @@ double OrchestrionNotationPaintView::anchorX() const
 
 void OrchestrionNotationPaintView::centerOn(double logicalX)
 {
+  PerfTrace::Scope perf{"gui", "centerOn"};
   // constrainScorePosition() (via onMatrixChanged) would otherwise pull the
   // viewport back to hug the content; yield to us while we place the canvas.
   m_drivingScroll = true;
@@ -2117,6 +2177,7 @@ void OrchestrionNotationPaintView::paintLoopMarkers(
 
 void OrchestrionNotationPaintView::paint(QPainter *painter)
 {
+  PerfTrace::Scope perf{"gui", "paint"};
   NotationPaintView::paint(painter);
 
   // Touch contacts stay on top of everything.
