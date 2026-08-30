@@ -26,14 +26,6 @@ $bandBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $bandRect, 
 $g.FillRectangle($bandBrush, $bandRect)
 $bandBrush.Dispose()
 
-# --- Soft transition strip from band to cream (avoids hard MSS-style cut) ---
-$strip      = New-Object System.Drawing.Rectangle ($bandW), 0, 28, $H
-$stripFrom  = [System.Drawing.Color]::FromArgb(255, 42, 20, 17)
-$stripTo    = [System.Drawing.Color]::FromArgb(0,   244, 238, 224)
-$stripBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $strip, $stripFrom, $stripTo, ([System.Drawing.Drawing2D.LinearGradientMode]::Horizontal)
-$g.FillRectangle($stripBrush, $strip)
-$stripBrush.Dispose()
-
 # --- Thin gold rule between band and cream ---
 $goldLine = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(180, 201, 150, 60)), 1.2
 $g.DrawLine($goldLine, $bandW, 0, $bandW, $H)
@@ -49,25 +41,16 @@ $titleX     = ($bandW - $titleSize.Width) / 2
 $titleY     = ($H - $titleSize.Height) / 2 - 6
 $g.DrawString($title, $titleFont, $goldBrush, $titleX, $titleY)
 
-# --- Tagline beneath wordmark, smaller, slightly dimmer ---
-$tagFont    = New-Object System.Drawing.Font "Palatino Linotype", 13, ([System.Drawing.FontStyle]::Regular), ([System.Drawing.GraphicsUnit]::Pixel)
-$tagBrush   = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(190, 180, 150, 95))
-$tag        = "play the score"
-$tagSize    = $g.MeasureString($tag, $tagFont)
-$tagX       = ($bandW - $tagSize.Width) / 2
-$tagY       = $titleY + $titleSize.Height + 2
-$g.DrawString($tag, $tagFont, $tagBrush, $tagX, $tagY)
-
-# --- Hairline ornament under tagline ---
+# --- Hairline ornament under wordmark ---
 $ornPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(120, 201, 150, 60)), 1
-$ornY   = [int]($tagY + $tagSize.Height + 12)
+$ornY   = [int]($titleY + $titleSize.Height + 12)
 $ornW   = 70
 $ornX1  = [int]($bandW / 2 - $ornW / 2)
 $ornX2  = $ornX1 + $ornW
 $g.DrawLine($ornPen, $ornX1, $ornY, $ornX2, $ornY)
 $ornPen.Dispose()
 
-$titleFont.Dispose(); $tagFont.Dispose(); $goldBrush.Dispose(); $tagBrush.Dispose()
+$titleFont.Dispose(); $goldBrush.Dispose()
 
 # --- Save ---
 $out = Join-Path $PSScriptRoot "installer_background_wix.png"
