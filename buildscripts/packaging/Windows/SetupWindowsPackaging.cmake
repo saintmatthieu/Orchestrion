@@ -135,6 +135,12 @@ set(CPACK_WIX_LICENSE_RTF "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/
 list(APPEND CPACK_WIX_LIGHT_EXTRA_FLAGS
     "-loc" "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/strings_${CPACK_WIX_CULTURES}.wxl"
 )
+
+# Custom dialog set: replaces the stock ExitDialog with one that puts the
+# launch-application checkbox on the native button row (see the .wxs).
+list(APPEND CPACK_WIX_EXTRA_SOURCES
+    "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/WixUI_Orchestrion.wxs"
+)
 set(CPACK_WIX_UI_BANNER "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/installer_banner_wix.png")
 set(CPACK_WIX_UI_DIALOG "${PROJECT_SOURCE_DIR}/buildscripts/packaging/Windows/Installer/installer_background_wix.png")
 set(CPACK_WIX_PROGRAM_MENU_FOLDER "${MUSE_APP_TITLE_VERSION}")

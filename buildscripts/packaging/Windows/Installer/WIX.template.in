@@ -60,8 +60,9 @@
 
         <!-- Add to checkbox to launch program after install ²-->
         <UI>
-            <UIRef Id='WixUI_InstallDir' />
-            <Publish Dialog="ExitDialog"
+            <!-- Custom copy of WixUI_InstallDir (see WixUI_Orchestrion.wxs). -->
+            <UIRef Id='WixUI_InstallDir_Orchestrion' />
+            <Publish Dialog="OrchestrionExitDialog"
                 Control="Finish"
                 Event="DoAction"
                 Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
