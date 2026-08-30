@@ -64,6 +64,12 @@ constexpr double maxTickMs = 40.0;
 // No frame-driven tick for this long means the window has stopped rendering
 // (hidden, occluded, or simply nothing moving): the timer then drives.
 constexpr qint64 frameStallMs = 40;
+
+// The glide is settled once it is within this many physical pixels of its
+// target, and the canvas is only placed again once the page has moved by at
+// least this many since it was last placed (see the use site).
+constexpr double settlePx = 0.25;
+constexpr double placeStepPx = 0.5;
 } // namespace
 
 ScoreFollower::ScoreFollower(Canvas &canvas) : _canvas{canvas}
@@ -142,14 +148,20 @@ void ScoreFollower::frame(double startX)
     // jump) left it: glide from there rather than cut.
     _pageTargetX = targetX;
     _pageTauMs = tauRelocateMs;
-    _canvas.centerOn(_pageX);
+    place(_pageX);
   }
   else
   {
     _pageX = _pageEaseX = _pageTargetX = targetX;
-    _canvas.centerOn(targetX);
+    place(targetX);
   }
   _framed = true;
+}
+
+void ScoreFollower::place(double pageX)
+{
+  _canvas.centerOn(pageX);
+  _placedX = pageX;
 }
 
 bool ScoreFollower::barrierInView(double focusX) const
@@ -276,8 +288,11 @@ void ScoreFollower::tick()
   // damped Δ·(1 − (1 + t/τ)·e^(−t/τ)), whose velocity starts from rest, peaks
   // at t = τ and eases out again: an S-curve, at the cost of settling in
   // ~5 τ instead of ~3 τ.
-  if (std::abs(_pageTargetX - _pageX) > 0.02 ||
-      std::abs(_pageTargetX - _pageEaseX) > 0.02)
+  // The ease only ever approaches its target; it is called settled within a
+  // fraction of a physical pixel, where nothing it could still do would show.
+  const double settleTolerance = settlePx / scaling;
+  if (std::abs(_pageTargetX - _pageX) > settleTolerance ||
+      std::abs(_pageTargetX - _pageEaseX) > settleTolerance)
   {
     const double k = 1.0 - std::exp(-dtMs / _pageTauMs);
     _pageEaseX += (_pageTargetX - _pageEaseX) * k;
@@ -286,14 +301,20 @@ void ScoreFollower::tick()
   else
     _pageX = _pageEaseX = _pageTargetX;
 
-  _canvas.centerOn(_pageX);
+  // Placing the canvas repaints the whole score (see Canvas::centerOn), so
+  // it is done only for a move that shows — the ease's long tail creeps by
+  // less than a pixel a frame — and once more when the page comes to rest.
+  const bool settled = _pageX == _pageTargetX;
+  if (settled || !std::isfinite(_placedX) ||
+      std::abs(_pageX - _placedX) * scaling >= placeStepPx)
+    place(_pageX);
 
   // Nothing moves between page turns, so once the turn has settled there is
   // nothing left to animate: idle until the next event restarts the timer —
   // or, with a jump ahead, until it would be due at the estimate just seen: a
   // note held into the jump brings no event to wake up to. (Looked at afresh
   // then: a performer who has frozen meanwhile has not got any nearer to it.)
-  if (_pageX == _pageTargetX)
+  if (settled)
   {
     _timer.stop();
     _lastTickMs = 0;
@@ -315,6 +336,7 @@ void ScoreFollower::viewMoved()
   // Where we left the page is no longer where it is: pick it up from the view
   // itself, so the next framing glides from the right spot.
   _pageX = _pageEaseX = _pageTargetX = _canvas.anchorX();
+  _placedX = std::numeric_limits<double>::quiet_NaN();
 }
 
 void ScoreFollower::jump()
@@ -337,6 +359,7 @@ void ScoreFollower::reset()
   _pageX = std::numeric_limits<double>::quiet_NaN();
   _pageEaseX = std::numeric_limits<double>::quiet_NaN();
   _pageTargetX = std::numeric_limits<double>::quiet_NaN();
+  _placedX = std::numeric_limits<double>::quiet_NaN();
   _pageTauMs = tauPageMs;
   _focusX.reset();
   _barrier.reset();

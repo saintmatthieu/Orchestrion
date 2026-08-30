@@ -166,6 +166,10 @@ private:
 
   //! One-shot framing at the start of a take: put \p startX on the anchor.
   void frame(double startX);
+  /**
+   * Put the canvas at \p pageX (see Canvas::centerOn) and remember it.
+   */
+  void place(double pageX);
 
   //! Whether resting \p focusX on the anchor would bring the barrier into
   //! view — which makes that turn the last one before it, and the barrier
@@ -195,6 +199,11 @@ private:
   double _pageX = std::numeric_limits<double>::quiet_NaN();
   double _pageEaseX = std::numeric_limits<double>::quiet_NaN();
   double _pageTargetX = std::numeric_limits<double>::quiet_NaN();
+  /**
+   * Where the canvas was last placed — a whole-score repaint each time, so not
+   * for every sub-pixel step of the glide. NaN: place next time.
+   */
+  double _placedX = std::numeric_limits<double>::quiet_NaN();
   //! The time constant of the glide in progress: a page turn's or, shorter, a
   //! relocation's.
   double _pageTauMs = 500.0;
