@@ -28,6 +28,7 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <global/iglobalconfiguration.h>
+#include <ui/iuiconfiguration.h>
 #include <uicomponents/view/abstractmenumodel.h>
 
 namespace dgk
@@ -47,6 +48,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
 
   muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
   muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
+  muse::Inject<muse::ui::IUiConfiguration> uiConfiguration;
   muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
   muse::Inject<IMidiDeviceService> midiDeviceService;
   muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
@@ -63,6 +65,9 @@ public:
   QString openedMenuId() const;
 
   Q_INVOKABLE void load() override;
+  // Whether the platform has a global (out-of-window) menu bar, i.e. the
+  // macOS top ribbon. Queried by MuseScore's PlatformMenuBar.qml.
+  Q_INVOKABLE bool isGlobalMenuAvailable() const;
   Q_INVOKABLE void openMenu(const QString &menuId, bool byHover);
 
 public slots:

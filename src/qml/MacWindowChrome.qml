@@ -16,12 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-pragma Singleton
 import QtQuick 2.15
 
-QtObject {
-    readonly property color accent: "#F0E5C8"
-    // The uniform color of the parchment wallpaper's vignetted edges; the
-    // macOS title bar is painted with it so it blends into the backdrop.
-    readonly property color mahogany: "#3C1F19"
+import Orchestrion 1.0
+import Orchestrion.OrchestrionShell 1.0
+
+// In its own file, loaded from Main.qml only on macOS: the MacOSWindowChrome
+// C++ type is only registered there, and referencing it in Main.qml directly
+// would break the QML load on the other platforms.
+MacOSWindowChrome {
+    color: Theme.mahogany
 }

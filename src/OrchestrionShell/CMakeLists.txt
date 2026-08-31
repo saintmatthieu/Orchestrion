@@ -51,7 +51,17 @@ if (OS_IS_LIN)
   find_package(Qt6 REQUIRED COMPONENTS DBus)
   set(MODULE_LINK Qt6::DBus)
 elseif (OS_IS_MAC)
-  set(MODULE_LINK "-framework IOKit")
+  set(MODULE_LINK "-framework IOKit" "-framework AppKit")
+  list(APPEND MODULE_SRC
+    view/MacOSWindowChrome.h
+    view/MacOSWindowChrome.mm
+  )
+  # Don't mix C++ and Objective-C++ in unity/PCH builds (same treatment as the
+  # .mm files in MuseScore's muse_ui module).
+  set_source_files_properties(view/MacOSWindowChrome.mm PROPERTIES
+    SKIP_UNITY_BUILD_INCLUSION ON
+    SKIP_PRECOMPILE_HEADERS ON
+  )
 endif()
 
 setup_module()

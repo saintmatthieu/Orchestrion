@@ -51,6 +51,11 @@ OrchestrionMenuModel::OrchestrionMenuModel(QObject *parent)
 
 QWindow *OrchestrionMenuModel::appWindow() const { return m_appWindow; }
 
+bool OrchestrionMenuModel::isGlobalMenuAvailable() const
+{
+  return uiConfiguration()->isGlobalMenuAvailable();
+}
+
 void OrchestrionMenuModel::setAppWindow(QWindow *appWindow)
 {
   m_appWindow = appWindow;

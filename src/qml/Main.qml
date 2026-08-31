@@ -36,17 +36,34 @@ ApplicationWindow {
     width: 800
     height: 350
     title: titleProvider.title
-    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
+
+    // On macOS the window keeps its native frame (traffic lights) and the
+    // menus live in the OS's top menu bar, like every other Mac app. On
+    // Windows/Linux we draw the frame ourselves, MuseScore-style: a custom
+    // title bar with the in-window menu strip and system buttons.
+    readonly property bool isMac: Qt.platform.os === "osx"
+    flags: isMac ? Qt.Window
+                 : Qt.Window | Qt.FramelessWindowHint | Qt.WindowSystemMenuHint
 
     Component.onCompleted: {
         onboardingModel.startOnboarding()
         titleProvider.load()
     }
 
+    // The native macOS menu bar (MuseScore's Qt.labs.platform wrapper around
+    // our menu model). Only instantiated on macOS; elsewhere the menus are
+    // rendered by AppTitleBar below.
+    Loader {
+        id: platformMenuBar
+        active: root.isMac
+        source: "qrc:/qml/platform/PlatformMenuBar.qml"
+        onLoaded: item.load()
+    }
+
     // provide a rectangle for the title bar to move the window
     Rectangle {
         id: titleMoveArea
-        visible: root.visibility !== Window.FullScreen
+        visible: !root.isMac && root.visibility !== Window.FullScreen
         width: parent.width
         height: 32
 
@@ -105,6 +122,17 @@ ApplicationWindow {
         fileModified: titleProvider.fileModified
     }
 
+    // Paints the native macOS title bar mahogany, so it blends with the
+    // wallpaper instead of showing the Qt palette grey that MuseScore's
+    // platform styling applies. Must come after MainWindowBridge: setting the
+    // bridge's window is what triggers that styling, and this must overwrite
+    // it. (A Loader because the MacOSWindowChrome type only exists on macOS.)
+    Loader {
+        active: root.isMac
+        source: "MacWindowChrome.qml"
+        onLoaded: item.window = root
+    }
+
     Shortcuts { }
 
     ColumnLayout {
@@ -112,43 +140,50 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-
+        // The custom title bar (Windows/Linux only, see the flags comment
+        // above). A Loader rather than a hidden item so that on macOS the
+        // in-window AppMenuBar — and the second menu model it would create —
+        // never exists.
+        Loader {
             id: titleBar
 
-            visible: root.visibility !== Window.FullScreen
-            spacing: 0
+            active: !root.isMac
+            visible: active && root.visibility !== Window.FullScreen
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 30 : 0
 
-            OrchestrionIcon {
-                id: orchestrionIcon
-                Layout.preferredWidth: 30 + orchestrionIcon.leftPadding
-                Layout.preferredHeight: 30
-            }
+            sourceComponent: RowLayout {
+                spacing: 0
 
-            AppTitleBar {
-                id: appTitleBar
-
-                Layout.fillWidth: true
-                Layout.preferredHeight: 30
-
-                title: root.title
-
-                windowVisibility: root.visibility
-
-                appWindow: root
-
-                onShowWindowMinimizedRequested: {
-                    bridge.showMinimizedWithSavePreviousState()
+                OrchestrionIcon {
+                    id: orchestrionIcon
+                    Layout.preferredWidth: 30 + orchestrionIcon.leftPadding
+                    Layout.preferredHeight: 30
                 }
 
-                onToggleWindowMaximizedRequested: {
-                    root.toggleMaximized()
-                }
+                AppTitleBar {
+                    id: appTitleBar
 
-                onCloseWindowRequested: {
-                    root.close()
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+
+                    title: root.title
+
+                    windowVisibility: root.visibility
+
+                    appWindow: root
+
+                    onShowWindowMinimizedRequested: {
+                        bridge.showMinimizedWithSavePreviousState()
+                    }
+
+                    onToggleWindowMaximizedRequested: {
+                        root.toggleMaximized()
+                    }
+
+                    onCloseWindowRequested: {
+                        root.close()
+                    }
                 }
             }
         }

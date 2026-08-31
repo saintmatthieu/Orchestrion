@@ -189,6 +189,7 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/AttributionToast.qml"
     QML_FILES "src/qml/MidiKeyboardIcon.qml"
     QML_FILES "src/qml/GoldOrnament.qml"
+    QML_FILES "src/qml/MacWindowChrome.qml"
     QML_FILES "src/qml/Theme.qml"
 )
 

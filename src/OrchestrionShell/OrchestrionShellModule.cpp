@@ -29,6 +29,9 @@
 #include "ui/iuiactionsregister.h"
 #include "view/AutoPlayModel.h"
 #include "view/GradingModel.h"
+#ifdef Q_OS_MAC
+#include "view/MacOSWindowChrome.h"
+#endif
 #include "view/MidiKeyboardIconModel.h"
 #include "view/NotationPaintViewLoaderModel.h"
 #include "view/OrchestrionWindowTitleProvider.h"
@@ -92,6 +95,10 @@ void OrchestrionShellModule::registerUiTypes()
                                  "AutoPlayModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "ScoreAttributionModel");
+#ifdef Q_OS_MAC
+  qmlRegisterType<MacOSWindowChrome>("Orchestrion.OrchestrionShell", 1, 0,
+                                     "MacOSWindowChrome");
+#endif
 }
 
 void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &)
