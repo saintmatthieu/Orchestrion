@@ -60,8 +60,12 @@ void MusescoreShellModule::registerUiTypes()
   qmlRegisterType<mu::appshell::FramelessWindowModel>(
       "MuseScore.AppShell", 1, 0, "FramelessWindowModel");
   // Inject our OrchestrionMenuModel into the MuseScore OrchestrionShell
-  // namespace
+  // namespace, under both names MuseScore's appshell QML looks for: the
+  // in-window AppMenuBar (Windows/Linux) uses AppMenuModel, the native
+  // PlatformMenuBar (macOS top ribbon) uses PlatformAppMenuModel.
   qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,
                                         "AppMenuModel");
+  qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,
+                                        "PlatformAppMenuModel");
 }
 } // namespace dgk
