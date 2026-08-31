@@ -31,6 +31,8 @@ const muse::Settings::Key
     NOTE_INFO_TOOLTIP_ENABLED(module_name, "NOTE_INFO_TOOLTIP_ENABLED");
 const muse::Settings::Key
     TEMPO_VISUALIZATION_ENABLED(module_name, "TEMPO_VISUALIZATION_ENABLED");
+const muse::Settings::Key
+    JUMP_ANTICIPATION_ENABLED(module_name, "JUMP_ANTICIPATION_ENABLED");
 const muse::Settings::Key GRADING_EXPOSED(module_name, "GRADING_EXPOSED");
 const muse::Settings::Key GRADING_ENABLED(module_name, "GRADING_ENABLED");
 const muse::Settings::Key
@@ -75,6 +77,13 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(TEMPO_VISUALIZATION_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_tempoVisualizationEnabledChanged.notify(); });
+
+  muse::settings()->setDefaultValue(JUMP_ANTICIPATION_ENABLED,
+                                    muse::Val{false});
+  muse::settings()
+      ->valueChanged(JUMP_ANTICIPATION_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_jumpAnticipationEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(GRADING_EXPOSED, muse::Val{false});
   muse::settings()
@@ -196,6 +205,23 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::tempoVisualizationEnabledChanged() const
 {
   return m_tempoVisualizationEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::jumpAnticipationEnabled() const
+{
+  return muse::settings()->value(JUMP_ANTICIPATION_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setJumpAnticipationEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(JUMP_ANTICIPATION_ENABLED,
+                                   muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::jumpAnticipationEnabledChanged() const
+{
+  return m_jumpAnticipationEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::gradingExposed() const

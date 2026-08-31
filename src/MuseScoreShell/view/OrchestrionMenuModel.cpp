@@ -109,6 +109,10 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  sequencerConfiguration()->jumpAnticipationEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   sequencerConfiguration()->gradingEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
@@ -244,9 +248,22 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
 {
-  QList<muse::uicomponents::MenuItem *> menu{makeMenuItem(
-      "view-toggle-fullscreen",
-      muse::TranslatableString("appshell/menu/view", "&Fullscreen"))};
+  using namespace muse::uicomponents;
+
+  // Whether the auto-scroll moves on to a jump's resume point ahead of time
+  // (see IOrchestrionSequencerConfiguration::jumpAnticipationEnabled).
+  MenuItem *const jumpAnticipationItem = makeMenuItem(
+      actionIds::toggleJumpAnticipation,
+      muse::TranslatableString("appshell/menu/view", "&Anticipate jumps"));
+  jumpAnticipationItem->setSelectable(true);
+  jumpAnticipationItem->setSelected(
+      sequencerConfiguration()->jumpAnticipationEnabled());
+
+  const QList<MenuItem *> menu{
+      makeMenuItem(
+          "view-toggle-fullscreen",
+          muse::TranslatableString("appshell/menu/view", "&Fullscreen")),
+      jumpAnticipationItem};
   return makeMenu(muse::TranslatableString("appshell/menu/view", "&View"), menu,
                   "menu-orchestrion-view");
 }

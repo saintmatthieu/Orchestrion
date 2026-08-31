@@ -54,18 +54,20 @@ namespace dgk
 //! sooner it lands, the longer what it frames stands in view before the
 //! jump.
 //!
-//! The jump itself is anticipated. The last notes before it the performer can
-//! hold in their fingers; the first notes after it they cannot. So the page
-//! moves on to where the reading resumes — back for a repeat, ahead for a
-//! volta skipped or a coda — if that is not on the page already, timed by
-//! the performer's own tempo so that the glide is over jumpLeadMs before the
-//! first note after the jump is due. Never, though, before the framing
-//! stands: the page at rest, the barrier at least barrierMarginPx inside the
-//! right edge (barrierFramed()) — the last notes before the barrier are what
-//! the framing brings into view, and moving on mid-turn would take them off
-//! the page unseen. A lead that falls due first starts the framing turn
-//! right away (trigger or no trigger) and hurries it; the move follows it,
-//! late but complete.
+//! The jump itself can be anticipated (setAnticipateJumps — opt-in, off by
+//! default). The last notes before it the performer can hold in their
+//! fingers; the first notes after it they cannot. So the page moves on to
+//! where the reading resumes — back for a repeat, ahead for a volta skipped
+//! or a coda — if that is not on the page already, timed by the performer's
+//! own tempo so that the glide is over jumpLeadMs before the first note
+//! after the jump is due. Never, though, before the framing stands: the page
+//! at rest, the barrier at least barrierMarginPx inside the right edge
+//! (barrierFramed()) — the last notes before the barrier are what the
+//! framing brings into view, and moving on mid-turn would take them off the
+//! page unseen. A lead that falls due first starts the framing turn right
+//! away (trigger or no trigger) and hurries it; the move follows it, late
+//! but complete. Off, the page follows only the actual jump, relocating
+//! after it happens.
 //!
 //! It follows *events*: everything here is score geometry (where the next
 //! note is engraved) and time (when it was played) — the reading's pace is
@@ -131,6 +133,10 @@ public:
 
   ScoreFollower(const ScoreFollower &) = delete;
   ScoreFollower &operator=(const ScoreFollower &) = delete;
+
+  //! Whether to anticipate jumps (see the class comment). A setting, not
+  //! state: it survives reset(). Off by default.
+  void setAnticipateJumps(bool anticipate);
 
   //! Feed one transition batch.
   //! \p struck: whether a note was struck this batch (as opposed to released,
@@ -219,6 +225,8 @@ private:
   std::optional<double> _focusX;
   //! The barline the reading will not carry on through (see onEvents).
   std::optional<Barrier> _barrier;
+  //! See setAnticipateJumps.
+  bool _anticipateJumps = false;
   //! Whether the anticipated move to the resume point is under way — latched
   //! (no sooner than the barrier framing settles — see the class comment)
   //! until the barrier changes: the tempo estimate wavers, and a page that

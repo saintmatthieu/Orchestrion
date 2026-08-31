@@ -69,6 +69,12 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setTempoVisualizationEnabled(
                           !sequencerConfig()->tempoVisualizationEnabled());
                     });
+  dispatcher()->reg(this, actionIds::toggleJumpAnticipation,
+                    [this]
+                    {
+                      sequencerConfig()->setJumpAnticipationEnabled(
+                          !sequencerConfig()->jumpAnticipationEnabled());
+                    });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-grading",
                     [this]
                     {

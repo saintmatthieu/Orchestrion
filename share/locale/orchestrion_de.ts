@@ -415,6 +415,11 @@
         <translation type="vanished">&amp;Vollbild</translation>
     </message>
     <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="257"/>
+        <source>&amp;Anticipate jumps</source>
+        <translation>&amp;Sprünge antizipieren</translation>
+    </message>
+    <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="208"/>
         <source>&amp;Fullscreen</source>
         <translation>&amp;Vollbild</translation>

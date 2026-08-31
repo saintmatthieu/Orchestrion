@@ -36,6 +36,11 @@ static constexpr const char *reverbHall = "orchestrion-advanced-reverb-hall";
 static constexpr const char *reverbCathedral =
     "orchestrion-advanced-reverb-cathedral";
 
+//! View menu: whether the score follower moves to a jump's resume point
+//! ahead of time (see IOrchestrionSequencerConfiguration).
+static constexpr const char *toggleJumpAnticipation =
+    "orchestrion-view-toggle-jump-anticipation";
+
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
 //! by MuseScore code with its rendered-track playback in mind (e.g. the

@@ -1603,6 +1603,16 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
                                                 pushReplayTake();
                                             });
 
+  m_follower.setAnticipateJumps(
+      sequencerConfiguration()->jumpAnticipationEnabled());
+  sequencerConfiguration()->jumpAnticipationEnabledChanged().onNotify(
+      this,
+      [this]
+      {
+        m_follower.setAnticipateJumps(
+            sequencerConfiguration()->jumpAnticipationEnabled());
+      });
+
   m_timingOverlay.setPersistent(
       sequencerConfiguration()->persistentTimingMarksEnabled());
   sequencerConfiguration()->persistentTimingMarksEnabledChanged().onNotify(

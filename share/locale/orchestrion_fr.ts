@@ -415,6 +415,11 @@
         <translation type="vanished">Plein &amp;écran</translation>
     </message>
     <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="257"/>
+        <source>&amp;Anticipate jumps</source>
+        <translation>&amp;Anticiper les sauts</translation>
+    </message>
+    <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="208"/>
         <source>&amp;Fullscreen</source>
         <translation>Plein &amp;écran</translation>

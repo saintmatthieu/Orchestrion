@@ -53,6 +53,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-tempo-visualization",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::toggleJumpAnticipation,
+                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-grading",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-persistent-timing-marks",

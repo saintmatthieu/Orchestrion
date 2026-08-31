@@ -48,6 +48,16 @@ public:
   virtual muse::async::Notification
   tempoVisualizationEnabledChanged() const = 0;
 
+  //! Whether the score follower anticipates jumps: shortly before a repeat's
+  //! end (or a volta, or a coda) is reached, the page moves on to where the
+  //! reading resumes, timed by the performer's tempo. Expected, it is a
+  //! comfort; but a learner still memorizing the last notes before the jump
+  //! needs them to stay in view until actually played, so it is off by
+  //! default — the page then relocates after the jump instead.
+  virtual bool jumpAnticipationEnabled() const = 0;
+  virtual void setJumpAnticipationEnabled(bool) = 0;
+  virtual muse::async::Notification jumpAnticipationEnabledChanged() const = 0;
+
   //! Whether grading is offered at all (its top-centre button and its menu).
   //! Off by default and toggled from the Development menu: while hidden,
   //! gradingEnabled() reads false whatever the user last chose, so the whole

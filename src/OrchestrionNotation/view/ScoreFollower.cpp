@@ -111,6 +111,11 @@ ScoreFollower::ScoreFollower(Canvas &canvas) : _canvas{canvas}
       });
 }
 
+void ScoreFollower::setAnticipateJumps(bool anticipate)
+{
+  _anticipateJumps = anticipate;
+}
+
 void ScoreFollower::onEvents(bool struck, std::optional<double> startX,
                              std::optional<double> focusX,
                              std::optional<Barrier> barrier)
@@ -297,7 +302,7 @@ void ScoreFollower::tick()
   // nothing moves if it is not.
   std::optional<double> resumeInMs;
   bool jumpDue = false;
-  if (!_jumping && _barrier && _barrier->resumeX)
+  if (_anticipateJumps && !_jumping && _barrier && _barrier->resumeX)
   {
     resumeInMs = _canvas.resumeExpectedInMs();
     jumpDue = resumeInMs && *resumeInMs <= jumpLeadMs + relocateDurationMs;
