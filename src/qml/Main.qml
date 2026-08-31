@@ -50,13 +50,13 @@ ApplicationWindow {
         titleProvider.load()
     }
 
-    // The native macOS menu bar (MuseScore's Qt.labs.platform wrapper around
-    // our menu model). Only instantiated on macOS; elsewhere the menus are
-    // rendered by AppTitleBar below.
+    // The native macOS menu bar (our Qt.labs.platform wrapper around the menu
+    // model, adapted from MuseScore's PlatformMenuBar). Only instantiated on
+    // macOS; elsewhere the menus are rendered by AppTitleBar below.
     Loader {
         id: platformMenuBar
         active: root.isMac
-        source: "qrc:/qml/platform/PlatformMenuBar.qml"
+        source: "MacMenuBar.qml"
         onLoaded: item.load()
     }
 
