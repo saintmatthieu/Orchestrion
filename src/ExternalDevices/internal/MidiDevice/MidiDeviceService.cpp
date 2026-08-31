@@ -104,11 +104,16 @@ void MidiDeviceService::onAvailableDevicesChanged()
 ExternalDeviceId MidiDeviceService::preferredDevice(
     const std::optional<ExternalDeviceId> &newcomer, bool keepCurrent) const
 {
-  // An express choice from the menu wins while it can be honoured.
+  // An express choice from the menu wins outright: when the chosen device
+  // is away, stay disconnected rather than falling back on another device,
+  // so the dimmed keyboard icon warns the user.
   if (const auto chosen = configuration()->readSelectedMidiDevice())
+  {
     for (const auto &candidate : availableDevices())
       if (sameDevice(candidate, *chosen))
         return candidate;
+    return noDevice;
+  }
 
   // Otherwise greedy: the device that just got plugged in, else the one in
   // use if it's still there, else the most recently enumerated one.

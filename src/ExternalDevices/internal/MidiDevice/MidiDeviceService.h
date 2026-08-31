@@ -33,8 +33,9 @@ namespace dgk
 //! plugged in gets used, and a newly plugged-in device takes over from the
 //! current one; when the device in use goes away, the most recently
 //! enumerated remaining one steps in. A device expressly chosen in the
-//! Audio/MIDI menu (persisted) overrides this whenever it is available —
-//! "no device" always is, so choosing it silences MIDI input for good.
+//! Audio/MIDI menu (persisted) overrides this: it alone is used, and while
+//! it is away MIDI stays disconnected — the dimmed keyboard icon then warns
+//! the user. Choosing "no device" silences MIDI input for good.
 class MidiDeviceService : public IMidiDeviceService,
                           public muse::Injectable,
                           public muse::async::Asyncable
