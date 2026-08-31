@@ -85,6 +85,10 @@ void AutomaticOrchestrionPlayer::Stop()
     return;
   ++m_generation; // cancels all scheduled events, nominal and replay alike
   m_playing = false;
+  // Don't leave notes ringing. m_playing is already false, so a position
+  // jump this may cause cannot re-enter here; m_replayActive is still true,
+  // so a mid-replay stop's releases aren't recorded as take events.
+  m_sequencer.AllNotesOff();
   m_replayActive = false;
   m_playingChanged.notify();
 }

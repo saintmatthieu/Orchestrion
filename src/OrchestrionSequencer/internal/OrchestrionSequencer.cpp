@@ -357,6 +357,19 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
     PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
+void OrchestrionSequencer::AllNotesOff()
+{
+  // Release through the regular input-event path, so that voice cursors,
+  // chord-transition subscribers (score highlighting) and the take recording
+  // all see an ordinary key release.
+  for (auto *hand : {&m_rightHand, &m_leftHand})
+    if (hand->pressedKey)
+      OnInputEvent(NoteEventType::noteOff, *hand->pressedKey, std::nullopt);
+  // Note-offs alone don't silence a piano while the sustain pedal is down.
+  if (m_pedalDown)
+    PostPedalEvent(PedalEvent{m_instrument, false});
+}
+
 std::map<TrackIndex, ChordTransition>
 OrchestrionSequencer::PrepareStaffTransitions(
     const HandVoices &voices,

@@ -61,6 +61,7 @@ public:
 
   void OnInputEvent(NoteEventType, int pitch,
                     std::optional<float> velocity) override;
+  void AllNotesOff() override;
 
   const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const override;

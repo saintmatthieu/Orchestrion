@@ -36,6 +36,15 @@ void PolyphonicSynthesizerImpl::Setup()
   onVoicesReset();
   sequencer->AboutToJumpPosition().onReceive(this,
                                              [this](auto) { doAllNotesOff(); });
+  // Stopping playback must silence like a jump does: the note-offs the
+  // sequencer sends aren't enough, the synthesizer keeps ringing.
+  orchestrion()->player()->PlayingChanged().onNotify(
+      this,
+      [this]
+      {
+        if (!orchestrion()->player()->IsPlaying())
+          doAllNotesOff();
+      });
 }
 
 int PolyphonicSynthesizerImpl::GetChannel(const TrackIndex &voice) const

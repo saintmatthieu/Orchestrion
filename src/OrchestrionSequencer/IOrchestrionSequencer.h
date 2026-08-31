@@ -73,6 +73,13 @@ public:
   //! a computer keyboard, set velocity to std::nullopt.
   virtual void OnInputEvent(NoteEventType, int pitch,
                             std::optional<float> velocity) = 0;
+
+  /**
+   * Releases whatever is sounding — the hands' held keys and the sustain
+   * pedal — as if the player had lifted hands and foot. Called when playback
+   * is stopped, so the notes don't ring on.
+   */
+  virtual void AllNotesOff() = 0;
   virtual muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const = 0;
   //! Fires once per processed hand note event (both manual and automatic play),
