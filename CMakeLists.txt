@@ -4,7 +4,12 @@ cmake_policy(SET CMP0079 NEW)
 
 # Set the project name and version
 # The three components (x.y.z) are needed for WiX's Product/@Version attribute.
-project(Orchestrion VERSION 0.3.0 LANGUAGES C CXX)
+set(ORCHESTRION_VERSION "0.0.0" CACHE STRING "App version; CI sets this from the git tag on release builds.")
+string(REGEX REPLACE "^v" "" ORCHESTRION_VERSION "${ORCHESTRION_VERSION}")
+if(NOT ORCHESTRION_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "ORCHESTRION_VERSION must be of the form [v]x.y.z, got \"${ORCHESTRION_VERSION}\"")
+endif()
+project(Orchestrion VERSION ${ORCHESTRION_VERSION} LANGUAGES C CXX)
 
 # Find the Qt6 packages
 find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)

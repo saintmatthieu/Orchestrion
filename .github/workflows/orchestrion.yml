@@ -20,6 +20,10 @@ env:
   # User-facing version used in artifact filenames. Tag-triggered runs use
   # the tag (e.g. v0.0.7); everything else gets a per-run dev marker.
   RELEASE_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('dev-{0}', github.run_number) }}
+  # Version baked into the installers (MSI ProductVersion etc.). Tag-triggered
+  # runs inject the tag into CMake so it is the single source of truth; other
+  # runs pass nothing and get the 0.0.0 dev fallback from CMakeLists.txt.
+  CMAKE_VERSION_ARG: ${{ startsWith(github.ref, 'refs/tags/v') && format('-DORCHESTRION_VERSION={0}', github.ref_name) || '' }}
 
 jobs:
   build_win:
@@ -34,21 +38,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      # The installer takes its version from project(Orchestrion VERSION x.y.z)
-      # in the root CMakeLists.txt. Fail tag builds early when it wasn't bumped
-      # to match the tag, before spending an hour compiling.
-      - name: Check project version matches tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: |
-          $m = Select-String -Path CMakeLists.txt -Pattern 'project\(Orchestrion VERSION ([0-9]+\.[0-9]+\.[0-9]+)'
-          if (-not $m) { throw "Could not find project(Orchestrion VERSION x.y.z) in CMakeLists.txt" }
-          $cmakeVersion = $m.Matches[0].Groups[1].Value
-          $tagVersion = '${{ github.ref_name }}'.TrimStart('v')
-          if ($cmakeVersion -ne $tagVersion) {
-            throw "CMakeLists.txt version ($cmakeVersion) does not match tag ($tagVersion) - bump project(Orchestrion VERSION ...) before tagging"
-          }
 
       - name: Pull LFS files
         run: git lfs pull
@@ -93,6 +82,7 @@ jobs:
           -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
           -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
           -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+          ${{env.CMAKE_VERSION_ARG}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
@@ -206,6 +196,7 @@ jobs:
           -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
           -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
           -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+          ${{env.CMAKE_VERSION_ARG}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
@@ -323,6 +314,7 @@ jobs:
           -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
           -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
           -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
+          ${{env.CMAKE_VERSION_ARG}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
