@@ -11,6 +11,15 @@ if(NOT ORCHESTRION_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
 endif()
 project(Orchestrion VERSION ${ORCHESTRION_VERSION} LANGUAGES C CXX)
 
+# A real version is only injected on tag-triggered CI builds; those are the
+# stable releases. Everything else (local builds, CI dev builds) keeps the
+# 0.0.0 fallback and builds in "dev" mode.
+if(ORCHESTRION_VERSION STREQUAL "0.0.0")
+    set(MUSE_APP_BUILD_MODE "dev")
+else()
+    set(MUSE_APP_BUILD_MODE "release")
+endif()
+
 # Find the Qt6 packages
 find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
 

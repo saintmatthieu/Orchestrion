@@ -48,11 +48,10 @@ set(MUSESCORE_BUILD_CONFIGURATION "app" CACHE STRING "Build configuration")
 # - vtest           - for visual tests (for CI)
 # - utest           - for unit tests (for CI)
 
-set(MUSESCORE_BUILD_MODE "dev" CACHE STRING "Build mode")
-# Possible MUSESCORE_BUILD_MODE values:
-# - dev     - for development/nightly builds
-# - testing - for testing versions (alpha, beta, RC)
-# - release - for stable release builds
+# The build mode ("dev" / "testing" / "release") is MUSE_APP_BUILD_MODE,
+# consumed by SetupConfigure.cmake and derived from ORCHESTRION_VERSION in the
+# top-level CMakeLists.txt. (The former MUSESCORE_BUILD_MODE variable is no
+# longer read by the framework.)
 
 set(MUSESCORE_REVISION "" CACHE STRING "Build revision")
 
