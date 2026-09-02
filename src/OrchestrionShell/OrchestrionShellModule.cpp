@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionShellModule.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/ControllerMenuManager.h"
 #include "internal/OrchestrionActionController.h"
 #include "internal/OrchestrionEventProcessor.h"
@@ -37,6 +38,7 @@
 #include "view/OrchestrionWindowTitleProvider.h"
 #include "view/PlaybackButtonModel.h"
 #include "view/ScoreAttributionModel.h"
+
 #include <QQmlEngine>
 
 namespace dgk
@@ -66,17 +68,10 @@ std::string OrchestrionShellModule::moduleName() const
 
 void OrchestrionShellModule::registerExports()
 {
-  ioc()->registerExport<IOrchestrionUiActions>(moduleName(),
-                                               m_orchestrionUiActions);
-  ioc()->registerExport<IOrchestrionStartupScenario>(
+  globalIoc()->registerExport<IOrchestrionUiActions>(moduleName(),
+                                                     m_orchestrionUiActions);
+  globalIoc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), m_orchestrionStartupScenario);
-}
-
-void OrchestrionShellModule::resolveImports()
-{
-  auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(moduleName());
-  if (ar)
-    ar->reg(m_orchestrionUiActions);
 }
 
 void OrchestrionShellModule::registerUiTypes()
@@ -101,16 +96,38 @@ void OrchestrionShellModule::registerUiTypes()
 #endif
 }
 
-void OrchestrionShellModule::onPreInit(const muse::IApplication::RunMode &)
+muse::modularity::IContextSetup *OrchestrionShellModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.resolveImports = [this] { onContextResolveImports(); };
+  hooks.onPreInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextPreInit(mode); };
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void OrchestrionShellModule::onContextResolveImports() const
+{
+  // The UI actions register is context-scoped.
+  auto ar = muse::modularity::ioc(iocContext())
+                ->resolve<muse::ui::IUiActionsRegister>(moduleName());
+  if (ar)
+    ar->reg(m_orchestrionUiActions);
+}
+
+void OrchestrionShellModule::onContextPreInit(
+    const muse::IApplication::RunMode &) const
 {
   m_orchestrionActionController->preInit();
 }
 
-void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
+void OrchestrionShellModule::onContextInit(
+    const muse::IApplication::RunMode &mode) const
 {
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
-
   m_playbackDeviceMenuManager->init();
   m_orchestrionEventProcessor->init();
   m_orchestrionUiActions->init();
@@ -119,6 +136,4 @@ void OrchestrionShellModule::onInit(const muse::IApplication::RunMode &mode)
   m_orchestrionStartupScenario->init();
   m_sleepInhibitor->init();
 }
-
-void OrchestrionShellModule::onAllInited(const muse::IApplication::RunMode &) {}
 } // namespace dgk

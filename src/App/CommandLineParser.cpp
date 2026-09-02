@@ -299,7 +299,7 @@ void CommandLineParser::parse(int argc, char **argv)
 
   if (m_parser.isSet("d"))
   {
-    m_options.app.loggerLevel = muse::logger::Level::Debug;
+    m_options->global.loggerLevel = muse::logger::Level::Debug;
   }
 
   if (m_parser.isSet("D"))
@@ -307,7 +307,7 @@ void CommandLineParser::parse(int argc, char **argv)
     std::optional<double> val = doubleValue("D");
     if (val)
     {
-      m_options.ui.physicalDotsPerInch = val;
+      m_options->ui.physicalDotsPerInch = val;
     }
     else
     {
@@ -320,7 +320,7 @@ void CommandLineParser::parse(int argc, char **argv)
     std::optional<int> val = intValue("T");
     if (val)
     {
-      m_options.exportImage.trimMarginPixelSize = val;
+      m_options->exportImage.trimMarginPixelSize = val;
     }
     else
     {
@@ -330,7 +330,7 @@ void CommandLineParser::parse(int argc, char **argv)
 
   if (m_parser.isSet("M"))
   {
-    m_options.importMidi.operationsFile =
+    m_options->importMidi.operationsFile =
         fromUserInputPath(m_parser.value("M"));
   }
 
@@ -339,7 +339,7 @@ void CommandLineParser::parse(int argc, char **argv)
     std::optional<int> val = intValue("b");
     if (val)
     {
-      m_options.exportAudio.mp3Bitrate = val;
+      m_options->exportAudio.mp3Bitrate = val;
     }
     else
     {
@@ -350,35 +350,35 @@ void CommandLineParser::parse(int argc, char **argv)
 
   if (m_parser.isSet("template-mode"))
   {
-    m_options.notation.templateModeEnabled = true;
+    m_options->notation.templateModeEnabled = true;
   }
 
   if (m_parser.isSet("t"))
   {
-    m_options.notation.testModeEnabled = true;
+    m_options->notation.testModeEnabled = true;
   }
 
   if (m_parser.isSet("session-type"))
   {
-    m_options.startup.type = m_parser.value("session-type").toStdString();
+    m_options->startup.type = m_parser.value("session-type").toStdString();
   }
 
   if (m_parser.isSet("register-audio-plugin"))
   {
-    m_options.runMode = muse::IApplication::RunMode::AudioPluginRegistration;
-    m_options.audioPluginRegistration.pluginPath =
+    m_options->runMode = muse::IApplication::RunMode::AudioPluginRegistration;
+    m_options->audioPluginRegistration.pluginPath =
         fromUserInputPath(m_parser.value("register-audio-plugin"));
-    m_options.audioPluginRegistration.failedPlugin = false;
+    m_options->audioPluginRegistration.failedPlugin = false;
   }
 
   if (m_parser.isSet("register-failed-audio-plugin"))
   {
     QStringList args1 = m_parser.positionalArguments();
-    m_options.runMode = muse::IApplication::RunMode::AudioPluginRegistration;
-    m_options.audioPluginRegistration.pluginPath =
+    m_options->runMode = muse::IApplication::RunMode::AudioPluginRegistration;
+    m_options->audioPluginRegistration.pluginPath =
         fromUserInputPath(m_parser.value("register-failed-audio-plugin"));
-    m_options.audioPluginRegistration.failedPlugin = true;
-    m_options.audioPluginRegistration.failCode =
+    m_options->audioPluginRegistration.failedPlugin = true;
+    m_options->audioPluginRegistration.failCode =
         !args1.empty() ? args1[0].toInt() : -1;
   }
 
@@ -388,7 +388,7 @@ void CommandLineParser::parse(int argc, char **argv)
     std::optional<float> val = floatValue("r");
     if (val)
     {
-      m_options.exportImage.pngDpiResolution = val;
+      m_options->exportImage.pngDpiResolution = val;
     }
     else
     {
@@ -398,8 +398,8 @@ void CommandLineParser::parse(int argc, char **argv)
 
   if (m_parser.isSet("o"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::File;
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::File;
     if (scorefiles.size() < 1)
     {
       LOGE() << "Option: -o no input file specified";
@@ -411,39 +411,39 @@ void CommandLineParser::parse(int argc, char **argv)
         LOGW() << "Option: -o multiple input files specified; processing only "
                   "the first one";
       }
-      m_options.converterTask.inputFile = scorefiles[0];
-      m_options.converterTask.outputFile =
+      m_options->converterTask.inputFile = scorefiles[0];
+      m_options->converterTask.outputFile =
           fromUserInputPath(m_parser.value("o"));
     }
   }
 
   if (m_parser.isSet("P"))
   {
-    if (m_options.converterTask.outputFile.isEmpty())
+    if (m_options->converterTask.outputFile.isEmpty())
     {
       LOGE() << "Option: -R no output file specified";
     }
     else
     {
-      m_options.converterTask.type = ConvertType::ConvertScoreParts;
+      m_options->converterTask.type = ConvertType::ConvertScoreParts;
     }
   }
 
   if (m_parser.isSet("j"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::Batch;
-    m_options.converterTask.inputFile = fromUserInputPath(m_parser.value("j"));
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::Batch;
+    m_options->converterTask.inputFile = fromUserInputPath(m_parser.value("j"));
   }
 
   if (m_parser.isSet("score-media"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::ExportScoreMedia;
-    m_options.converterTask.inputFile = scorefiles[0];
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::ExportScoreMedia;
+    m_options->converterTask.inputFile = scorefiles[0];
     if (m_parser.isSet("highlight-config"))
     {
-      m_options.converterTask
+      m_options->converterTask
           .params[CommandOptions::ParamKey::HighlightConfigPath] =
           fromUserInputPath(m_parser.value("highlight-config"));
     }
@@ -451,31 +451,31 @@ void CommandLineParser::parse(int argc, char **argv)
 
   if (m_parser.isSet("score-meta"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::ExportScoreMeta;
-    m_options.converterTask.inputFile = scorefiles[0];
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::ExportScoreMeta;
+    m_options->converterTask.inputFile = scorefiles[0];
   }
 
   if (m_parser.isSet("score-parts"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::ExportScoreParts;
-    m_options.converterTask.inputFile = scorefiles[0];
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::ExportScoreParts;
+    m_options->converterTask.inputFile = scorefiles[0];
   }
 
   if (m_parser.isSet("score-parts-pdf"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::ExportScorePartsPdf;
-    m_options.converterTask.inputFile = scorefiles[0];
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::ExportScorePartsPdf;
+    m_options->converterTask.inputFile = scorefiles[0];
   }
 
   if (m_parser.isSet("score-transpose"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::ExportScoreTranspose;
-    m_options.converterTask.inputFile = scorefiles[0];
-    m_options.converterTask
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::ExportScoreTranspose;
+    m_options->converterTask.inputFile = scorefiles[0];
+    m_options->converterTask
         .params[CommandOptions::ParamKey::ScoreTransposeOptions] =
         m_parser.value("score-transpose");
   }
@@ -484,13 +484,13 @@ void CommandLineParser::parse(int argc, char **argv)
   {
     QStringList args2 = m_parser.positionalArguments();
 
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::SourceUpdate;
-    m_options.converterTask.inputFile = fromUserInputPath(args2[0]);
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::SourceUpdate;
+    m_options->converterTask.inputFile = fromUserInputPath(args2[0]);
 
     if (args2.size() >= 2)
     {
-      m_options.converterTask.params[CommandOptions::ParamKey::ScoreSource] =
+      m_options->converterTask.params[CommandOptions::ParamKey::ScoreSource] =
           args2[1];
     }
     else
@@ -502,22 +502,22 @@ void CommandLineParser::parse(int argc, char **argv)
   // MusicXML
   if (m_parser.isSet("musicxml-use-default-font"))
   {
-    m_options.importMusicXML.useDefaultFont = true;
+    m_options->importMusicXML.useDefaultFont = true;
   }
 
   if (m_parser.isSet("musicxml-infer-text-type"))
   {
-    m_options.importMusicXML.inferTextType = true;
+    m_options->importMusicXML.inferTextType = true;
   }
 
   // Video
 #ifdef MUE_BUILD_VIDEOEXPORT_MODULE
   if (m_parser.isSet("score-video"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.converterTask.type = ConvertType::ExportScoreVideo;
-    m_options.converterTask.inputFile = scorefiles[0];
-    m_options.converterTask.outputFile = fromUserInputPath(m_parser.value("o"));
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->converterTask.type = ConvertType::ExportScoreVideo;
+    m_options->converterTask.inputFile = scorefiles[0];
+    m_options->converterTask.outputFile = fromUserInputPath(m_parser.value("o"));
 
     if (m_parser.isSet("view-mode"))
     {
@@ -536,144 +536,144 @@ void CommandLineParser::parse(int argc, char **argv)
 
     if (m_parser.isSet("resolution"))
     {
-      m_options.exportVideo.resolution =
+      m_options->exportVideo.resolution =
           m_parser.value("resolution").toStdString();
     }
 
     if (m_parser.isSet("fps"))
     {
-      m_options.exportVideo.fps = intValue("fps");
+      m_options->exportVideo.fps = intValue("fps");
     }
 
     if (m_parser.isSet("ls"))
     {
-      m_options.exportVideo.leadingSec = doubleValue("ls");
+      m_options->exportVideo.leadingSec = doubleValue("ls");
     }
 
     if (m_parser.isSet("ts"))
     {
-      m_options.exportVideo.trailingSec = doubleValue("ts");
+      m_options->exportVideo.trailingSec = doubleValue("ts");
     }
   }
 #endif
 
   if (m_parser.isSet("F") || m_parser.isSet("R"))
   {
-    m_options.app.revertToFactorySettings = true;
+    m_options->app.revertToFactorySettings = true;
   }
 
   if (m_parser.isSet("f"))
   {
-    m_options.converterTask.params[CommandOptions::ParamKey::ForceMode] = true;
+    m_options->converterTask.params[CommandOptions::ParamKey::ForceMode] = true;
   }
 
   if (m_parser.isSet("S"))
   {
-    m_options.converterTask.params[CommandOptions::ParamKey::StylePath] =
+    m_options->converterTask.params[CommandOptions::ParamKey::StylePath] =
         fromUserInputPath(m_parser.value("S"));
   }
 
   if (m_parser.isSet("sound-profile"))
   {
-    m_options.converterTask.params[CommandOptions::ParamKey::SoundProfile] =
+    m_options->converterTask.params[CommandOptions::ParamKey::SoundProfile] =
         m_parser.value("sound-profile");
   }
 
   if (m_parser.isSet("gp-linked"))
   {
-    m_options.guitarPro.linkedTabStaffCreated = true;
+    m_options->guitarPro.linkedTabStaffCreated = true;
   }
 
   if (m_parser.isSet("gp-experimental"))
   {
-    m_options.guitarPro.experimental = true;
+    m_options->guitarPro.experimental = true;
   }
 
-  if (m_options.runMode == muse::IApplication::RunMode::ConsoleApp)
+  if (m_options->runMode == muse::IApplication::RunMode::ConsoleApp)
   {
     if (m_parser.isSet("migration"))
     {
       QString val = m_parser.value("migration");
-      m_options.project.fullMigration = (val == "full") ? true : false;
+      m_options->project.fullMigration = (val == "full") ? true : false;
     }
   }
 
   // Diagnostic
   if (m_parser.isSet("diagnostic-output"))
   {
-    m_options.diagnostic.output = m_parser.value("diagnostic-output");
+    m_options->diagnostic.output = m_parser.value("diagnostic-output");
   }
 
   if (m_parser.isSet("diagnostic-gen-drawdata"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.diagnostic.type = DiagnosticType::GenDrawData;
-    m_options.diagnostic.input << m_parser.value("diagnostic-gen-drawdata");
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->diagnostic.type = DiagnosticType::GenDrawData;
+    m_options->diagnostic.input << m_parser.value("diagnostic-gen-drawdata");
   }
 
   if (m_parser.isSet("diagnostic-com-drawdata"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.diagnostic.type = DiagnosticType::ComDrawData;
-    m_options.diagnostic.input = scorefiles;
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->diagnostic.type = DiagnosticType::ComDrawData;
+    m_options->diagnostic.input = scorefiles;
   }
 
   if (m_parser.isSet("diagnostic-drawdata-to-png"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.diagnostic.type = DiagnosticType::DrawDataToPng;
-    m_options.diagnostic.input << m_parser.value("diagnostic-drawdata-to-png");
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->diagnostic.type = DiagnosticType::DrawDataToPng;
+    m_options->diagnostic.input << m_parser.value("diagnostic-drawdata-to-png");
   }
 
   if (m_parser.isSet("diagnostic-drawdiff-to-png"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.diagnostic.type = DiagnosticType::DrawDiffToPng;
-    m_options.diagnostic.input = scorefiles;
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->diagnostic.type = DiagnosticType::DrawDiffToPng;
+    m_options->diagnostic.input = scorefiles;
   }
 
   // Autobot
   if (m_parser.isSet("test-case"))
   {
-    m_options.runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options.autobot.testCaseNameOrFile =
+    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
+    m_options->autobot.testCaseNameOrFile =
         fromUserInputPath(m_parser.value("test-case"));
   }
 
   if (m_parser.isSet("test-case-context"))
   {
-    m_options.autobot.testCaseContextNameOrFile =
+    m_options->autobot.testCaseContextNameOrFile =
         fromUserInputPath(m_parser.value("test-case-context"));
   }
 
   if (m_parser.isSet("test-case-context-value"))
   {
-    m_options.autobot.testCaseContextValue =
+    m_options->autobot.testCaseContextValue =
         m_parser.value("test-case-context-value");
   }
 
   if (m_parser.isSet("test-case-func"))
   {
-    m_options.autobot.testCaseFunc = m_parser.value("test-case-func");
+    m_options->autobot.testCaseFunc = m_parser.value("test-case-func");
   }
 
   if (m_parser.isSet("test-case-func-args"))
   {
-    m_options.autobot.testCaseFuncArgs = m_parser.value("test-case-func-args");
+    m_options->autobot.testCaseFuncArgs = m_parser.value("test-case-func-args");
   }
 
   // Startup
-  if (m_options.runMode == muse::IApplication::RunMode::GuiApp)
+  if (m_options->runMode == muse::IApplication::RunMode::GuiApp)
   {
     if (!scorefiles.isEmpty())
     {
-      m_options.startup.scoreUrl = QUrl::fromUserInput(
+      m_options->startup.scoreUrl = QUrl::fromUserInput(
           scorefiles[0], QDir::currentPath(), QUrl::AssumeLocalFile);
     }
 
     if (m_parser.isSet("score-display-name-override"))
     {
-      m_options.startup.scoreDisplayNameOverride =
+      m_options->startup.scoreDisplayNameOverride =
           m_parser.value("score-display-name-override");
     }
   }
@@ -687,30 +687,33 @@ void CommandLineParser::processBuiltinArgs(const QCoreApplication &app)
 
 muse::IApplication::RunMode CommandLineParser::runMode() const
 {
-  return m_options.runMode;
+  return m_options->runMode;
 }
 
-const CommandOptions &CommandLineParser::options() const { return m_options; }
+std::shared_ptr<CommandOptions> CommandLineParser::options() const
+{
+  return m_options;
+}
 
 CommandOptions::ConverterTask CommandLineParser::converterTask() const
 {
-  return m_options.converterTask;
+  return m_options->converterTask;
 }
 
 CommandOptions::Diagnostic CommandLineParser::diagnostic() const
 {
-  return m_options.diagnostic;
+  return m_options->diagnostic;
 }
 
 CommandOptions::Autobot CommandLineParser::autobot() const
 {
-  return m_options.autobot;
+  return m_options->autobot;
 }
 
 CommandOptions::AudioPluginRegistration
 CommandLineParser::audioPluginRegistration() const
 {
-  return m_options.audioPluginRegistration;
+  return m_options->audioPluginRegistration;
 }
 
 void CommandLineParser::printLongVersion() const

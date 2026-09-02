@@ -40,17 +40,18 @@
 #include <thread>
 #include <vector>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class OrchestrionSequencer : public IOrchestrionSequencer,
-                             public muse::Injectable,
+                             public dgk::Injectable,
                              public muse::async::Asyncable,
                              public muse::actions::Actionable
 {
-  muse::Inject<mu::context::IGlobalContext> globalContext;
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
-  muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
-  muse::Inject<IOrchestrionSequencerConfiguration> configuration;
+  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
 
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;

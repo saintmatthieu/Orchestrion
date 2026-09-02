@@ -36,7 +36,7 @@ set(MODULE_SRC
     OrchestrionSynthesisModule.h
 )
 
-set(FLUIDSYNTH_DIR ${PROJECT_SOURCE_DIR}/MuseScore/src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3)
+set(FLUIDSYNTH_DIR ${MUSE_FRAMEWORK_SRC_PATH}/audio/thirdparty/fluidsynth/fluidsynth-2.3.3)
 set (FLUIDSYNTH_INC
     ${FLUIDSYNTH_DIR}/include
     ${FLUIDSYNTH_DIR}/src
@@ -52,13 +52,15 @@ set (FLUIDSYNTH_INC
 
 set (MODULE_INCLUDE
     ${FLUIDSYNTH_INC}
-    ${PROJECT_SOURCE_DIR}/MuseScore/src/framework/audio/internal/synthesizers/fluidsynth
+    ${MUSE_FRAMEWORK_SRC_PATH}/audio
+    ${MUSE_FRAMEWORK_SRC_PATH}/audio/engine/internal/synthesizers/fluidsynth
+    ${vst3sdk_SOURCE_DIR}
     )
 
 set(MODULE_LINK
     muse_audio
     muse_vst
-    vst3sdk::sdk
+    vst3sdk
     fluidsynth
     DSPFilters
 )

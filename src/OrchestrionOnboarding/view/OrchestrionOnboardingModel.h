@@ -23,18 +23,18 @@
 #include <actions/iactionsdispatcher.h>
 #include <global/iglobalconfiguration.h>
 #include <modularity/ioc.h>
-#include <multiinstances/imultiinstancesprovider.h>
 #include <optional>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class OrchestrionOnboardingModel : public QQuickItem, public muse::Injectable
+class OrchestrionOnboardingModel : public QQuickItem, public dgk::Injectable
 {
   Q_OBJECT
 
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
-  muse::Inject<IOrchestrionStartupScenario> startupScenario = {this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
+  dgk::Inject<IOrchestrionStartupScenario> startupScenario = {this};
 
 public:
   Q_INVOKABLE void startOnboarding();

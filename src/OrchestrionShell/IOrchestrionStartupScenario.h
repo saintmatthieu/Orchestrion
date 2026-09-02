@@ -30,7 +30,7 @@ struct StartupProjectFile
   QString displayNameOverride;
 };
 
-class IOrchestrionStartupScenario : MODULE_EXPORT_INTERFACE
+class IOrchestrionStartupScenario : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrionStartupScenario);
 

@@ -24,11 +24,13 @@
 #include "project/iprojectconfiguration.h"
 
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class OrchestrionStartupScenario : public IOrchestrionStartupScenario
+class OrchestrionStartupScenario : public IOrchestrionStartupScenario,
+                                   public dgk::Injectable
 {
-  muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
+  dgk::Inject<mu::project::IProjectConfiguration> projectConfiguration{this};
 
 public:
   void init();

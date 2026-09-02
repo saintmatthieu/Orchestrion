@@ -21,21 +21,22 @@
 #include "ISynthesizerManager.h"
 #include "OrchestrionSynthesis/ISynthesizerConnector.h"
 #include <async/asyncable.h>
-#include <audio/iplayback.h>
+#include <audio/main/iplayback.h>
 #include <audioplugins/iknownaudiopluginsregister.h>
 #include <midi/imidioutport.h>
 #include <modularity/ioc.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class SynthesizerManager : public ISynthesizerManager,
-                           public muse::Injectable,
+                           public dgk::Injectable,
                            public muse::async::Asyncable
 {
-  muse::Inject<muse::midi::IMidiOutPort> midiOutPort;
-  muse::Inject<muse::audioplugins::IKnownAudioPluginsRegister> knownPlugins;
-  muse::Inject<muse::audio::IPlayback> playback;
-  muse::Inject<ISynthesizerConnector> synthesizerConnector;
+  dgk::Inject<muse::midi::IMidiOutPort> midiOutPort{this};
+  dgk::Inject<muse::audioplugins::IKnownAudioPluginsRegister> knownPlugins{this};
+  dgk::Inject<muse::audio::IPlayback> playback{this};
+  dgk::Inject<ISynthesizerConnector> synthesizerConnector{this};
 
 public:
   SynthesizerManager() = default;

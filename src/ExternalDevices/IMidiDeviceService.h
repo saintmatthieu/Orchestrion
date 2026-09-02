@@ -27,7 +27,7 @@
 namespace dgk
 {
 class IMidiDeviceService : public IExternalDeviceService,
-                           MODULE_EXPORT_INTERFACE
+                           MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IMidiDeviceService);
 

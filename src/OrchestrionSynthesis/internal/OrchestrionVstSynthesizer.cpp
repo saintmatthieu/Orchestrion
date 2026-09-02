@@ -60,18 +60,27 @@ Steinberg::Vst::Event toSteinbergEvent(NoteEventType type, int channel,
 } // namespace
 
 OrchestrionVstSynthesizer::OrchestrionVstSynthesizer(
-    muse::vst::VstPluginPtr loadedVstPlugin, int sampleRate)
-    : m_sampleRate{sampleRate}
+    muse::vst::IVstPluginInstancePtr loadedVstPlugin,
+    const muse::audio::OutputSpec &spec)
+    : m_sampleRate{static_cast<int>(spec.sampleRate)}
 {
   assert(loadedVstPlugin && loadedVstPlugin->isLoaded());
 
   m_vstAudioClient = std::make_unique<muse::vst::VstAudioClient>();
-  m_vstAudioClient->init(muse::audioplugins::AudioPluginType::Instrument,
-                         std::move(loadedVstPlugin), channelCount);
-  m_vstAudioClient->setSampleRate(sampleRate);
+  m_vstAudioClient->init(muse::vst::PluginType::Instrument,
+                         std::move(loadedVstPlugin));
+  muse::audio::OutputSpec stereoSpec = spec;
+  stereoSpec.audioChannelCount = channelCount;
+  m_vstAudioClient->setOutputSpec(stereoSpec);
+  m_vstAudioClient->loadSupportedParams();
+  // Orchestrion's synthesizers sound on gestures at any time: always active.
+  m_vstAudioClient->setIsActive(true);
+  m_vstAudioClient->setIsPlaying(true);
 
   PolyphonicSynthesizerImpl::Initialize();
 }
+
+OrchestrionVstSynthesizer::~OrchestrionVstSynthesizer() = default;
 
 int OrchestrionVstSynthesizer::sampleRate() const { return m_sampleRate; }
 
@@ -119,7 +128,7 @@ void OrchestrionVstSynthesizer::onPedal(bool on)
 
 void OrchestrionVstSynthesizer::allNotesOff()
 {
-  m_vstAudioClient->allNotesOff();
+  m_vstAudioClient->flushSound();
 }
 
 void OrchestrionVstSynthesizer::doAllNotesOff() { allNotesOff(); }

@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "audio/isynthresolver.h"
 #include "modularity/imodulesetup.h"
+#include <memory>
 
 namespace dgk
 {
@@ -35,13 +35,15 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
-  void onAllInited(const muse::IApplication::RunMode &mode) override;
   void onDelayedInit() override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
+
+  void onContextInit(const muse::IApplication::RunMode &mode) const;
+  void onContextAllInited(const muse::IApplication::RunMode &mode) const;
 
   const std::shared_ptr<SynthesizerConnector> m_synthesizerConnector;
   const std::shared_ptr<SynthesizerManager> m_synthesizerManager;
   const std::shared_ptr<OrchestrionSynthesisConfiguration> m_configuration;
 };
-
 } // namespace dgk

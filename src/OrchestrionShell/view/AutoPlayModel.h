@@ -25,12 +25,14 @@
 #include "modularity/ioc.h"
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 //! Backs the auto-play UI: the top-row button and its choice popup, plus the
 //! Auto-play menu. Which hand the machine plays, following the performer's
 //! tempo — see IOrchestrionSequencerConfiguration::autoPlayedStaff().
 class AutoPlayModel : public QObject,
+                      public dgk::Injectable,
                       public muse::async::Asyncable,
                       public muse::actions::Actionable
 {
@@ -41,8 +43,8 @@ class AutoPlayModel : public QObject,
                  NOTIFY autoPlayedStaffChanged)
   Q_PROPERTY(bool exposed READ exposed NOTIFY exposedChanged)
 
-  INJECT(IOrchestrionSequencerConfiguration, sequencerConfiguration);
-  INJECT(muse::actions::IActionsDispatcher, dispatcher);
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
 
 public:
   explicit AutoPlayModel(QObject *parent = nullptr);

@@ -28,6 +28,7 @@
 #include <modularity/ioc.h>
 #include <vector>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace mu::notation
 {
 class IMasterNotation;
@@ -43,10 +44,10 @@ struct NotationProducts
   const Staff leftHand;
 };
 
-class OrchestrionSequencerFactory : public muse::Injectable
+class OrchestrionSequencerFactory : public dgk::Injectable
 {
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<ITrackChannelMapper> mapper;
+  dgk::Inject<ISegmentRegistry> segmentRegistry{this};
+  dgk::Inject<ITrackChannelMapper> mapper{this};
 
 public:
   NotationProducts

@@ -25,15 +25,16 @@
 #include <midi/imidioutport.h>
 #include <modularity/ioc.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class IOrchestrionSequencer;
-class OrchestrionEventProcessor : public muse::Injectable,
+class OrchestrionEventProcessor : public dgk::Injectable,
                                   public muse::async::Asyncable
 {
-  muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<muse::midi::IMidiOutPort> midiOutPort;
-  muse::Inject<ITrackChannelMapper> mapper;
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<muse::midi::IMidiOutPort> midiOutPort{this};
+  dgk::Inject<ITrackChannelMapper> mapper{this};
 
 public:
   OrchestrionEventProcessor() = default;

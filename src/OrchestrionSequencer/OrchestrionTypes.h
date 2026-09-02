@@ -142,7 +142,7 @@ struct TrackIndex
 
   TrackIndex() : value{-1} {}
 
-  const int value;
+  int value;
   int voiceIndex() const { return value % numVoices; }
   int staffIndex() const { return value / numVoices; }
 
@@ -168,10 +168,10 @@ struct NoteEvent
   // NoteEvent& operator=(const NoteEvent& other) = default;
   // NoteEvent(NoteEvent&& other) = default;
 
-  const NoteEventType type;
-  const TrackIndex track;
-  const int pitch;
-  const float velocity;
+  NoteEventType type;
+  TrackIndex track;
+  int pitch;
+  float velocity;
 };
 
 using NoteEvents = std::vector<NoteEvent>;
@@ -179,7 +179,7 @@ using NoteEvents = std::vector<NoteEvent>;
 struct InstrumentIndex
 {
   explicit InstrumentIndex(int value) : value{value} {}
-  const int value;
+  int value;
 };
 
 struct PedalEvent
@@ -189,8 +189,8 @@ struct PedalEvent
   {
   }
 
-  const InstrumentIndex instrument;
-  const bool on;
+  InstrumentIndex instrument;
+  bool on;
 };
 
 using EventVariant = std::variant<NoteEvents, PedalEvent>;

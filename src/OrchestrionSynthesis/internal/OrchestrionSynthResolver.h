@@ -18,52 +18,52 @@
  */
 #pragma once
 
-#include <ISynthesizerConnector.h>
+#include "OrchestrionCommon/OrchestrionIoc.h"
+
 #include <async/asyncable.h>
-#include <audio/isynthresolver.h>
+#include <audio/engine/isynthresolver.h>
 #include <modularity/ioc.h>
-#include <optional>
+#include <vst/ivstinstancesregister.h>
+
+#include <global/types/string.h>
 
 namespace dgk
 {
+/**
+ * Resolves the audio engine's synthesizer requests for Orchestrion's tracks
+ * to Orchestrion's own synthesizers (the built-in FluidSynth-based one or a
+ * VST instrument), driven by the gesture sequencer.
+ *
+ * Which synthesizer is wanted is carried by the track's source params (see
+ * the attributes below), so that changing the selection changes the params
+ * and makes the engine re-resolve the track's synthesizer.
+ */
 class OrchestrionSynthResolver
     : public muse::audio::synth::ISynthResolver::IResolver,
-      public muse::Injectable,
+      public dgk::Injectable,
       public muse::async::Asyncable
 {
 public:
-  void resolveToVst(const muse::audio::AudioResourceId &);
-  void resolveToFluid();
-  void resolveToNone();
+  static const muse::String synthAttribute; // "fluid", "vst" or "none"
+  static const muse::String vstIdAttribute; // the VST's resource id
+  static const muse::String fluidSynthValue;
+  static const muse::String vstSynthValue;
+  static const muse::String noSynthValue;
 
 private:
-  muse::Inject<ISynthesizerConnector> synthesizerConnector;
+  dgk::Inject<muse::vst::IVstInstancesRegister> vstInstancesRegister{this};
 
 private:
   muse::audio::synth::ISynthesizerPtr
   resolveSynth(const muse::audio::TrackId,
-               const muse::audio::AudioInputParams &) const override;
-
+               const muse::audio::AudioInputParams &,
+               const muse::audio::OutputSpec &) const override;
   bool
   hasCompatibleResources(const muse::audio::PlaybackSetupData &) const override;
-
   muse::audio::AudioResourceMetaList resolveResources() const override;
-
   muse::audio::SoundPresetList
   resolveSoundPresets(const muse::audio::AudioResourceMeta &) const override;
-
   void refresh() override;
-
   void clearSources() override;
-
-  enum class SynthType
-  {
-    None,
-    Vst,
-    Fluid
-  };
-
-  SynthType m_synthType = SynthType::None;
-  std::optional<muse::audio::AudioResourceId> m_vstId;
 };
 } // namespace dgk

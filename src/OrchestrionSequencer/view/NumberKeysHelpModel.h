@@ -29,6 +29,7 @@
 #include "playback/iplaybackcontroller.h"
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 //! Beginner help: when no MIDI controller is connected, the view shows a
@@ -40,7 +41,7 @@ namespace dgk
 class NumberKeysHelpModel : public QObject,
                             public muse::async::Asyncable,
                             public muse::actions::Actionable,
-                            public muse::Injectable
+                            public dgk::Injectable
 {
   Q_OBJECT
 
@@ -52,11 +53,11 @@ class NumberKeysHelpModel : public QObject,
   Q_PROPERTY(
       int rightPressedKey READ rightPressedKey NOTIFY rightPressedKeyChanged)
 
-  muse::Inject<IMidiDeviceService> midiDeviceService;
-  muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<IOrchestrionSequencerConfiguration> configuration;
-  muse::Inject<mu::playback::IPlaybackController> playbackController;
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  dgk::Inject<IMidiDeviceService> midiDeviceService{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
+  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
 
 public:
   explicit NumberKeysHelpModel(QObject *parent = nullptr);

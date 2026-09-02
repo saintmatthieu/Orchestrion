@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include <memory>
+
 #include "CommandOptions.h"
 #include <global/iapplication.h>
 
@@ -27,14 +29,13 @@ class OrchestrionAppFactory
 {
 public:
   std::shared_ptr<muse::IApplication>
-  newApp(const dgk::CommandOptions &options) const;
+  newApp(const std::shared_ptr<CommandOptions> &options) const;
 
 private:
   std::shared_ptr<muse::IApplication>
-  newGuiApp(const dgk::CommandOptions &options) const;
+  newGuiApp(const std::shared_ptr<CommandOptions> &options) const;
   std::shared_ptr<muse::IApplication>
-  newConsoleApp(const dgk::CommandOptions &options) const;
+  newConsoleApp(const std::shared_ptr<CommandOptions> &options) const;
 
-  mutable int m_lastID = 0;
 };
 } // namespace dgk

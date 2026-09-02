@@ -13,6 +13,9 @@
     <file>src/qml/GoldOrnament.qml</file>
     <file>src/qml/MacMenuBar.qml</file>
     <file>src/qml/MacWindowChrome.qml</file>
+    <file>src/qml/OrchestrionTitleBar.qml</file>
+    <file>src/qml/OrchestrionMenuBar.qml</file>
+    <file>src/qml/OrchestrionSystemButtons.qml</file>
     <file>fonts/CinzelDecorative/CinzelDecorative-Regular.ttf</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>

@@ -27,16 +27,17 @@
 #include <modularity/ioc.h>
 #include <notation/inotationplayback.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class LoopBoundariesController : public ILoopBoundariesController,
-                                 public muse::Injectable,
+                                 public dgk::Injectable,
                                  public muse::async::Asyncable,
                                  public muse::actions::Actionable
 {
-  muse::Inject<mu::context::IGlobalContext> globalContext = {this};
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  muse::Inject<IOrchestrionNotationInteractionProcessor>
+  dgk::Inject<mu::context::IGlobalContext> globalContext = {this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
+  dgk::Inject<IOrchestrionNotationInteractionProcessor>
       interactionProcessor = {this};
 
 public:

@@ -19,6 +19,7 @@
 #pragma once
 
 #include "modularity/imodulesetup.h"
+#include <memory>
 
 namespace dgk
 {
@@ -34,12 +35,14 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &) override;
-  void onAllInited(const muse::IApplication::RunMode &) override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
+
+  void onContextInit(const muse::IApplication::RunMode &) const;
+  void onContextAllInited(const muse::IApplication::RunMode &) const;
 
   const std::shared_ptr<AudioDeviceService> m_audioDeviceService;
   const std::shared_ptr<MidiDeviceService> m_midiDeviceService;
   const std::shared_ptr<ExternalDevicesConfiguration> m_configuration;
 };
-
 } // namespace dgk

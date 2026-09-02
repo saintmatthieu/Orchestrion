@@ -18,9 +18,8 @@
  */
 #pragma once
 
-#include <memory>
-
 #include "modularity/imodulesetup.h"
+#include <memory>
 
 namespace dgk
 {
@@ -40,21 +39,22 @@ public:
 
   std::string moduleName() const override;
   void registerExports() override;
-  void resolveImports() override;
-
   void registerUiTypes() override;
-
-  void onPreInit(const muse::IApplication::RunMode &mode) override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
-  void onAllInited(const muse::IApplication::RunMode &mode) override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
 
 private:
+  void onContextResolveImports() const;
+  void onContextPreInit(const muse::IApplication::RunMode &mode) const;
+  void onContextInit(const muse::IApplication::RunMode &mode) const;
+
   const std::shared_ptr<ControllerMenuManager> m_midiControllerMenuManager;
   const std::shared_ptr<SynthesizerMenuManager> m_midiSynthesizerMenuManager;
   const std::shared_ptr<PlaybackDeviceMenuManager> m_playbackDeviceMenuManager;
   const std::shared_ptr<OrchestrionEventProcessor> m_orchestrionEventProcessor;
   const std::shared_ptr<OrchestrionUiActions> m_orchestrionUiActions;
-  const std::shared_ptr<OrchestrionActionController> m_orchestrionActionController;
+  const std::shared_ptr<OrchestrionActionController>
+      m_orchestrionActionController;
   const std::shared_ptr<OrchestrionStartupScenario> m_orchestrionStartupScenario;
   const std::shared_ptr<SleepInhibitor> m_sleepInhibitor;
 };

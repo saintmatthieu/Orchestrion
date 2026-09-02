@@ -27,7 +27,7 @@ namespace dgk
  * \brief Maps MuseScore tracks (staff index * numVoices + voice index) to
  * MIDI channels.
  */
-class ITrackChannelMapper : MODULE_EXPORT_INTERFACE
+class ITrackChannelMapper : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(ITrackChannelMapper);
 

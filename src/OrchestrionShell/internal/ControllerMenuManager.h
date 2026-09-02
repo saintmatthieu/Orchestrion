@@ -19,9 +19,10 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 
 #include "ExternalDevices/IMidiDeviceService.h"
-#include <global/iinteractive.h>
+#include <interactive/iinteractive.h>
 
 namespace dgk
 {
@@ -31,8 +32,8 @@ public:
   ControllerMenuManager();
 
 private:
-  muse::Inject<IMidiDeviceService> midiDeviceService;
-  muse::Inject<muse::IInteractive> interactive;
+  dgk::Inject<IMidiDeviceService> midiDeviceService{this};
+  dgk::Inject<muse::IInteractive> interactive{this};
 
   // DeviceMenuManager
 private:

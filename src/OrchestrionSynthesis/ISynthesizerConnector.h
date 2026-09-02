@@ -18,12 +18,12 @@
  */
 #pragma once
 
-#include <audio/audiotypes.h>
+#include <audio/common/audiotypes.h>
 #include <modularity/ioc.h>
 
 namespace dgk
 {
-class ISynthesizerConnector : MODULE_EXPORT_INTERFACE
+class ISynthesizerConnector : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(ISynthesizerConnector)
 

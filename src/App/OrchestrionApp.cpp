@@ -16,214 +16,68 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-
 #include "OrchestrionApp.h"
 
-#include <global/globalmodule.h>
-#include <modularity/ioc.h>
-#include <ui/iuiengine.h>
-
-#include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QThreadPool>
-
-#include <future>
-
-static muse::GlobalModule globalModule;
+#include <engraving/dom/mscore.h>
+#include <engraving/types/constants.h>
+#include <log.h>
+#include <project/types/migrationtypes.h>
 
 namespace dgk
 {
-OrchestrionApp::OrchestrionApp(CommandOptions options)
-    : m_opts{std::move(options)},
-      m_context(std::make_shared<muse::modularity::Context>())
+OrchestrionApp::OrchestrionApp(const std::shared_ptr<CommandOptions> &options)
+    : muse::ui::GuiApplication(options)
 {
 }
 
-void OrchestrionApp::addModule(muse::modularity::IModuleSetup *module)
+void OrchestrionApp::applyCommandLineOptions(
+    const std::shared_ptr<muse::CmdOptions> &opt)
 {
-  m_modules.push_back(module);
-};
+  muse::ui::GuiApplication::applyCommandLineOptions(opt);
 
-void OrchestrionApp::perform()
-{
-  globalModule.setApplication(shared_from_this());
-  globalModule.registerResources();
-  globalModule.registerExports();
-  globalModule.registerUiTypes();
+  const std::shared_ptr<CommandOptions> options =
+      std::dynamic_pointer_cast<CommandOptions>(opt);
+  IF_ASSERT_FAILED(options) { return; }
 
-  for (muse::modularity::IModuleSetup *m : m_modules)
-  {
-    m->setApplication(globalModule.application());
-    m->registerResources();
-  }
-
-  for (muse::modularity::IModuleSetup *m : m_modules)
-    m->registerExports();
-
-  globalModule.resolveImports();
-  globalModule.registerApi();
-  for (muse::modularity::IModuleSetup *m : m_modules)
-  {
-    m->registerUiTypes();
-    m->resolveImports();
-    m->registerApi();
-  }
-
-  if (m_opts.startup.scoreUrl.has_value())
+  if (options->startup.scoreUrl.has_value())
   {
     StartupProjectFile file{
-        *m_opts.startup.scoreUrl,
-        m_opts.startup.scoreDisplayNameOverride.value_or("")};
-
-    if (m_opts.startup.scoreDisplayNameOverride.has_value())
-      file.displayNameOverride = *m_opts.startup.scoreDisplayNameOverride;
-
+        *options->startup.scoreUrl,
+        options->startup.scoreDisplayNameOverride.value_or("")};
     startupScenario()->setStartupScoreFile(file);
   }
 
-  // set migration options
+  // Migration options: keep everything false by default: we don't want to
+  // modify a user's score, and we don't want conversion to happen on every
+  // load.
+  mu::project::MigrationOptions migration;
+  migration.appVersion = mu::engraving::Constants::MSC_VERSION;
+  migration.isAskAgain = false;
+  migration.isApplyMigration = false;
+  migration.isApplyEdwin = false;
+  migration.isApplyLeland = false;
+  migration.isRemapPercussion = false;
+  if (options->project.fullMigration)
   {
-    mu::project::MigrationOptions migration;
-    migration.appVersion = mu::engraving::Constants::MSC_VERSION;
-
-    migration.isAskAgain = false;
-    // Keep everything false by default: we don't want to modify a user's score,
-    // and we don't want conversion to happen on every load.
-    migration.isApplyMigration = false;
-    migration.isApplyEdwin = false;
-    migration.isApplyLeland = false;
-    migration.isRemapPercussion = false;
-
-    if (m_opts.project.fullMigration)
-    {
-      bool isMigration = m_opts.project.fullMigration.value();
-      migration.isApplyMigration = isMigration;
-      migration.isApplyEdwin = isMigration;
-      migration.isApplyLeland = isMigration;
-      migration.isRemapPercussion = isMigration;
-    }
-
-    //! NOTE Don't write to settings, just on current session
-    for (mu::project::MigrationType type : mu::project::allMigrationTypes())
-      projectConfiguration()->setMigrationOptions(type, migration, false);
+    const bool isMigration = options->project.fullMigration.value();
+    migration.isApplyMigration = isMigration;
+    migration.isApplyEdwin = isMigration;
+    migration.isApplyLeland = isMigration;
+    migration.isRemapPercussion = isMigration;
   }
-
-  constexpr auto runMode = muse::IApplication::RunMode::GuiApp;
-  globalModule.onPreInit(runMode);
-  for (muse::modularity::IModuleSetup *m : m_modules)
-    m->onPreInit(runMode);
-
-  globalModule.onInit(runMode);
-  for (muse::modularity::IModuleSetup *m : m_modules)
-  {
-    if (m->moduleName() == "audio_engine")
-    {
-      // We have to spawn a thread to init this one and use a future to wait for
-      // it.
-      std::promise<void> promise;
-      auto future = promise.get_future();
-      std::thread(
-          [&]
-          {
-            m->onInit(runMode);
-            promise.set_value();
-          })
-          .detach();
-      future.wait();
-    }
-    else
-      m->onInit(runMode);
-  }
-
-  globalModule.onAllInited(runMode);
-  for (muse::modularity::IModuleSetup *m : m_modules)
-    m->onAllInited(runMode);
-
-  QMetaObject::invokeMethod(
-      qApp,
-      [this]
-      {
-        globalModule.onStartApp();
-        for (muse::modularity::IModuleSetup *m : m_modules)
-          m->onStartApp();
-      },
-      Qt::QueuedConnection);
-
-  QQmlApplicationEngine *engine =
-      ioc()->resolve<muse::ui::IUiEngine>("app")->qmlAppEngine();
-
-  const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));
-
-  QObject::connect(
-      engine, &QQmlApplicationEngine::objectCreated, qApp,
-      [this, url](QObject *obj, const QUrl &objUrl)
-      {
-        if (!obj && url == objUrl)
-        {
-          LOGE() << "failed Qml load\n";
-          QCoreApplication::exit(-1);
-        }
-        if (url == objUrl)
-        {
-          globalModule.onDelayedInit();
-          for (muse::modularity::IModuleSetup *m : m_modules)
-            m->onDelayedInit();
-        }
-      },
-      Qt::QueuedConnection);
-
-  QObject::connect(engine, &QQmlEngine::warnings,
-                   [](const QList<QQmlError> &warnings)
-                   {
-                     for (const QQmlError &e : warnings)
-                       LOGE()
-                           << "error: " << e.toString().toStdString() << "\n";
-                   });
-
-  engine->load(url);
-
-  qApp->exec();
-
-  QThreadPool *globalThreadPool = QThreadPool::globalInstance();
-  if (globalThreadPool)
-  {
-    LOGI() << "activeThreadCount: " << globalThreadPool->activeThreadCount();
-    globalThreadPool->waitForDone();
-  }
-
-  globalModule.invokeQueuedCalls();
-
-  for (muse::modularity::IModuleSetup *m : m_modules)
-    m->onDeinit();
-
-  globalModule.onDeinit();
-
-  for (muse::modularity::IModuleSetup *m : m_modules)
-    m->onDestroy();
-
-  globalModule.onDestroy();
-
-  // Delete modules
-  qDeleteAll(m_modules);
-  m_modules.clear();
-
-  ioc()->reset();
-
-  delete qApp;
+  //! NOTE Don't write to settings, just on current session
+  for (mu::project::MigrationType type : mu::project::allMigrationTypes())
+    projectConfiguration()->setMigrationOptions(type, migration, false);
 }
 
-muse::modularity::ModulesIoC *OrchestrionApp::ioc() const
+QString OrchestrionApp::mainWindowQmlPath(const QString &) const
 {
-  return muse::modularity::_ioc(m_context);
+  return QStringLiteral("qrc:/qt/qml/Orchestrion/src/qml/Main.qml");
 }
 
-const muse::modularity::ContextPtr OrchestrionApp::iocContext() const
+void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &)
 {
-  return m_context;
+  // Orchestrion's main window drives its own startup (see
+  // OrchestrionOnboardingModel, which opens the startup score).
 }
-
-QWindow *OrchestrionApp::focusWindow() const { return nullptr; }
-
-bool OrchestrionApp::notify(QObject *, QEvent *) { return false; }
-
 } // namespace dgk

@@ -17,6 +17,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationPaintView.h"
+#include <notation/imasternotation.h>
+#include <notation/inotation.h>
+#include <notation/inotationelements.h>
+#include <notation/inotationinteraction.h>
+#include <notation/inotationnoteinput.h>
+#include <notation/inotationpainting.h>
+#include <notation/inotationplayback.h>
+#include <notation/inotationviewstate.h>
 #include "OrchestrionSequencer/IChord.h"
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include "OrchestrionSequencer/IRest.h"
@@ -1357,13 +1365,15 @@ void OrchestrionNotationPaintView::dragLoopBoundaryTo(
   if (*m_draggedLoopBoundary == mu::notation::LoopBoundaryType::LoopIn)
   {
     const auto tick = segment->tick().ticks();
-    if (tick != boundaries.loopInTick && tick < boundaries.loopOutTick)
+    if (tick != boundaries.loopInTick.ticks() &&
+        tick < boundaries.loopOutTick.ticks())
       loopBoundariesController()->setLoopStart(tick);
   }
   else
   {
     const auto endTick = (segment->tick() + segment->ticks()).ticks();
-    if (endTick != boundaries.loopOutTick && endTick > boundaries.loopInTick)
+    if (endTick != boundaries.loopOutTick.ticks() &&
+        endTick > boundaries.loopInTick.ticks())
       loopBoundariesController()->setLoopEnd(endTick);
   }
 }
@@ -1514,9 +1524,9 @@ void OrchestrionNotationPaintView::zoomBy(const QWheelEvent &event)
   if (!zooms.isEmpty())
   {
     const qreal minScaling =
-        configuration()->scalingFromZoomPercentage(zooms.first());
+        contextConfiguration()->scalingFromZoomPercentage(zooms.first());
     const qreal maxScaling =
-        configuration()->scalingFromZoomPercentage(zooms.last());
+        contextConfiguration()->scalingFromZoomPercentage(zooms.last());
     scaling = std::clamp(scaling, minScaling, maxScaling);
   }
 
@@ -1695,7 +1705,7 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
                              setAcceptHoverEvents(true);
                            });
       },
-      AsyncMode::AsyncSetRepeat);
+      Mode::SetReplace);
 }
 
 void OrchestrionNotationPaintView::onMatrixChanged(
@@ -1743,11 +1753,12 @@ void OrchestrionNotationPaintView::updateNotation()
             ? mu::notation::ViewMode::HORIZONTAL_FIXED
             : mu::notation::ViewMode::LINE);
     auto config = notation->interaction()->scoreConfig();
-    config.isShowInvisibleElements = false;
-    config.isShowUnprintableElements = false;
-    config.isShowFrames = false;
-    config.isShowPageMargins = false;
-    config.isShowSoundFlags = false;
+    using mu::notation::ScoreConfigType;
+    config.config[ScoreConfigType::ShowInvisibleElements] = false;
+    config.config[ScoreConfigType::ShowUnprintableElements] = false;
+    config.config[ScoreConfigType::ShowFrames] = false;
+    config.config[ScoreConfigType::ShowPageMargins] = false;
+    config.config[ScoreConfigType::ShowSoundFlags] = false;
     notation->interaction()->setScoreConfig(config);
     constrainScorePosition();
   }

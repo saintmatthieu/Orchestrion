@@ -18,60 +18,73 @@
  */
 #include "OrchestrionSynthResolver.h"
 #include "AntiMetronomeSynthesizer.h"
+#include "FluidSynthesizer.h"
+#include "LowpassFilterBank.h"
 #include "OrchestrionSynthesizerWrapper.h"
 #include "OrchestrionVstSynthesizer.h"
 #include "PromisedSynthesizer.h"
 
+#include <log.h>
+#include <optional>
+
 namespace dgk
 {
-void OrchestrionSynthResolver::resolveToVst(
-    const muse::audio::AudioResourceId &id)
-{
-  m_vstId = id;
-  m_synthType = SynthType::Vst;
-}
-
-void OrchestrionSynthResolver::resolveToFluid()
-{
-  m_vstId.reset();
-  m_synthType = SynthType::Fluid;
-}
-
-void OrchestrionSynthResolver::resolveToNone()
-{
-  m_vstId.reset();
-  m_synthType = SynthType::None;
-}
+const muse::String OrchestrionSynthResolver::synthAttribute{u"orchestrionSynth"};
+const muse::String OrchestrionSynthResolver::vstIdAttribute{u"orchestrionVstId"};
+const muse::String OrchestrionSynthResolver::fluidSynthValue{u"fluid"};
+const muse::String OrchestrionSynthResolver::vstSynthValue{u"vst"};
+const muse::String OrchestrionSynthResolver::noSynthValue{u"none"};
 
 muse::audio::synth::ISynthesizerPtr OrchestrionSynthResolver::resolveSynth(
     const muse::audio::TrackId trackId,
-    const muse::audio::AudioInputParams &) const
+    const muse::audio::AudioInputParams &params,
+    const muse::audio::OutputSpec &) const
 {
+  const muse::String synth = params.resourceMeta.attributeVal(synthAttribute);
+  const bool fluid = synth == fluidSynthValue;
+  std::optional<muse::audio::AudioResourceId> vstId;
+  if (synth == vstSynthValue)
+    vstId = params.resourceMeta.attributeVal(vstIdAttribute).toStdString();
+  LOGI() << "Resolving Orchestrion synthesizer for track " << trackId << " ("
+         << synth.toStdString() << ")";
+
   OrchestrionSynthesizerWrapper::SynthFactory factory =
-      [this, trackId, vstId = m_vstId](
-          int sampleRate) -> std::unique_ptr<IOrchestrionSynthesizer>
+      [this, trackId, vstId, fluid](const muse::audio::OutputSpec &spec)
+      -> std::unique_ptr<IOrchestrionSynthesizer>
   {
+    const int sampleRate = static_cast<int>(spec.sampleRate);
     if (vstId.has_value())
     {
       muse::async::Channel<std::shared_ptr<IOrchestrionSynthesizer>>
           synthLoaded;
-      const auto pluginPtr = std::make_shared<muse::vst::VstPlugin>(*vstId);
-      pluginPtr->loadingCompleted().onNotify(
+      const muse::vst::IVstPluginInstancePtr instance =
+          vstInstancesRegister()->makeAndRegisterInstrPlugin(*vstId, trackId);
+      if (!instance)
+        return nullptr;
+      const auto makeSynth =
+          [spec, sampleRate, trackId,
+           instance]() -> std::unique_ptr<IOrchestrionSynthesizer>
+      {
+        return std::make_unique<AntiMetronomeSynthesizer>(
+            sampleRate, trackId,
+            [instance, spec](int)
+            {
+              return std::make_unique<OrchestrionVstSynthesizer>(instance,
+                                                                 spec);
+            });
+      };
+      if (instance->isLoaded())
+        return makeSynth();
+      instance->loadingCompleted().onNotify(
           this,
-          [sampleRate, trackId, synthLoaded, pluginPtr]() mutable
+          [synthLoaded, makeSynth]() mutable
           {
-            synthLoaded.send(std::make_shared<AntiMetronomeSynthesizer>(
-                sampleRate, trackId,
-                [pluginPtr](int sampleRate)
-                {
-                  return std::make_unique<OrchestrionVstSynthesizer>(
-                      pluginPtr, sampleRate);
-                }));
+            synthLoaded.send(
+                std::shared_ptr<IOrchestrionSynthesizer>(makeSynth()));
           });
-      pluginPtr->load();
       return std::make_unique<PromisedSynthesizer>(synthLoaded);
     }
-    else if (m_synthType == SynthType::Fluid)
+    else if (fluid)
       return std::make_unique<AntiMetronomeSynthesizer>(
           sampleRate, trackId,
           [](int sampleRate)
@@ -83,8 +96,8 @@ muse::audio::synth::ISynthesizerPtr OrchestrionSynthResolver::resolveSynth(
     else
       return nullptr;
   };
-
-  return std::make_shared<OrchestrionSynthesizerWrapper>(std::move(factory));
+  return std::make_shared<OrchestrionSynthesizerWrapper>(std::move(factory),
+                                                         params);
 }
 
 bool OrchestrionSynthResolver::hasCompatibleResources(

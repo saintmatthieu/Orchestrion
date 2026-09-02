@@ -3,8 +3,6 @@
 
 declare_module(MusescoreShell)
 
-set(MODULE_QML_IMPORT ${MuseScore_ROOT_DIR}/src/appshell/qml)
-
 set(MODULE_SRC
   view/OrchestrionMenuModel.cpp
   view/OrchestrionMenuModel.h

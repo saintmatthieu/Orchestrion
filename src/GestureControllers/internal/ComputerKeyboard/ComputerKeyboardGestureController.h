@@ -26,10 +26,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class ComputerKeyboardGestureController : public IGestureController,
-                                          public muse::Injectable,
+                                          public dgk::Injectable,
                                           public muse::async::Asyncable
 {
 public:
@@ -42,7 +43,7 @@ private:
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
-  muse::Inject<IComputerKeyboard> keyboard;
+  dgk::Inject<IComputerKeyboard> keyboard{this};
 
   std::unordered_set<char> m_pressedLetters;
   const std::unordered_map<char, int> m_noteMap{

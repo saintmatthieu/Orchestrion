@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ScoreAnimator.h"
+#include <notation/imasternotation.h>
+#include <notation/inotation.h>
 #include "OrchestrionSequencer/IChord.h"
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"

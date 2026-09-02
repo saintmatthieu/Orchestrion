@@ -19,6 +19,7 @@
 #pragma once
 
 #include "modularity/imodulesetup.h"
+#include <memory>
 
 namespace dgk
 {
@@ -34,13 +35,15 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
   void registerUiTypes() override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
+
+  void onContextInit(const muse::IApplication::RunMode &mode) const;
 
   const std::shared_ptr<Orchestrion> m_orchestrion;
   const std::shared_ptr<GestureInputConnector> m_gestureInputConnector;
   const std::shared_ptr<OrchestrionSequencerConfiguration>
       m_sequencerConfiguration;
 };
-
 } // namespace dgk

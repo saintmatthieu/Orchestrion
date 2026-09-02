@@ -19,6 +19,7 @@
 #pragma once
 
 #include "ExternalDevices/IMidiDeviceService.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
@@ -29,7 +30,7 @@
 #include <actions/iactionsdispatcher.h>
 #include <global/iglobalconfiguration.h>
 #include <ui/iuiconfiguration.h>
-#include <uicomponents/view/abstractmenumodel.h>
+#include <uicomponents/qml/Muse/UiComponents/abstractmenumodel.h>
 
 namespace dgk
 {
@@ -46,14 +47,14 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   Q_PROPERTY(QRect openedMenuAreaRect READ openedMenuAreaRect WRITE
                  setOpenedMenuAreaRect NOTIFY openedMenuAreaRectChanged)
 
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
-  muse::Inject<muse::ui::IUiConfiguration> uiConfiguration;
-  muse::Inject<IOrchestrionUiActions> orchestrionUiActions;
-  muse::Inject<IMidiDeviceService> midiDeviceService;
-  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
-  muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration;
-  muse::Inject<IOrchestrion> orchestrion;
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
+  dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
+  dgk::Inject<IOrchestrionUiActions> orchestrionUiActions{this};
+  dgk::Inject<IMidiDeviceService> midiDeviceService{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
+  dgk::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);

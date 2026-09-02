@@ -17,7 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "SynthesizerManager.h"
-#include <audio/itracks.h>
+#include <vst/vstpluginattrs.h>
 #include <global/defer.h>
 #include <log.h>
 
@@ -116,9 +116,15 @@ std::string SynthesizerManager::selectedSynth() const
 std::vector<muse::audioplugins::AudioPluginInfo>
 SynthesizerManager::availableInstruments() const
 {
+  // Instruments are VST plugins whose categories include "Instrument" (see
+  // muse::vst::INSTRUMENT_CATEGORY).
   return knownPlugins()->pluginInfoList(
       [](const muse::audioplugins::AudioPluginInfo &info)
-      { return info.type == muse::audioplugins::AudioPluginType::Instrument; });
+      {
+        return info.meta.type == muse::vst::AUDIO_RESOURCE_TYPE_NAME &&
+               info.meta.attributeVal(muse::vst::CATEGORIES_ATTRIBUTE)
+                   .contains(muse::vst::INSTRUMENT_CATEGORY);
+      });
 }
 
 } // namespace dgk

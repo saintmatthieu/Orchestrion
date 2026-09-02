@@ -17,10 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ExternalDevicesModule.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/AudioDevice/AudioDeviceService.h"
 #include "internal/ExternalDevicesConfiguration.h"
 #include "internal/MidiDevice/MidiDeviceService.h"
-#include <ui/iuiactionsregister.h>
 
 namespace dgk
 {
@@ -35,21 +35,35 @@ std::string ExternalDevicesModule::moduleName() const { return "Orchestrion"; }
 
 void ExternalDevicesModule::registerExports()
 {
-  ioc()->registerExport<IAudioDeviceService>(moduleName(),
-                                             m_audioDeviceService);
-  ioc()->registerExport<IMidiDeviceService>(moduleName(), m_midiDeviceService);
-  ioc()->registerExport<IExternalDevicesConfiguration>(moduleName(),
-                                                       m_configuration);
+  globalIoc()->registerExport<IAudioDeviceService>(moduleName(),
+                                                   m_audioDeviceService);
+  globalIoc()->registerExport<IMidiDeviceService>(moduleName(),
+                                                  m_midiDeviceService);
+  globalIoc()->registerExport<IExternalDevicesConfiguration>(moduleName(),
+                                                             m_configuration);
 }
 
-void ExternalDevicesModule::onInit(const muse::IApplication::RunMode &)
+muse::modularity::IContextSetup *ExternalDevicesModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  hooks.onAllInited = [this](const muse::IApplication::RunMode &mode)
+  { onContextAllInited(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void ExternalDevicesModule::onContextInit(
+    const muse::IApplication::RunMode &) const
 {
   m_audioDeviceService->init();
   m_midiDeviceService->init();
   m_configuration->init();
 }
 
-void ExternalDevicesModule::onAllInited(const muse::IApplication::RunMode &)
+void ExternalDevicesModule::onContextAllInited(
+    const muse::IApplication::RunMode &) const
 {
   m_midiDeviceService->onAllInited();
   m_audioDeviceService->onAllInited();

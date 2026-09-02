@@ -19,7 +19,7 @@
 #pragma once
 
 #include "modularity/imodulesetup.h"
-#include <QAbstractNativeEventFilter>
+#include <memory>
 
 namespace dgk
 {
@@ -34,11 +34,13 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
-  void onPreInit(const muse::IApplication::RunMode &mode) override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
+
+  void onContextPreInit(const muse::IApplication::RunMode &) const;
+  void onContextInit(const muse::IApplication::RunMode &) const;
 
   const std::shared_ptr<GestureInput> m_gestureInput;
   const std::shared_ptr<ComputerKeyboard> m_keyboard;
 };
-
 } // namespace dgk

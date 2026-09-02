@@ -26,9 +26,9 @@
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
-#include <audio/internal/worker/iaudioengine.h>
 #include <context/iglobalcontext.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace mu::engraving
 {
 class MasterScore;
@@ -38,13 +38,12 @@ namespace dgk
 {
 class Orchestrion : public IOrchestrion,
                     public muse::async::Asyncable,
-                    public muse::Injectable
+                    public dgk::Injectable
 {
-  muse::Inject<mu::playback::IPlaybackController> playbackController;
-  muse::Inject<mu::context::IGlobalContext> globalContext;
-  muse::Inject<muse::audio::IAudioEngine> audioEngine;
-  muse::Inject<ISegmentRegistry> segmentRegistry;
-  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
+  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
+  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<ISegmentRegistry> segmentRegistry{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
 
 public:
   void init();
@@ -59,7 +58,6 @@ private:
   muse::async::Notification playModeChanged() const override;
 
   void setSequencer(IOrchestrionSequencerPtr sequencer);
-  void wakeAudioEngine();
 
 private:
   IOrchestrionSequencerPtr m_sequencer;

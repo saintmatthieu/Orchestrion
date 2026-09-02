@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "LoopBoundariesController.h"
+#include <notation/imasternotation.h>
+#include <notation/inotationplayback.h>
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <engraving/dom/chordrest.h>
 
@@ -29,7 +31,12 @@ findChordRest(const mu::notation::EngravingItem *item)
 {
   const mu::engraving::EngravingItem *element = item;
   while (element && !element->isChordRest())
-    element = element->parentItem();
+  {
+    const mu::engraving::EngravingObject *parent = element->parent();
+    element = parent && parent->isEngravingItem()
+                  ? mu::engraving::toEngravingItem(parent)
+                  : nullptr;
+  }
   return element ? mu::engraving::toChordRest(element) : nullptr;
 }
 } // namespace
@@ -72,7 +79,7 @@ void LoopBoundariesController::onChordShiftClicked(const ChordTicks &ticks)
   const auto playback = this->playback();
   if (!playback)
     return;
-  if (m_awaitingLoopEnd && ticks.start > playback->loopBoundaries().loopInTick)
+  if (m_awaitingLoopEnd && ticks.start > playback->loopBoundaries().loopInTick.ticks())
     setLoopEnd(ticks.end);
   else
     setLoopStart(ticks.start);

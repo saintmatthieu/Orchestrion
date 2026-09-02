@@ -31,7 +31,7 @@ void ModifiableItemRegistry::RegisterItem(std::weak_ptr<IModifiableItem> item)
     return;
   lockedItem->ModifiedChanged().onNotify(
       this, [this] { m_modifiedChanged.notify(); },
-      muse::async::Asyncable::AsyncMode::AsyncSetOnce);
+      muse::async::Asyncable::Mode::SetOnce);
   m_items.push_back(std::move(item));
 }
 

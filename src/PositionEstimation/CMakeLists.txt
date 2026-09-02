@@ -9,9 +9,8 @@ set(MODULE_SRC
   PositionTracker.h
 )
 
-set(MODULE_NOT_LINK_GLOBAL ON)
-set(MODULE_USE_PCH_NONE ON)
-set(MODULE_USE_UNITY_NONE ON)
+set(MODULE_USE_PCH OFF)
+set(MODULE_USE_UNITY OFF)
 
 setup_module()
 

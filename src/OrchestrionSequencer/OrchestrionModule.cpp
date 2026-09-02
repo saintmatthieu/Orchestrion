@@ -17,12 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionModule.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/GestureInputConnector.h"
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
 #include "view/NumberKeysHelpModel.h"
 
-#include "ui/iuiactionsregister.h"
 #include <QQmlEngine>
 
 namespace dgk
@@ -39,8 +39,8 @@ std::string OrchestrionModule::moduleName() const { return "Orchestrion"; }
 
 void OrchestrionModule::registerExports()
 {
-  ioc()->registerExport<IOrchestrion>(moduleName(), m_orchestrion);
-  ioc()->registerExport<IOrchestrionSequencerConfiguration>(
+  globalIoc()->registerExport<IOrchestrion>(moduleName(), m_orchestrion);
+  globalIoc()->registerExport<IOrchestrionSequencerConfiguration>(
       moduleName(), m_sequencerConfiguration);
 }
 
@@ -50,7 +50,17 @@ void OrchestrionModule::registerUiTypes()
                                        "NumberKeysHelpModel");
 }
 
-void OrchestrionModule::onInit(const muse::IApplication::RunMode &)
+muse::modularity::IContextSetup *OrchestrionModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void OrchestrionModule::onContextInit(
+    const muse::IApplication::RunMode &) const
 {
   m_orchestrion->init();
   m_gestureInputConnector->init();

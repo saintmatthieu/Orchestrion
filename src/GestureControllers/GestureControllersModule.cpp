@@ -17,9 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "GestureControllersModule.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/ComputerKeyboard/ComputerKeyboard.h"
 #include "internal/GestureInput.h"
-#include <ui/iuiactionsregister.h>
 
 namespace dgk
 {
@@ -36,17 +36,30 @@ std::string GestureControllersModule::moduleName() const
 
 void GestureControllersModule::registerExports()
 {
-  ioc()->registerExport<IGestureInput>(moduleName(), m_gestureInput);
-  ioc()->registerExport<IComputerKeyboard>(moduleName(), m_keyboard);
+  globalIoc()->registerExport<IGestureInput>(moduleName(), m_gestureInput);
+  globalIoc()->registerExport<IComputerKeyboard>(moduleName(), m_keyboard);
 }
 
-void GestureControllersModule::onInit(const muse::IApplication::RunMode &)
+muse::modularity::IContextSetup *GestureControllersModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
 {
-  m_gestureInput->init();
+  ModuleContextSetup::Hooks hooks;
+  hooks.onPreInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextPreInit(mode); };
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
 }
 
-void GestureControllersModule::onPreInit(const muse::IApplication::RunMode &)
+void GestureControllersModule::onContextPreInit(
+    const muse::IApplication::RunMode &) const
 {
   m_keyboard->preInit();
+}
+
+void GestureControllersModule::onContextInit(
+    const muse::IApplication::RunMode &) const
+{
+  m_gestureInput->init();
 }
 } // namespace dgk

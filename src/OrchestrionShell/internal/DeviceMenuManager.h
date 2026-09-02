@@ -30,14 +30,15 @@
 #include <memory>
 #include <modularity/ioc.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class DeviceMenuManager : public muse::actions::Actionable,
                           public muse::async::Asyncable,
-                          public muse::Injectable,
+                          public dgk::Injectable,
                           public std::enable_shared_from_this<DeviceMenuManager>
 {
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
 
 public:
   DeviceMenuManager(DeviceType);

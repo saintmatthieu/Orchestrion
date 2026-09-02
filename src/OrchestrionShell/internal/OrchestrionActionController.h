@@ -27,7 +27,8 @@
 #include <async/asyncable.h>
 #include <context/iglobalcontext.h>
 #include <global/iglobalconfiguration.h>
-#include <global/iinteractive.h>
+#include <interactive/iinteractive.h>
+#include <interactive/iplatforminteractive.h>
 #include <modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
 #include <project/iprojectfilescontroller.h>
@@ -35,23 +36,25 @@
 
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class OrchestrionActionController : public muse::actions::Actionable,
-                                    public muse::Injectable,
+                                    public dgk::Injectable,
                                     public muse::async::Asyncable,
                                     public QObject
 {
-  muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfig;
-  muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfig;
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
-  muse::Inject<mu::context::IGlobalContext> globalContext;
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
-  muse::Inject<mu::project::IProjectConfiguration> projectConfiguration;
-  muse::Inject<mu::project::IProjectFilesController> projectFilesController;
-  muse::Inject<muse::IInteractive> interactive;
-  muse::Inject<muse::ui::IMainWindow> mainWindow;
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
+  dgk::Inject<IOrchestrionSynthesisConfiguration> synthesisConfig{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
+  dgk::Inject<mu::project::IProjectConfiguration> projectConfiguration{this};
+  dgk::Inject<mu::project::IProjectFilesController> projectFilesController{this};
+  dgk::Inject<muse::IInteractive> interactive{this};
+  dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
+  dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
 
 public:
   void preInit();

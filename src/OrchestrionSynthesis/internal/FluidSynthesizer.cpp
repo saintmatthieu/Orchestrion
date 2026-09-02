@@ -92,12 +92,10 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
   fluid_sfloader_set_data(sfloader, m_fluidSettings);
   fluid_synth_add_sfloader(m_fluidSynth, sfloader);
 
-  const auto soundFonts = soundFontRepository()->soundFonts();
-  std::for_each(
-      soundFonts.begin(), soundFonts.end(),
-      [this](const std::pair<muse::audio::synth::SoundFontPath,
-                             muse::audio::synth::SoundFontMeta> &entry)
-      { fluid_synth_sfload(m_fluidSynth, entry.first.c_str(), 0); });
+  const muse::audio::synth::SoundFontsMap &soundFonts =
+      soundFontRepository()->soundFonts();
+  for (const auto &[uri, meta] : soundFonts)
+    fluid_synth_sfload(m_fluidSynth, meta.path.c_str(), 0);
 
   fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
 

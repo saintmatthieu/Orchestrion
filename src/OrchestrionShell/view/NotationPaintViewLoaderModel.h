@@ -23,13 +23,16 @@
 #include "playback/iplaybackcontroller.h"
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class NotationPaintViewLoaderModel : public QObject, public muse::async::Asyncable
+class NotationPaintViewLoaderModel : public QObject,
+                                     public dgk::Injectable,
+                                     public muse::async::Asyncable
 {
   Q_OBJECT
 
-  INJECT(mu::playback::IPlaybackController, playbackController);
+  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
 
 public:
   NotationPaintViewLoaderModel(QObject *parent = nullptr);

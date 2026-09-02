@@ -19,6 +19,7 @@
 #pragma once
 
 #include "HighlightFader.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "ILoopBoundariesController.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include "KineticScroller.h"
@@ -37,7 +38,8 @@
 #include <context/iglobalcontext.h>
 #include <limits>
 #include <notation/inotationconfiguration.h>
-#include <notation/view/notationpaintview.h>
+#include <notation/inotationcontextconfiguration.h>
+#include <notationscene/qml/MuseScore/NotationScene/notationpaintview.h>
 #include <unordered_map>
 #include <vector>
 
@@ -88,14 +90,15 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   Q_PROPERTY(double tempoSmoothing READ tempoSmoothing WRITE setTempoSmoothing
                  NOTIFY tempoSmoothingChanged)
 
-  muse::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor;
-  muse::Inject<ILoopBoundariesController> loopBoundariesController;
-  muse::Inject<mu::notation::INotationConfiguration> configuration;
-  muse::Inject<mu::context::IGlobalContext> globalContext;
-  muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<ISegmentRegistry> chordRegistry;
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
-  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
+  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{this};
+  dgk::Inject<ILoopBoundariesController> loopBoundariesController{this};
+  dgk::Inject<mu::notation::INotationConfiguration> configuration{this};
+  dgk::Inject<mu::notation::INotationContextConfiguration> contextConfiguration{this};
+  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<ISegmentRegistry> chordRegistry{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);

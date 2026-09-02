@@ -17,11 +17,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationModule.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/LoopBoundariesController.h"
 #include "internal/OrchestrionNotationInteractionProcessor.h"
 #include "view/OrchestrionNotationPaintView.h"
 #include "view/TempoVisualizationView.h"
 #include "view/TempoVizModel.h"
+
+#include <QQmlEngine>
 
 namespace dgk
 {
@@ -43,16 +46,25 @@ void OrchestrionNotationModule::registerUiTypes()
 
 void OrchestrionNotationModule::registerExports()
 {
-  ioc()->registerExport<IOrchestrionNotationInteractionProcessor>(
+  globalIoc()->registerExport<IOrchestrionNotationInteractionProcessor>(
       moduleName(),
       std::make_shared<OrchestrionNotationInteractionProcessor>());
-
   m_loopBoundariesController = std::make_shared<LoopBoundariesController>();
-  ioc()->registerExport<ILoopBoundariesController>(moduleName(),
-                                                   m_loopBoundariesController);
+  globalIoc()->registerExport<ILoopBoundariesController>(
+      moduleName(), m_loopBoundariesController);
 }
 
-void OrchestrionNotationModule::onInit(const muse::IApplication::RunMode &mode)
+muse::modularity::IContextSetup *OrchestrionNotationModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void OrchestrionNotationModule::onContextInit(
+    const muse::IApplication::RunMode &mode) const
 {
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;

@@ -18,12 +18,15 @@
  */
 #pragma once
 
+#include <QMap>
+#include <QStringList>
+#include <QUrl>
+#include <QVariant>
 #include <optional>
 #include <string>
 
-#include "global/iapplication.h"
+#include "global/internal/cmdoptions.h"
 #include "global/io/path.h"
-#include "global/logger.h"
 
 namespace dgk
 {
@@ -50,7 +53,11 @@ enum class DiagnosticType
   DrawDiffToPng
 };
 
-struct CommandOptions
+/**
+ * Orchestrion's command-line options: the framework's (run mode, logger
+ * level, DPI) plus MuseScore-style extras.
+ */
+struct CommandOptions : public muse::CmdOptions
 {
   enum class ParamKey
   {
@@ -60,16 +67,7 @@ struct CommandOptions
     ScoreTransposeOptions,
     ForceMode,
     SoundProfile,
-
-    // Video
   };
-
-  muse::IApplication::RunMode runMode = muse::IApplication::RunMode::GuiApp;
-
-  struct
-  {
-    std::optional<double> physicalDotsPerInch;
-  } ui;
 
   struct
   {
@@ -121,7 +119,6 @@ struct CommandOptions
   struct
   {
     std::optional<bool> revertToFactorySettings;
-    std::optional<muse::logger::Level> loggerLevel;
   } app;
 
   struct
@@ -134,10 +131,8 @@ struct CommandOptions
   struct ConverterTask
   {
     ConvertType type = ConvertType::File;
-
     QString inputFile;
     QString outputFile;
-
     QMap<ParamKey, QVariant> params;
   } converterTask;
 

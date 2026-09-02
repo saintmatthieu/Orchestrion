@@ -32,8 +32,10 @@ Grab the [latest release](https://github.com/saintmatthieu/Orchestrion/releases/
 
 ## Building from source
 
-Requirements: CMake, Ninja, Qt 6.9.1 (with the `qtnetworkauth`, `qt5compat`,
-`qtscxml` and `qtshadertools` modules), a C++17 compiler, and Git LFS.
+Requirements: CMake 3.28 (3.31 on macOS), Ninja, Qt 6.8 or later (6.9/6.10;
+with the `qtnetworkauth`, `qt5compat`, `qtscxml` and `qtshadertools` modules),
+a C++20 compiler, Git LFS, and network access at configure time (MuseScore's
+`muse_deps` downloads prebuilt third-party libraries).
 
 ```bash
 git clone --recurse-submodules https://github.com/saintmatthieu/Orchestrion.git

@@ -23,12 +23,13 @@
 #include <async/asyncable.h>
 #include <modularity/ioc.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class PolyphonicSynthesizerImpl : public muse::Injectable,
+class PolyphonicSynthesizerImpl : public dgk::Injectable,
                                   public muse::async::Asyncable
 {
-  muse::Inject<IOrchestrion> orchestrion;
+  dgk::Inject<IOrchestrion> orchestrion{this};
 
 public:
   PolyphonicSynthesizerImpl() = default;

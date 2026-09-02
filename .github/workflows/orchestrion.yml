@@ -64,13 +64,6 @@ jobs:
           variant: sccache
           key: ${{ runner.os }}-sccache
 
-      - name: Pre-populate harfbuzz cmake helper
-        shell: pwsh
-        run: |
-          $hbDir = "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz"
-          New-Item -ItemType Directory -Force -Path $hbDir | Out-Null
-          Copy-Item "${{github.workspace}}/buildscripts/harfbuzz.cmake" "$hbDir/harfbuzz.cmake"
-
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/build -G Ninja
@@ -79,9 +72,6 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=sccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
-          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
-          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
           ${{env.CMAKE_VERSION_ARG}}
 
       - name: Build
@@ -150,9 +140,6 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - name: Install libsndfile
-        run: brew install libsndfile
-
       - name: Install Git LFS
         run: brew install git-lfs
 
@@ -181,28 +168,19 @@ jobs:
         with:
           key: ${{ runner.os }}-ccache
 
-      - name: Pre-populate harfbuzz cmake helper
-        run: |
-          mkdir -p "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz"
-          cp "${{github.workspace}}/buildscripts/harfbuzz.cmake" \
-             "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz/harfbuzz.cmake"
-
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/build -G Ninja
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
-          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
-          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
           ${{env.CMAKE_VERSION_ARG}}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --target install
 
       - name: Run macdeployqt
-        run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app -qmldir=${{github.workspace}}/src -qmldir=${{github.workspace}}/MuseScore/src
+        run: macdeployqt ${{env.BUILD_DIR}}/Orchestrion.app -qmldir=${{github.workspace}}/src -qmldir=${{github.workspace}}/MuseScore/src -qmldir=${{github.workspace}}/MuseScore/muse/framework
 
       - name: Codesign executable
         # https://localazy.com/blog/how-to-automatically-sign-macos-apps-using-github-actions
@@ -240,7 +218,8 @@ jobs:
 
   build_linux:
     if: ${{ !contains(github.event.head_commit.message, '[skip linux]') }}
-    runs-on: ubuntu-22.04
+    # MuseScore now builds with C++20 and expects GCC 14 (a warning below that); 24.04 ships GCC 13/14.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
 
@@ -262,7 +241,6 @@ jobs:
           sudo apt-get install -y \
             cmake \
             ninja-build \
-            libsndfile1-dev \
             libasound2-dev \
             libpulse-dev \
             libjack-dev \
@@ -299,21 +277,12 @@ jobs:
         with:
           key: ${{ runner.os }}-ccache
 
-      - name: Pre-populate harfbuzz cmake helper
-        run: |
-          mkdir -p "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz"
-          cp "${{github.workspace}}/buildscripts/harfbuzz.cmake" \
-             "${{github.workspace}}/MuseScore/src/framework/draw/_deps/harfbuzz/harfbuzz.cmake"
-
       - name: Configure CMake
         run: >
           cmake -B ${{github.workspace}}/${{env.BUILD_DIR}} -G Ninja
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          -DSMTG_ENABLE_VST3_HOSTING_EXAMPLES=OFF
-          -DSMTG_ENABLE_VST3_PLUGIN_EXAMPLES=OFF
-          -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF
           ${{env.CMAKE_VERSION_ARG}}
 
       - name: Build
@@ -329,7 +298,7 @@ jobs:
         run: |
           set -e
           export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
-          export QML_SOURCES_PATHS=${{github.workspace}}/src:${{github.workspace}}/MuseScore/src
+          export QML_SOURCES_PATHS=${{github.workspace}}/src:${{github.workspace}}/MuseScore/src:${{github.workspace}}/MuseScore/muse/framework
 
           # Pre-populate AppDir with the install tree data files (wallpapers, soundfonts, etc.)
           # linuxdeploy only bundles the executable and libraries, so we need to

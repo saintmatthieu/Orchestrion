@@ -19,10 +19,8 @@
 #include "MusescoreShellModule.h"
 #include "view/OrchestrionMenuModel.h"
 
-#include <appshell/view/framelesswindow/framelesswindowmodel.h>
-#include <appshell/view/mainwindowtitleprovider.h>
 #include <global/types/uri.h>
-#include <ui/iinteractiveuriregister.h>
+#include <interactive/iinteractiveuriregister.h>
 #include <ui/view/mainwindowbridge.h>
 
 #include <QQmlEngine>
@@ -36,36 +34,27 @@ std::string MusescoreShellModule::moduleName() const
 
 void MusescoreShellModule::resolveImports()
 {
-  auto ir = ioc()->resolve<muse::ui::IInteractiveUriRegister>(moduleName());
+  auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(
+      moduleName());
   if (ir)
   {
-    ir->registerUri(
-        muse::Uri("musescore://notation"),
-        muse::ui::ContainerMeta(muse::ui::ContainerType::PrimaryPage));
-    ir->registerUri(muse::Uri("musescore://about/musescore"),
-                    muse::ui::ContainerMeta(muse::ui::ContainerType::QmlDialog,
-                                            "AboutDialog.qml"));
-    ir->registerUri(muse::Uri("musescore://about/musicxml"),
-                    muse::ui::ContainerMeta(muse::ui::ContainerType::QmlDialog,
-                                            "AboutMusicXMLDialog.qml"));
+    ir->registerPageUri(muse::Uri("musescore://notation"));
+    ir->registerQmlUri(muse::Uri("musescore://about/musescore"),
+                       "MuseScore.AppShell", "AboutDialog.qml");
+    ir->registerQmlUri(muse::Uri("musescore://about/musicxml"),
+                       "MuseScore.AppShell", "AboutMusicXMLDialog.qml");
   }
 }
 
 void MusescoreShellModule::registerUiTypes()
 {
-  qmlRegisterType<mu::appshell::MainWindowTitleProvider>(
-      "MuseScore.AppShell", 1, 0, "MainWindowTitleProvider");
-  qmlRegisterType<muse::ui::MainWindowBridge>("MuseScore.Ui", 1, 0,
-                                              "MainWindowBridge");
-  qmlRegisterType<mu::appshell::FramelessWindowModel>(
-      "MuseScore.AppShell", 1, 0, "FramelessWindowModel");
-  // Inject our OrchestrionMenuModel into the MuseScore OrchestrionShell
-  // namespace, under both names MuseScore's appshell QML looks for: the
-  // in-window AppMenuBar (Windows/Linux) uses AppMenuModel, the native
-  // PlatformMenuBar (macOS top ribbon) uses PlatformAppMenuModel.
-  qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,
-                                        "AppMenuModel");
-  qmlRegisterType<OrchestrionMenuModel>("MuseScore.AppShell", 1, 0,
-                                        "PlatformAppMenuModel");
+  // MuseScore.AppShell's own types (MainWindowTitleProvider, ...) come with
+  // its QML module; MainWindowBridge is registered by MuseScore's app shell,
+  // which Orchestrion doesn't use. (Registered under Orchestrion's own QML
+  // module: the compiled Muse.Ui module cannot take additional types.)
+  qmlRegisterType<muse::ui::MainWindowBridge>("Orchestrion.MuseScoreShell", 1,
+                                              0, "MainWindowBridge");
+  qmlRegisterType<OrchestrionMenuModel>("Orchestrion.MuseScoreShell", 1, 0,
+                                        "OrchestrionMenuModel");
 }
 } // namespace dgk

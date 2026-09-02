@@ -26,12 +26,13 @@
 #include <atomic>
 #include <memory>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class OrchestrionSynthesisConfiguration
     : public IOrchestrionSynthesisConfiguration,
       public muse::async::Asyncable,
-      public muse::Injectable
+      public dgk::Injectable
 {
 public:
   void init();
@@ -44,7 +45,7 @@ private:
   std::shared_ptr<const std::atomic<int>>
   reverbPresetForAudioThread() const override;
 
-  muse::Inject<ISynthesizerManager> synthManager;
+  dgk::Inject<ISynthesizerManager> synthManager{this};
 
   const std::shared_ptr<std::atomic<int>> m_reverbPreset =
       std::make_shared<std::atomic<int>>(

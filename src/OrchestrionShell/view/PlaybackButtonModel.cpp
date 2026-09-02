@@ -39,16 +39,11 @@ void PlaybackButtonModel::load()
   orchestrion()->sequencerChanged().onNotify(this, subscribeToPlayer);
   subscribeToPlayer();
 
-  playbackController()->isPlayAllowedChanged().onNotify(
-      this, [this] { emit isPlayAllowedChanged(); });
+  playbackController()->isPlayAllowedChanged().onReceive(
+      this, [this](bool) { emit isPlayAllowedChanged(); });
 
-  playbackController()->actionCheckedChanged().onReceive(
-      this,
-      [this](const muse::actions::ActionCode &actionCode)
-      {
-        if (actionCode == "loop")
-          emit isLoopEnabledChanged();
-      });
+  playbackController()->loopEnabledChanged().onReceive(
+      this, [this](bool) { emit isLoopEnabledChanged(); });
 }
 
 bool PlaybackButtonModel::isPlaying() const
@@ -63,7 +58,7 @@ bool PlaybackButtonModel::isPlayAllowed() const
 
 bool PlaybackButtonModel::isLoopEnabled() const
 {
-  return playbackController()->actionChecked("loop");
+  return playbackController()->isLoopEnabled();
 }
 
 void PlaybackButtonModel::togglePlay()

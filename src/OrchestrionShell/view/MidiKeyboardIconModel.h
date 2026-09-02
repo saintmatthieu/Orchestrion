@@ -27,6 +27,7 @@
 
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 //! Backs the MIDI keyboard indicator in the score view's top-left corner:
@@ -35,7 +36,7 @@ namespace dgk
 //! cross, brought back from the View menu.
 class MidiKeyboardIconModel : public QObject,
                               public muse::async::Asyncable,
-                              public muse::Injectable
+                              public dgk::Injectable
 {
   Q_OBJECT
 
@@ -43,9 +44,9 @@ class MidiKeyboardIconModel : public QObject,
   Q_PROPERTY(bool iconVisible READ iconVisible NOTIFY iconVisibleChanged)
   Q_PROPERTY(QString iconSource READ iconSource CONSTANT)
 
-  muse::Inject<IMidiDeviceService> midiDeviceService;
-  muse::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration;
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
+  dgk::Inject<IMidiDeviceService> midiDeviceService{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
 
 public:
   explicit MidiKeyboardIconModel(QObject *parent = nullptr);
