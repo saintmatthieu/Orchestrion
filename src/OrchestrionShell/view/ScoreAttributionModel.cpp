@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ScoreAttributionModel.h"
+#include <project/inotationproject.h>
 
 #include "log.h"
 
@@ -104,7 +105,7 @@ void ScoreAttributionModel::onCurrentProjectChanged()
 void ScoreAttributionModel::openSourceUrl() const
 {
   if (!m_current.url.isEmpty())
-    interactive()->openUrl(QUrl(m_current.url));
+    platformInteractive()->openUrl(QUrl(m_current.url));
 }
 
 QString ScoreAttributionModel::author() const { return m_current.author; }

@@ -26,7 +26,7 @@
 
 namespace dgk
 {
-class IOrchestrionUiActions : MODULE_EXPORT_INTERFACE
+class IOrchestrionUiActions : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrionUiActions);
 

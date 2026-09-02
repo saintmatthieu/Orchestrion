@@ -26,6 +26,7 @@
 #include "modularity/ioc.h"
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 //! Backs the grading UI: the top-row toggle button, the grading settings
@@ -33,6 +34,7 @@ namespace dgk
 //! menu's "Settings…" action, which requests the dialog through
 //! openSettingsRequested().
 class GradingModel : public QObject,
+                     public dgk::Injectable,
                      public muse::async::Asyncable,
                      public muse::actions::Actionable
 {
@@ -54,9 +56,9 @@ class GradingModel : public QObject,
   Q_PROPERTY(
       int playMode READ playMode WRITE setPlayMode NOTIFY playModeChanged)
 
-  INJECT(IOrchestrionSequencerConfiguration, sequencerConfiguration);
-  INJECT(IOrchestrion, orchestrion);
-  INJECT(muse::actions::IActionsDispatcher, dispatcher);
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
 
 public:
   explicit GradingModel(QObject *parent = nullptr);

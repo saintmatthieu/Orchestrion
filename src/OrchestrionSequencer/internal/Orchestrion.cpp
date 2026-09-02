@@ -17,11 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "Orchestrion.h"
+#include <engraving/editing/transaction/undostack.h>
+#include <notation/imasternotation.h>
 #include "IChord.h"
 #include "OrchestrionPlayerStub.h"
 #include "OrchestrionSequencerFactory.h" // NotationProducts
 #include <async/async.h>
-#include <audio/internal/audiothread.h>
 #include <cassert>
 #include <engraving/dom/masterscore.h>
 
@@ -41,9 +42,9 @@ void Orchestrion::init()
   sequencerConfig()->gradingEnabledChanged().onNotify(this, syncUnrollRepeats);
   syncUnrollRepeats();
 
-  playbackController()->isPlayAllowedChanged().onNotify(
+  playbackController()->isPlayAllowedChanged().onReceive(
       this,
-      [&]()
+      [&](bool)
       {
         const auto masterNotation = globalContext()->currentMasterNotation();
         if (!masterNotation)
@@ -69,13 +70,6 @@ void Orchestrion::init()
         const NotationProducts products =
             OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
 
-        // This goes beyond just the official API of the audio module. Is there
-        // a better way?
-        muse::async::Async::call(
-            this, [this]
-            { audioEngine()->setMode(muse::audio::RenderMode::RealTimeMode); },
-            muse::audio::AudioThread::ID);
-
         m_modifiableItemRegistry = products.modifiableItemRegistry;
         if (products.sequencer)
           m_autoPlayer =
@@ -84,8 +78,9 @@ void Orchestrion::init()
           m_autoPlayer.reset();
         setSequencer(products.sequencer);
 
+        // Unrolling the repeats is not a modification of the user's score.
         if (const auto notation = globalContext()->currentMasterNotation())
-          notation->masterScore()->setSaved(true);
+          notation->masterScore()->undoStack()->markClean();
       });
 }
 
@@ -95,42 +90,8 @@ void Orchestrion::setSequencer(IOrchestrionSequencerPtr sequencer)
     return;
   m_sequencer = std::move(sequencer);
 
-  if (m_sequencer)
-  {
-    // MuseScore's SequencePlayer sets the engine to IdleMode on every stop
-    // and pause (e.g. when the automatic player reaches the end of the
-    // score), and an idle mixer stops processing entirely once the output
-    // has decayed to silence (the early return in Mixer::process) — note-ons
-    // then pile up unheard in the synthesizers until something wakes the
-    // mixer again, which flushes them as a burst. Idling is fine (it saves
-    // CPU while nothing sounds), as long as everything that sounds — or
-    // heralds sound — wakes the engine: every note-on gesture, and every
-    // position jump (a click on a note, Home, prev/next), the latter so the
-    // first gesture after it isn't late.
-    m_sequencer->HandNoteEvents().onReceive(this,
-                                            [this](const AutoPlayEvent &event)
-                                            {
-                                              if (event.type ==
-                                                  NoteEventType::noteOn)
-                                                wakeAudioEngine();
-                                            });
-    m_sequencer->AboutToJumpPosition().onReceive(this, [this](int)
-                                                 { wakeAudioEngine(); });
-  }
 
   m_sequencerChanged.notify();
-}
-
-void Orchestrion::wakeAudioEngine()
-{
-  muse::async::Async::call(
-      this,
-      [this]
-      {
-        if (audioEngine()->mode() == muse::audio::RenderMode::IdleMode)
-          audioEngine()->setMode(muse::audio::RenderMode::RealTimeMode);
-      },
-      muse::audio::AudioThread::ID);
 }
 
 IOrchestrionSequencerPtr Orchestrion::sequencer() { return m_sequencer; }

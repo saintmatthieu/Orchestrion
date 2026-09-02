@@ -24,10 +24,11 @@
 #include <modularity/ioc.h>
 #include <playback/iplaybackcontroller.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class AntiMetronomeSynthesizer : public IOrchestrionSynthesizer,
-                                 public muse::Injectable,
+                                 public dgk::Injectable,
                                  public muse::async::Asyncable
 {
 public:
@@ -51,7 +52,7 @@ public:
 private:
   void SetOrResetSynth();
 
-  muse::Inject<mu::playback::IPlaybackController> playbackController;
+  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
   const int m_sampleRate;
   const muse::audio::TrackId m_trackId;
   const SynthesizerFactory m_factory;

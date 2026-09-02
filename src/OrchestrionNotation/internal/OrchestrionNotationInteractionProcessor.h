@@ -22,13 +22,14 @@
 #include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class OrchestrionNotationInteractionProcessor
     : public IOrchestrionNotationInteractionProcessor,
-      public muse::Injectable
+      public dgk::Injectable
 {
-  muse::Inject<mu::context::IGlobalContext> globalContext = {this};
+  dgk::Inject<mu::context::IGlobalContext> globalContext = {this};
 
 public:
   void onMousePressed(const muse::PointF &logicalPosition,

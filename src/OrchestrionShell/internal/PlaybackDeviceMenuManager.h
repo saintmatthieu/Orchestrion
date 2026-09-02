@@ -19,6 +19,7 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "ExternalDevices/IAudioDeviceService.h"
 #include <async/asyncable.h>
 
@@ -30,7 +31,7 @@ public:
   PlaybackDeviceMenuManager();
 
 private:
-  muse::Inject<IAudioDeviceService> audioDeviceService;
+  dgk::Inject<IAudioDeviceService> audioDeviceService{this};
 
   // DeviceMenuManager
 private:

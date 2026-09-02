@@ -28,7 +28,7 @@
 namespace dgk
 {
 class IAudioDeviceService : public IExternalDeviceService,
-                            MODULE_EXPORT_INTERFACE
+                            MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IAudioDeviceService);
 

@@ -17,8 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ScoreAnimationModule.h"
-#include "internal/SegmentRegistry.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/ScoreAnimator.h"
+#include "internal/SegmentRegistry.h"
 
 namespace dgk
 {
@@ -34,11 +35,22 @@ std::string ScoreAnimationModule::moduleName() const
 
 void ScoreAnimationModule::registerExports()
 {
-  ioc()->registerExport<IScoreAnimator>(moduleName(), m_scoreAnimator);
-  ioc()->registerExport<ISegmentRegistry>(moduleName(), new SegmentRegistry());
+  globalIoc()->registerExport<IScoreAnimator>(moduleName(), m_scoreAnimator);
+  globalIoc()->registerExport<ISegmentRegistry>(moduleName(),
+                                                new SegmentRegistry());
 }
 
-void ScoreAnimationModule::onInit(const muse::IApplication::RunMode &)
+muse::modularity::IContextSetup *ScoreAnimationModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void ScoreAnimationModule::onContextInit(
+    const muse::IApplication::RunMode &) const
 {
   m_scoreAnimator->init();
 }

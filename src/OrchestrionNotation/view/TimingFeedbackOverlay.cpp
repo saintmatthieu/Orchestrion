@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "TimingFeedbackOverlay.h"
+#include <engraving/rendering/paintoptions.h>
 
 #include <draw/painter.h>
 #include <engraving/dom/engravingitem.h>
@@ -712,7 +713,8 @@ void TimingFeedbackOverlay::paintShadows(QPainter &painter, const Gauge &gauge,
     const muse::draw::Color savedColor = item->color();
     item->setColor(muse::draw::Color::fromQColor(color));
     musePainter.translate(position);
-    item->renderer()->drawItem(item, &musePainter);
+    item->renderer()->drawItem(item, &musePainter,
+                               mu::engraving::rendering::PaintOptions{});
     musePainter.translate(-position);
     item->setColor(savedColor);
   };

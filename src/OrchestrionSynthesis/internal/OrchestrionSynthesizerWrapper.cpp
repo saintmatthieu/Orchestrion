@@ -17,9 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSynthesizerWrapper.h"
-#include "LowpassFilterBank.h"
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
+
 #include <log.h>
+
+#include <algorithm>
+#include <alloca.h>
 
 namespace dgk
 {
@@ -38,8 +41,8 @@ bool noteoffsAreBeforeNoteons(const NoteEvents &notes)
 } // namespace
 
 OrchestrionSynthesizerWrapper::OrchestrionSynthesizerWrapper(
-    SynthFactory factory)
-    : m_synthFactory{std::move(factory)}
+    SynthFactory factory, muse::audio::AudioInputParams params)
+    : m_params{std::move(params)}, m_synthFactory{std::move(factory)}
 {
   orchestrion()->sequencerChanged().onNotify(
       this,
@@ -48,7 +51,6 @@ OrchestrionSynthesizerWrapper::OrchestrionSynthesizerWrapper(
         if (const auto sequencer = orchestrion()->sequencer())
           setupCallback(*sequencer);
       });
-
   if (const auto sequencer = orchestrion()->sequencer())
     setupCallback(*sequencer);
 }
@@ -66,13 +68,18 @@ void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
     return;
   if (std::holds_alternative<NoteEvents>(event))
   {
+    static bool firstNoteLogged = false;
+    if (!firstNoteLogged)
+    {
+      firstNoteLogged = true;
+      LOGI() << "First note event received by the Orchestrion synthesizer";
+    }
     auto notes = std::get<NoteEvents>(event);
     IF_ASSERT_FAILED(noteoffsAreBeforeNoteons(notes)) { return; }
     const int noteonOffset =
         std::find_if(notes.begin(), notes.end(), [](const auto &evt)
                      { return evt.type == NoteEventType::noteOn; }) -
         notes.begin();
-
     sendNoteoffs(notes.data(), noteonOffset);
     sendNoteons(notes.data() + noteonOffset, notes.size() - noteonOffset);
   }
@@ -94,7 +101,7 @@ void OrchestrionSynthesizerWrapper::sendNoteoffs(const NoteEvent *noteoffs,
   int *const pitches = (int *)alloca(numNoteoffs * sizeof(int));
   for (auto i = 0u; i < numNoteoffs; ++i)
   {
-    const_cast<int &>(channels[i].value) = noteoffs[i].track.value;
+    channels[i].value = noteoffs[i].track.value;
     pitches[i] = noteoffs[i].pitch;
   }
   m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);
@@ -111,7 +118,7 @@ void OrchestrionSynthesizerWrapper::sendNoteons(const NoteEvent *noteons,
   float *const velocities = (float *)alloca(numNoteons * sizeof(float));
   for (auto i = 0u; i < numNoteons; ++i)
   {
-    const_cast<int &>(channels[i].value) = noteons[i].track.value;
+    channels[i].value = noteons[i].track.value;
     pitches[i] = noteons[i].pitch;
     velocities[i] = noteons[i].velocity;
   }
@@ -124,21 +131,58 @@ OrchestrionSynthesizerWrapper::process(float *buffer,
 {
   if (!m_synthesizer)
     return 0;
+  static bool renderingLogged = false;
+  if (!renderingLogged)
+  {
+    renderingLogged = true;
+    LOGI() << "The audio engine is rendering the Orchestrion synthesizer";
+  }
   return m_synthesizer->process(buffer, samplesPerChannel);
 }
 
-std::string OrchestrionSynthesizerWrapper::name() const { return "Stuff"; }
+std::string OrchestrionSynthesizerWrapper::name() const
+{
+  return "Orchestrion";
+}
 
 muse::audio::AudioSourceType OrchestrionSynthesizerWrapper::type() const
 {
-  return muse::audio::AudioSourceType::Fluid;
+  return m_params.type();
 }
 
 bool OrchestrionSynthesizerWrapper::isValid() const { return true; }
 
+void OrchestrionSynthesizerWrapper::setMode(const muse::audio::ProcessMode mode)
+{
+  // Orchestrion's synthesizers sound on gestures, whatever the engine's
+  // playback state; the mode is only remembered.
+  m_mode = mode;
+}
+
+muse::audio::ProcessMode OrchestrionSynthesizerWrapper::mode() const
+{
+  return m_mode;
+}
+
+void OrchestrionSynthesizerWrapper::setOutputSpec(
+    const muse::audio::OutputSpec &spec)
+{
+  if (!spec.isValid() || spec == m_outputSpec)
+    return;
+  const bool sampleRateChanged = spec.sampleRate != m_outputSpec.sampleRate;
+  m_outputSpec = spec;
+  if (!m_synthesizer || sampleRateChanged)
+  {
+    m_synthesizer = m_synthFactory(spec);
+    LOGI() << "Orchestrion synthesizer " << (m_synthesizer ? "created" : "not available")
+           << " (sample rate " << spec.sampleRate << ")";
+  }
+}
+
 void OrchestrionSynthesizerWrapper::setup(const muse::mpe::PlaybackData &)
 {
-  // TODO
+  // The events come from Orchestrion's sequencer, not from the score's
+  // playback data.
 }
 
 const muse::mpe::PlaybackData &
@@ -160,18 +204,26 @@ OrchestrionSynthesizerWrapper::paramsChanged() const
   return m_paramsChanged;
 }
 
-muse::audio::msecs_t OrchestrionSynthesizerWrapper::playbackPosition() const
+muse::audio::TimePosition OrchestrionSynthesizerWrapper::playbackPosition() const
 {
   return m_playbackPosition;
 }
 
 void OrchestrionSynthesizerWrapper::setPlaybackPosition(
-    const muse::audio::msecs_t newPosition)
+    const muse::audio::TimePosition &position)
 {
-  m_playbackPosition = newPosition;
+  m_playbackPosition = position;
 }
 
-void OrchestrionSynthesizerWrapper::revokePlayingNotes() { flushSound(); }
+void OrchestrionSynthesizerWrapper::prepareToPlay() {}
+
+bool OrchestrionSynthesizerWrapper::readyToPlay() const { return true; }
+
+muse::async::Notification
+OrchestrionSynthesizerWrapper::readyToPlayChanged() const
+{
+  return m_readyToPlayChanged;
+}
 
 void OrchestrionSynthesizerWrapper::flushSound()
 {
@@ -179,26 +231,15 @@ void OrchestrionSynthesizerWrapper::flushSound()
     m_synthesizer->allNotesOff();
 }
 
-bool OrchestrionSynthesizerWrapper::isActive() const { return m_isActive; }
+bool OrchestrionSynthesizerWrapper::hasPendingChunks() const { return false; }
 
-void OrchestrionSynthesizerWrapper::setIsActive(bool arg) { m_isActive = arg; }
+void OrchestrionSynthesizerWrapper::processInput() {}
 
-void OrchestrionSynthesizerWrapper::setSampleRate(unsigned int sampleRate)
+muse::audio::InputProcessingProgress
+OrchestrionSynthesizerWrapper::inputProcessingProgress() const
 {
-  if (m_sampleRate == sampleRate || sampleRate == 0)
-    return;
-
-  m_synthesizer = m_synthFactory(sampleRate);
+  return {};
 }
 
-unsigned int OrchestrionSynthesizerWrapper::audioChannelsCount() const
-{
-  return 2;
-}
-
-muse::async::Channel<unsigned int>
-OrchestrionSynthesizerWrapper::audioChannelsCountChanged() const
-{
-  return m_audioChannelsCountChanged;
-}
+void OrchestrionSynthesizerWrapper::clearCache() {}
 } // namespace dgk

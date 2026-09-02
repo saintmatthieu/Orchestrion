@@ -27,6 +27,7 @@
 #include <modularity/ioc.h>
 #include <notation/inotationinteraction.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace mu::engraving
 {
 class Segment;
@@ -35,12 +36,12 @@ class Segment;
 namespace dgk
 {
 class ScoreAnimator : public IScoreAnimator,
-                      public muse::Injectable,
+                      public dgk::Injectable,
                       public muse::async::Asyncable
 {
-  muse::Inject<IOrchestrion> orchestrion;
-  muse::Inject<ISegmentRegistry> melodySegRegistry;
-  muse::Inject<mu::context::IGlobalContext> globalContext;
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<ISegmentRegistry> melodySegRegistry{this};
+  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
 
 public:
   void init();

@@ -21,7 +21,8 @@
 import QtQuick 2.15
 import Qt.labs.platform 1.1 as PLATFORM
 
-import MuseScore.AppShell 1.0
+import MuseScore.AppShell
+import Orchestrion.MuseScoreShell 1.0
 
 // The native macOS menu bar. A local adaptation of MuseScore's
 // PlatformMenuBar.qml: upstream's itemsChanged handler only pours the new
@@ -38,7 +39,7 @@ Item {
         id: menuBar
     }
 
-    PlatformAppMenuModel {
+    OrchestrionMenuModel {
         id: menuModel
     }
 

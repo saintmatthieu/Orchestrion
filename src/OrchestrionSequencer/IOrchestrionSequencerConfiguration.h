@@ -23,7 +23,7 @@
 
 namespace dgk
 {
-class IOrchestrionSequencerConfiguration : MODULE_EXPORT_INTERFACE
+class IOrchestrionSequencerConfiguration : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrionSequencerConfiguration);
 

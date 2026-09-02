@@ -36,7 +36,7 @@ enum class ReverbPreset
   Cathedral = 3,
 };
 
-class IOrchestrionSynthesisConfiguration : MODULE_EXPORT_INTERFACE
+class IOrchestrionSynthesisConfiguration : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrionSynthesisConfiguration);
 

@@ -22,7 +22,7 @@
 
 namespace dgk
 {
-class IScoreAnimator : MODULE_EXPORT_INTERFACE
+class IScoreAnimator : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IScoreAnimator);
 

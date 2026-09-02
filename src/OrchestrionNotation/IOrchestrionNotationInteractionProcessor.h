@@ -25,7 +25,7 @@
 
 namespace dgk
 {
-class IOrchestrionNotationInteractionProcessor : MODULE_EXPORT_INTERFACE
+class IOrchestrionNotationInteractionProcessor : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrionNotationInteractionProcessor);
 

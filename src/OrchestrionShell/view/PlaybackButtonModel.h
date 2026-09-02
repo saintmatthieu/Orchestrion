@@ -25,9 +25,12 @@
 #include "playback/iplaybackcontroller.h"
 #include <QObject>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class PlaybackButtonModel : public QObject, public muse::async::Asyncable
+class PlaybackButtonModel : public QObject,
+                            public dgk::Injectable,
+                            public muse::async::Asyncable
 {
   Q_OBJECT
 
@@ -35,9 +38,9 @@ class PlaybackButtonModel : public QObject, public muse::async::Asyncable
   Q_PROPERTY(bool isPlayAllowed READ isPlayAllowed NOTIFY isPlayAllowedChanged)
   Q_PROPERTY(bool isLoopEnabled READ isLoopEnabled NOTIFY isLoopEnabledChanged)
 
-  INJECT(mu::playback::IPlaybackController, playbackController);
-  INJECT(muse::actions::IActionsDispatcher, dispatcher);
-  INJECT(IOrchestrion, orchestrion);
+  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
 
 public:
   explicit PlaybackButtonModel(QObject *parent = nullptr);

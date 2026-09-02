@@ -28,7 +28,7 @@ namespace dgk
 //! computer keyboard, always, and the MIDI device chosen in the Audio/MIDI
 //! menu, whenever one is connected. There is nothing to select — whatever can
 //! produce notes does.
-class IGestureInput : public IGestureController, MODULE_EXPORT_INTERFACE
+class IGestureInput : public IGestureController, MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IGestureInput);
 

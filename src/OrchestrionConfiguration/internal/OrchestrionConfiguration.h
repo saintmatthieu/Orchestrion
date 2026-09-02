@@ -22,12 +22,14 @@
 #include <global/iglobalconfiguration.h>
 #include <notation/inotationconfiguration.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class OrchestrionConfiguration : public muse::async::Asyncable
+class OrchestrionConfiguration : public dgk::Injectable,
+                                 public muse::async::Asyncable
 {
-  muse::Inject<mu::notation::INotationConfiguration> notationConfiguration;
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
+  dgk::Inject<mu::notation::INotationConfiguration> notationConfiguration{this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
 
 public:
   void init();

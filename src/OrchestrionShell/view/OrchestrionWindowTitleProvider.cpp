@@ -20,6 +20,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionWindowTitleProvider.h"
+#include <notation/inotation.h>
+#include <project/inotationproject.h>
+#include <project/types/projectmeta.h>
 #include "OrchestrionSequencer/IModifiableItemRegistry.h"
 #include "OrchestrionShell/internal/MuseScorePlaceholderMetaTags.h"
 #include "io/path.h"
@@ -66,8 +69,8 @@ void OrchestrionWindowTitleProvider::load()
           currentProject->displayNameChanged().onNotify(this,
                                                         [this]() { update(); });
 
-          currentProject->needSave().notification.onNotify(this, [this]()
-                                                           { update(); });
+          currentProject->needSaveChanged().onNotify(this, [this]()
+                                                    { update(); });
         }
       });
 
@@ -207,6 +210,6 @@ void OrchestrionWindowTitleProvider::update()
   setFilePath((project->isNewlyCreated() || project->isCloudProject())
                   ? ""
                   : project->path().toQString());
-  setFileModified(project->needSave().val);
+  setFileModified(project->isNeedSave());
 }
 } // namespace dgk

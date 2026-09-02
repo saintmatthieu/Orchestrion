@@ -17,6 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionActionController.h"
+#include <engraving/editing/transaction/undostack.h>
+#include <engraving/dom/masterscore.h>
+#include <notation/imasternotation.h>
+#include <project/inotationproject.h>
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <async/async.h>
 #include <engraving/dom/masterscore.h>
@@ -44,7 +48,7 @@ void OrchestrionActionController::init()
                     {
                       const auto url =
                           QUrl("https://musescore.com/sheetmusic/non-official");
-                      interactive()->openUrl(url);
+                      platformInteractive()->openUrl(url);
                     });
 
   dispatcher()->reg(
@@ -53,7 +57,7 @@ void OrchestrionActionController::init()
       {
         const auto url = QUrl(
             "https://github.com/saintmatthieu/Orchestrion/wiki/Find-scores");
-        interactive()->openUrl(url);
+        platformInteractive()->openUrl(url);
       });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
@@ -232,13 +236,26 @@ bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
         orchestrion()->modifiableItemRegistry();
     if (registry && registry->Modified())
     {
-      const auto notation = globalContext()->currentMasterNotation();
-      assert(notation);
-      if (notation)
-        notation->masterScore()->setSaved(false);
-      if (!projectFilesController()->closeOpenedProject(closeApp))
+      // Orchestrion's own modifications (recorded velocities, ...) are not
+      // in the score's undo stack, so MuseScore wouldn't ask about them.
+      using muse::IInteractive;
+      const IInteractive::Result result = interactive()->questionSync(
+          muse::trc("project", "Save changes to the score before closing?"),
+          muse::trc("project", "Your changes will be lost if you don't save them."),
+          IInteractive::Buttons{IInteractive::Button::Save,
+                                IInteractive::Button::Discard,
+                                IInteractive::Button::Cancel},
+          IInteractive::Button::Save);
+      if (result.standardButton() == IInteractive::Button::Cancel)
       {
         // Cancel the close event
+        event->setAccepted(true);
+        return true;
+      }
+      if (result.standardButton() == IInteractive::Button::Save)
+        onFileSave();
+      if (!projectFilesController()->closeOpenedProject(closeApp))
+      {
         event->setAccepted(true);
         return true;
       }
@@ -305,16 +322,16 @@ void OrchestrionActionController::onFileSaveAs() const
       muse::io::dirpath(projectConfiguration()->lastSavedProjectsPath());
   if (defaultDir.empty())
     defaultDir = fallbackPath();
-  const muse::io::path_t filePath = interactive()->selectSavingFile(
-      muse::qtrc("project", "Save as"), defaultDir, filter);
+  const muse::io::path_t filePath = interactive()->selectSavingFileSync(
+      muse::trc("project", "Save as"), defaultDir, filter);
   projectFilesController()->saveProjectLocally(filePath,
                                                mu::project::SaveMode::SaveAs);
 }
 
 void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const
 {
-  const muse::io::path_t filePath = interactive()->selectOpeningFile(
-      muse::qtrc("project", "Open"), dir, filter);
+  const muse::io::path_t filePath = interactive()->selectOpeningFileSync(
+      muse::trc("project", "Open"), dir, filter);
 
   if (filePath.empty())
     return;
@@ -334,7 +351,7 @@ void OrchestrionActionController::openProject(
       registry->RevertToLastSaved();
       // We don't want to get the "Would you like to save?"
       // dialog.
-      notation->masterScore()->setSaved(true);
+      notation->masterScore()->undoStack()->markClean();
     }
 
   constexpr auto closeApp = false;

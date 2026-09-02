@@ -19,6 +19,7 @@
 #pragma once
 
 #include "DeviceMenuManager.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSynthesis/ISynthesizerManager.h"
 
 namespace dgk
@@ -31,7 +32,7 @@ public:
   void onAllInited();
 
 private:
-  muse::Inject<ISynthesizerManager> synthManager = {this};
+  dgk::Inject<ISynthesizerManager> synthManager = {this};
 
   // DeviceMenuManager
 private:

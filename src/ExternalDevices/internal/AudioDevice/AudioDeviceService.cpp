@@ -18,8 +18,7 @@
  */
 #include "AudioDeviceService.h"
 
-#include <future>
-#include <thread>
+#include <algorithm>
 
 namespace dgk
 {
@@ -107,15 +106,7 @@ void AudioDeviceService::selectDevice(const std::optional<ExternalDeviceId> &id)
 
 void AudioDeviceService::doSelectDevice(const ExternalDeviceId &id)
 {
-  std::promise<void> p;
-  auto f = p.get_future();
-  std::thread t{[&]
-                {
-                  audioDriver()->selectOutputDevice(id.value);
-                  p.set_value();
-                }};
-  f.get();
-  t.join();
+  audioDriver()->selectOutputDevice(id.value);
 }
 
 std::vector<ExternalDeviceId> AudioDeviceService::availableDevices() const
@@ -131,13 +122,7 @@ std::vector<ExternalDeviceId> AudioDeviceService::availableDevices() const
 std::vector<muse::audio::AudioDevice>
 AudioDeviceService::museAvailableDevices() const
 {
-  std::promise<std::vector<muse::audio::AudioDevice>> p;
-  auto f = p.get_future();
-  std::thread t{[this, &p]
-                { p.set_value(audioDriver()->availableOutputDevices()); }};
-  auto devices = f.get();
-  t.join();
-  return devices;
+  return audioDriver()->availableOutputDevices();
 }
 
 bool AudioDeviceService::isAvailable(const ExternalDeviceId &query) const

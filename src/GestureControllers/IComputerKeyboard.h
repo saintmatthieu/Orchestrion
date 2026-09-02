@@ -25,7 +25,7 @@
 
 namespace dgk
 {
-class IComputerKeyboard : MODULE_EXPORT_INTERFACE
+class IComputerKeyboard : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IComputerKeyboard);
 

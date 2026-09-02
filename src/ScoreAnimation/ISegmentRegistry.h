@@ -32,7 +32,7 @@ class Segment;
 
 namespace dgk
 {
-class ISegmentRegistry : MODULE_EXPORT_INTERFACE
+class ISegmentRegistry : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(ISegmentRegistry);
 

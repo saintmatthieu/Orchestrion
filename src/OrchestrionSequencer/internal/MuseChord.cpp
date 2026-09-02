@@ -47,17 +47,17 @@ bool IsOrdinaryDynamic(me::DynamicType type)
   return type >= me::DynamicType::PPPPPP && type <= me::DynamicType::FFFFFF;
 }
 
-// Whether a dynamic / hairpin (both expose dynRange(), staffIdx() and part())
-// applies to the given staff/part of the chord we're voicing.
+// Whether a dynamic / hairpin (both expose voiceAssignment(), staffIdx() and
+// part()) applies to the given staff/part of the chord we're voicing.
 template <typename T>
 bool AppliesTo(const T &item, me::staff_idx_t staffIdx, const me::Part *part)
 {
-  switch (item.dynRange())
+  switch (item.voiceAssignment())
   {
-  case me::DynamicRange::STAFF:
+  case me::VoiceAssignment::ALL_VOICE_IN_STAFF:
+  case me::VoiceAssignment::CURRENT_VOICE_ONLY:
     return item.staffIdx() == staffIdx;
-  case me::DynamicRange::PART:
-  case me::DynamicRange::SYSTEM:
+  case me::VoiceAssignment::ALL_VOICE_IN_INSTRUMENT:
     return item.part() == part;
   }
   return false;

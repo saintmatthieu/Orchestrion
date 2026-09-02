@@ -24,13 +24,14 @@
 #include "async/async.h"
 #include "async/asyncable.h"
 #include "async/notification.h"
-#include "audio/iaudiodriver.h"
+#include "audio/iaudiodrivercontroller.h"
 #include "modularity/ioc.h"
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class AudioDeviceService : public IAudioDeviceService,
-                           public muse::Injectable,
+                           public dgk::Injectable,
                            public muse::async::Asyncable
 {
 public:
@@ -53,8 +54,8 @@ public:
 private:
   std::vector<muse::audio::AudioDevice> museAvailableDevices() const;
   void doSelectDevice(const ExternalDeviceId &id);
-  muse::Inject<IExternalDevicesConfiguration> configuration;
-  muse::Inject<muse::audio::IAudioDriver> audioDriver;
+  dgk::Inject<IExternalDevicesConfiguration> configuration{this};
+  dgk::Inject<muse::audio::IAudioDriverController> audioDriver{this};
   muse::async::Notification m_selectedDeviceChanged;
   bool m_deviceChangeExpected = false;
   bool m_postInitCalled = false;

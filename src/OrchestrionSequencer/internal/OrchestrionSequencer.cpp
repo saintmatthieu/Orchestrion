@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSequencer.h"
+#include <notation/inotationplayback.h>
+#include <notation/imasternotation.h>
 #include "IChord.h"
 #include <algorithm>
 #include <engraving/dom/note.h>
@@ -403,10 +405,11 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   const auto &loopBoundaries =
       globalContext()->currentMasterNotation()->playback()->loopBoundaries();
 
-  if (loop && type == NoteEventType::noteOn && loopBoundaries.loopOutTick > 0 &&
-      cursorTick.withoutRepeats >= loopBoundaries.loopOutTick)
+  if (loop && type == NoteEventType::noteOn &&
+      loopBoundaries.loopOutTick.ticks() > 0 &&
+      cursorTick.withoutRepeats >= loopBoundaries.loopOutTick.ticks())
   {
-    GoToTick(loopBoundaries.loopInTick);
+    GoToTick(loopBoundaries.loopInTick.ticks());
     return OnInputEventRecursive(type, pitch, std::move(velocity), false);
   }
 

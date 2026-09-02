@@ -64,7 +64,6 @@ static void app_init_qrc()
 {
   Q_INIT_RESOURCE(OrchestrionApp);
   Q_INIT_RESOURCE(OrchestrionShell);
-  Q_INIT_RESOURCE(appshell);
 
 #ifdef Q_OS_WIN
   // Q_INIT_RESOURCE(app_win);
@@ -196,11 +195,35 @@ int main(int argc, char **argv)
 
   commandLineParser.processBuiltinArgs(*qapp);
 
-  dgk::OrchestrionAppFactory f;
-  std::shared_ptr<muse::IApplication> app =
-      f.newApp(commandLineParser.options());
+  std::shared_ptr<dgk::CommandOptions> opt = commandLineParser.options();
 
-  app->perform();
+  // ====================================================
+  // Setup application
+  // ====================================================
+  //! NOTE: The application is set up from within the event loop (as in
+  //! MuseScore): first the modules (global phase), then the single window
+  //! context, whose setup loads the main window.
+  std::shared_ptr<muse::IApplication> app;
+  QMetaObject::invokeMethod(
+      qapp,
+      [qapp, &app, &opt]()
+      {
+        dgk::OrchestrionAppFactory f;
+        app = f.newApp(opt);
+        IF_ASSERT_FAILED(app) { return; }
+        app->showSplash();
+        QMetaObject::invokeMethod(
+            qapp,
+            [qapp, &app]()
+            {
+              app->setup();
+              QMetaObject::invokeMethod(
+                  qapp, [&app]() { app->setupNewContext(); },
+                  Qt::QueuedConnection);
+            },
+            Qt::QueuedConnection);
+      },
+      Qt::QueuedConnection);
 
   // ====================================================
   // Run main loop
@@ -210,8 +233,9 @@ int main(int argc, char **argv)
   // ====================================================
   // Quit
   // ====================================================
-
-  app->finish();
+  if (app)
+    app->finish();
+  delete qapp;
 
   LOGI() << "Goodbye!! code: " << code;
   return code;

@@ -27,6 +27,7 @@
 #include "midi/imidiinport.h"
 #include "modularity/ioc.h"
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 //! Which MIDI controller feeds the app. Greedy by default: whatever is
@@ -37,7 +38,7 @@ namespace dgk
 //! it is away MIDI stays disconnected — the dimmed keyboard icon then warns
 //! the user. Choosing "no device" silences MIDI input for good.
 class MidiDeviceService : public IMidiDeviceService,
-                          public muse::Injectable,
+                          public dgk::Injectable,
                           public muse::async::Asyncable
 {
 public:
@@ -69,8 +70,8 @@ private:
   std::vector<ExternalDeviceId> availableDevicesWithoutNoDevice() const;
   std::optional<ExternalDeviceId> selectedDeviceWithoutNoDevice() const;
 
-  muse::Inject<muse::midi::IMidiInPort> midiInPort;
-  muse::Inject<IExternalDevicesConfiguration> configuration;
+  dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
+  dgk::Inject<IExternalDevicesConfiguration> configuration{this};
   muse::async::Notification m_selectedDeviceChanged;
   bool m_deviceChangeExpected = false;
   bool m_postInitCalled = false;

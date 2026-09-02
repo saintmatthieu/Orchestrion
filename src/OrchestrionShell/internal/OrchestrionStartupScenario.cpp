@@ -26,7 +26,8 @@ namespace dgk
 {
 void OrchestrionStartupScenario::init()
 {
-  assert(m_startupProjectFile.url.isEmpty());
+  if (!m_startupProjectFile.url.isEmpty())
+    return; // a score was given on the command line
   const muse::io::path_t path =
       projectConfiguration()->lastOpenedProjectsPath();
   if (muse::io::FileInfo{path}.entryType() == muse::io::EntryType::File)

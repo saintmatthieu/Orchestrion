@@ -18,63 +18,64 @@
  */
 #include "SynthesizerConnector.h"
 #include "OrchestrionSynthResolver.h"
-#include <async/async.h>
-#include <audio/iaudiooutput.h>
-#include <audio/internal/audiothread.h>
-#include <audio/itracks.h>
+
+#include <algorithm>
+#include <log.h>
 
 namespace dgk
 {
 SynthesizerConnector::SynthesizerConnector()
-    : m_orchestrionSynthResolver{std::make_shared<OrchestrionSynthResolver>()}
+    : m_orchestrionSynthResolver{std::make_shared<OrchestrionSynthResolver>()},
+      m_synth{OrchestrionSynthResolver::fluidSynthValue}
 {
+}
+
+// The input params that route a track to Orchestrion's resolver (registered
+// for the built-in source type) and tell it which synthesizer is wanted.
+muse::audio::AudioSourceParams SynthesizerConnector::inputParams() const
+{
+  muse::audio::AudioSourceParams params;
+  params.resourceMeta.id = "Orchestrion Synth Resolver";
+  params.resourceMeta.type = muse::audio::resourceTypeName(
+      muse::audio::AudioResourceType::FluidSoundfont);
+  params.resourceMeta.vendor = "saintmatthieu";
+  params.resourceMeta.attributes[OrchestrionSynthResolver::synthAttribute] =
+      m_synth;
+  if (!m_vstId.empty())
+    params.resourceMeta.attributes[OrchestrionSynthResolver::vstIdAttribute] =
+        m_vstId;
+  return params;
 }
 
 void SynthesizerConnector::onAllInited()
 {
-  const auto tracks = playback()->tracks();
-  tracks->trackAdded().onReceive(
-      this, [this](muse::audio::TrackSequenceId sequenceId,
-                   muse::audio::TrackId trackId)
-      { m_tracks.emplace_back(std::move(sequenceId), std::move(trackId)); });
-  tracks->trackRemoved().onReceive(
+  playback()->trackAdded().onReceive(this, [this](muse::audio::TrackId trackId)
+                                     { m_tracks.push_back(trackId); });
+  playback()->trackRemoved().onReceive(
       this,
-      [this](muse::audio::TrackSequenceId sequenceId,
-             muse::audio::TrackId trackId)
+      [this](muse::audio::TrackId trackId)
       {
-        m_tracks.erase(std::remove_if(m_tracks.begin(), m_tracks.end(),
-                                      [sequenceId, trackId](const auto &pair)
-                                      {
-                                        return pair.first == sequenceId &&
-                                               pair.second == trackId;
-                                      }),
+        m_tracks.erase(std::remove(m_tracks.begin(), m_tracks.end(), trackId),
                        m_tracks.end());
       });
 
-  muse::async::Async::call(
+  // Take over the built-in source type from MuseScore's FluidSynth resolver.
+  // (Registered after the audio engine has started too, in case the engine's
+  // setup re-registered the built-in one.)
+  registerResolver();
+  startAudioController()->isAudioStartedChanged().onReceive(
       this,
-      [this]
+      [this](bool started)
       {
-        muse::audio::AudioSourceParams defaultParams =
-            synthResolver()->resolveDefaultInputParams();
+        if (started)
+          registerResolver();
+      });
 
-        auto &meta = defaultParams.resourceMeta;
-        meta.id = "Orchestrion Synth Resolver";
-        meta.type = muse::audio::AudioResourceType::FluidSoundfont;
-        meta.vendor = "saintmatthieu";
-        meta.attributes.clear();
-
-        synthResolver()->init(defaultParams);
-        synthResolver()->registerResolver(muse::audio::AudioSourceType::Fluid,
-                                          m_orchestrionSynthResolver);
-      },
-      muse::audio::AudioThread::ID);
-
-  playbackController()->isPlayAllowedChanged().onNotify(
+  playbackController()->isPlayAllowedChanged().onReceive(
       this,
-      [this]
+      [this](bool allowed)
       {
-        if (playbackController()->isPlayAllowed())
+        if (allowed)
         {
           setInputParams();
           setOutputParams();
@@ -82,52 +83,50 @@ void SynthesizerConnector::onAllInited()
       });
 }
 
+void SynthesizerConnector::registerResolver()
+{
+  synthResolver()->registerResolver(muse::audio::AudioSourceType::Fluid,
+                                    m_orchestrionSynthResolver);
+}
+
 void SynthesizerConnector::connectVstInstrument(
     const muse::audio::AudioResourceId &id)
 {
-  m_orchestrionSynthResolver->resolveToVst(id);
+  m_synth = OrchestrionSynthResolver::vstSynthValue;
+  m_vstId = muse::String::fromStdString(id);
   setInputParams();
 }
 
 void SynthesizerConnector::connectFluidSynth()
 {
-  m_orchestrionSynthResolver->resolveToFluid();
+  m_synth = OrchestrionSynthResolver::fluidSynthValue;
+  m_vstId.clear();
   setInputParams();
 }
 
 void SynthesizerConnector::disconnect()
 {
-  m_orchestrionSynthResolver->resolveToNone();
+  m_synth = OrchestrionSynthResolver::noSynthValue;
+  m_vstId.clear();
   setInputParams();
 }
 
 void SynthesizerConnector::setInputParams()
 {
-  muse::async::Async::call(
-      this,
-      [this]
-      {
-        const auto params = synthResolver()->resolveDefaultInputParams();
-        const auto tracks = playback()->tracks();
-        for (const auto &[sequenceId, trackId] : m_tracks)
-          tracks->setInputParams(sequenceId, trackId, params);
-      },
-      muse::audio::AudioThread::ID);
+  const muse::audio::AudioSourceParams params = inputParams();
+  LOGI() << "Routing " << m_tracks.size()
+         << " track(s) to the Orchestrion synthesizer";
+  for (const muse::audio::TrackId trackId : m_tracks)
+    playback()->setSourceParams(trackId, params);
 }
 
 void SynthesizerConnector::setOutputParams()
 {
-  muse::async::Async::call(
-      this,
-      [this]
-      {
-        const auto tracks = playback()->tracks();
-        const muse::audio::IAudioOutputPtr output = playback()->audioOutput();
-        // Keep things under control, disabling reverb and other effects.
-        const muse::audio::AudioOutputParams outParams{};
-        for (const auto &[sequenceId, trackId] : m_tracks)
-          output->setOutputParams(sequenceId, trackId, outParams);
-      },
-      muse::audio::AudioThread::ID);
+  // Keep things under control, disabling reverb and other effects.
+  for (const muse::audio::TrackId trackId : m_tracks)
+  {
+    playback()->setFxChainParams(trackId, muse::audio::AudioFxChain{});
+    playback()->setAuxSendsParams(trackId, muse::audio::AuxSendsParams{});
+  }
 }
 } // namespace dgk

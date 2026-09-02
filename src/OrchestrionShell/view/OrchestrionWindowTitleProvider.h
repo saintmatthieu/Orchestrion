@@ -26,15 +26,17 @@
 #include "async/asyncable.h"
 #include "context/iglobalcontext.h"
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class OrchestrionWindowTitleProvider : public QObject,
+                                       public dgk::Injectable,
                                        public muse::async::Asyncable
 {
   Q_OBJECT
 
-  muse::Inject<mu::context::IGlobalContext> context;
-  muse::Inject<IOrchestrion> orchestrion;
+  dgk::Inject<mu::context::IGlobalContext> context{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
 
   Q_PROPERTY(QString title READ title NOTIFY titleChanged)
   //! The work's title as displayed on the score itself (not the window):

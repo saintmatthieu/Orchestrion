@@ -18,6 +18,7 @@
  */
 #include "OrchestrionSynthesisModule.h"
 #include "IOrchestrionSynthesisConfiguration.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/OrchestrionSynthesisConfiguration.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
@@ -39,31 +40,43 @@ std::string OrchestrionSynthesisModule::moduleName() const
 
 void OrchestrionSynthesisModule::registerExports()
 {
-  ioc()->registerExport<ISynthesizerConnector>(moduleName(),
-                                               m_synthesizerConnector);
-  ioc()->registerExport<ITrackChannelMapper>(moduleName(),
-                                             new TrackChannelMapper);
-  ioc()->registerExport<ISynthesizerManager>(moduleName(),
-                                             m_synthesizerManager);
-  ioc()->registerExport<IOrchestrionSynthesisConfiguration>(moduleName(),
-                                                           m_configuration);
-}
-
-void OrchestrionSynthesisModule::onInit(const muse::IApplication::RunMode &)
-{
-  m_configuration->init();
-  m_synthesizerManager->init();
-}
-
-void OrchestrionSynthesisModule::onAllInited(
-    const muse::IApplication::RunMode &)
-{
-  m_synthesizerManager->onAllInited();
-  m_synthesizerConnector->onAllInited();
+  globalIoc()->registerExport<ISynthesizerConnector>(moduleName(),
+                                                     m_synthesizerConnector);
+  globalIoc()->registerExport<ITrackChannelMapper>(moduleName(),
+                                                   new TrackChannelMapper);
+  globalIoc()->registerExport<ISynthesizerManager>(moduleName(),
+                                                   m_synthesizerManager);
+  globalIoc()->registerExport<IOrchestrionSynthesisConfiguration>(
+      moduleName(), m_configuration);
 }
 
 void OrchestrionSynthesisModule::onDelayedInit()
 {
   m_configuration->postInit();
+}
+
+muse::modularity::IContextSetup *OrchestrionSynthesisModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  hooks.onAllInited = [this](const muse::IApplication::RunMode &mode)
+  { onContextAllInited(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void OrchestrionSynthesisModule::onContextInit(
+    const muse::IApplication::RunMode &) const
+{
+  m_configuration->init();
+  m_synthesizerManager->init();
+}
+
+void OrchestrionSynthesisModule::onContextAllInited(
+    const muse::IApplication::RunMode &) const
+{
+  m_synthesizerManager->onAllInited();
+  m_synthesizerConnector->onAllInited();
 }
 } // namespace dgk

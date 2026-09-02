@@ -25,7 +25,7 @@
 
 namespace dgk
 {
-class ISynthesizerManager : MODULE_EXPORT_INTERFACE
+class ISynthesizerManager : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(ISynthesizerManager);
 

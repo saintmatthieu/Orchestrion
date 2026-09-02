@@ -18,9 +18,7 @@
  */
 #pragma once
 
-#include "OrchestrionNotationModule.h"
 #include "modularity/imodulesetup.h"
-
 #include <memory>
 
 namespace dgk
@@ -33,10 +31,12 @@ public:
   std::string moduleName() const override;
   void registerUiTypes() override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
 
 private:
+  void onContextInit(const muse::IApplication::RunMode &mode) const;
+
   std::shared_ptr<LoopBoundariesController> m_loopBoundariesController;
 };
-
 } // namespace dgk

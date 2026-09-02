@@ -20,44 +20,30 @@
 
 #include "CommandOptions.h"
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
-#include <global/iapplication.h>
-#include <modularity/imodulesetup.h>
-#include <modularity/ioc.h>
+
+#include <global/modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
+#include <ui/internal/guiapplication.h>
 
 namespace dgk
 {
-class OrchestrionApp : public muse::IApplication,
-                       public std::enable_shared_from_this<OrchestrionApp>
+/**
+ * The Orchestrion GUI application: the framework's GuiApplication (module
+ * lifecycle, the single IoC context, main window loading) with Orchestrion's
+ * main window and startup handling.
+ */
+class OrchestrionApp : public muse::ui::GuiApplication
 {
-  INJECT(mu::project::IProjectConfiguration, projectConfiguration);
-  INJECT(IOrchestrionStartupScenario, startupScenario);
+  muse::GlobalInject<mu::project::IProjectConfiguration> projectConfiguration;
+  muse::GlobalInject<IOrchestrionStartupScenario> startupScenario;
 
 public:
-  OrchestrionApp(CommandOptions options);
-
-  void addModule(muse::modularity::IModuleSetup *module);
-
-  muse::String name() const override { return muse::String{"Orchestrion"}; }
-  muse::String title() const override { return muse::String{"Orchestrion"}; }
-  bool unstable() const override { return true; }
-  muse::Version version() const override { return muse::Version(0, 0, 0); }
-  muse::Version fullVersion() const override { return muse::Version(0, 0, 0); }
-  muse::String build() const override { return muse::String{"0"}; }
-  muse::String revision() const override { return muse::String{"0"}; }
-  RunMode runMode() const override { return RunMode::GuiApp; }
-  bool noGui() const override { return false; }
-  void perform() override;
-  void finish() override {}
-  void restart() override {}
-  muse::modularity::ModulesIoC *ioc() const override;
-  const muse::modularity::ContextPtr iocContext() const override;
-  QWindow *focusWindow() const override;
-  bool notify(QObject *, QEvent *) override;
+  explicit OrchestrionApp(const std::shared_ptr<CommandOptions> &options);
 
 private:
-  const CommandOptions m_opts;
-  const std::shared_ptr<muse::modularity::Context> m_context;
-  QList<muse::modularity::IModuleSetup *> m_modules;
+  void applyCommandLineOptions(
+      const std::shared_ptr<muse::CmdOptions> &options) override;
+  QString mainWindowQmlPath(const QString &platform) const override;
+  void doStartupScenario(const muse::modularity::ContextPtr &ctx) override;
 };
 } // namespace dgk

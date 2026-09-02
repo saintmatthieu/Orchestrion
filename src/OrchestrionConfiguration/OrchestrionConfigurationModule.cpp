@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionConfigurationModule.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/OrchestrionConfiguration.h"
 
 namespace dgk
@@ -31,7 +32,17 @@ std::string OrchestrionConfigurationModule::moduleName() const
   return "OrchestrionConfiguration";
 }
 
-void OrchestrionConfigurationModule::onInit(const muse::IApplication::RunMode &)
+muse::modularity::IContextSetup *OrchestrionConfigurationModule::newContext(
+    const muse::modularity::ContextPtr &ctx) const
+{
+  ModuleContextSetup::Hooks hooks;
+  hooks.onInit = [this](const muse::IApplication::RunMode &mode)
+  { onContextInit(mode); };
+  return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void OrchestrionConfigurationModule::onContextInit(
+    const muse::IApplication::RunMode &) const
 {
   m_configuration->init();
 }

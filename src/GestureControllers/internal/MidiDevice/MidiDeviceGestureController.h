@@ -28,10 +28,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class MidiDeviceGestureController : public IGestureController,
-                                    public muse::Injectable,
+                                    public dgk::Injectable,
                                     public muse::async::Asyncable
 {
 public:
@@ -42,7 +43,7 @@ private:
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
 
-  muse::Inject<muse::midi::IMidiInPort> midiInPort;
+  dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
 };

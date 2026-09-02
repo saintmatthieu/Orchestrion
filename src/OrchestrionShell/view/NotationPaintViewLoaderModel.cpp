@@ -28,7 +28,7 @@ NotationPaintViewLoaderModel::NotationPaintViewLoaderModel(QObject *parent)
 
 void NotationPaintViewLoaderModel::init()
 {
-  playbackController()->isPlayAllowedChanged().onNotify(
-      this, [this]() { emit notationPaintViewReady(); });
+  playbackController()->isPlayAllowedChanged().onReceive(
+      this, [this](bool) { emit notationPaintViewReady(); });
 }
 } // namespace dgk

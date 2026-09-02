@@ -21,19 +21,20 @@
 #include "IOrchestrionSynthesisConfiguration.h"
 #include "IOrchestrionSynthesizer.h"
 #include "PolyphonicSynthesizerImpl.h"
-#include <audio/isoundfontrepository.h>
+#include <audio/engine/isoundfontrepository.h>
 #include <fluidsynth/types.h>
 
 #include <atomic>
 #include <memory>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class FluidSynthesizer : public IOrchestrionSynthesizer,
                          private PolyphonicSynthesizerImpl
 {
-  muse::Inject<muse::audio::ISoundFontRepository> soundFontRepository;
-  muse::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration;
+  dgk::Inject<muse::audio::synth::ISoundFontRepository> soundFontRepository{this};
+  dgk::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration{this};
 
 public:
   FluidSynthesizer(int sampleRate);

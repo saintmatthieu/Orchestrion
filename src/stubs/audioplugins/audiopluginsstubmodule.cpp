@@ -30,29 +30,47 @@ class KnownAudioPluginsRegisterStub : public IKnownAudioPluginsRegister
 {
 public:
   Ret load() override { return make_ok(); }
-
-  std::vector<AudioPluginInfo>
-  pluginInfoList(PluginInfoAccepted accepted) const override
+  Ret clear() override { return make_ok(); }
+  AudioPluginInfoList pluginInfoList(PluginInfoAccepted) const override
   {
     return {};
   }
-
-  const io::path_t &pluginPath(const audio::AudioResourceId &) const override
+  async::Notification pluginInfoListChanged() const override
+  {
+    return m_pluginInfoListChanged;
+  }
+  const io::path_t &pluginPath(const PluginResourceId &) const override
   {
     static io::path_t emptyPath;
     return emptyPath;
   }
-
   bool exists(const io::path_t &) const override { return false; }
-
-  bool exists(const audio::AudioResourceId &) const override { return false; }
-
-  Ret registerPlugin(const AudioPluginInfo &) override { return make_ok(); }
-
-  Ret unregisterPlugin(const audio::AudioResourceId &) override
+  bool exists(const PluginResourceId &) const override { return false; }
+  Ret registerPlugins(const AudioPluginInfoList &) override
   {
     return make_ok();
   }
+  Ret unregisterPlugins(const PluginResourceIdList &) override
+  {
+    return make_ok();
+  }
+  Ret setPluginsState(const io::paths_t &, AudioPluginState) override
+  {
+    return make_ok();
+  }
+  Ret removePluginsAtPath(const io::path_t &) override { return make_ok(); }
+  Ret writePluginsTo(const io::path_t &,
+                     const AudioPluginInfoList &) const override
+  {
+    return make_ok();
+  }
+  RetVal<AudioPluginInfoList> readPluginsFrom(const io::path_t &) const override
+  {
+    return RetVal<AudioPluginInfoList>::make_ok(AudioPluginInfoList{});
+  }
+
+private:
+  async::Notification m_pluginInfoListChanged;
 };
 } // namespace
 
@@ -63,7 +81,7 @@ std::string AudioPluginsModule::moduleName() const
 
 void AudioPluginsModule::registerExports()
 {
-  ioc()->registerExport<IKnownAudioPluginsRegister>(
+  globalIoc()->registerExport<IKnownAudioPluginsRegister>(
       moduleName(), new KnownAudioPluginsRegisterStub);
 }
 } // namespace muse::audioplugins

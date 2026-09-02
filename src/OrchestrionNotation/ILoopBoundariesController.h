@@ -28,7 +28,7 @@ namespace dgk
 //! score-view gestures (shift-click, context menu) or the loop-in/loop-out
 //! actions. All ticks are raw score ticks (without repeats), matching
 //! EngravingItem::tick().
-class ILoopBoundariesController : MODULE_EXPORT_INTERFACE
+class ILoopBoundariesController : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(ILoopBoundariesController);
 

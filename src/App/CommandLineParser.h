@@ -20,6 +20,7 @@
 
 #include <QCommandLineParser>
 #include <QStringList>
+#include <memory>
 
 #include "CommandOptions.h"
 
@@ -41,7 +42,7 @@ public:
   muse::IApplication::RunMode runMode() const;
 
   // CommandOptions
-  const CommandOptions &options() const;
+  std::shared_ptr<CommandOptions> options() const;
 
   // Tasks
   CommandOptions::ConverterTask converterTask() const;
@@ -53,6 +54,6 @@ private:
   void printLongVersion() const;
 
   QCommandLineParser m_parser;
-  CommandOptions m_options;
+  std::shared_ptr<CommandOptions> m_options = std::make_shared<CommandOptions>();
 };
 } // namespace dgk

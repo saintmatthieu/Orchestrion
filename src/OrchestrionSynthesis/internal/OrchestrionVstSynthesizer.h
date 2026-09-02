@@ -20,22 +20,26 @@
 
 #include "IOrchestrionSynthesizer.h"
 #include "PolyphonicSynthesizerImpl.h"
-#include <audio/audiotypes.h>
-#include <audio/isynthesizer.h>
-#include <vst/internal/vstaudioclient.h>
+
+#include <audio/common/audiotypes.h>
+#include <vst/ivstplugininstance.h>
+
+#include <memory>
 
 namespace muse::vst
 {
 class VstAudioClient;
 }
+
 namespace dgk
 {
 class OrchestrionVstSynthesizer : public IOrchestrionSynthesizer,
                                   private PolyphonicSynthesizerImpl
 {
 public:
-  OrchestrionVstSynthesizer(muse::vst::VstPluginPtr loadedVstPlugin,
-                            int sampleRate);
+  OrchestrionVstSynthesizer(muse::vst::IVstPluginInstancePtr loadedVstPlugin,
+                            const muse::audio::OutputSpec &spec);
+  ~OrchestrionVstSynthesizer();
 
 private:
   int sampleRate() const override;

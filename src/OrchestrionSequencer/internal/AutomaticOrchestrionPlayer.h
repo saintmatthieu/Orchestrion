@@ -28,15 +28,16 @@
 #include <modularity/ioc.h>
 #include <playback/iplaybackcontroller.h>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 class AutomaticOrchestrionPlayer : public IOrchestrionPlayer,
                                    public muse::async::Asyncable,
                                    public muse::actions::Actionable,
-                                   public muse::Injectable
+                                   public dgk::Injectable
 {
-  muse::Inject<mu::playback::IPlaybackController> playbackController;
-  muse::Inject<muse::actions::IActionsDispatcher> dispatcher;
+  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
+  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
 
 public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);

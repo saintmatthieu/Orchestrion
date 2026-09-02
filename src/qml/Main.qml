@@ -20,10 +20,11 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Controls 2.15
 
-import Muse.Ui 1.0
-import MuseScore.NotationScene 1.0
-import MuseScore.AppShell 1.0
-import Muse.Shortcuts 1.0
+import Muse.Ui as MUI // qualified, see the Muse.UiComponents import
+import Muse.UiComponents as MU // qualified: its MenuItem would shadow QtQuick.Controls'
+import Muse.Shortcuts as MS // qualified, see the Muse.UiComponents import
+import Muse.Interactive as MI // qualified, see the Muse.UiComponents import
+import Orchestrion.MuseScoreShell 1.0
 import Orchestrion.OrchestrionSequencer 1.0
 import Orchestrion.OrchestrionShell 1.0
 import Orchestrion.OrchestrionNotation 1.0
@@ -82,7 +83,7 @@ ApplicationWindow {
         }
     }
 
-    property var interactiveProvider: InteractiveProvider {
+    property var interactiveProvider: MI.InteractiveProvider {
         topParent: root
 
         onRequestedDockPage: function(uri, params) {
@@ -133,7 +134,7 @@ ApplicationWindow {
         onLoaded: item.window = root
     }
 
-    Shortcuts { }
+    MS.Shortcuts { }
 
     ColumnLayout {
 
@@ -142,7 +143,7 @@ ApplicationWindow {
 
         // The custom title bar (Windows/Linux only, see the flags comment
         // above). A Loader rather than a hidden item so that on macOS the
-        // in-window AppMenuBar — and the second menu model it would create —
+        // in-window menu bar — and the second menu model it would create —
         // never exists.
         Loader {
             id: titleBar
@@ -161,7 +162,7 @@ ApplicationWindow {
                     Layout.preferredHeight: 30
                 }
 
-                AppTitleBar {
+                OrchestrionTitleBar {
                     id: appTitleBar
 
                     Layout.fillWidth: true
@@ -188,9 +189,24 @@ ApplicationWindow {
             }
         }
 
-        NotationScrollAndZoomArea {
+        MU.StyledViewScrollAndZoomArea {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            horizontalScrollbarSize: notationPaintView.horizontalScrollbarSize
+            startHorizontalScrollPosition: notationPaintView.startHorizontalScrollPosition
+            verticalScrollbarSize: notationPaintView.verticalScrollbarSize
+            startVerticalScrollPosition: notationPaintView.startVerticalScrollPosition
+
+            onPinchToZoom: function(scale, pos) {
+                notationPaintView.pinchToZoom(scale, pos)
+            }
+            onScrollHorizontal: function(newPos) {
+                notationPaintView.scrollHorizontal(newPos)
+            }
+            onScrollVertical: function(newPos) {
+                notationPaintView.scrollVertical(newPos)
+            }
 
             OrchestrionNotationPaintView {
                 id: notationPaintView

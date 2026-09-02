@@ -19,52 +19,61 @@
 #pragma once
 
 #include "IOrchestrionSynthesizer.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
+
 #include <async/asyncable.h>
-#include <audio/isynthesizer.h>
+#include <audio/common/audiotypes.h>
+#include <audio/engine/isynthesizer.h>
 #include <modularity/ioc.h>
+
+#include <functional>
+#include <memory>
 
 namespace dgk
 {
 class IOrchestrionSynthesizer;
 
+/**
+ * Adapts an IOrchestrionSynthesizer to MuseScore's audio engine as an
+ * ISynthesizer. The engine drives process(); the note events come straight from
+ * Orchestrion's sequencer, not from the engine's playback data.
+ */
 class OrchestrionSynthesizerWrapper : public muse::audio::synth::ISynthesizer,
-                                      public muse::Injectable,
+                                      public dgk::Injectable,
                                       public muse::async::Asyncable
 {
 public:
   using SynthFactory = std::function<std::unique_ptr<IOrchestrionSynthesizer>(
-      unsigned int sampleRate)>;
+      const muse::audio::OutputSpec &spec)>;
 
-  OrchestrionSynthesizerWrapper(SynthFactory);
+  OrchestrionSynthesizerWrapper(SynthFactory,
+                                muse::audio::AudioInputParams params);
 
   // ISynthesizer
 private:
   std::string name() const override;
   muse::audio::AudioSourceType type() const override;
   bool isValid() const override;
-
+  void setMode(const muse::audio::ProcessMode mode) override;
+  muse::audio::ProcessMode mode() const override;
+  void setOutputSpec(const muse::audio::OutputSpec &spec) override;
   void setup(const muse::mpe::PlaybackData &playbackData) override;
   const muse::mpe::PlaybackData &playbackData() const override;
-
   const muse::audio::AudioInputParams &params() const override;
   muse::async::Channel<muse::audio::AudioInputParams>
   paramsChanged() const override;
-
-  muse::audio::msecs_t playbackPosition() const override;
-  void setPlaybackPosition(const muse::audio::msecs_t newPosition) override;
-
-  void revokePlayingNotes() override;
+  muse::audio::TimePosition playbackPosition() const override;
+  void setPlaybackPosition(const muse::audio::TimePosition &position) override;
+  void prepareToPlay() override;
+  bool readyToPlay() const override;
+  muse::async::Notification readyToPlayChanged() const override;
   void flushSound() override;
-
-  // IAudioSource
-private:
-  bool isActive() const override;
-  void setIsActive(bool arg) override;
-  void setSampleRate(unsigned int sampleRate) override;
-  unsigned int audioChannelsCount() const override;
-  muse::async::Channel<unsigned int> audioChannelsCountChanged() const override;
+  bool hasPendingChunks() const override;
+  void processInput() override;
+  muse::audio::InputProcessingProgress inputProcessingProgress() const override;
+  void clearCache() override;
   muse::audio::samples_t
   process(float *buffer, muse::audio::samples_t samplesPerChannel) override;
 
@@ -74,16 +83,15 @@ private:
   void sendNoteoffs(const NoteEvent *noteoffs, size_t numNoteoffs);
   void sendNoteons(const NoteEvent *noteons, size_t numNoteons);
 
-  muse::Inject<IOrchestrion> orchestrion;
+  dgk::Inject<IOrchestrion> orchestrion{this};
 
   muse::audio::AudioSourceParams m_params;
   muse::async::Channel<muse::audio::AudioInputParams> m_paramsChanged;
-  muse::audio::msecs_t m_playbackPosition = 0;
-  muse::async::Channel<unsigned int> m_audioChannelsCountChanged;
-  bool m_isActive = true;
-
+  muse::async::Notification m_readyToPlayChanged;
+  muse::audio::ProcessMode m_mode = muse::audio::ProcessMode::Undefined;
+  muse::audio::TimePosition m_playbackPosition;
   const SynthFactory m_synthFactory;
-  unsigned m_sampleRate = 0;
+  muse::audio::OutputSpec m_outputSpec;
   std::unique_ptr<IOrchestrionSynthesizer> m_synthesizer;
 };
 } // namespace dgk

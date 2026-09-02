@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include "ScoreAnimationModule.h"
 #include "modularity/imodulesetup.h"
+#include <memory>
 
 namespace dgk
 {
@@ -33,10 +33,11 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
-  void onInit(const muse::IApplication::RunMode &mode) override;
+  muse::modularity::IContextSetup *
+  newContext(const muse::modularity::ContextPtr &ctx) const override;
 
-private:
+  void onContextInit(const muse::IApplication::RunMode &mode) const;
+
   const std::shared_ptr<ScoreAnimator> m_scoreAnimator;
 };
-
 } // namespace dgk

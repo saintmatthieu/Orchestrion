@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 3.5)
-cmake_policy(SET CMP0000 NEW)
+if (APPLE)
+    # MuseScore requires 3.31 on macOS (incremental-build issues with older versions)
+    cmake_minimum_required(VERSION 3.31)
+else()
+    cmake_minimum_required(VERSION 3.28)
+endif()
 cmake_policy(SET CMP0079 NEW)
 
 # Set the project name and version
@@ -12,13 +16,14 @@ endif()
 project(Orchestrion VERSION ${ORCHESTRION_VERSION} LANGUAGES C CXX)
 
 # Find the Qt6 packages
-find_package(Qt6 6.9.1 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 # On Linux with GCC, some MuseScore source files use memset/memcpy without including <cstring>
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -26,14 +31,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 set(MuseScore_ROOT_DIR ${PROJECT_SOURCE_DIR}/MuseScore)
-set(MUSE_FRAMEWORK_PATH ${PROJECT_SOURCE_DIR}/MuseScore)
-set(MUSE_BUILD_UNIT_TESTS OFF)
-
-add_compile_definitions(LIBSNDFILE_SUPPORT)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
-include(vst3sdk.cmake)
+# The MuseScore fork, the Muse framework and their dependencies (see the file)
 include(MuseScore.cmake)
 
 # This statement must be after include(MuseScore.cmake), as it sets QT_INSTALL_LIBS
@@ -48,14 +49,6 @@ if (OS_IS_MAC)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Installation prefix for macOS" FORCE)
 else()
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation prefix for other OS" FORCE)
-endif()
-
-# Unit tests (off by default in this fork). The framework ships googletest but
-# only adds it from its own CMakeLists, which we don't include — so bring in the
-# gmock/gtest target here when tests are enabled, before the modules that use it.
-if (MUSE_ENABLE_UNIT_TESTS)
-    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-    add_subdirectory(MuseScore/src/framework/testing/thirdparty/googletest)
 endif()
 
 add_subdirectory(src/ExternalDevices)
@@ -113,6 +106,70 @@ if (OS_IS_WIN)
     target_sources(Orchestrion PRIVATE src/App/app.rc)
 endif()
 
+# MuseScore / Muse framework libraries (only those built in this configuration)
+set(MUSESCORE_LINK_LIBS ${QT_LIBRARIES} muse::global muse::draw)
+macro(add_to_link_if_exists lib)
+    if (TARGET ${lib})
+        list(APPEND MUSESCORE_LINK_LIBS ${lib})
+        if (TARGET ${lib}_qml)
+            list(APPEND MUSESCORE_LINK_LIBS ${lib}_qml)
+        endif()
+    endif()
+endmacro()
+add_to_link_if_exists(muse::accessibility)
+add_to_link_if_exists(muse::actions)
+add_to_link_if_exists(muse::rcommand)
+add_to_link_if_exists(muse::rcontrol)
+add_to_link_if_exists(muse::audio)
+add_to_link_if_exists(muse::audioplugins)
+add_to_link_if_exists(muse::testflow)
+add_to_link_if_exists(muse::automation)
+add_to_link_if_exists(muse::cloud)
+add_to_link_if_exists(muse::diagnostics)
+add_to_link_if_exists(muse::dockwindow)
+add_to_link_if_exists(muse::extensions)
+add_to_link_if_exists(muse::interactive)
+add_to_link_if_exists(muse::languages)
+add_to_link_if_exists(muse::learn)
+add_to_link_if_exists(muse::media)
+add_to_link_if_exists(muse::midi)
+add_to_link_if_exists(muse::midiremote)
+add_to_link_if_exists(muse::mpe)
+add_to_link_if_exists(muse::multiwindows)
+add_to_link_if_exists(muse::musesampler)
+add_to_link_if_exists(muse::network)
+add_to_link_if_exists(muse::shortcuts)
+add_to_link_if_exists(muse::toast)
+add_to_link_if_exists(muse::tours)
+add_to_link_if_exists(muse::ui)
+add_to_link_if_exists(muse::ui_dialogs_qml)
+add_to_link_if_exists(muse::uicomponents)
+add_to_link_if_exists(muse::uicomponents_qmlapi)
+add_to_link_if_exists(muse::graphicaleffects_qml)
+add_to_link_if_exists(muse::legacytreeview_qml)
+add_to_link_if_exists(muse::update)
+add_to_link_if_exists(muse::vst)
+add_to_link_if_exists(muse::workspace)
+add_to_link_if_exists(appshell)
+add_to_link_if_exists(braille)
+add_to_link_if_exists(context)
+add_to_link_if_exists(engraving)
+add_to_link_if_exists(iex_midi)
+add_to_link_if_exists(iex_musicxml)
+add_to_link_if_exists(iex_mei)
+add_to_link_if_exists(iex_mnx)
+add_to_link_if_exists(iex_ove)
+add_to_link_if_exists(propertiespanel)
+add_to_link_if_exists(instrumentsscene)
+add_to_link_if_exists(musesounds)
+add_to_link_if_exists(notation)
+add_to_link_if_exists(notationscene)
+add_to_link_if_exists(palette)
+add_to_link_if_exists(playback)
+add_to_link_if_exists(preferences)
+add_to_link_if_exists(print)
+add_to_link_if_exists(project)
+
 target_link_libraries(Orchestrion PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -122,34 +179,7 @@ target_link_libraries(Orchestrion PRIVATE
     Qt6::QuickLayouts
     Qt6::Widgets
 
-    vst3sdk::sdk
-    vst3sdk::sdk_hosting
-
-    muse_actions
-    muse_accessibility
-    muse_audio
-    muse_audioplugins
-    commonscene
-    context
-    muse_draw
-    engraving
-    muse_extensions
-    muse_global
-    iex_midi
-    iex_musicxml
-    muse_languages
-    muse_midi
-    muse_mpe
-    muse_multiinstances
-    muse_network
-    playback
-    project
-    muse_shortcuts
-    muse_ui
-    muse_uicomponents
-    muse_update
-    muse_vst
-    muse_workspace
+    ${MUSESCORE_LINK_LIBS}
 
     ExternalDevices
     GestureControllers
@@ -165,13 +195,6 @@ target_link_libraries(Orchestrion PRIVATE
 
 if (OS_IS_WIN)
     target_link_libraries(Orchestrion PRIVATE runtimeobject)
-endif()
-
-# On Linux, static library link order matters. The VST3 SDK's vst_sdk_3 (built by MuseScore)
-# depends on symbols in sdk_common (built by the fetched VST3 SDK), but CMake places
-# sdk_common before vst_sdk_3. Declaring the dependency ensures correct link ordering.
-if (OS_IS_LIN)
-    target_link_libraries(vst_sdk_3 PRIVATE sdk_common)
 endif()
 
 # Add QML files to the project (for IDEs and resource system).
@@ -196,6 +219,10 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/GoldOrnament.qml"
     QML_FILES "src/qml/MacMenuBar.qml"
     QML_FILES "src/qml/MacWindowChrome.qml"
+    QML_FILES "src/qml/OrchestrionTitleBar.qml"
+    QML_FILES "src/qml/OrchestrionMenuBar.qml"
+    QML_FILES "src/qml/OrchestrionSystemButtons.qml"
+    QML_FILES "src/qml/OrchestrionIcon.qml"
     QML_FILES "src/qml/Theme.qml"
 )
 
@@ -206,22 +233,6 @@ qt_add_resources(RESOURCES src/OrchestrionSequencer/OrchestrionSequencer.qrc)
 target_sources(Orchestrion PRIVATE
     ${RESOURCES}
 )
-
-# Install soundfonts
-if (OS_IS_MAC)
-    # Override this
-    # SET(Mscore_SHARE_NAME      "mscore.app/")
-    SET(Mscore_SHARE_NAME "Orchestrion.app/")
-    SET(Mscore_INSTALL_NAME "Contents/Resources/")
-elseif (OS_IS_LIN)
-    SET(Mscore_SHARE_NAME "share/")
-    SET(Mscore_INSTALL_NAME "")
-elseif (OS_IS_WIN)
-    SET(Mscore_SHARE_NAME "./")
-    SET(Mscore_INSTALL_NAME "")
-endif()
-add_subdirectory(MuseScore/share/sound)
-add_subdirectory(MuseScore/share/instruments)
 
 add_subdirectory(DSPFilters/shared/DSPFilters)
 
@@ -273,7 +284,7 @@ find_program(LUPDATE_EXECUTABLE lupdate HINTS "${QT_INSTALL_PREFIX}/bin" REQUIRE
 add_custom_target(lupdate
     COMMAND ${LUPDATE_EXECUTABLE}
             ${CMAKE_SOURCE_DIR}/src
-            ${CMAKE_SOURCE_DIR}/MuseScore/src/framework
+            ${CMAKE_SOURCE_DIR}/MuseScore/muse/framework
             -tr-function-alias QT_TRANSLATE_NOOP+=TranslatableString
             -tr-function-alias translate+=trc
             -tr-function-alias translate+=qtrc
@@ -290,24 +301,13 @@ install(
 )
 
 install(DIRECTORY ${QT_INSTALL_PREFIX}/translations/
-    DESTINATION ${Mscore_SHARE_NAME}${Mscore_INSTALL_NAME}locale
+    DESTINATION ${resource_install_dir}/locale
     FILES_MATCHING
     REGEX "qt_.*\\.qm"
     REGEX "qt_help_.*\\.qm" EXCLUDE
     REGEX "qtbase_.*\\.qm"
     REGEX "qt*_en\\.qm" EXCLUDE)
 ### TRANSLATIONS ###
-
-if (OS_IS_WIN)
-    if (SNDFILE_DLL)
-        install(FILES ${SNDFILE_DLL} DESTINATION bin)
-        # add the LIBSNDFILE_SUPPORT definition
-        add_custom_command(TARGET Orchestrion POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SNDFILE_DLL} $<TARGET_FILE_DIR:Orchestrion>)
-    else()
-        message(FATAL_ERROR "libsndfile is needed by fluidsynth to load soundfonts")
-    endif()
-endif()
 
 # Added last so its cmake_install.cmake is included after every other
 # subdirectory's — only then can we strip vendored dev artifacts that those

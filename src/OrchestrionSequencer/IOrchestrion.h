@@ -37,7 +37,7 @@ enum class PlayMode
   metronome,
 };
 
-class IOrchestrion : MODULE_EXPORT_INTERFACE
+class IOrchestrion : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrion);
 

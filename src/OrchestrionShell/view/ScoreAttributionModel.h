@@ -21,13 +21,15 @@
 #include "async/asyncable.h"
 #include "context/iglobalcontext.h"
 #include "global/iglobalconfiguration.h"
-#include "global/iinteractive.h"
+#include "interactive/iinteractive.h"
+#include "interactive/iplatforminteractive.h"
 #include "modularity/ioc.h"
 
 #include <QHash>
 #include <QObject>
 #include <QString>
 
+#include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
 /*!
@@ -39,13 +41,16 @@ namespace dgk
  * file up in that manifest and, if found, emits attributionRequired() so the
  * UI can show a transient toast.
  */
-class ScoreAttributionModel : public QObject, public muse::async::Asyncable
+class ScoreAttributionModel : public QObject,
+                              public dgk::Injectable,
+                              public muse::async::Asyncable
 {
   Q_OBJECT
 
-  muse::Inject<mu::context::IGlobalContext> context;
-  muse::Inject<muse::IGlobalConfiguration> globalConfiguration;
-  muse::Inject<muse::IInteractive> interactive;
+  dgk::Inject<mu::context::IGlobalContext> context{this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
+  dgk::Inject<muse::IInteractive> interactive{this};
+  dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
 
   Q_PROPERTY(QString author READ author NOTIFY attributionChanged)
   Q_PROPERTY(QString license READ license NOTIFY attributionChanged)
