@@ -23,7 +23,7 @@ env:
   # Version baked into the installers (MSI ProductVersion etc.). Tag-triggered
   # runs inject the tag into CMake so it is the single source of truth; other
   # runs pass nothing and get the 0.0.0 dev fallback from CMakeLists.txt.
-  CMAKE_VERSION_ARG: ${{ startsWith(github.ref, 'refs/tags/v') && format('-DORCHESTRION_VERSION={0}', github.ref_name) || '' }}
+  CMAKE_VERSION_ARG: ${{ startsWith(github.ref, 'refs/tags/v') && format('"-DORCHESTRION_VERSION={0}"', github.ref_name) || '' }}
 
 jobs:
   build_win:
