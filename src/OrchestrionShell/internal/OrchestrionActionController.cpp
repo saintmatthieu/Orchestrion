@@ -267,12 +267,18 @@ bool OrchestrionActionController::closeProjectBeforeQuit() const
       onFileSave();
   }
 
-  // Close the project before the application is torn down, as MuseScore's own
-  // quit command does: this stops playback, asks about unsaved score changes,
-  // and lets the services detach from the score while it is still alive.
-  // (Tearing the context down with the project still open destroys the score
-  // while the playback controller is still being notified of the change.)
-  return projectFilesController()->closeOpenedProject(false);
+  // Close the project before the application is torn down, so that the
+  // services detach from the score while it is still alive (tearing the
+  // context down with the project still open destroyed the score while the
+  // playback controller was still being notified of the change). Not through
+  // MuseScore's closeOpenedProject(): that asks whether to save the "changes"
+  // of any imported (e.g. MusicXML) score, a question Orchestrion, which does
+  // not edit scores, has no business asking.
+  if (orchestrion()->player()->IsPlaying())
+    dispatcher()->dispatch(actionIds::playbackStop);
+  interactive()->closeAllDialogsSync();
+  globalContext()->setCurrentProject(nullptr);
+  return true;
 }
 
 muse::io::path_t OrchestrionActionController::fallbackPath() const
