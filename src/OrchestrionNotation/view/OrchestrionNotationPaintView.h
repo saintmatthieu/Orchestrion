@@ -137,6 +137,7 @@ signals:
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
+  void onUnloadNotation(mu::notation::INotationPtr notation) override;
   void onMatrixChanged(const muse::draw::Transform &oldMatrix,
                        const muse::draw::Transform &newMatrix,
                        bool overrideZoomType = true) override;

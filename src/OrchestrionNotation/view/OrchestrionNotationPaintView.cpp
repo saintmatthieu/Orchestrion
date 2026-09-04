@@ -1082,6 +1082,17 @@ void OrchestrionNotationPaintView::onLoadNotation(
   // We want hover events, which NotationPaintView::onLoadNotation may have set
   // to false.
   setAcceptHoverEvents(true);
+  updateNotation();
+}
+
+void OrchestrionNotationPaintView::onUnloadNotation(
+    mu::notation::INotationPtr notation)
+{
+  mu::notation::NotationPaintView::onUnloadNotation(std::move(notation));
+  // The score was closed (a replacement gets updateNotation() from
+  // onLoadNotation): reset the per-score state.
+  if (!globalContext()->currentNotation())
+    updateNotation();
 }
 
 bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
@@ -1578,14 +1589,6 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   if (sequencer && registry)
     subscribe(*sequencer, *registry);
 
-  globalContext()->currentNotationChanged().onNotify(
-      this,
-      [this]
-      {
-        AbstractNotationPaintView::onNotationSetup();
-        updateNotation();
-      });
-
   sequencerConfiguration()->noteInfoTooltipEnabledChanged().onNotify(
       this,
       [this]
@@ -1688,8 +1691,7 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
   sequencerConfiguration()->gradingEnabledChanged().onNotify(this,
                                                              applyGradingMode);
 
-  load();
-  updateNotation();
+  load(); // sets up the notation; see onLoadNotation / onUnloadNotation
 
   const auto interaction = notationInteraction();
   IF_ASSERT_FAILED(interaction) { return; }
