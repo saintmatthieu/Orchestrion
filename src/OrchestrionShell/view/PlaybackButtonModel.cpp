@@ -32,7 +32,8 @@ void PlaybackButtonModel::load()
   const auto subscribeToPlayer = [this]
   {
     orchestrion()->player()->PlayingChanged().onNotify(
-        this, [this] { emit isPlayingChanged(); });
+        this, [this] { emit isPlayingChanged(); },
+        muse::async::Asyncable::Mode::SetReplace);
     // The swap itself may have changed the state (a playing player died).
     emit isPlayingChanged();
   };

@@ -113,7 +113,8 @@ void OrchestrionNotationPaintView::subscribe(
         update();
       });
 
-  registry.ModifiedChanged().onNotify(this, [this] { update(); });
+  registry.ModifiedChanged().onNotify(this, [this] { update(); },
+                                     muse::async::Asyncable::Mode::SetReplace);
 
   // The raw controller velocity of each gesture, for the dynamics scoring:
   // the event precedes the transitions batch the gesture causes.

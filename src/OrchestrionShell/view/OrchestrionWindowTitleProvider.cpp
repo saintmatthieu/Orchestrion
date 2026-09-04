@@ -81,7 +81,11 @@ void OrchestrionWindowTitleProvider::load()
       [this]()
       {
         if (const auto registry = orchestrion()->modifiableItemRegistry())
-          registry->ModifiedChanged().onNotify(this, [this]() { update(); });
+          // The registry may be the same object as before (e.g. when the
+          // score was closed): replace rather than add.
+          registry->ModifiedChanged().onNotify(
+              this, [this]() { update(); },
+              muse::async::Asyncable::Mode::SetReplace);
       });
 }
 

@@ -44,7 +44,8 @@ void PolyphonicSynthesizerImpl::Setup()
       {
         if (!orchestrion()->player()->IsPlaying())
           doAllNotesOff();
-      });
+      },
+      muse::async::Asyncable::Mode::SetReplace);
 }
 
 int PolyphonicSynthesizerImpl::GetChannel(const TrackIndex &voice) const
