@@ -128,11 +128,9 @@ void OrchestrionShellModule::onContextInit(
 {
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
-  m_playbackDeviceMenuManager->init();
   m_orchestrionEventProcessor->init();
   m_orchestrionUiActions->init();
   m_orchestrionActionController->init();
-  m_midiControllerMenuManager->init();
   m_orchestrionStartupScenario->init();
   m_sleepInhibitor->init();
 }

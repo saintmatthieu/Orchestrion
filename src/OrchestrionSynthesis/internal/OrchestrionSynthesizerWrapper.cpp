@@ -59,7 +59,7 @@ void OrchestrionSynthesizerWrapper::setupCallback(
     const IOrchestrionSequencer &sequencer)
 {
   sequencer.OutputEvent().onReceive(this, [this](EventVariant event)
-                                    { processEvent(event); });
+                                    { processEvent(event); }, Asyncable::Mode::SetReplace);
 }
 
 void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
