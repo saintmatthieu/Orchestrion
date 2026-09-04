@@ -114,8 +114,10 @@ Item {
         menuItem.id = itemInfo.id
         menuItem.text = itemInfo.title + "\t" + itemInfo.portableShortcuts
         menuItem.enabled = itemInfo.enabled
-        menuItem.checked = itemInfo.checked
-        menuItem.checkable = itemInfo.checkable
+        // Native menu items only know "checked"; the model's selectable items
+        // (the device choices) carry their state in "selected".
+        menuItem.checkable = itemInfo.checkable || itemInfo.selectable
+        menuItem.checked = itemInfo.checked || (itemInfo.selectable && itemInfo.selected)
         menuItem.separator = !Boolean(itemInfo.title)
         menuItem.role = itemInfo.role
     }
