@@ -17,14 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionActionController.h"
-#include <engraving/editing/transaction/undostack.h>
-#include <engraving/dom/masterscore.h>
 #include <notation/imasternotation.h>
 #include <project/inotationproject.h>
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <async/async.h>
-#include <engraving/dom/masterscore.h>
-#include <notation/imasternotation.h>
 
 #include <QApplication>
 #include <QWindow>
@@ -232,7 +228,7 @@ bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
       event->type() == QEvent::Close && watched == mainWindow()->qWindow();
   if (mainWindowClosing || event->type() == QEvent::Quit)
   {
-    if (!closeProjectBeforeQuit())
+    if (!closeCurrentProject())
     {
       // Cancel the close / quit
       event->ignore();
@@ -242,7 +238,7 @@ bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
   return QObject::eventFilter(watched, event);
 }
 
-bool OrchestrionActionController::closeProjectBeforeQuit() const
+bool OrchestrionActionController::closeCurrentProject() const
 {
   if (!globalContext()->currentProject())
     return true;
@@ -267,13 +263,13 @@ bool OrchestrionActionController::closeProjectBeforeQuit() const
       onFileSave();
   }
 
-  // Close the project before the application is torn down, so that the
-  // services detach from the score while it is still alive (tearing the
-  // context down with the project still open destroyed the score while the
-  // playback controller was still being notified of the change). Not through
-  // MuseScore's closeOpenedProject(): that asks whether to save the "changes"
-  // of any imported (e.g. MusicXML) score, a question Orchestrion, which does
-  // not edit scores, has no business asking.
+  // Not through MuseScore's closeOpenedProject(): that asks whether to save
+  // the "changes" of any imported (e.g. MusicXML) score, a question
+  // Orchestrion, which does not edit scores, has no business asking. (On quit,
+  // closing the project here rather than leaving it to the context teardown
+  // also lets the services detach from the score while it is still alive;
+  // tearing the context down with the project open destroyed the score while
+  // the playback controller was still being notified of the change.)
   if (orchestrion()->player()->IsPlaying())
     dispatcher()->dispatch(actionIds::playbackStop);
   interactive()->closeAllDialogsSync();
@@ -360,19 +356,9 @@ void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const
 void OrchestrionActionController::openProject(
     const mu::project::ProjectFile &projectFile) const
 {
-  const IModifiableItemRegistryPtr registry =
-      orchestrion()->modifiableItemRegistry();
-  if (const auto notation = globalContext()->currentMasterNotation())
-    if (!registry->Modified())
-    {
-      registry->RevertToLastSaved();
-      // We don't want to get the "Would you like to save?"
-      // dialog.
-      notation->masterScore()->undoStack()->markClean();
-    }
-
-  constexpr auto closeApp = false;
-  projectFilesController()->closeOpenedProject(closeApp);
+  // MuseScore opens a second window if a project is still open in this one.
+  if (!closeCurrentProject())
+    return;
 
   projectConfiguration()->setLastOpenedProjectsPath(projectFile.path());
 

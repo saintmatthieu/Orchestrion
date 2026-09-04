@@ -63,10 +63,12 @@ public:
 private:
   bool eventFilter(QObject *obj, QEvent *event) override;
   /**
-   * Closes the open project ahead of the application quitting, asking about
-   * unsaved changes. Returns false if the user cancelled.
+   * Closes the current project, if any, asking about Orchestrion's unsaved
+   * modifications (not about MuseScore's notion of unsaved changes, which
+   * counts every imported score). Used before opening another score and
+   * before quitting. Returns false if the user cancelled.
    */
-  bool closeProjectBeforeQuit() const;
+  bool closeCurrentProject() const;
 
   void onFileOpen(const muse::actions::ActionData &data) const;
   void onFileSave() const;
