@@ -17,6 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "FluidSynthesizer.h"
+#include <engine/internal/codecs/vorbisdecoder.h>
+#include <thirdparty/fluidsynth/vorbis_decode.h>
 
 #include "framework/global/log.h"
 #include <fluidsynth.h>
@@ -34,6 +36,38 @@ namespace dgk
 {
 namespace
 {
+/**
+ * The vendored FluidSynth decodes SF3 (Vorbis-compressed) samples through a
+ * pluggable decoder, which MuseScore's own FluidResolver installs on
+ * construction and uninstalls on destruction. Orchestrion replaces that
+ * resolver with its own, so it has to provide the decoder itself; without it
+ * every sample fails to load and the notes are silent. Also routes
+ * FluidSynth's log (stderr by default) into the application log.
+ */
+void ensureFluidSynthSupport()
+{
+  using namespace muse::audio;
+  if (!fluid::FluidVorbisDecoder::decoder)
+    // Intentionally never deleted: a process-wide singleton.
+    fluid::FluidVorbisDecoder::decoder = new codec::VorbisDecoder();
+
+  static const bool logInstalled = []
+  {
+    const auto log = [](int level, const char *message, void *)
+    {
+      if (level == FLUID_WARN)
+        LOGW() << "fluidsynth: " << message;
+      else
+        LOGE() << "fluidsynth: " << message;
+    };
+    fluid_set_log_function(FLUID_PANIC, log, nullptr);
+    fluid_set_log_function(FLUID_ERR, log, nullptr);
+    fluid_set_log_function(FLUID_WARN, log, nullptr);
+    return true;
+  }();
+  (void)logInstalled;
+}
+
 constexpr double globalVolumeGain = 4.8;
 constexpr int defaultMidiVolume = 100;
 constexpr int minNoteLenMs = 10;
@@ -67,6 +101,8 @@ ReverbParams reverbParamsFor(ReverbPreset preset)
 
 FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
 {
+  ensureFluidSynthSupport();
+
   m_fluidSettings = new_fluid_settings();
   fluid_settings_setnum(m_fluidSettings, "synth.gain", globalVolumeGain);
   fluid_settings_setint(m_fluidSettings, "synth.audio-channels",
@@ -95,7 +131,10 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
   const muse::audio::synth::SoundFontsMap &soundFonts =
       soundFontRepository()->soundFonts();
   for (const auto &[uri, meta] : soundFonts)
-    fluid_synth_sfload(m_fluidSynth, meta.path.c_str(), 0);
+  {
+    if (fluid_synth_sfload(m_fluidSynth, meta.path.c_str(), 0) == FLUID_FAILED)
+      LOGE() << "failed to load soundfont " << meta.path;
+  }
 
   fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
 
@@ -180,7 +219,9 @@ void FluidSynthesizer::onNoteOns(size_t numNoteons, const TrackIndex *channels,
     const auto success =
         fluid_synth_noteon(m_fluidSynth, GetChannel(channels[i]), pitches[i],
                            velocities[i] * 127 + .5f) == FLUID_OK;
-    assert(success);
+    if (!success)
+      LOGE() << "fluid_synth_noteon failed (channel " << GetChannel(channels[i])
+             << ", pitch " << pitches[i] << ")";
   }
 }
 
@@ -194,7 +235,8 @@ void FluidSynthesizer::onNoteOffs(size_t numNoteoffs,
         fluid_synth_noteoff(m_fluidSynth, GetChannel(channels[i]),
                             pitches[i]) == FLUID_OK;
     if (!success)
-      LOGE() << "fluid_synth_noteoff failed";
+      LOGE() << "fluid_synth_noteoff failed (channel " << GetChannel(channels[i])
+             << ", pitch " << pitches[i] << ")";
   }
 }
 
