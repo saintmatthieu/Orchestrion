@@ -62,6 +62,11 @@ public:
 
 private:
   bool eventFilter(QObject *obj, QEvent *event) override;
+  /**
+   * Closes the open project ahead of the application quitting, asking about
+   * unsaved changes. Returns false if the user cancelled.
+   */
+  bool closeProjectBeforeQuit() const;
 
   void onFileOpen(const muse::actions::ActionData &data) const;
   void onFileSave() const;

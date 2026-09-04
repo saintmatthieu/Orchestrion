@@ -228,40 +228,51 @@ void OrchestrionActionController::reloadForGrading()
 
 bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
 {
-  if ((event->type() == QEvent::Close && watched == mainWindow()->qWindow()) ||
-      event->type() == QEvent::Quit)
+  const bool mainWindowClosing =
+      event->type() == QEvent::Close && watched == mainWindow()->qWindow();
+  if (mainWindowClosing || event->type() == QEvent::Quit)
   {
-    constexpr auto closeApp = true;
-    const IModifiableItemRegistryPtr registry =
-        orchestrion()->modifiableItemRegistry();
-    if (registry && registry->Modified())
+    if (!closeProjectBeforeQuit())
     {
-      // Orchestrion's own modifications (recorded velocities, ...) are not
-      // in the score's undo stack, so MuseScore wouldn't ask about them.
-      using muse::IInteractive;
-      const IInteractive::Result result = interactive()->questionSync(
-          muse::trc("project", "Save changes to the score before closing?"),
-          muse::trc("project", "Your changes will be lost if you don't save them."),
-          IInteractive::Buttons{IInteractive::Button::Save,
-                                IInteractive::Button::Discard,
-                                IInteractive::Button::Cancel},
-          IInteractive::Button::Save);
-      if (result.standardButton() == IInteractive::Button::Cancel)
-      {
-        // Cancel the close event
-        event->setAccepted(true);
-        return true;
-      }
-      if (result.standardButton() == IInteractive::Button::Save)
-        onFileSave();
-      if (!projectFilesController()->closeOpenedProject(closeApp))
-      {
-        event->setAccepted(true);
-        return true;
-      }
+      // Cancel the close / quit
+      event->ignore();
+      return true;
     }
   }
   return QObject::eventFilter(watched, event);
+}
+
+bool OrchestrionActionController::closeProjectBeforeQuit() const
+{
+  if (!globalContext()->currentProject())
+    return true;
+
+  const IModifiableItemRegistryPtr registry =
+      orchestrion()->modifiableItemRegistry();
+  if (registry && registry->Modified())
+  {
+    // Orchestrion's own modifications (recorded velocities, ...) are not
+    // in the score's undo stack, so MuseScore wouldn't ask about them.
+    using muse::IInteractive;
+    const IInteractive::Result result = interactive()->questionSync(
+        muse::trc("project", "Save changes to the score before closing?"),
+        muse::trc("project", "Your changes will be lost if you don't save them."),
+        IInteractive::Buttons{IInteractive::Button::Save,
+                              IInteractive::Button::Discard,
+                              IInteractive::Button::Cancel},
+        IInteractive::Button::Save);
+    if (result.standardButton() == IInteractive::Button::Cancel)
+      return false;
+    if (result.standardButton() == IInteractive::Button::Save)
+      onFileSave();
+  }
+
+  // Close the project before the application is torn down, as MuseScore's own
+  // quit command does: this stops playback, asks about unsaved score changes,
+  // and lets the services detach from the score while it is still alive.
+  // (Tearing the context down with the project still open destroys the score
+  // while the playback controller is still being notified of the change.)
+  return projectFilesController()->closeOpenedProject(false);
 }
 
 muse::io::path_t OrchestrionActionController::fallbackPath() const
