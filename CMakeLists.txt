@@ -25,7 +25,7 @@ else()
 endif()
 
 # Find the Qt6 packages
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)

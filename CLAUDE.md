@@ -12,7 +12,7 @@ Git LFS is used for `*.jpg` (see `.gitattributes`) — run `git lfs pull` after 
 
 ## Build
 
-CMake 3.28+ (3.31+ on macOS) + Ninja, Qt 6.8+ (CI: 6.9.1; local Macs: 6.10.x), C++20 (upstream wants AppleClang 21 / GCC 14 / MSVC 19.40; AppleClang 17 works, the version check only warns). Allman braces (`.clang-format`) for Orchestrion code.
+CMake 3.28+ (3.31+ on macOS) + Ninja, Qt 6.10+ (CI: 6.10.2; local Macs: 6.10.x — upstream declares 6.8 but its framework uses 6.10 API), C++20 (upstream wants AppleClang 21 / GCC 14 / MSVC 19.40; AppleClang 17 works, the version check only warns). Allman braces (`.clang-format`) for Orchestrion code.
 
 Third-party dependencies (zlib, freetype, harfbuzz, libpng, the VST3 SDK sources, ...) come from `muse_deps`: `MuseScore.cmake` includes `muse_deps/buildtools/manifest.cmake` and the framework's `ExtDepsManifest.cmake`, which download prebuilt archives into `<build>/_deps` at configure time and install the shared ones into the bundle (`extdeps_install_consumed`). No libsndfile is needed anymore (FluidSynth decodes SF3 with the vendored vorbis decoder).
 
