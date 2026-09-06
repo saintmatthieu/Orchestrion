@@ -22,7 +22,11 @@
 #include <log.h>
 
 #include <algorithm>
+#ifdef _WIN32
+#include <malloc.h> // alloca
+#else
 #include <alloca.h>
+#endif
 
 namespace dgk
 {
