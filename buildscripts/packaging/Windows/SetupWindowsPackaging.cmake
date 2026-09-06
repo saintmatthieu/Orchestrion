@@ -16,6 +16,8 @@ set(MUSE_APP_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set(MUSE_APP_VERSION "${PROJECT_VERSION}")
 set(MUSE_APP_TITLE_VERSION "Orchestrion") # Add/Remove Programs name, Start-menu folder
 set(MUSE_APP_NAME_VERSION "Orchestrion")  # install directory under Program Files
+set(MUSE_APP_NAME "${MUSE_APP_NAME_MACHINE_READABLE}")  # executable name
+set(MUSE_APP_TITLE "${MUSE_APP_NAME_HUMAN_READABLE}")   # installer strings
 
 #! NOTE: the following is true for cmake version 3.30.5. When upgrading cmake,
 #! consider removing this if block.
