@@ -20,13 +20,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionWindowTitleProvider.h"
-#include <notation/inotation.h>
-#include <project/inotationproject.h>
-#include <project/types/projectmeta.h>
-#include "OrchestrionSequencer/IModifiableItemRegistry.h"
 #include "OrchestrionShell/internal/MuseScorePlaceholderMetaTags.h"
 #include "io/path.h"
-#include "translation.h"
+#include <project/inotationproject.h>
+#include <project/types/projectmeta.h>
 
 #include <QStringList>
 #include <algorithm>
@@ -64,32 +61,12 @@ void OrchestrionWindowTitleProvider::load()
       this,
       [this]()
       {
+        update();
         if (auto currentProject = context()->currentProject())
-        {
           currentProject->displayNameChanged().onNotify(this,
                                                         [this]() { update(); });
-
-          currentProject->needSaveChanged().onNotify(this, [this]()
-                                                    { update(); });
-        }
-      });
-
-  context()->currentNotationChanged().onNotify(this, [this]() { update(); });
-
-  orchestrion()->sequencerChanged().onNotify(
-      this,
-      [this]()
-      {
-        if (const auto registry = orchestrion()->modifiableItemRegistry())
-          // The registry may be the same object as before (e.g. when the
-          // score was closed): replace rather than add.
-          registry->ModifiedChanged().onNotify(
-              this, [this]() { update(); },
-              muse::async::Asyncable::Mode::SetReplace);
       });
 }
-
-QString OrchestrionWindowTitleProvider::title() const { return m_title; }
 
 QString OrchestrionWindowTitleProvider::scoreTitle() const
 {
@@ -99,24 +76,6 @@ QString OrchestrionWindowTitleProvider::scoreTitle() const
 QString OrchestrionWindowTitleProvider::scoreComposer() const
 {
   return m_scoreComposer;
-}
-
-QString OrchestrionWindowTitleProvider::filePath() const { return m_filePath; }
-
-bool OrchestrionWindowTitleProvider::fileModified() const
-{
-  return m_fileModified;
-}
-
-void OrchestrionWindowTitleProvider::setTitle(const QString &title)
-{
-  if (title == m_title)
-  {
-    return;
-  }
-
-  m_title = title;
-  emit titleChanged(title);
 }
 
 void OrchestrionWindowTitleProvider::setScoreTitle(const QString &scoreTitle)
@@ -142,48 +101,16 @@ void OrchestrionWindowTitleProvider::setScoreComposer(
   emit scoreComposerChanged(scoreComposer);
 }
 
-void OrchestrionWindowTitleProvider::setFilePath(const QString &filePath)
-{
-  if (filePath == m_filePath)
-  {
-    return;
-  }
-
-  m_filePath = filePath;
-  emit filePathChanged(filePath);
-}
-
-void OrchestrionWindowTitleProvider::setFileModified(bool fileModified)
-{
-  if (fileModified == m_fileModified)
-  {
-    return;
-  }
-
-  m_fileModified = fileModified;
-  emit fileModifiedChanged(fileModified);
-}
-
 void OrchestrionWindowTitleProvider::update()
 {
   const mu::project::INotationProjectPtr project = context()->currentProject();
-  const auto notation = context()->currentNotation();
-
-  if (!project || !notation)
+  if (!project)
   {
-    setTitle(muse::qtrc("appshell", "Orchestrion"));
     setScoreTitle("");
     setScoreComposer("");
-    setFilePath("");
-    setFileModified(false);
     return;
   }
 
-  auto title = notation->projectNameAndPartName();
-  if (const auto registry = orchestrion()->modifiableItemRegistry();
-      registry->Modified())
-    title += " *";
-  setTitle(title);
   const mu::project::ProjectMeta meta = project->metaInfo();
   QString scoreTitle = meta.title.simplified();
   if (isPlaceholder(scoreTitle, musescore_placeholders::titles))
@@ -210,10 +137,5 @@ void OrchestrionWindowTitleProvider::update()
         !isPlaceholder(simplified, musescore_placeholders::composers))
       composerLines << simplified;
   setScoreComposer(composerLines.join(QStringLiteral(" \u00B7 ")));
-
-  setFilePath((project->isNewlyCreated() || project->isCloudProject())
-                  ? ""
-                  : project->path().toQString());
-  setFileModified(project->isNeedSave());
 }
 } // namespace dgk

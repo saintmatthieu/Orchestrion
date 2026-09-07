@@ -21,14 +21,17 @@
  */
 #pragma once
 
-#include "OrchestrionSequencer/IOrchestrion.h"
-
 #include "async/asyncable.h"
 #include "context/iglobalcontext.h"
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
+/**
+ * Exposes the current score's title and composer to QML, for the ornament
+ * above the notation. The window title itself is a constant: it deliberately
+ * shows neither the file name nor a modified marker.
+ */
 class OrchestrionWindowTitleProvider : public QObject,
                                        public dgk::Injectable,
                                        public muse::async::Asyncable
@@ -36,9 +39,7 @@ class OrchestrionWindowTitleProvider : public QObject,
   Q_OBJECT
 
   dgk::Inject<mu::context::IGlobalContext> context{this};
-  dgk::Inject<IOrchestrion> orchestrion{this};
 
-  Q_PROPERTY(QString title READ title NOTIFY titleChanged)
   //! The work's title as displayed on the score itself (not the window):
   //! the score's "workTitle" meta tag, or the file's base name when there is
   //! none.
@@ -46,40 +47,26 @@ class OrchestrionWindowTitleProvider : public QObject,
   //! The score's "composer" meta tag, shown under the title; may be empty.
   Q_PROPERTY(
       QString scoreComposer READ scoreComposer NOTIFY scoreComposerChanged)
-  Q_PROPERTY(QString filePath READ filePath NOTIFY filePathChanged)
-  Q_PROPERTY(bool fileModified READ fileModified NOTIFY fileModifiedChanged)
 
 public:
   explicit OrchestrionWindowTitleProvider(QObject *parent = nullptr);
 
   Q_INVOKABLE void load();
 
-  QString title() const;
   QString scoreTitle() const;
   QString scoreComposer() const;
-  QString filePath() const;
-  bool fileModified() const;
 
 signals:
-  void titleChanged(QString title);
   void scoreTitleChanged(QString scoreTitle);
   void scoreComposerChanged(QString scoreComposer);
-  void filePathChanged(QString filePath);
-  void fileModifiedChanged(bool fileModified);
 
 private:
   void update();
 
-  void setTitle(const QString &title);
   void setScoreTitle(const QString &scoreTitle);
   void setScoreComposer(const QString &scoreComposer);
-  void setFilePath(const QString &filePath);
-  void setFileModified(bool fileModified);
 
-  QString m_title;
   QString m_scoreTitle;
   QString m_scoreComposer;
-  QString m_filePath;
-  bool m_fileModified;
 };
 } // namespace dgk

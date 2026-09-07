@@ -36,7 +36,9 @@ ApplicationWindow {
     visibility: Window.Maximized
     width: 800
     height: 350
-    title: titleProvider.title
+    // Deliberately neither the file name nor a modified marker: the score's
+    // own title is on the ornament, and there is nothing to save.
+    title: qsTrc("appshell", "Orchestrion")
 
     // On macOS the window keeps its native frame (traffic lights) and the
     // menus live in the OS's top menu bar, like every other Mac app. On
@@ -117,10 +119,6 @@ ApplicationWindow {
     MainWindowBridge {
         id: bridge
         window: root
-        //! NOTE These properties of QWindow (of which ApplicationWindow is derived)
-        //!      are not available in QML, so we access them via MainWindowBridge
-        filePath: titleProvider.filePath
-        fileModified: titleProvider.fileModified
     }
 
     // Paints the native macOS title bar mahogany, so it blends with the
