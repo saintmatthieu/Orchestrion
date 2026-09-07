@@ -354,10 +354,17 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                .enabled;
   OnInputEventRecursive(type, pitch, std::move(velocity), loopEnabled);
 
-  // Make sure to release the pedal if we've reached the end of this part.
-  if (m_pedalDown && type == NoteEventType::noteOff &&
-      !GetCursorTick(m_rightHand.voices, NoteEventType::noteOff) &&
-      !GetCursorTick(m_leftHand.voices, NoteEventType::noteOff))
+  // Make sure to release the pedal once this part is over: nothing sounding
+  // and nothing left to play in any voice. Idle hands alone must not lift it,
+  // or a staccato bass would never ring through its beat.
+  const auto partOver = std::none_of(
+      m_allVoices.begin(), m_allVoices.end(),
+      [](const VoiceSequencer *voice)
+      {
+        return voice->GetNextMatchingTick(NoteEventType::noteOff) ||
+               voice->GetNextMatchingTick(NoteEventType::noteOn);
+      });
+  if (m_pedalDown && type == NoteEventType::noteOff && partOver)
     PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
