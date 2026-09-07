@@ -64,4 +64,11 @@ through `AutomaticOrchestrionPlayer` and has its own re-entrancy/timing paths
   warm cream/espresso theme shows as cool blue). Geometry is trustworthy;
   before judging COLORS, swap channels:
   `python3 -c "from PIL import Image; i=Image.open('x.png').convert('RGB'); r,g,b=i.split(); Image.merge('RGB',(b,g,r)).save('x_true.png')"`
+- **Long `vncdo` action chains hang**: a single invocation with ~40+ actions
+  (many `keydown`/`keyup`/`pause`) never delivers anything and ends with
+  "Connection lost". Send at most a dozen actions per `vncdo` call and wrap each
+  in `timeout 20`. Key names are lowercase (`key home` rewinds; `Home` fails).
+  `keydown N` / `keyup N` give held gesture notes; keep a hand's presses
+  non-overlapping — a note-off for a pitch other than the last pressed one is
+  ignored.
 - Logs also land in `~/.local/share/OrchestrionDevelopment/logs/`.
