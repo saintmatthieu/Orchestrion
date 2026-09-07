@@ -24,13 +24,16 @@ import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
 import Muse.Ui
 import Muse.UiComponents
+import Orchestrion 1.0
 
 // The in-window title bar (Windows and Linux): Orchestrion's menus, the
-// window title and the system buttons. Kept visible in full screen.
+// window title and the system buttons. Kept visible in full screen. Painted
+// mahogany with cream text, like the macOS title bar (MacWindowChrome), so
+// it blends into the wallpaper whatever the MuseScore UI theme.
 Rectangle {
     id: root
 
-    color: ui.theme.backgroundPrimaryColor
+    color: Theme.mahogany
 
     property alias title: titleTextmetrics.text
     property rect titleMoveAreaRect: Qt.rect(titleMoveArea.x, titleMoveArea.y, titleMoveArea.width, titleMoveArea.height)
@@ -83,6 +86,7 @@ Rectangle {
             text: titleTextmetrics.elidedText
             textFormat: Text.RichText
             font: ui.theme.bodyFont
+            color: Theme.accent
 
             TextMetrics {
                 id: titleTextmetrics

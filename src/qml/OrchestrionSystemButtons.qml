@@ -22,7 +22,7 @@
 import QtQuick 2.15
 import Muse.Ui
 import Muse.UiComponents
-import MuseScore.AppShell
+import Orchestrion 1.0
 
 // The minimize / maximize / close buttons of the in-window title bar
 // (Windows and Linux). MuseScore only ships its own on Windows.
@@ -40,9 +40,10 @@ Row {
     FlatButton {
         id: minimizeButton
         icon: IconCode.APP_MINIMIZE
+        iconColor: Theme.accent
         transparent: true
         drawFocusBorderInsideRect: true
-        backgroundItem: AppButtonBackground {
+        backgroundItem: TitleBarButtonBackground {
             mouseArea: minimizeButton.mouseArea
         }
         onClicked: {
@@ -53,9 +54,10 @@ Row {
     FlatButton {
         id: maximizeButton
         icon: !root.windowIsMiximized ? IconCode.APP_MAXIMIZE : IconCode.APP_UNMAXIMIZE
+        iconColor: Theme.accent
         transparent: true
         drawFocusBorderInsideRect: true
-        backgroundItem: AppButtonBackground {
+        backgroundItem: TitleBarButtonBackground {
             mouseArea: maximizeButton.mouseArea
         }
         onClicked: {
@@ -66,9 +68,10 @@ Row {
     FlatButton {
         id: closeButton
         icon: IconCode.APP_CLOSE
+        iconColor: Theme.accent
         transparent: true
         drawFocusBorderInsideRect: true
-        backgroundItem: AppButtonBackground {
+        backgroundItem: TitleBarButtonBackground {
             mouseArea: closeButton.mouseArea
         }
         onClicked: {

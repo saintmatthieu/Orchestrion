@@ -22,7 +22,7 @@
 import QtQuick 2.15
 import Muse.Ui
 import Muse.UiComponents
-import MuseScore.AppShell
+import Orchestrion 1.0
 import Orchestrion.MuseScoreShell 1.0
 
 // The in-window menu bar (Windows and Linux), showing Orchestrion's menus
@@ -84,8 +84,8 @@ Item {
                 margins: 8
                 drawFocusBorderInsideRect: true
 
-                transparent: !isMenuOpened
-                accentButton: isMenuOpened
+                // The open/hover/press feedback is the background's job.
+                transparent: true
 
                 navigation.accessible.ignored: true
 
@@ -104,11 +104,12 @@ Item {
                     text: radioButtonDelegate.title
                     textFormat: Text.RichText
                     font: ui.theme.bodyFont
+                    color: Theme.accent
                 }
 
-                backgroundItem: AppButtonBackground {
+                backgroundItem: TitleBarButtonBackground {
                     mouseArea: radioButtonDelegate.mouseArea
-                    color: radioButtonDelegate.normalColor
+                    active: radioButtonDelegate.isMenuOpened
                 }
 
                 mouseArea.onHoveredChanged: {
