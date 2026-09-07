@@ -16,6 +16,7 @@
     <file>src/qml/OrchestrionMenuBar.qml</file>
     <file>src/qml/OrchestrionSystemButtons.qml</file>
     <file>src/qml/TitleBarButtonBackground.qml</file>
+    <file>src/qml/OrchestrionStandardDialog.qml</file>
     <file>fonts/CinzelDecorative/CinzelDecorative-Regular.ttf</file>
     <file>icons/orchestrion.ico</file>
     <file>icons/orchestrion.png</file>

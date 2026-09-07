@@ -18,6 +18,7 @@
  */
 #include "OrchestrionShellModule.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
+#include "interactive/iinteractiveuriregister.h"
 #include "internal/ControllerMenuManager.h"
 #include "internal/OrchestrionActionController.h"
 #include "internal/OrchestrionEventProcessor.h"
@@ -94,6 +95,22 @@ void OrchestrionShellModule::registerUiTypes()
   qmlRegisterType<MacOSWindowChrome>("Orchestrion.OrchestrionShell", 1, 0,
                                      "MacOSWindowChrome");
 #endif
+}
+
+void OrchestrionShellModule::resolveImports()
+{
+  // MuseScore's standard dialogs (question, info, warning, error) are replaced
+  // with Orchestrion's, which draw their own title bar on Windows and Linux
+  // (see OrchestrionStandardDialog.qml). Unregistered first: the register
+  // asserts on a duplicate.
+  auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(
+      moduleName());
+  if (ir)
+  {
+    const muse::Uri uri("muse://interactive/standard");
+    ir->unregisterUri(uri);
+    ir->registerQmlUri(uri, "Orchestrion", "OrchestrionStandardDialog");
+  }
 }
 
 muse::modularity::IContextSetup *OrchestrionShellModule::newContext(
