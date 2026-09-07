@@ -444,34 +444,40 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
   SendTransitions(transitions, std::move(velocity), isLeftHand);
 
-  // For the pedal we wait on the slowest of both hands.
-  const auto leastPedalTick = std::accumulate(
-      m_allVoices.begin(), m_allVoices.end(), std::optional<dgk::Tick>{},
-      [&](const auto &acc, const VoiceSequencer *voice)
-      {
-        const auto tick = voice->GetTickForPedal();
-        return tick.has_value()
-                   ? std::make_optional(acc.has_value() ? std::min(*acc, *tick)
-                                                        : *tick)
-                   : acc;
-      });
+  // The pedal follows the events, whichever hand sends them: a pedal change is
+  // reached once a note at or beyond it has been struck. A hand holding a note
+  // across the change doesn't hold it back, nor does a hand that isn't played.
+  std::optional<int> pedalTick;
+  for (const auto *voice : m_allVoices)
+    if (const auto struck = voice->GetLastStruckTick())
+      pedalTick = std::max(pedalTick.value_or(*struck), *struck);
+  if (type == NoteEventType::noteOff)
+  {
+    // A release counts as the released notes having run their course, so that
+    // a pedal marked to end with them is lifted along.
+    std::optional<int> releasedEnd;
+    for (const auto &[_, transition] : transitions)
+      if (const auto past = GetPastChord(transition))
+        releasedEnd =
+            std::max(releasedEnd.value_or(0), past->GetEndTick().withRepeats);
+    if (releasedEnd)
+      pedalTick = releasedEnd;
+  }
+  if (!pedalTick)
+    return;
 
   const auto newPedalSequenceIt =
-      leastPedalTick.has_value()
-          ? std::find_if(m_pedalSequenceIt, m_pedalSequence.end(),
-                         [&](const auto &item)
-                         { return item.tick > leastPedalTick->withRepeats; })
-          : m_pedalSequence.end();
+      std::find_if(m_pedalSequenceIt, m_pedalSequence.end(),
+                   [&](const auto &item) { return item.tick > *pedalTick; });
   if (newPedalSequenceIt > m_pedalSequenceIt)
   {
-    if (type == NoteEventType::noteOff)
+    // A note-on takes the pedal as marked where it stands. A note-off only
+    // lifts it where the marking has ended: where a new pedal is marked
+    // instead, the pedal is held until the note that pedal is for is struck,
+    // however early the last note under the previous pedal was released.
+    const auto &item = *(newPedalSequenceIt - 1);
+    if (type == NoteEventType::noteOn || !item.down)
     {
-      // Just a release.
-      PostPedalEvent(PedalEvent{m_instrument, false});
-    }
-    else
-    {
-      const auto &item = *(newPedalSequenceIt - 1);
       PostPedalEvent(PedalEvent{m_instrument, item.down});
       m_pedalSequenceIt = newPedalSequenceIt;
     }
@@ -489,10 +495,21 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
                                   { return voice.GoToTick(tick); }));
     SendTransitions(std::move(transitions));
   }
-  m_outputEvent.send(PedalEvent{m_instrument, false});
-  m_pedalSequenceIt = std::lower_bound(
-      m_pedalSequence.begin(), m_pedalSequence.end(), tick,
-      [](const auto &item, int tick) { return item.tick < tick; });
+  PostPedalEvent(PedalEvent{m_instrument, false});
+  // Stand just before the pedal state in force where the voices now are, so
+  // that the first note played there puts the pedal back as marked.
+  std::optional<int> position;
+  for (const auto *voice : m_allVoices)
+    if (const auto struck = voice->GetLastStruckTick())
+      position = std::min(position.value_or(*struck), *struck);
+  const auto nextItem =
+      position
+          ? std::upper_bound(m_pedalSequence.begin(), m_pedalSequence.end(),
+                             *position, [](int tick, const auto &item)
+                             { return tick < item.tick; })
+          : m_pedalSequence.begin();
+  m_pedalSequenceIt =
+      nextItem == m_pedalSequence.begin() ? nextItem : nextItem - 1;
   m_autoPlayTick = tick;
 }
 

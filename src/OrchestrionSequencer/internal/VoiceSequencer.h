@@ -37,7 +37,13 @@ public:
   std::optional<ChordTransition> GoToTick(int tick);
 
   dgk::Tick GetFinalTick() const;
-  std::optional<dgk::Tick> GetTickForPedal() const;
+
+  /**
+   * The start tick (with repeats) of the last chord struck, sounding or
+   * released; empty if none was struck yet. This is how far the voice is known
+   * to have got — a released chord may have been cut short of its end.
+   */
+  std::optional<int> GetLastStruckTick() const;
   std::optional<dgk::Tick> GetNextMatchingTick(NoteEventType) const;
 
   std::optional<dgk::Tick>
@@ -53,6 +59,7 @@ private:
   ChordTransitionType GetNextTransition(NoteEventType event,
                                         const Tick &cursorTick) const;
   const IChord *GetFutureChord(unsigned offset = 0u) const;
+  const IChord *GetPastChord() const;
   const IMelodySegment *GetPresentThing() const;
   std::optional<dgk::Tick> GetNextMatchingTickForNoteoff() const;
   std::optional<dgk::Tick>
