@@ -183,7 +183,7 @@ void OrchestrionActionController::init()
                     [this]
                     {
                       if (auto seq = orchestrion()->sequencer())
-                        seq->GoToTick(0);
+                        seq->GoToTick(0, JumpReason::Rewind);
                     });
 
   // Repeats are unrolled at load time when grading is on (see

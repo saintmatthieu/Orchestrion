@@ -140,11 +140,12 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
             configuration()->velocityRecordingEnabled();
       });
 
-  dispatcher()->reg(this, "nav-first-control", [this] { GoToTick(0); });
+  dispatcher()->reg(this, "nav-first-control",
+                    [this] { GoToTick(0, JumpReason::Rewind); });
   interactionProcessor()->itemClicked().onReceive(
       this, [this](const mu::engraving::EngravingItem *item)
-      { GoToTick(item->tick().ticks()); });
-  GoToTick(0);
+      { GoToTick(item->tick().ticks(), JumpReason::Click); });
+  GoToTick(0, JumpReason::Rewind);
 }
 
 namespace
@@ -302,7 +303,8 @@ std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
   return result;
 }
 
-muse::async::Channel<int> OrchestrionSequencer::AboutToJumpPosition() const
+muse::async::Channel<int, JumpReason>
+OrchestrionSequencer::AboutToJumpPosition() const
 {
   return m_aboutToJumpPosition;
 }
@@ -409,7 +411,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
       loopBoundaries.loopOutTick.ticks() > 0 &&
       cursorTick.withoutRepeats >= loopBoundaries.loopOutTick.ticks())
   {
-    GoToTick(loopBoundaries.loopInTick.ticks());
+    GoToTick(loopBoundaries.loopInTick.ticks(), JumpReason::LoopWrap);
     return OnInputEventRecursive(type, pitch, std::move(velocity), false);
   }
 
@@ -422,7 +424,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   Finally maybeRewind{[this, doRewind = transitions.empty()]
                       {
                         if (doRewind)
-                          GoToTick(0);
+                          GoToTick(0, JumpReason::ScoreEnd);
                       }};
 
   // Notify which hand just played — for the beginner-help key animation, and
@@ -469,9 +471,9 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
   }
 }
 
-void OrchestrionSequencer::GoToTick(int tick)
+void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
 {
-  m_aboutToJumpPosition.send(tick);
+  m_aboutToJumpPosition.send(tick, reason);
   {
     std::map<TrackIndex, ChordTransition> transitions;
     for (auto voices : {&m_rightHand.voices, &m_leftHand.voices})
@@ -496,7 +498,7 @@ void OrchestrionSequencer::GoToPrevNoteonTick()
     if (tick && (!latest || *tick > *latest))
       latest = tick;
   }
-  GoToTick(latest ? latest->withoutRepeats : 0);
+  GoToTick(latest ? latest->withoutRepeats : 0, JumpReason::Step);
 }
 
 void OrchestrionSequencer::GoToNextNoteonTick()
@@ -509,7 +511,7 @@ void OrchestrionSequencer::GoToNextNoteonTick()
       earliest = tick;
   }
   if (earliest)
-    GoToTick(earliest->withoutRepeats);
+    GoToTick(earliest->withoutRepeats, JumpReason::Step);
 }
 
 std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()

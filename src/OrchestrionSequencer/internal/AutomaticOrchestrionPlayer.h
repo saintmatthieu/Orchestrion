@@ -76,9 +76,6 @@ private:
 
   std::optional<ReplayTake> m_replayTake;
   bool m_replayActive = false;
-  // True while the replay performs its own rewind to the take's start, so
-  // that jump isn't taken for the user navigating away.
-  bool m_selfJump = false;
   std::size_t m_replayIndex = 0;
   QElapsedTimer m_replayClock;
 };

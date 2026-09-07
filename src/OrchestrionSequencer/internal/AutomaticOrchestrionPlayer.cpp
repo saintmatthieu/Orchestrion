@@ -36,11 +36,11 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
 {
   sequencer.AboutToJumpPosition().onReceive(
       this,
-      [this](int /*tick*/)
+      [this](int /*tick*/, JumpReason reason)
       {
         ++m_generation;
-        if (m_selfJump)
-          return; // the replay's own rewind to the take's start
+        if (reason == JumpReason::Replay)
+          return; // our own rewind to the take's start
         if (m_replayActive)
         {
           // The user navigated away mid-replay: end it.
@@ -104,9 +104,7 @@ void AutomaticOrchestrionPlayer::StartReplay()
 {
   m_replayActive = true;
   m_replayIndex = 0;
-  m_selfJump = true;
-  m_sequencer.GoToTick(m_replayTake->startTick);
-  m_selfJump = false;
+  m_sequencer.GoToTick(m_replayTake->startTick, JumpReason::Replay);
   m_replayClock.start();
   ScheduleReplayNext();
 }

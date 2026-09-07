@@ -170,9 +170,11 @@ public:
   //! glides from there rather than from where we last left it.
   void viewMoved();
 
-  //! The position jumped (a rewind, a click on a note, a repeat): forget the
-  //! hands and the framing, but keep the page where it is, so that the next
-  //! events re-frame by gliding there from here rather than cutting.
+  //! The position jumped (a rewind, a step, a repeat): forget the hands and
+  //! the framing, but keep the page where it is, so that the next events
+  //! re-frame by gliding there from here rather than cutting. Lifts a
+  //! suspension: the owner does not call this for a jump the user made by
+  //! clicking a note on the page — that one stays suspended (see suspend()).
   void jump();
 
   //! Forget everything (a new score): the next onsets re-frame with a cut.

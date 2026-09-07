@@ -64,6 +64,16 @@ struct ReplayTake
   std::vector<ReplayEvent> events;
 };
 
+enum class JumpReason
+{
+  Rewind,   // the rewind action, or a fresh sequencer starting at the top
+  Step,     // the previous/next-note actions
+  Click,    // the user clicked an element on the page
+  LoopWrap, // the loop's end was reached: back to its start
+  ScoreEnd, // the last event was played: back to the start
+  Replay,   // the replay rewinds to the take's start
+};
+
 class IOrchestrionSequencer
 {
 public:
@@ -90,8 +100,13 @@ public:
   GetCurrentTransitions() const = 0;
   virtual std::vector<TrackIndex> GetAllVoices() const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
-  virtual muse::async::Channel<int /*tick*/> AboutToJumpPosition() const = 0;
-  virtual void GoToTick(int tick) = 0;
+  /**
+   * Sent before the position jumps to the given tick, and before the
+   * transitions batch the jump causes, with the reason for it.
+   */
+  virtual muse::async::Channel<int /*tick*/, JumpReason>
+  AboutToJumpPosition() const = 0;
+  virtual void GoToTick(int tick, JumpReason reason) = 0;
   virtual void GoToPrevNoteonTick() = 0;
   virtual void GoToNextNoteonTick() = 0;
 

@@ -163,7 +163,7 @@ void OrchestrionNotationPaintView::subscribe(
     OnTransitions(transitions);
 
   sequencer.AboutToJumpPosition().onReceive(this,
-                                            [this](auto)
+                                            [this](int, JumpReason reason)
                                             {
                                               m_kineticScroller.stop();
                                               // The position jumps: forget the
@@ -174,7 +174,14 @@ void OrchestrionNotationPaintView::subscribe(
                                               // repopulates the ledger.
                                               m_autoTrackTargets.clear();
                                               m_readingFocus.clear();
-                                              m_follower.jump();
+                                              // ...except for a click on the
+                                              // page: what it jumps to is
+                                              // under the pointer, on the page
+                                              // already, so the follower stays
+                                              // suspended (onMousePressed) and
+                                              // the next struck note re-frames.
+                                              if (reason != JumpReason::Click)
+                                                m_follower.jump();
                                               m_focusUtick.reset();
                                               m_resumeUtick.reset();
                                               m_estimator.reset();

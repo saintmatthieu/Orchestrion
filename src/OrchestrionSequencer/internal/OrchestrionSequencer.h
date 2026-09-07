@@ -71,8 +71,8 @@ public:
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
-  muse::async::Channel<int> AboutToJumpPosition() const override;
-  void GoToTick(int tick) override;
+  muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
+  void GoToTick(int tick, JumpReason reason) override;
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
@@ -143,7 +143,7 @@ private:
   muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
   muse::async::Channel<AutoPlayEvent> m_handNoteEvent;
   muse::async::Channel<EventVariant> m_outputEvent;
-  muse::async::Channel<int /*tick*/> m_aboutToJumpPosition;
+  muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
   int m_autoPlayTick = 0;
 
   bool m_velocityRecordingEnabled = false;
