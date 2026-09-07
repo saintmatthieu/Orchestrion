@@ -156,12 +156,6 @@ ApplicationWindow {
             sourceComponent: RowLayout {
                 spacing: 0
 
-                OrchestrionIcon {
-                    id: orchestrionIcon
-                    Layout.preferredWidth: 30 + orchestrionIcon.leftPadding
-                    Layout.preferredHeight: 30
-                }
-
                 OrchestrionTitleBar {
                     id: appTitleBar
 
