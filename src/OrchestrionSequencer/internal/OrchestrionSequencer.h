@@ -115,6 +115,11 @@ private:
   void OnInputEventRecursive(NoteEventType, int pitch,
                              std::optional<float> velocity, bool loop);
   void PostPedalEvent(PedalEvent event);
+  /**
+   * Sends right away whatever the pedal thread still holds back, i.e. the
+   * press that a re-pedal defers.
+   */
+  void FlushPendingPedalEvents();
   void PostNoteEvents(NoteEvents events);
 
   const InstrumentIndex m_instrument;

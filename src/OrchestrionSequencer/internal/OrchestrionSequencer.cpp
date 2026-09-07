@@ -84,27 +84,32 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
   return std::thread{
       [&, cb = cb]
       {
+        std::unique_lock lock{m.mutex};
         while (true)
         {
-          std::vector<QueueEntry<EventType>> entries;
+          m.cv.wait(lock, [&] { return !m.queue.empty() || self.m_finished; });
+          if (self.m_finished)
+            return;
+          // An entry stays in the queue until it falls due, so that whoever
+          // can't wait for it (see FlushPendingPedalEvents) may take it over.
+          if (const auto due = m.queue.front().time)
           {
-            std::unique_lock lock{m.mutex};
-            m.cv.wait(lock,
-                      [&] { return !m.queue.empty() || self.m_finished; });
+            m.cv.wait_until(lock, *due,
+                            [&] {
+                              return self.m_finished || m.queue.empty() ||
+                                     m.queue.front().time != due;
+                            });
             if (self.m_finished)
               return;
-            while (!m.queue.empty())
-            {
-              entries.push_back(m.queue.front());
-              m.queue.pop();
-            }
+            if (m.queue.empty() || m.queue.front().time != due)
+              // The queue changed under us; see what's there now.
+              continue;
           }
-          for (auto &entry : entries)
-          {
-            if (entry.time.has_value())
-              std::this_thread::sleep_until(*entry.time);
-            cb(std::move(entry.event));
-          }
+          auto entry = std::move(m.queue.front());
+          m.queue.pop();
+          lock.unlock();
+          cb(std::move(entry.event));
+          lock.lock();
         }
       }};
 }
@@ -589,33 +594,57 @@ OrchestrionSequencer::GetCurrentTransitions() const
 
 void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
 {
-  OptTimePoint actionTime;
-  if (event.on)
-  {
-    using namespace std::chrono_literals;
-    // Delay a bit actioning the pedal so that, if it were just released, the
-    // dampers have time to dampen the notes.
-    actionTime = std::chrono::steady_clock::now() + 100ms;
-  }
-
   auto &m = m_pedalThreadMembers;
   {
     std::unique_lock lock{m.mutex};
-    if (event.on && m_pedalDown)
-      // Always insert a pedal off event between two pedal on events.
+    if (!event.on)
+    {
+      // A release supersedes whatever is pending.
+      m.queue = {};
+      m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt, std::move(event)});
+    }
+    else if (m_pedalDown)
+    {
+      using namespace std::chrono_literals;
+      // Re-pedal: lift, and give the dampers time to damp the released notes
+      // before pressing again. Should a note be released meanwhile, the press
+      // is hurried so that the note is caught (FlushPendingPedalEvents).
       m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt,
                                              PedalEvent{m_instrument, false}});
-    m.queue.emplace(QueueEntry<PedalEvent>{actionTime, std::move(event)});
+      m.queue.emplace(QueueEntry<PedalEvent>{
+          std::chrono::steady_clock::now() + 100ms, std::move(event)});
+    }
+    else
+      // Nothing to damp: press right away, before the note this pedal is for
+      // might be released.
+      m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt, std::move(event)});
   }
 
   m.cv.notify_one();
   m_pedalDown = event.on;
 }
 
+void OrchestrionSequencer::FlushPendingPedalEvents()
+{
+  std::queue<QueueEntry<PedalEvent>> pending;
+  {
+    std::unique_lock lock{m_pedalThreadMembers.mutex};
+    std::swap(pending, m_pedalThreadMembers.queue);
+  }
+  m_pedalThreadMembers.cv.notify_one();
+  for (; !pending.empty(); pending.pop())
+    m_outputEvent.send(pending.front().event);
+}
+
 void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
 {
-
   using namespace std::chrono;
+
+  // A pedal press still pending must come before a note release, else the
+  // released note gets damped instead of caught.
+  if (std::any_of(events.begin(), events.end(), [](const auto &event)
+                  { return event.type == NoteEventType::noteOff; }))
+    FlushPendingPedalEvents();
 
   const auto numNoteons =
       std::count_if(events.begin(), events.end(), [](const auto &event)
