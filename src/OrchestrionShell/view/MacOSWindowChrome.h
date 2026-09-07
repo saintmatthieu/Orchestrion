@@ -25,10 +25,13 @@
 namespace dgk
 {
 /**
- * macOS only: colors the native title bar. MuseScore's MacOSPlatformTheme
- * already makes the title bar transparent, but fills the NSWindow behind it
- * with the Qt palette's window grey; this repaints it with the given color and
- * switches the window to the dark appearance so the title text stays legible.
+ * macOS only: colors the native title bar and hides its title text.
+ * MuseScore's MacOSPlatformTheme already makes the title bar transparent, but
+ * fills the NSWindow behind it with the Qt palette's window grey; this repaints
+ * it with the given color and switches the window to the dark appearance so
+ * the traffic lights stay legible. The window title is hidden because the
+ * score's title is already on the ornament; the title itself is kept for the
+ * Dock, the Window menu and Mission Control.
  * The styling is re-applied on every visibility change, because fullscreen
  * transitions restyle the NSWindow and would otherwise leave the title bar
  * grey again. In QML, declare it after MainWindowBridge — the bridge's window

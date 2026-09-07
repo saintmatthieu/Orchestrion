@@ -75,6 +75,10 @@ void MacOSWindowChrome::apply()
   // MuseScore's platform styling also sets this, but only once at startup —
   // re-assert it so a restyled/recreated NSWindow gets it back too.
   [nsWindow setTitlebarAppearsTransparent:YES];
+  // No title text in the title bar: the score's title is on the ornament and
+  // the app's name is in the menu bar. The window keeps its title for the
+  // Dock, the Window menu and Mission Control.
+  [nsWindow setTitleVisibility:NSWindowTitleHidden];
   // With the title bar transparent, the window's background color is what
   // shows through it.
   [nsWindow setBackgroundColor:[NSColor colorWithRed:m_color.redF()

@@ -37,7 +37,9 @@ ApplicationWindow {
     width: 800
     height: 350
     // Deliberately neither the file name nor a modified marker: the score's
-    // own title is on the ornament, and there is nothing to save.
+    // own title is on the ornament, and there is nothing to save. On macOS
+    // the title bar doesn't show it at all (see MacOSWindowChrome); it is
+    // still what the Dock, the Window menu and Mission Control call the window.
     title: qsTrc("appshell", "Orchestrion")
 
     // On macOS the window keeps its native frame (traffic lights) and the
