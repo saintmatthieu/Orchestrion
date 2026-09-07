@@ -189,13 +189,13 @@ void OrchestrionMenuModel::selectMenuItem(const char *submenuId,
   using namespace muse::uicomponents;
   const QList<MenuItem *> subitems = findItem(QString{submenuId}).subitems();
   std::for_each(subitems.begin(), subitems.end(),
-                [](MenuItem *item) { item->setSelected(false); });
+                [](MenuItem *item) { item->setChecked(false); });
   const auto it = std::find_if(
       subitems.begin(), subitems.end(), [deviceId](const MenuItem *item)
       { return item->args().arg<std::string>(1) == deviceId; });
   if (it == subitems.end())
     return;
-  (*it)->setSelected(true);
+  (*it)->setChecked(true);
 }
 
 void OrchestrionMenuModel::updateMenuItems(
@@ -264,8 +264,8 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   MenuItem *const jumpAnticipationItem = makeMenuItem(
       actionIds::toggleJumpAnticipation,
       muse::TranslatableString("appshell/menu/view", "&Anticipate jumps"));
-  jumpAnticipationItem->setSelectable(true);
-  jumpAnticipationItem->setSelected(
+  jumpAnticipationItem->setCheckable(true);
+  jumpAnticipationItem->setChecked(
       sequencerConfiguration()->jumpAnticipationEnabled());
 
   // The MIDI keyboard indicator can be dismissed with its own cross; this is
@@ -273,9 +273,8 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   MenuItem *const midiIconItem = makeMenuItem(
       actionIds::toggleMidiKeyboardIcon,
       muse::TranslatableString("appshell/menu/view", "&MIDI keyboard icon"));
-  midiIconItem->setSelectable(true);
-  midiIconItem->setSelected(
-      sequencerConfiguration()->midiKeyboardIconVisible());
+  midiIconItem->setCheckable(true);
+  midiIconItem->setChecked(sequencerConfiguration()->midiKeyboardIconVisible());
 
   QList<muse::uicomponents::MenuItem *> menu{
       jumpAnticipationItem, midiIconItem,
@@ -377,22 +376,22 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       makeMenuItem(toggleRecordingMenuId,
                    muse::TranslatableString("appshell/menu/advanced",
                                             "&Toggle velocity recording"));
-  item->setSelectable(true);
-  item->setSelected(velocityRecordingEnabled);
+  item->setCheckable(true);
+  item->setChecked(velocityRecordingEnabled);
 
   muse::uicomponents::MenuItem *const noteInfoItem =
       makeMenuItem(toggleNoteInfoMenuId,
                    muse::TranslatableString("appshell/menu/advanced",
                                             "Show &note info on hover"));
-  noteInfoItem->setSelectable(true);
-  noteInfoItem->setSelected(sequencerConfiguration()->noteInfoTooltipEnabled());
+  noteInfoItem->setCheckable(true);
+  noteInfoItem->setChecked(sequencerConfiguration()->noteInfoTooltipEnabled());
 
   muse::uicomponents::MenuItem *const tempoVizItem =
       makeMenuItem(toggleTempoVizMenuId,
                    muse::TranslatableString("appshell/menu/advanced",
                                             "Show &tempo visualization"));
-  tempoVizItem->setSelectable(true);
-  tempoVizItem->setSelected(
+  tempoVizItem->setCheckable(true);
+  tempoVizItem->setChecked(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
   const QList<MenuItem *> menu{
@@ -415,8 +414,8 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
                              bool selected)
   {
     MenuItem *const item = makeMenuItem(actionCode, title);
-    item->setSelectable(true);
-    item->setSelected(selected);
+    item->setCheckable(true);
+    item->setChecked(selected);
     return item;
   };
 
@@ -448,14 +447,14 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
       makeMenuItem(actionIds::toggleAutoPlayExposure,
                    muse::TranslatableString("appshell/menu/development",
                                             "Expose &auto-play"));
-  autoPlayItem->setSelectable(true);
-  autoPlayItem->setSelected(sequencerConfiguration()->autoPlayExposed());
+  autoPlayItem->setCheckable(true);
+  autoPlayItem->setChecked(sequencerConfiguration()->autoPlayExposed());
 
   MenuItem *const gradingItem = makeMenuItem(
       actionIds::toggleGradingExposure,
       muse::TranslatableString("appshell/menu/development", "Expose &grading"));
-  gradingItem->setSelectable(true);
-  gradingItem->setSelected(sequencerConfiguration()->gradingExposed());
+  gradingItem->setCheckable(true);
+  gradingItem->setChecked(sequencerConfiguration()->gradingExposed());
 
   return makeMenu(
       muse::TranslatableString("appshell/menu/development", "&Development"),
@@ -473,8 +472,8 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
   MenuItem *const toggleItem = makeMenuItem(
       toggleGradingMenuId,
       muse::TranslatableString("appshell/menu/grading", "&Enabled"));
-  toggleItem->setSelectable(true);
-  toggleItem->setSelected(sequencerConfiguration()->gradingEnabled());
+  toggleItem->setCheckable(true);
+  toggleItem->setChecked(sequencerConfiguration()->gradingEnabled());
 
   MenuItem *const settingsItem = makeMenuItem(
       actionIds::gradingSettings,
@@ -497,8 +496,8 @@ OrchestrionMenuModel::makeReverbSubmenu(ReverbPreset current)
   {
     auto *const item = makeMenuItem(actionCode, title);
     IF_ASSERT_FAILED(item) return;
-    item->setSelectable(true);
-    item->setSelected(preset == current);
+    item->setCheckable(true);
+    item->setChecked(preset == current);
     items.append(item);
   };
 
@@ -534,7 +533,7 @@ OrchestrionMenuModel::getMenuItems(const std::vector<DeviceAction> &devices)
                   item->setArgs(
                       muse::actions::ActionData::make_arg2<std::string>(
                           action.id, action.deviceId));
-                  item->setSelectable(true);
+                  item->setCheckable(true);
                   menu.append(item);
                 });
   return menu;
