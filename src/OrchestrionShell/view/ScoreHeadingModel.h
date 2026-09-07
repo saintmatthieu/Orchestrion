@@ -32,9 +32,9 @@ namespace dgk
  * above the notation. The window title itself is a constant: it deliberately
  * shows neither the file name nor a modified marker.
  */
-class OrchestrionWindowTitleProvider : public QObject,
-                                       public dgk::Injectable,
-                                       public muse::async::Asyncable
+class ScoreHeadingModel : public QObject,
+                          public dgk::Injectable,
+                          public muse::async::Asyncable
 {
   Q_OBJECT
 
@@ -49,7 +49,7 @@ class OrchestrionWindowTitleProvider : public QObject,
       QString scoreComposer READ scoreComposer NOTIFY scoreComposerChanged)
 
 public:
-  explicit OrchestrionWindowTitleProvider(QObject *parent = nullptr);
+  explicit ScoreHeadingModel(QObject *parent = nullptr);
 
   Q_INVOKABLE void load();
 

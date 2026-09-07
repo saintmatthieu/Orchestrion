@@ -50,7 +50,7 @@ ApplicationWindow {
 
     Component.onCompleted: {
         onboardingModel.startOnboarding()
-        titleProvider.load()
+        scoreHeading.load()
     }
 
     // The native macOS menu bar (our Qt.labs.platform wrapper around the menu
@@ -112,8 +112,8 @@ ApplicationWindow {
         Component.onCompleted: load()
     }
 
-    OrchestrionWindowTitleProvider {
-        id: titleProvider
+    ScoreHeadingModel {
+        id: scoreHeading
     }
 
     MainWindowBridge {
@@ -248,8 +248,8 @@ ApplicationWindow {
                     y: parent.height * 0.15 - height / 2
                     viewWidth: parent.width
                     viewHeight: parent.height
-                    title: titleProvider.scoreTitle
-                    subtitle: titleProvider.scoreComposer
+                    title: scoreHeading.scoreTitle
+                    subtitle: scoreHeading.scoreComposer
                 }
 
                 GoldOrnament {

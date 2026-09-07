@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#include "OrchestrionWindowTitleProvider.h"
+#include "ScoreHeadingModel.h"
 #include "OrchestrionShell/internal/MuseScorePlaceholderMetaTags.h"
 #include "io/path.h"
 #include <project/inotationproject.h>
@@ -48,12 +48,9 @@ bool isPlaceholder(const QString &text,
 }
 } // namespace
 
-OrchestrionWindowTitleProvider::OrchestrionWindowTitleProvider(QObject *parent)
-    : QObject(parent)
-{
-}
+ScoreHeadingModel::ScoreHeadingModel(QObject *parent) : QObject(parent) {}
 
-void OrchestrionWindowTitleProvider::load()
+void ScoreHeadingModel::load()
 {
   update();
 
@@ -68,17 +65,11 @@ void OrchestrionWindowTitleProvider::load()
       });
 }
 
-QString OrchestrionWindowTitleProvider::scoreTitle() const
-{
-  return m_scoreTitle;
-}
+QString ScoreHeadingModel::scoreTitle() const { return m_scoreTitle; }
 
-QString OrchestrionWindowTitleProvider::scoreComposer() const
-{
-  return m_scoreComposer;
-}
+QString ScoreHeadingModel::scoreComposer() const { return m_scoreComposer; }
 
-void OrchestrionWindowTitleProvider::setScoreTitle(const QString &scoreTitle)
+void ScoreHeadingModel::setScoreTitle(const QString &scoreTitle)
 {
   if (scoreTitle == m_scoreTitle)
   {
@@ -89,8 +80,7 @@ void OrchestrionWindowTitleProvider::setScoreTitle(const QString &scoreTitle)
   emit scoreTitleChanged(scoreTitle);
 }
 
-void OrchestrionWindowTitleProvider::setScoreComposer(
-    const QString &scoreComposer)
+void ScoreHeadingModel::setScoreComposer(const QString &scoreComposer)
 {
   if (scoreComposer == m_scoreComposer)
   {
@@ -101,7 +91,7 @@ void OrchestrionWindowTitleProvider::setScoreComposer(
   emit scoreComposerChanged(scoreComposer);
 }
 
-void OrchestrionWindowTitleProvider::update()
+void ScoreHeadingModel::update()
 {
   const mu::project::INotationProjectPtr project = context()->currentProject();
   if (!project)
