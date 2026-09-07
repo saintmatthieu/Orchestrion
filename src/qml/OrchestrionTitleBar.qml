@@ -22,21 +22,18 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Window 2.15
-import Muse.Ui
-import Muse.UiComponents
 import Orchestrion 1.0
 
-// The in-window title bar (Windows and Linux): Orchestrion's menus, the
-// window title and the system buttons. Kept visible in full screen. Painted
-// mahogany with cream text, like the macOS title bar (MacWindowChrome), so
-// it blends into the wallpaper whatever the MuseScore UI theme.
+// The in-window title bar (Windows and Linux): Orchestrion's menus and the
+// system buttons; the empty strip between them drags the window (Main.qml's
+// move area). Kept visible in full screen. Painted mahogany with cream text,
+// like the macOS title bar (MacWindowChrome), so it blends into the wallpaper
+// whatever the MuseScore UI theme.
 Rectangle {
     id: root
 
     color: Theme.mahogany
 
-    property alias title: titleTextmetrics.text
-    property rect titleMoveAreaRect: Qt.rect(titleMoveArea.x, titleMoveArea.y, titleMoveArea.width, titleMoveArea.height)
     property int windowVisibility: Window.Windowed
     property alias appWindow: menu.appWindow
 
@@ -62,39 +59,12 @@ Rectangle {
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
 
-            availableWidth: root.width - (content.spacing + titleLabel.minDistanceFromMenu + titleTextmetrics.width + content.spacing + systemButtons.width)
+            availableWidth: root.width - (content.spacing + systemButtons.width)
         }
 
-        StyledTextLabel {
-            id: titleLabel
-
-            readonly property int minDistanceFromMenu: 24
-
+        // Pushes the system buttons to the right edge.
+        Item {
             Layout.fillWidth: !menu.truncated ? true : false
-            Layout.fillHeight: true
-            Layout.minimumWidth: titleTextmetrics.advanceWidth
-
-            horizontalAlignment: Text.AlignLeft
-            verticalAlignment: Text.AlignVCenter
-
-            leftPadding: {
-                var parentCenterX = parent.width / 2
-                var expectedTextCenterX = parentCenterX - titleTextmetrics.width / 2
-                return Math.max(expectedTextCenterX - x, minDistanceFromMenu)
-            }
-
-            text: titleTextmetrics.elidedText
-            textFormat: Text.RichText
-            font: ui.theme.bodyFont
-            color: Theme.accent
-
-            TextMetrics {
-                id: titleTextmetrics
-                text: qsTrc("appshell", "Orchestrion")
-                font: titleLabel.font
-                elide: Qt.ElideRight
-                elideWidth: titleLabel.width
-            }
         }
 
         OrchestrionSystemButtons {
@@ -119,15 +89,5 @@ Rectangle {
                 root.closeWindowRequested()
             }
         }
-    }
-
-    Item {
-        id: titleMoveArea
-
-        x: titleLabel.x
-        y: titleLabel.y
-
-        width: titleLabel.visible ? titleLabel.width : 0
-        height: titleLabel.visible ? titleLabel.height : 0
     }
 }

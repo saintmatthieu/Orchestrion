@@ -162,8 +162,6 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 30
 
-                    title: root.title
-
                     windowVisibility: root.visibility
 
                     appWindow: root
