@@ -34,9 +34,13 @@
 #include "engraving/dom/score.h"
 #include "engraving/dom/spanner.h"
 #include "engraving/dom/staff.h"
+#include "engraving/dom/textbase.h"
 #include "notation/imasternotation.h"
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <engraving/dom/mscore.h>
+#include <string>
 
 namespace dgk
 {
@@ -78,26 +82,33 @@ std::optional<int> GetRightHandStaffIndex(
   return std::nullopt;
 }
 
+/**
+ * Visits the measures in playback order (repeats unrolled); `measureTick` is
+ * the measure's start tick with repeats.
+ */
+void ForAllMeasures(
+    mu::engraving::Score &score,
+    std::function<void(const mu::engraving::Measure &, int measureTick)> cb)
+{
+  auto measureTick = 0;
+  for (const auto *repeatSegment : score.repeatList(true))
+    for (const auto *measure : repeatSegment->measureList())
+    {
+      cb(*measure, measureTick);
+      measureTick += measure->ticks().ticks();
+    }
+}
+
 void ForAllSegments(
     mu::engraving::Score &score,
     std::function<void(const mu::engraving::Segment &, int measureTick)> cb)
 {
-  auto &repeats = score.repeatList(true);
-  auto measureTick = 0;
-  std::for_each(repeats.begin(), repeats.end(),
-                [&](const mu::engraving::RepeatSegment *repeatSegment)
-                {
-                  const auto &museMeasures = repeatSegment->measureList();
-                  std::for_each(museMeasures.begin(), museMeasures.end(),
-                                [&](const mu::engraving::Measure *measure)
-                                {
-                                  const auto &museSegments =
-                                      measure->segments();
-                                  for (const auto &museSegment : museSegments)
-                                    cb(museSegment, measureTick);
-                                  measureTick += measure->ticks().ticks();
-                                });
-                });
+  ForAllMeasures(score,
+                 [&](const mu::engraving::Measure &measure, int measureTick)
+                 {
+                   for (const auto &segment : measure.segments())
+                     cb(segment, measureTick);
+                 });
 }
 
 auto GetChordSequence(mu::engraving::Score &score,
@@ -161,47 +172,164 @@ auto GetChordSequence(mu::engraving::Score &score,
   return sequence;
 }
 
+/**
+ * A stretch of depressed pedal, in ticks with repeats.
+ */
+struct PedalSpan
+{
+  int onTick = 0;
+  int offTick = 0;
+};
+
+bool IsOnTracks(const mu::engraving::EngravingItem &item, int beginTrack,
+                int endTrack)
+{
+  const auto track = static_cast<int>(item.track());
+  return beginTrack <= track && track < endTrack;
+}
+
+/**
+ * The pedal lines that begin in `measure`.
+ */
+std::vector<PedalSpan>
+GetPedalLines(const std::multimap<int, mu::engraving::Spanner *> &spanners,
+              const mu::engraving::Measure &measure, int measureTick,
+              int beginTrack, int endTrack)
+{
+  using namespace mu::engraving;
+  std::vector<PedalSpan> spans;
+  const auto end = spanners.lower_bound(measure.endTick().ticks());
+  for (auto it = spanners.lower_bound(measure.tick().ticks()); it != end; ++it)
+  {
+    if (it->second->type() != ElementType::PEDAL ||
+        !IsOnTracks(*it->second, beginTrack, endTrack))
+      continue;
+    const Pedal *pedal = toPedal(it->second);
+    const auto onTick = measureTick + (pedal->tick() - measure.tick()).ticks();
+    spans.push_back({onTick, onTick + pedal->ticks().ticks()});
+  }
+  return spans;
+}
+
+enum class PedalText
+{
+  simile, // "Ped. simile": keep pedalling as in the last pedalled measure
+  senza,  // "senza Ped.": stop
+};
+
+/**
+ * The textual pedal instructions in `measure`, with their tick relative to the
+ * measure start, in tick order.
+ */
+std::vector<std::pair<int, PedalText>>
+GetPedalTexts(const mu::engraving::Measure &measure, int beginTrack,
+              int endTrack)
+{
+  using namespace mu::engraving;
+  std::vector<std::pair<int, PedalText>> texts;
+  for (const auto &segment : measure.segments())
+    for (const auto *annotation : segment.annotations())
+    {
+      if (!annotation->isTextBase() ||
+          !IsOnTracks(*annotation, beginTrack, endTrack))
+        continue;
+      auto text =
+          static_cast<const TextBase *>(annotation)->plainText().toStdString();
+      std::transform(text.begin(), text.end(), text.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      if (text.find("ped") == std::string::npos)
+        continue;
+      if (text.find("simile") != std::string::npos)
+        texts.emplace_back(segment.rtick().ticks(), PedalText::simile);
+      else if (text.find("senza") != std::string::npos)
+        texts.emplace_back(segment.rtick().ticks(), PedalText::senza);
+    }
+  return texts;
+}
+
+/**
+ * The pedalling of the given staves in playback order: the score's pedal lines,
+ * plus what "Ped. simile" implies — the pedalling of the last measure that had
+ * pedal lines, repeated measure after measure until pedal lines resume or a
+ * "senza Ped." is met.
+ */
+std::vector<PedalSpan> GetPedalSpans(mu::engraving::Score &score,
+                                     int beginTrack, int endTrack)
+{
+  using namespace mu::engraving;
+  const auto &spanners = score.spanner();
+  std::vector<PedalSpan> spans;
+  // The pedal lines of the last measure that had some, relative to its start.
+  std::vector<PedalSpan> pattern;
+  bool simile = false;
+  ForAllMeasures(
+      score,
+      [&](const Measure &measure, int measureTick)
+      {
+        const auto lines =
+            GetPedalLines(spanners, measure, measureTick, beginTrack, endTrack);
+        if (!lines.empty())
+        {
+          simile = false;
+          pattern.clear();
+          for (const auto &line : lines)
+            pattern.push_back(
+                {line.onTick - measureTick, line.offTick - measureTick});
+          spans.insert(spans.end(), lines.begin(), lines.end());
+        }
+
+        // The part of this measure, if any, to be pedalled "simile".
+        std::optional<int> from = simile ? std::make_optional(0) : std::nullopt;
+        std::optional<int> until;
+        for (const auto &[rtick, text] :
+             GetPedalTexts(measure, beginTrack, endTrack))
+          if (text == PedalText::simile)
+          {
+            simile = true;
+            if (!from)
+              from = rtick;
+          }
+          else
+          {
+            simile = false;
+            if (from && !until)
+              until = rtick;
+          }
+        if (!from)
+          return;
+        const auto measureLength = measure.ticks().ticks();
+        for (const auto &relative : pattern)
+          if (relative.onTick >= *from && relative.onTick < measureLength &&
+              relative.onTick < until.value_or(measureLength))
+            spans.push_back({measureTick + relative.onTick,
+                             measureTick + relative.offTick});
+      });
+  std::stable_sort(spans.begin(), spans.end(),
+                   [](const PedalSpan &a, const PedalSpan &b)
+                   { return a.onTick < b.onTick; });
+  return spans;
+}
+
 PedalSequence GetPedalSequence(mu::engraving::Score &score, int beginStaffIdx,
                                int endStaffIdx)
 {
   using namespace mu::engraving;
-  const std::multimap<int, Spanner *> &spanners = score.spanner();
   std::vector<PedalSequenceItem> sequence;
-  const auto beginTrack = beginStaffIdx * VOICES;
-  const auto endTrack = endStaffIdx * VOICES;
-  ForAllSegments(score,
-                 [&](const Segment &segment, int measureTick)
-                 {
-                   if (segment.segmentType() != SegmentType::ChordRest)
-                     return;
-                   const auto tick = segment.tick().ticks();
-                   const auto jt = spanners.upper_bound(tick);
-                   for (auto it = spanners.lower_bound(tick); it != jt; ++it)
-                   {
-                     if (it->second->type() != ElementType::PEDAL)
-                       continue;
-                     const Pedal *pedal = toPedal(it->second);
-                     if (pedal->track() < beginTrack ||
-                         pedal->track() >= endTrack)
-                       continue;
-                     const auto onTick = measureTick + segment.rtick().ticks();
-                     const auto offTick = onTick + pedal->ticks().ticks();
+  for (const auto &span :
+       GetPedalSpans(score, beginStaffIdx * VOICES, endStaffIdx * VOICES))
+  {
+    while (!sequence.empty() && sequence.back().tick > span.onTick)
+      // Cut a pedal that overlaps with the beginning of the next.
+      sequence.pop_back();
 
-                     while (!sequence.empty() && sequence.back().tick > onTick)
-                       // To be verified, but it looks like there might be some
-                       // pedals whose end overlaps with the beginning of the
-                       // next pedal.
-                       sequence.pop_back();
+    // Reuse the last item if it coincides in time.
+    if (!sequence.empty() && sequence.back().tick == span.onTick)
+      sequence.back().down = true;
+    else
+      sequence.emplace_back(PedalSequenceItem{span.onTick, true});
 
-                     // Reuse the last item if it coincides in time.
-                     if (!sequence.empty() && sequence.back().tick == onTick)
-                       sequence.back().down = true;
-                     else
-                       sequence.emplace_back(PedalSequenceItem{onTick, true});
-
-                     sequence.emplace_back(PedalSequenceItem{offTick, false});
-                   }
-                 });
+    sequence.emplace_back(PedalSequenceItem{span.offTick, false});
+  }
   return sequence;
 }
 
