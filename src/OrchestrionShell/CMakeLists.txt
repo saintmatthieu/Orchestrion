@@ -32,6 +32,8 @@ set(MODULE_SRC
   view/GradingModel.h
   view/MidiKeyboardIconModel.cpp
   view/MidiKeyboardIconModel.h
+  view/PedalIndicatorModel.cpp
+  view/PedalIndicatorModel.h
   view/PlaybackButtonModel.cpp
   view/PlaybackButtonModel.h
   view/ScoreAttributionModel.cpp

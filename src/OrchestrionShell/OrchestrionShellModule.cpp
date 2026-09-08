@@ -36,6 +36,7 @@
 #endif
 #include "view/MidiKeyboardIconModel.h"
 #include "view/NotationPaintViewLoaderModel.h"
+#include "view/PedalIndicatorModel.h"
 #include "view/PlaybackButtonModel.h"
 #include "view/ScoreAttributionModel.h"
 #include "view/ScoreHeadingModel.h"
@@ -89,6 +90,8 @@ void OrchestrionShellModule::registerUiTypes()
                                          "MidiKeyboardIconModel");
   qmlRegisterType<AutoPlayModel>("Orchestrion.OrchestrionShell", 1, 0,
                                  "AutoPlayModel");
+  qmlRegisterType<PedalIndicatorModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                       "PedalIndicatorModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "ScoreAttributionModel");
 #ifdef Q_OS_MAC

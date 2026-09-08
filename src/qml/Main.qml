@@ -316,6 +316,16 @@ ApplicationWindow {
                     }
                 }
 
+                // The sustain pedal, opposite the grading toggle at the
+                // bottom centre. Not part of the fading controls overlay:
+                // it is feedback while playing, when the mouse is still.
+                PedalIndicator {
+                    id: pedalIndicator
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 8
+                }
+
                 // Beginner help: number-key tooltip + "Show me!" animation.
                 // Stays put (not tied to the fading controls overlay).
                 NumberKeysHelp {
@@ -556,8 +566,9 @@ ApplicationWindow {
                     z: 104
 
                     anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 24
+                    // Above the pedal indicator, which has the bottom centre.
+                    anchors.bottom: pedalIndicator.top
+                    anchors.bottomMargin: 8
                     width: tunerRow.width + 48
                     height: tunerRow.height + 24
                     radius: height / 2
