@@ -29,6 +29,11 @@ void PedalIndicatorModel::load()
   orchestrion()->sequencerChanged().onNotify(this,
                                              [this] { followSequencer(); });
   followSequencer();
+
+  sequencerConfiguration()->pedalIndicatorVisibleChanged().onNotify(
+      this, [this] { emit iconVisibleChanged(); });
+  // The view's binding was evaluated before we subscribed.
+  emit iconVisibleChanged();
 }
 
 void PedalIndicatorModel::followSequencer()
@@ -53,6 +58,11 @@ void PedalIndicatorModel::followSequencer()
 }
 
 bool PedalIndicatorModel::pedalDown() const { return m_pedalDown; }
+
+bool PedalIndicatorModel::iconVisible() const
+{
+  return sequencerConfiguration()->pedalIndicatorVisible();
+}
 
 void PedalIndicatorModel::setPedalDown(bool down)
 {

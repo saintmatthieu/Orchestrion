@@ -110,6 +110,10 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  sequencerConfiguration()->pedalIndicatorVisibleChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   sequencerConfiguration()->noteInfoTooltipEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
@@ -276,8 +280,15 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   midiIconItem->setCheckable(true);
   midiIconItem->setChecked(sequencerConfiguration()->midiKeyboardIconVisible());
 
+  // The sustain-pedal indicator at the bottom of the score view.
+  MenuItem *const pedalItem = makeMenuItem(
+      actionIds::togglePedalIndicator,
+      muse::TranslatableString("appshell/menu/view", "&Pedal indicator"));
+  pedalItem->setCheckable(true);
+  pedalItem->setChecked(sequencerConfiguration()->pedalIndicatorVisible());
+
   QList<muse::uicomponents::MenuItem *> menu{
-      jumpAnticipationItem, midiIconItem,
+      jumpAnticipationItem, midiIconItem, pedalItem,
       makeMenuItem(
           "view-toggle-fullscreen",
           muse::TranslatableString("appshell/menu/view", "&Fullscreen"))};

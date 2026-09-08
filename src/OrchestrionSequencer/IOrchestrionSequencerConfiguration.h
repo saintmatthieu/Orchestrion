@@ -151,5 +151,13 @@ public:
   virtual bool midiKeyboardIconVisible() const = 0;
   virtual void setMidiKeyboardIconVisible(bool) = 0;
   virtual muse::async::Notification midiKeyboardIconVisibleChanged() const = 0;
+
+  /**
+   * Whether the sustain-pedal indicator (the three pedals at the bottom of
+   * the score view) is shown. On by default; toggled from the View menu.
+   */
+  virtual bool pedalIndicatorVisible() const = 0;
+  virtual void setPedalIndicatorVisible(bool) = 0;
+  virtual muse::async::Notification pedalIndicatorVisibleChanged() const = 0;
 };
 } // namespace dgk

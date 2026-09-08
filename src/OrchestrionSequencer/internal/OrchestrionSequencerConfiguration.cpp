@@ -55,6 +55,8 @@ const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
                                                   "KEYBOARD_HELP_DISMISSED");
 const muse::Settings::Key
     MIDI_KEYBOARD_ICON_VISIBLE(module_name, "MIDI_KEYBOARD_ICON_VISIBLE");
+const muse::Settings::Key PEDAL_INDICATOR_VISIBLE(module_name,
+                                                  "PEDAL_INDICATOR_VISIBLE");
 } // namespace
 
 void OrchestrionSequencerConfiguration::init()
@@ -161,6 +163,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(MIDI_KEYBOARD_ICON_VISIBLE)
       .onReceive(this, [this](const muse::Val &)
                  { m_midiKeyboardIconVisibleChanged.notify(); });
+
+  muse::settings()->setDefaultValue(PEDAL_INDICATOR_VISIBLE, muse::Val{true});
+  muse::settings()
+      ->valueChanged(PEDAL_INDICATOR_VISIBLE)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_pedalIndicatorVisibleChanged.notify(); });
 }
 
 bool OrchestrionSequencerConfiguration::velocityRecordingEnabled() const
@@ -423,6 +431,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::midiKeyboardIconVisibleChanged() const
 {
   return m_midiKeyboardIconVisibleChanged;
+}
+
+bool OrchestrionSequencerConfiguration::pedalIndicatorVisible() const
+{
+  return muse::settings()->value(PEDAL_INDICATOR_VISIBLE).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setPedalIndicatorVisible(bool visible)
+{
+  muse::settings()->setSharedValue(PEDAL_INDICATOR_VISIBLE, muse::Val{visible});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::pedalIndicatorVisibleChanged() const
+{
+  return m_pedalIndicatorVisibleChanged;
 }
 
 } // namespace dgk

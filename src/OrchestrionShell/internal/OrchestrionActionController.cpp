@@ -155,6 +155,13 @@ void OrchestrionActionController::init()
                           !sequencerConfig()->midiKeyboardIconVisible());
                     });
 
+  dispatcher()->reg(this, actionIds::togglePedalIndicator,
+                    [this]
+                    {
+                      sequencerConfig()->setPedalIndicatorVisible(
+                          !sequencerConfig()->pedalIndicatorVisible());
+                    });
+
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
                     {

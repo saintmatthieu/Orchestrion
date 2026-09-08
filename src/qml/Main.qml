@@ -324,6 +324,7 @@ ApplicationWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 8
+                    visible: shown
                 }
 
                 // Beginner help: number-key tooltip + "Show me!" animation.

@@ -46,6 +46,11 @@ static constexpr const char *toggleJumpAnticipation =
 static constexpr const char *toggleMidiKeyboardIcon =
     "orchestrion-view-toggle-midi-keyboard-icon";
 
+//! View menu: shows/hides the sustain-pedal indicator (the three pedals at
+//! the bottom of the score view).
+static constexpr const char *togglePedalIndicator =
+    "orchestrion-view-toggle-pedal-indicator";
+
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
 //! by MuseScore code with its rendered-track playback in mind (e.g. the

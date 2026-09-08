@@ -101,6 +101,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::toggleMidiKeyboardIcon,
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::togglePedalIndicator,
+                         mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("prev", mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("next", mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("rewind", mu::context::UiCtxAny,

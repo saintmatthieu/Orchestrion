@@ -19,6 +19,7 @@
 #pragma once
 
 #include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
 #include <QObject>
@@ -28,7 +29,8 @@ namespace dgk
 {
 /**
  * Backs the sustain-pedal indicator at the bottom of the score view: whether
- * the pedal is down right now. Follows the pedal events the sequencer sends
+ * the pedal is down right now, and whether the indicator is shown at all
+ * (toggled from the View menu). Follows the pedal events the sequencer sends
  * to the synthesizer, so it shows exactly what sounds — the re-pedal's
  * lift-and-press included.
  */
@@ -39,8 +41,10 @@ class PedalIndicatorModel : public QObject,
   Q_OBJECT
 
   Q_PROPERTY(bool pedalDown READ pedalDown NOTIFY pedalDownChanged)
+  Q_PROPERTY(bool iconVisible READ iconVisible NOTIFY iconVisibleChanged)
 
   dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
 
 public:
   explicit PedalIndicatorModel(QObject *parent = nullptr);
@@ -48,9 +52,11 @@ public:
   Q_INVOKABLE void load();
 
   bool pedalDown() const;
+  bool iconVisible() const;
 
 signals:
   void pedalDownChanged();
+  void iconVisibleChanged();
 
 private:
   void followSequencer();

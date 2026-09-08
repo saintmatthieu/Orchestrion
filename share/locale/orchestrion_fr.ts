@@ -421,6 +421,11 @@
         <source>&amp;MIDI keyboard icon</source>
         <translation>Icône du clavier &amp;MIDI</translation>
     </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="239"/>
+        <source>&amp;Pedal indicator</source>
+        <translation>Indicateur de &amp;pédale</translation>
+    </message>
 </context>
 <context>
     <name>audio</name>

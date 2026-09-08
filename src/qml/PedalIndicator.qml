@@ -28,7 +28,7 @@ import Orchestrion.OrchestrionShell 1.0
 // sustain pedal: it slides down its slot while the sequencer holds the
 // pedal down and back up when it lifts. The position alone tells the state,
 // so nothing is dimmed. An indicator only: the pedalling follows the score's
-// markings, so there is nothing to click.
+// markings, so there is nothing to click. The View menu can hide it.
 Item {
     id: root
 
@@ -43,6 +43,8 @@ Item {
     height: 36
 
     readonly property bool pedalDown: model.pedalDown
+    //! Whether the user chose to see the indicator at all (View menu).
+    readonly property bool shown: model.iconVisible
 
     PedalIndicatorModel {
         id: model
