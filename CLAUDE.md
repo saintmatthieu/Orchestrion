@@ -103,7 +103,7 @@ MuseScore's QML is made of compiled QML modules (`Muse.Ui`, `Muse.UiComponents`,
 - **kors_async channels copy-assign their payload**: event value types sent through `muse::async::Channel` must be assignable (no `const` members).
 - **kors_async subscriptions are `SetOnce` by default and assert on a duplicate in debug builds** (`callback is already set`). A handler that re-subscribes the same receiver to an object that may be unchanged (e.g. the modifiable-item registry or the player on `sequencerChanged`) must pass `muse::async::Asyncable::Mode::SetReplace`; a subscription that is meant to be made once must not be repeated (the old kors_async silently kept the first one, which some code relied on).
 - **Closing a score** (opening another one, window close, Cmd+Q) goes through `OrchestrionActionController::closeCurrentProject`, which asks about Orchestrion's own modifications and closes the project itself. Never route through MuseScore's `closeOpenedProject()`: since MuseScore 5 every imported (MusicXML) score counts as "needing a save" (`NotationProject::isNeedSave` is a flag set on import, not derived from the undo stack), so it would always ask to save.
-- License headers: existing files use a GPL-3.0-or-later header (`Copyright (C) 2024 Matthieu Hodgkinson`). Match it on new files.
+- License headers: files carry a GPL-3.0-or-later header (`Copyright (C) <year> Matthieu Hodgkinson`). New files get the same header with the **current year** (existing files keep the year they were written in; don't bump them).
 - **Doc comments**: for class and method documentation use the multiline Javadoc-style block
   ```cpp
   /**
