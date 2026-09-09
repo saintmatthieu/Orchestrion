@@ -90,8 +90,8 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
           m.cv.wait(lock, [&] { return !m.queue.empty() || self.m_finished; });
           if (self.m_finished)
             return;
-          // An entry stays in the queue until it falls due, so that whoever
-          // can't wait for it (see FlushPendingPedalEvents) may take it over.
+          // An entry stays in the queue until it falls due, so that it can be
+          // superseded, and entries queued behind it wait along.
           if (const auto due = m.queue.front().time)
           {
             m.cv.wait_until(lock, *due,
@@ -106,7 +106,7 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
               continue;
           }
           auto entry = std::move(m.queue.front());
-          m.queue.pop();
+          m.queue.pop_front();
           lock.unlock();
           cb(std::move(entry.event));
           lock.lock();
@@ -125,10 +125,9 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
       m_allVoices{MakeAllVoices(m_rightHand.voices, m_leftHand.voices)},
       m_finalTick{GetFinalTick(m_allVoices)},
       m_pedalSequence{std::move(pedalSequence)},
-      m_pedalSequenceIt{m_pedalSequence.begin()},
-      m_pedalThread{MakeThread<PedalEvent>(*this, m_pedalThreadMembers,
-                                           [this](PedalEvent event)
-                                           { m_outputEvent.send(event); })},
+      m_pedalThread{MakeThread<EventVariant>(*this, m_pedalThreadMembers,
+                                             [this](EventVariant event)
+                                             { m_outputEvent.send(event); })},
       m_noteThread{MakeThread<NoteEvent>(
           *this, m_noteThreadMembers,
           [this](NoteEvent event) { m_outputEvent.send(NoteEvents{event}); })}
@@ -403,7 +402,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
                                                  std::optional<float> velocity,
                                                  bool loop)
 {
-
+  ++m_inputSerial;
   const bool isLeftHand = pitch < 60 && !m_leftHand.voices.empty();
   auto &hand = isLeftHand ? m_leftHand : m_rightHand;
   if (type == NoteEventType::noteOn)
@@ -449,44 +448,73 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
 
   SendTransitions(transitions, std::move(velocity), isLeftHand);
 
-  // The pedal follows the events, whichever hand sends them: a pedal change is
-  // reached once a note at or beyond it has been struck. A hand holding a note
-  // across the change doesn't hold it back, nor does a hand that isn't played.
-  std::optional<int> pedalTick;
-  for (const auto *voice : m_allVoices)
-    if (const auto struck = voice->GetLastStruckTick())
-      pedalTick = std::max(pedalTick.value_or(*struck), *struck);
-  if (type == NoteEventType::noteOff)
-  {
-    // A release counts as the released notes having run their course, so that
-    // a pedal marked to end with them is lifted along.
-    std::optional<int> releasedEnd;
-    for (const auto &[_, transition] : transitions)
-      if (const auto past = GetPastChord(transition))
-        releasedEnd =
-            std::max(releasedEnd.value_or(0), past->GetEndTick().withRepeats);
-    if (releasedEnd)
-      pedalTick = releasedEnd;
-  }
-  if (!pedalTick)
-    return;
+  UpdatePedal();
+}
 
-  const auto newPedalSequenceIt =
-      std::find_if(m_pedalSequenceIt, m_pedalSequence.end(),
-                   [&](const auto &item) { return item.tick > *pedalTick; });
-  if (newPedalSequenceIt > m_pedalSequenceIt)
+namespace
+{
+/**
+ * The chord a hand is holding: the most recently struck of its sounding chords,
+ * or null if it holds none.
+ */
+const IChord *GetHeldChord(const OrchestrionSequencer::HandVoices &voices)
+{
+  const IChord *held = nullptr;
+  for (const auto &voice : voices)
+    if (const auto chord = voice->GetSoundingChord();
+        chord && (!held || held->GetBeginTick() < chord->GetBeginTick()))
+      held = chord;
+  return held;
+}
+} // namespace
+
+void OrchestrionSequencer::UpdatePedal()
+{
+  // The spans, as [first, last) indices, within which every hand that is down
+  // stands — a hand standing within a span when the chord it holds overlaps
+  // it. A hand holding a note across a pedal change stands within both spans;
+  // one still holding an upbeat stands within none of the first bar's.
+  std::optional<std::pair<size_t, size_t>> common;
+  for (const auto *hand : {&m_rightHand, &m_leftHand})
   {
-    // A note-on takes the pedal as marked where it stands. A note-off only
-    // lifts it where the marking has ended: where a new pedal is marked
-    // instead, the pedal is held until the note that pedal is for is struck,
-    // however early the last note under the previous pedal was released.
-    const auto &item = *(newPedalSequenceIt - 1);
-    if (type == NoteEventType::noteOn || !item.down)
-    {
-      PostPedalEvent(PedalEvent{m_instrument, item.down});
-      m_pedalSequenceIt = newPedalSequenceIt;
-    }
+    if (!hand->pressedKey)
+      continue;
+    const auto held = GetHeldChord(hand->voices);
+    if (!held)
+      continue;
+    const auto begin = held->GetBeginTick().withRepeats;
+    const auto end = held->GetEndTick().withRepeats;
+    const auto first = std::find_if(
+        m_pedalSequence.begin(), m_pedalSequence.end(),
+        [&](const PedalSpan &span) { return span.offTick > begin; });
+    const auto last =
+        std::find_if(first, m_pedalSequence.end(),
+                     [&](const PedalSpan &span) { return span.onTick >= end; });
+    const std::pair<size_t, size_t> range{first - m_pedalSequence.begin(),
+                                          last - m_pedalSequence.begin()};
+    common = common ? std::make_pair(std::max(common->first, range.first),
+                                     std::min(common->second, range.second))
+                    : range;
   }
+
+  if (!common)
+    // No hand is down: the pedal stays as it is.
+    return;
+  if (common->first >= common->second)
+  {
+    // Hands in different spans, or in none.
+    if (m_pedalSpan)
+      PostPedalEvent(PedalEvent{m_instrument, false});
+    return;
+  }
+  if (m_pedalSpan && common->first <= *m_pedalSpan &&
+      *m_pedalSpan < common->second)
+    // Still within the span the pedal is down in.
+    return;
+  // Down in the earliest common span, i.e. where the note was struck; a
+  // re-pedal if the pedal was down in another.
+  m_pedalSpan = common->first;
+  PostPedalEvent(PedalEvent{m_instrument, true});
 }
 
 void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
@@ -501,20 +529,6 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
     SendTransitions(std::move(transitions));
   }
   PostPedalEvent(PedalEvent{m_instrument, false});
-  // Stand just before the pedal state in force where the voices now are, so
-  // that the first note played there puts the pedal back as marked.
-  std::optional<int> position;
-  for (const auto *voice : m_allVoices)
-    if (const auto struck = voice->GetLastStruckTick())
-      position = std::min(position.value_or(*struck), *struck);
-  const auto nextItem =
-      position
-          ? std::upper_bound(m_pedalSequence.begin(), m_pedalSequence.end(),
-                             *position, [](int tick, const auto &item)
-                             { return tick < item.tick; })
-          : m_pedalSequence.begin();
-  m_pedalSequenceIt =
-      nextItem == m_pedalSequence.begin() ? nextItem : nextItem - 1;
   m_autoPlayTick = tick;
 }
 
@@ -594,57 +608,93 @@ OrchestrionSequencer::GetCurrentTransitions() const
 
 void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
 {
+  using namespace std::chrono;
+  using namespace std::chrono_literals;
+  // How long the pedal stays up at least, for the dampers to act on the
+  // strings.
+  constexpr auto minUpTime = 100ms;
+
+  if (!event.on)
+    m_pedalSpan.reset();
   auto &m = m_pedalThreadMembers;
+  const auto now = steady_clock::now();
   {
     std::unique_lock lock{m.mutex};
+    const auto lift = [&]
+    {
+      // A lift supersedes a pending press; the releases held back for that
+      // press go out now.
+      std::erase_if(m.queue,
+                    [](const auto &entry) {
+                      return std::holds_alternative<PedalEvent>(entry.event);
+                    });
+      m.queue.emplace_back(QueueEntry<EventVariant>{
+          std::nullopt, PedalEvent{m_instrument, false}});
+      m_pedalLiftTime = now;
+      m_liftSerial = m_inputSerial;
+    };
     if (!event.on)
-    {
-      // A release supersedes whatever is pending.
-      m.queue = {};
-      m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt, std::move(event)});
-    }
-    else if (m_pedalDown)
-    {
-      using namespace std::chrono_literals;
-      // Re-pedal: lift, and give the dampers time to damp the released notes
-      // before pressing again. Should a note be released meanwhile, the press
-      // is hurried so that the note is caught (FlushPendingPedalEvents).
-      m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt,
-                                             PedalEvent{m_instrument, false}});
-      m.queue.emplace(QueueEntry<PedalEvent>{
-          std::chrono::steady_clock::now() + 100ms, std::move(event)});
-    }
+      lift();
     else
-      // Nothing to damp: press right away, before the note this pedal is for
-      // might be released.
-      m.queue.emplace(QueueEntry<PedalEvent>{std::nullopt, std::move(event)});
+    {
+      if (m_pedalDown)
+        // A re-pedal.
+        lift();
+      const auto pressTime = m_pedalLiftTime + minUpTime;
+      m.queue.emplace_back(QueueEntry<EventVariant>{
+          pressTime > now ? std::make_optional(pressTime) : std::nullopt,
+          std::move(event)});
+    }
   }
-
   m.cv.notify_one();
   m_pedalDown = event.on;
-}
-
-void OrchestrionSequencer::FlushPendingPedalEvents()
-{
-  std::queue<QueueEntry<PedalEvent>> pending;
-  {
-    std::unique_lock lock{m_pedalThreadMembers.mutex};
-    std::swap(pending, m_pedalThreadMembers.queue);
-  }
-  m_pedalThreadMembers.cv.notify_one();
-  for (; !pending.empty(); pending.pop())
-    m_outputEvent.send(pending.front().event);
 }
 
 void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
 {
   using namespace std::chrono;
 
-  // A pedal press still pending must come before a note release, else the
-  // released note gets damped instead of caught.
-  if (std::any_of(events.begin(), events.end(), [](const auto &event)
-                  { return event.type == NoteEventType::noteOff; }))
-    FlushPendingPedalEvents();
+  // The releases of notes struck since the pedal was last lifted are held back
+  // while a press is pending: the pedal is to catch them, and it must stay up
+  // its full time first. Held back, they go out right after the press — down,
+  // the pedal sustains a released note rather than the release cutting it.
+  {
+    auto &m = m_pedalThreadMembers;
+    std::unique_lock lock{m.mutex};
+    const auto pressPending =
+        std::any_of(m.queue.begin(), m.queue.end(),
+                    [](const auto &entry)
+                    {
+                      const auto pedal = std::get_if<PedalEvent>(&entry.event);
+                      return pedal && pedal->on;
+                    });
+    const auto heldBack = [&](const NoteEvent &event)
+    {
+      if (!pressPending || event.type != NoteEventType::noteOff)
+        return false;
+      const auto it = m_strikeSerial.find({event.track.value, event.pitch});
+      return it != m_strikeSerial.end() && it->second >= m_liftSerial;
+    };
+    NoteEvents releases;
+    std::copy_if(events.begin(), events.end(), std::back_inserter(releases),
+                 heldBack);
+    if (!releases.empty())
+    {
+      events.erase(std::remove_if(events.begin(), events.end(), heldBack),
+                   events.end());
+      m.queue.emplace_back(
+          QueueEntry<EventVariant>{std::nullopt, std::move(releases)});
+      lock.unlock();
+      m.cv.notify_one();
+    }
+  }
+  for (const auto &event : events)
+    if (event.type == NoteEventType::noteOn)
+      m_strikeSerial[{event.track.value, event.pitch}] = m_inputSerial;
+    else
+      m_strikeSerial.erase({event.track.value, event.pitch});
+  if (events.empty())
+    return;
 
   const auto numNoteons =
       std::count_if(events.begin(), events.end(), [](const auto &event)
@@ -690,7 +740,7 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
   {
     std::unique_lock lock{m.mutex};
     for (auto &entry : entries)
-      m.queue.push(std::move(entry));
+      m.queue.push_back(std::move(entry));
   }
 
   m.cv.notify_one();

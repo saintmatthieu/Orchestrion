@@ -31,11 +31,12 @@
 #include <chrono>
 #include <condition_variable>
 #include <context/iglobalcontext.h>
+#include <deque>
 #include <functional>
+#include <map>
 #include <memory>
 #include <modularity/ioc.h>
 #include <mutex>
-#include <queue>
 #include <random>
 #include <thread>
 #include <vector>
@@ -102,7 +103,7 @@ private:
 
   template <typename EventType> struct ThreadMembers
   {
-    std::queue<QueueEntry<EventType>> queue;
+    std::deque<QueueEntry<EventType>> queue;
     std::mutex mutex;
     std::condition_variable cv;
   };
@@ -114,12 +115,17 @@ private:
 
   void OnInputEventRecursive(NoteEventType, int pitch,
                              std::optional<float> velocity, bool loop);
-  void PostPedalEvent(PedalEvent event);
   /**
-   * Sends right away whatever the pedal thread still holds back, i.e. the
-   * press that a re-pedal defers.
+   * Puts the pedal where the hands want it: down when the hands that are down
+   * all stand within one and the same pedal span, up when they stand in
+   * different spans or in none, unchanged when no hand is down.
    */
-  void FlushPendingPedalEvents();
+  void UpdatePedal();
+  /**
+   * Queues the pedal event for the pedal thread. A press waits until the pedal
+   * has been up for the dampers to act, and a lift supersedes a pending press.
+   */
+  void PostPedalEvent(PedalEvent event);
   void PostNoteEvents(NoteEvents events);
 
   const InstrumentIndex m_instrument;
@@ -132,15 +138,28 @@ private:
   const std::vector<const VoiceSequencer *> m_allVoices;
   const Tick m_finalTick;
   const PedalSequence m_pedalSequence;
-  PedalSequence::const_iterator m_pedalSequenceIt;
+  //! The span of m_pedalSequence the pedal is down in, if it is.
+  std::optional<size_t> m_pedalSpan;
 
-  ThreadMembers<PedalEvent> m_pedalThreadMembers;
+  //! The pedal thread also carries the releases of notes struck under a pedal
+  //! press still pending, held back until the press so that the pedal catches
+  //! them.
+  ThreadMembers<EventVariant> m_pedalThreadMembers;
   ThreadMembers<NoteEvent> m_noteThreadMembers;
   std::thread m_pedalThread;
   std::thread m_noteThread;
 
   bool m_finished = false;
   bool m_pedalDown = false;
+  //! When the pedal was last lifted.
+  std::chrono::steady_clock::time_point m_pedalLiftTime{};
+  //! Counts the input events, to tell the notes struck since the pedal was
+  //! last lifted (`m_liftSerial`) — those a pending press is to catch.
+  unsigned m_inputSerial = 0;
+  unsigned m_liftSerial = 0;
+  //! The input event in which each sounding note, by track and pitch, was
+  //! struck.
+  std::map<std::pair<int, int>, unsigned> m_strikeSerial;
   std::mt19937 m_rng{0};
   std::uniform_int_distribution<int> m_delayDist{0, 30000};   // microseconds
   std::uniform_int_distribution<int> m_velocityDist{90, 110}; // percents

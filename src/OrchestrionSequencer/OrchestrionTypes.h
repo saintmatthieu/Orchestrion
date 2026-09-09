@@ -31,13 +31,19 @@ namespace dgk
 
 static constexpr auto numVoices = 4;
 
-struct PedalSequenceItem
+/**
+ * A stretch of depressed pedal, [onTick, offTick), in ticks with repeats.
+ */
+struct PedalSpan
 {
-  int tick = 0;
-  bool down = false;
+  int onTick = 0;
+  int offTick = 0;
 };
 
-using PedalSequence = std::vector<PedalSequenceItem>;
+/**
+ * The pedal spans of a part, sorted and non-overlapping.
+ */
+using PedalSequence = std::vector<PedalSpan>;
 
 class IChord;
 class IRest;

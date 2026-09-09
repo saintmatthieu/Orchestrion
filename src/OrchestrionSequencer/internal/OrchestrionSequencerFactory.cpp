@@ -172,15 +172,6 @@ auto GetChordSequence(mu::engraving::Score &score,
   return sequence;
 }
 
-/**
- * A stretch of depressed pedal, in ticks with repeats.
- */
-struct PedalSpan
-{
-  int onTick = 0;
-  int offTick = 0;
-};
-
 bool IsOnTracks(const mu::engraving::EngravingItem &item, int beginTrack,
                 int endTrack)
 {
@@ -314,21 +305,18 @@ PedalSequence GetPedalSequence(mu::engraving::Score &score, int beginStaffIdx,
                                int endStaffIdx)
 {
   using namespace mu::engraving;
-  std::vector<PedalSequenceItem> sequence;
+  PedalSequence sequence;
   for (const auto &span :
        GetPedalSpans(score, beginStaffIdx * VOICES, endStaffIdx * VOICES))
   {
-    while (!sequence.empty() && sequence.back().tick > span.onTick)
-      // Cut a pedal that overlaps with the beginning of the next.
+    // A pedal that overlaps with the beginning of the next is cut there.
+    if (!sequence.empty() && sequence.back().onTick == span.onTick)
       sequence.pop_back();
-
-    // Reuse the last item if it coincides in time.
-    if (!sequence.empty() && sequence.back().tick == span.onTick)
-      sequence.back().down = true;
-    else
-      sequence.emplace_back(PedalSequenceItem{span.onTick, true});
-
-    sequence.emplace_back(PedalSequenceItem{span.offTick, false});
+    if (!sequence.empty())
+      sequence.back().offTick = std::min(sequence.back().offTick, span.onTick);
+    if (!sequence.empty() && sequence.back().offTick <= sequence.back().onTick)
+      sequence.pop_back();
+    sequence.push_back(span);
   }
   return sequence;
 }

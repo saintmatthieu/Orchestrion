@@ -150,14 +150,6 @@ const IChord *VoiceSequencer::GetFutureChord(unsigned offset) const
   return nullptr;
 }
 
-const IChord *VoiceSequencer::GetPastChord() const
-{
-  for (auto index = std::min(m_index, m_numGestures) - 1; index >= 0; --index)
-    if (const auto chord = m_gestures[index]->AsChord())
-      return chord;
-  return nullptr;
-}
-
 const IMelodySegment *VoiceSequencer::GetPresentThing() const
 {
   return m_onImplicitRest || m_index >= m_numGestures
@@ -264,13 +256,10 @@ std::optional<dgk::Tick> VoiceSequencer::GetNextMatchingTickForNoteoff() const
     return m_gestures[m_index]->AsChord()->GetEndTick();
 }
 
-std::optional<int> VoiceSequencer::GetLastStruckTick() const
+const IChord *VoiceSequencer::GetSoundingChord() const
 {
-  if (const auto present = GetPresentThing(); present && present->AsChord())
-    return present->GetBeginTick().withRepeats;
-  if (const auto past = GetPastChord())
-    return past->GetBeginTick().withRepeats;
-  return std::nullopt;
+  const auto present = GetPresentThing();
+  return present ? present->AsChord() : nullptr;
 }
 
 dgk::Tick VoiceSequencer::GetFinalTick() const
