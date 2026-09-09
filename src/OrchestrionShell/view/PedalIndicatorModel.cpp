@@ -22,7 +22,20 @@
 
 namespace dgk
 {
-PedalIndicatorModel::PedalIndicatorModel(QObject *parent) : QObject(parent) {}
+namespace
+{
+// How long a lift stays on screen at least. The pedal itself stays up 100 ms
+// on a re-pedal, but the lift and the press may reach the GUI thread in one
+// batch, and the slide takes time to read.
+constexpr auto minLiftShown = std::chrono::milliseconds{150};
+} // namespace
+
+PedalIndicatorModel::PedalIndicatorModel(QObject *parent) : QObject(parent)
+{
+  m_pressTimer.setSingleShot(true);
+  connect(&m_pressTimer, &QTimer::timeout, this,
+          [this] { setPedalDown(true); });
+}
 
 void PedalIndicatorModel::load()
 {
@@ -40,7 +53,7 @@ void PedalIndicatorModel::followSequencer()
 {
   // A sequencer starts with the pedal up, and the one it replaces lifts it
   // on its way out.
-  setPedalDown(false);
+  onPedalLifted();
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     return;
@@ -52,9 +65,27 @@ void PedalIndicatorModel::followSequencer()
       [this](const EventVariant &event)
       {
         if (const auto *pedal = std::get_if<PedalEvent>(&event))
-          setPedalDown(pedal->on);
+          pedal->on ? onPedalPressed() : onPedalLifted();
       },
       muse::async::Asyncable::Mode::SetReplace);
+}
+
+void PedalIndicatorModel::onPedalLifted()
+{
+  m_pressTimer.stop();
+  m_liftShownAt = std::chrono::steady_clock::now();
+  setPedalDown(false);
+}
+
+void PedalIndicatorModel::onPedalPressed()
+{
+  using namespace std::chrono;
+  // Not before the lift has been seen.
+  const auto remaining = m_liftShownAt + minLiftShown - steady_clock::now();
+  if (remaining > 0ms)
+    m_pressTimer.start(duration_cast<milliseconds>(remaining));
+  else
+    setPedalDown(true);
 }
 
 bool PedalIndicatorModel::pedalDown() const { return m_pedalDown; }

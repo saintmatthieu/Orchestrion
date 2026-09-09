@@ -23,6 +23,8 @@
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
 #include <QObject>
+#include <QTimer>
+#include <chrono>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -31,8 +33,8 @@ namespace dgk
  * Backs the sustain-pedal indicator at the bottom of the score view: whether
  * the pedal is down right now, and whether the indicator is shown at all
  * (toggled from the View menu). Follows the pedal events the sequencer sends
- * to the synthesizer, so it shows exactly what sounds — the re-pedal's
- * lift-and-press included.
+ * to the synthesizer, so it shows what sounds — the re-pedal's lift-and-press
+ * included, the lift being kept on screen long enough to be seen.
  */
 class PedalIndicatorModel : public QObject,
                             public dgk::Injectable,
@@ -60,8 +62,14 @@ signals:
 
 private:
   void followSequencer();
+  void onPedalLifted();
+  void onPedalPressed();
   void setPedalDown(bool);
 
   bool m_pedalDown = false;
+  //! When the pedal was last shown up, and the timer showing it down again
+  //! once that has been on screen long enough.
+  std::chrono::steady_clock::time_point m_liftShownAt;
+  QTimer m_pressTimer;
 };
 } // namespace dgk
