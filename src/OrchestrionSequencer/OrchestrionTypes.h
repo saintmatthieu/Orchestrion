@@ -233,6 +233,50 @@ struct Tick
   value_type withoutRepeats;
 };
 
+/**
+ * One step of an ornament: the pitches sounding during it, for a nominal
+ * duration in score ticks.
+ */
+struct OrnamentStep
+{
+  std::vector<int> pitches;
+  int ticks = 0;
+};
+
+/**
+ * How an ornamented chord (a trill, a mordent, a turn, grace notes, ...)
+ * unfolds from the one gesture that strikes it. Durations are nominal, in
+ * score ticks; the sequencer scales them by the performer's estimated tempo
+ * when the chord is struck. Nothing is anticipated: the first step sounds at
+ * the strike, so an ornament meant to fall before the beat is for the player
+ * to anticipate, by striking a little early.
+ */
+struct Ornament
+{
+  /**
+   * Played once from the strike, in order: grace notes before the chord, an
+   * ornament's opening notes.
+   */
+  std::vector<OrnamentStep> before;
+  /**
+   * What fills the chord's duration between `before` and `after`: a trill's
+   * alternation, a mordent's return to the principal, or the principal chord
+   * alone. Never empty.
+   */
+  std::vector<OrnamentStep> fill;
+  /**
+   * Whether `fill` is cycled as often as it fits in its span — or, when
+   * nothing comes `after`, until the key is released — rather than played
+   * once, stretched over the span.
+   */
+  bool cycleFill = false;
+  /**
+   * Played once at the end of the chord's duration: a trill's closing turn,
+   * grace notes after the chord.
+   */
+  std::vector<OrnamentStep> after;
+};
+
 class Finally
 {
 public:

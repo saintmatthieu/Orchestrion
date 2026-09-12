@@ -24,6 +24,8 @@
 
 #include "engraving/types/types.h"
 
+#include <optional>
+
 namespace mu::engraving
 {
 class Note;
@@ -53,13 +55,15 @@ private:
   std::vector<int> GetPitches() const override;
   std::vector<mu::engraving::Note *> GetNotes() const;
   void SetModified();
-  void ResetNoteColors(const std::vector<mu::engraving::Note *>& notes);
+  void ResetNoteColors(const std::vector<mu::engraving::Note *> &notes);
 
   // IChord
 private:
   float GetVelocity() const override;
   void SetVelocity(float) override;
   std::optional<float> GetDynamicVelocity() const override;
+  const Ornament *GetOrnament() const override;
+  double GetNominalBpm() const override;
   const mu::engraving::Chord *GetEngravingChord() const override;
 
   // IModifiableItem
@@ -72,6 +76,11 @@ private:
   // Playback velocity (0..1) implied by the score's dynamics at this chord,
   // resolved once at construction; 0 if the score carries no dynamic here.
   const float m_dynamicVelocity;
+  // The ornament the chord carries, resolved once at construction like the
+  // dynamic velocity; nullopt for a plain chord.
+  const std::optional<Ornament> m_ornament;
+  // The score's tempo at the chord, in quarter notes per minute.
+  const double m_nominalBpm;
   std::optional<float> m_unsavedVelocity;
   muse::async::Notification m_modifiedChanged;
 };

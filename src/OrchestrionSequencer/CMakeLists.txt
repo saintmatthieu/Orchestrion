@@ -14,6 +14,8 @@ set(MODULE_SRC
     internal/MuseChord.h
     internal/MuseMelodySegment.cpp
     internal/MuseMelodySegment.h
+    internal/MuseOrnament.cpp
+    internal/MuseOrnament.h
     internal/MuseRest.cpp
     internal/MuseRest.h
     internal/Orchestrion.cpp
@@ -25,6 +27,8 @@ set(MODULE_SRC
     internal/OrchestrionSequencerFactory.cpp
     internal/OrchestrionSequencerFactory.h
     internal/OrchestrionTypes.cpp
+    internal/OrnamentSchedule.cpp
+    internal/OrnamentSchedule.h
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp
@@ -48,7 +52,7 @@ set(MODULE_SRC
 
 set(MODULE_USE_PCH OFF)
 set(MODULE_USE_UNITY OFF)
-set(MODULE_LINK muse_audio)
+set(MODULE_LINK muse_audio PositionEstimation)
 set(MODULE_QRC OrchestrionSequencer.qrc)
 set(MODULE_QML_IMPORT ${CMAKE_CURRENT_LIST_DIR}/qml)
 

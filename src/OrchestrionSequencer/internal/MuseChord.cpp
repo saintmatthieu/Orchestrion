@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "MuseChord.h"
+#include "MuseOrnament.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/dynamic.h"
 #include "engraving/dom/hairpin.h"
@@ -200,13 +201,6 @@ float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
 }
 } // namespace
 
-MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
-                     int measurePlaybackTick)
-    : MuseMelodySegment{segment, track, measurePlaybackTick},
-      m_dynamicVelocity{ComputeDynamicVelocity(segment, track)}
-{
-}
-
 std::vector<me::Note *> MuseChord::GetNotes() const
 {
   if (const auto museChord =
@@ -290,18 +284,52 @@ const mu::engraving::Chord *GetNextTiedChord(const mu::engraving::Chord &chord)
   }
   return next; // all notes in this chord are tied to notes in next chord
 }
+
+// The chord's duration in ticks, the chords it is tied to included.
+int TiedDurationTicks(const me::Chord &first)
+{
+  int ticks = 0;
+  for (const me::Chord *chord = &first; chord; chord = GetNextTiedChord(*chord))
+    ticks += chord->ticks().ticks();
+  return ticks;
+}
+
+const me::Chord *EngravingChord(const me::Segment &segment, TrackIndex track)
+{
+  return dynamic_cast<const me::Chord *>(segment.element(track.value));
+}
+
+// The score's tempo at the segment, in quarter notes per second.
+double NominalBps(const me::Segment &segment)
+{
+  const auto score = segment.score();
+  return score ? score->tempo(segment.tick()).val : 2.0;
+}
+
+std::optional<Ornament> ComputeOrnament(const me::Segment &segment,
+                                        TrackIndex track)
+{
+  const me::Chord *chord = EngravingChord(segment, track);
+  if (!chord)
+    return std::nullopt;
+  return BuildOrnament(*chord, TiedDurationTicks(*chord), NominalBps(segment));
+}
 } // namespace
+
+MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
+                     int measurePlaybackTick)
+    : MuseMelodySegment{segment, track, measurePlaybackTick},
+      m_dynamicVelocity{ComputeDynamicVelocity(segment, track)},
+      m_ornament{ComputeOrnament(segment, track)},
+      m_nominalBpm{NominalBps(segment) * 60.0}
+{
+}
 
 dgk::Tick MuseChord::GetEndTick() const
 {
-  auto chord =
-      dynamic_cast<const me::Chord *>(m_segment.element(m_track.value));
   auto endTick = GetBeginTick();
-  while (chord)
-  {
-    endTick += chord->ticks().ticks();
-    chord = GetNextTiedChord(*chord);
-  }
+  if (const me::Chord *chord = EngravingChord(m_segment, m_track))
+    endTick += TiedDurationTicks(*chord);
   return endTick;
 }
 
@@ -322,9 +350,16 @@ std::optional<float> MuseChord::GetDynamicVelocity() const
   return std::nullopt;
 }
 
+const Ornament *MuseChord::GetOrnament() const
+{
+  return m_ornament ? &*m_ornament : nullptr;
+}
+
+double MuseChord::GetNominalBpm() const { return m_nominalBpm; }
+
 const me::Chord *MuseChord::GetEngravingChord() const
 {
-  return dynamic_cast<const me::Chord *>(m_segment.element(m_track.value));
+  return EngravingChord(m_segment, m_track);
 }
 
 void MuseChord::SetVelocity(float velocity)

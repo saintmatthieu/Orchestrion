@@ -42,6 +42,19 @@ public:
   //! applies. Pre-recorded note velocities take precedence over this.
   virtual std::optional<float> GetDynamicVelocity() const = 0;
 
+  /**
+   * How the chord unfolds from the gesture that strikes it when it carries an
+   * ornament (a trill, a mordent, a turn, grace notes, ...); null for a plain
+   * chord.
+   */
+  virtual const Ornament *GetOrnament() const = 0;
+
+  /**
+   * The score's tempo at this chord, in quarter notes per minute: what an
+   * ornament is timed with until the performer's own tempo is known.
+   */
+  virtual double GetNominalBpm() const = 0;
+
   //! The underlying engraving chord this represents (e.g. to map a hovered
   //! on-screen element back to its chord), or nullptr if it no longer
   //! resolves.
