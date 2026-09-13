@@ -20,6 +20,7 @@
 
 #include "IModifiableItemRegistry.h"
 #include "IOrchestrionSequencer.h"
+#include "IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include "OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
@@ -48,6 +49,7 @@ class OrchestrionSequencerFactory : public dgk::Injectable
 {
   dgk::Inject<ISegmentRegistry> segmentRegistry{this};
   dgk::Inject<ITrackChannelMapper> mapper{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
 
 public:
   NotationProducts

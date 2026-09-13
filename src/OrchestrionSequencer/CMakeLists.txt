@@ -27,6 +27,8 @@ set(MODULE_SRC
     internal/OrchestrionSequencerFactory.cpp
     internal/OrchestrionSequencerFactory.h
     internal/OrchestrionTypes.cpp
+    internal/OrnamentGesture.cpp
+    internal/OrnamentGesture.h
     internal/OrnamentSchedule.cpp
     internal/OrnamentSchedule.h
     internal/VoiceBlank.cpp

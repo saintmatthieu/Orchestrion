@@ -21,7 +21,12 @@ Space for automatic playback.
 | `ornaments-3-grace-notes` | A lone acciaccatura and runs of two and three graces (64ths, whatever is written); appoggiaturas written as an 8th and a 16th (a lone unslashed grace keeps its written value); a run of three unslashed 16th graces as in Chopin's bar 13 (64ths); graces after (64ths at the leaving gesture); a grace chord; a left-hand grace; a grace before a tied note. Graces that resolve a trill are 32nds instead: see the trill score, cases 5 and 6 |
 | `ornaments-4-tempo` | The same figures (turn, `tr`, short trill, a run of 16th graces, turn on a 16th) at ♩ = 40, 90 and 160: ornament notes are 32nds and grace runs 64ths at the performer's tempo, floored at 40 ms (the turn on a 16th plays plain at 160); two closing bars to play deliberately faster or slower than written |
 
-What to listen for: trills are 32nds at your tempo, whatever the note's length,
+The Ornaments menu selects the mode: **Automatic** unfolds an ornament from the
+one key press; **Manual** writes it out, one key press per ornament note (a
+trill as the odd number of 32nds that divides the note, three at least);
+**Disabled** plays the plain notes. Switching resumes at the current chord.
+
+What to listen for in automatic mode: trills are 32nds at your tempo, whatever the note's length,
 and the next note lands on that grid; a note with room for its figure gets it
 as 32nds and then holds; one without (a trill on a semiquaver, a turn on a
 quaver) gets the figure compressed to fill it, running into the next note;

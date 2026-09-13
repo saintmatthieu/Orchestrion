@@ -27,6 +27,7 @@
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
 #include <context/iglobalcontext.h>
+#include <optional>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace mu::engraving
@@ -58,6 +59,11 @@ private:
   muse::async::Notification playModeChanged() const override;
 
   void setSequencer(IOrchestrionSequencerPtr sequencer);
+  /**
+   * Builds the sequencer for the current notation — none if there is none —
+   * resuming at `resumeTick` if given.
+   */
+  void rebuildSequencer(std::optional<int> resumeTick = std::nullopt);
 
 private:
   IOrchestrionSequencerPtr m_sequencer;
@@ -70,6 +76,9 @@ private:
   // must not revisit it.
   const mu::engraving::MasterScore *m_unrollDecided = nullptr;
   PlayMode m_playMode = PlayMode::replayPerformance;
+  // Whether the sequencer was built with the ornaments written out (the
+  // manual mode): switching that on or off means rebuilding it.
+  bool m_ornamentsWrittenOut = false;
   muse::async::Notification m_playModeChanged;
 };
 } // namespace dgk

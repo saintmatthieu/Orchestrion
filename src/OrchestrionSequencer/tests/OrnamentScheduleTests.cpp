@@ -259,4 +259,103 @@ TEST(OrnamentScheduleTests, TrillAfterGracesCyclesPastThem)
   EXPECT_EQ(s.cycleBegin, 1u);
   EXPECT_EQ(s.cycleEnd, 3u);
 }
+
+// ---- The manual mode: the ornament written out as gestures.
+
+int TotalTicks(const std::vector<WrittenNote> &notes)
+{
+  int total = 0;
+  for (const WrittenNote &note : notes)
+    total += note.ticks;
+  return total;
+}
+
+// A trill on a quaver: five 32nds of 48 ticks, C D C D C.
+TEST(WriteOutOrnamentTests, TrillOnAQuaverIsFiveNotes)
+{
+  const auto notes = WriteOutOrnament(Trill(), C, eighth, TicksPerMs(60));
+  ASSERT_EQ(notes.size(), 5u);
+  const std::vector<std::vector<int>> expected{C, D, C, D, C};
+  for (size_t i = 0; i < 5; ++i)
+  {
+    EXPECT_EQ(notes[i].pitches, expected[i]);
+    EXPECT_EQ(notes[i].ticks, 48);
+  }
+}
+
+// A semiquaver: three notes of 40 ticks, whatever the tempo — as long as the
+// notes stay playable (at 160 they would be 31 ms: the chord plays plain).
+TEST(WriteOutOrnamentTests, TrillOnASemiquaverIsThreeNotesInTicks)
+{
+  for (const double bpm : {40.0, 60.0, 90.0})
+  {
+    const auto notes = WriteOutOrnament(Trill(), C, sixteenth, TicksPerMs(bpm));
+    ASSERT_EQ(notes.size(), 3u);
+    EXPECT_EQ(TotalTicks(notes), sixteenth);
+  }
+}
+
+// A minim: 960 / 60 = 16 → 17 notes sharing 960 ticks.
+TEST(WriteOutOrnamentTests, TrillOnAMinimRoundsToAnOddCount)
+{
+  const auto notes = WriteOutOrnament(Trill(), C, half, TicksPerMs(60));
+  EXPECT_EQ(notes.size(), 17u);
+  EXPECT_EQ(TotalTicks(notes), half);
+  EXPECT_EQ(notes.back().pitches, C);
+}
+
+// A turn on a quaver: compressed, five notes of 48 ticks.
+TEST(WriteOutOrnamentTests, TurnOnAQuaverIsSharedEvenly)
+{
+  const auto notes = WriteOutOrnament(Turn(), C, eighth, TicksPerMs(60));
+  ASSERT_EQ(notes.size(), 5u);
+  for (const WrittenNote &note : notes)
+    EXPECT_EQ(note.ticks, 48);
+}
+
+// A turn on a crotchet: four 32nds, the main note taking the rest.
+TEST(WriteOutOrnamentTests, TurnOnACrotchetLeavesTheRestToTheMainNote)
+{
+  const auto notes = WriteOutOrnament(Turn(), C, quarter, TicksPerMs(60));
+  ASSERT_EQ(notes.size(), 5u);
+  for (size_t i = 0; i < 4; ++i)
+    EXPECT_EQ(notes[i].ticks, thirtySecond);
+  EXPECT_EQ(notes[4].ticks, quarter - 4 * thirtySecond);
+  EXPECT_EQ(notes[4].pitches, C);
+}
+
+// Graces then a trill: the grace at its value, the trill dividing the rest.
+TEST(WriteOutOrnamentTests, GracesComeFirstThenTheTrillDividesTheRest)
+{
+  Ornament ornament = Trill();
+  ornament.gracesBefore = {{B, thirtySecond}};
+  const auto notes = WriteOutOrnament(ornament, C, half, TicksPerMs(60));
+  ASSERT_EQ(notes.size(), 16u); // the grace, then 900 / 60 = 15 notes
+  EXPECT_EQ(notes[0].pitches, B);
+  EXPECT_EQ(notes[0].ticks, thirtySecond);
+  EXPECT_EQ(TotalTicks(notes), half);
+}
+
+// Graces after come last, taken from the main note's end.
+TEST(WriteOutOrnamentTests, GracesAfterComeLast)
+{
+  Ornament ornament;
+  ornament.gracesAfter = {{D, thirtySecond / 2}, {{76}, thirtySecond / 2}};
+  const auto notes = WriteOutOrnament(ornament, C, half, TicksPerMs(60));
+  ASSERT_EQ(notes.size(), 3u);
+  EXPECT_EQ(notes[0].pitches, C);
+  EXPECT_EQ(notes[0].ticks, half - thirtySecond);
+  EXPECT_EQ(notes[1].pitches, D);
+  EXPECT_EQ(notes[1].ticks, thirtySecond / 2);
+  EXPECT_EQ(TotalTicks(notes), half);
+}
+
+// Too short to ornament: one note, the chord itself.
+TEST(WriteOutOrnamentTests, TooShortIsOneNote)
+{
+  const auto notes = WriteOutOrnament(Turn(), C, thirtySecond, TicksPerMs(60));
+  ASSERT_EQ(notes.size(), 1u);
+  EXPECT_EQ(notes[0].pitches, C);
+  EXPECT_EQ(notes[0].ticks, thirtySecond);
+}
 } // namespace dgk

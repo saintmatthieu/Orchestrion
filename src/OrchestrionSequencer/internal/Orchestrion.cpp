@@ -17,14 +17,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "Orchestrion.h"
-#include <engraving/editing/transaction/undostack.h>
-#include <notation/imasternotation.h>
 #include "IChord.h"
 #include "OrchestrionPlayerStub.h"
 #include "OrchestrionSequencerFactory.h" // NotationProducts
 #include <async/async.h>
 #include <cassert>
+#include <climits>
 #include <engraving/dom/masterscore.h>
+#include <engraving/editing/transaction/undostack.h>
+#include <notation/imasternotation.h>
 
 namespace dgk
 {
@@ -43,45 +44,69 @@ void Orchestrion::init()
   syncUnrollRepeats();
 
   playbackController()->isPlayAllowedChanged().onReceive(
+      this, [this](bool) { rebuildSequencer(); });
+
+  // The manual mode writes the ornaments out as gestures of their own, in the
+  // sequences the sequencer is built from: switching it on or off rebuilds
+  // the sequencer, resuming where the player was.
+  sequencerConfig()->ornamentModeChanged().onNotify(
       this,
-      [&](bool)
+      [this]
       {
-        const auto masterNotation = globalContext()->currentMasterNotation();
-        if (!masterNotation)
-        {
-          setSequencer(nullptr);
+        const bool writtenOut =
+            sequencerConfig()->ornamentMode() == OrnamentMode::manual;
+        if (writtenOut == m_ornamentsWrittenOut || !m_sequencer)
           return;
-        }
-
-        // Unroll the score's repeats into the score itself, so every pass is
-        // its own engraved passage: the deviation ribbon, beat grid and
-        // layout warp then carry through repeats without folding passes onto
-        // the same bars. Decided once per loaded score, before the sequencer
-        // reads it (so switching grading applies at the next loaded score).
-        if (mu::engraving::MasterScore *const master =
-                masterNotation->masterScore();
-            master && master != m_unrollDecided)
-        {
-          m_unrollDecided = master;
-          if (sequencerConfig()->unrollRepeatsEnabled())
-            master->unrollRepeatsInPlace();
-        }
-
-        const NotationProducts products =
-            OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
-
-        m_modifiableItemRegistry = products.modifiableItemRegistry;
-        if (products.sequencer)
-          m_autoPlayer =
-              std::make_shared<AutomaticOrchestrionPlayer>(*products.sequencer);
-        else
-          m_autoPlayer.reset();
-        setSequencer(products.sequencer);
-
-        // Unrolling the repeats is not a modification of the user's score.
-        if (const auto notation = globalContext()->currentMasterNotation())
-          notation->masterScore()->undoStack()->markClean();
+        std::optional<int> resumeTick;
+        for (const auto &[track, transition] :
+             m_sequencer->GetCurrentTransitions())
+          if (const IChord *future = GetFutureChord(transition))
+            resumeTick = std::min(resumeTick.value_or(INT_MAX),
+                                  future->GetBeginTick().withoutRepeats);
+        rebuildSequencer(resumeTick);
       });
+}
+
+void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
+{
+  const auto masterNotation = globalContext()->currentMasterNotation();
+  if (!masterNotation)
+  {
+    setSequencer(nullptr);
+    return;
+  }
+
+  // Unroll the score's repeats into the score itself, so every pass is
+  // its own engraved passage: the deviation ribbon, beat grid and
+  // layout warp then carry through repeats without folding passes onto
+  // the same bars. Decided once per loaded score, before the sequencer
+  // reads it (so switching grading applies at the next loaded score).
+  if (mu::engraving::MasterScore *const master = masterNotation->masterScore();
+      master && master != m_unrollDecided)
+  {
+    m_unrollDecided = master;
+    if (sequencerConfig()->unrollRepeatsEnabled())
+      master->unrollRepeatsInPlace();
+  }
+
+  const NotationProducts products =
+      OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
+  m_ornamentsWrittenOut =
+      sequencerConfig()->ornamentMode() == OrnamentMode::manual;
+
+  m_modifiableItemRegistry = products.modifiableItemRegistry;
+  if (products.sequencer)
+    m_autoPlayer =
+        std::make_shared<AutomaticOrchestrionPlayer>(*products.sequencer);
+  else
+    m_autoPlayer.reset();
+  if (products.sequencer && resumeTick)
+    products.sequencer->GoToTick(*resumeTick, JumpReason::Rewind);
+  setSequencer(products.sequencer);
+
+  // Unrolling the repeats is not a modification of the user's score.
+  if (const auto notation = globalContext()->currentMasterNotation())
+    notation->masterScore()->undoStack()->markClean();
 }
 
 void Orchestrion::setSequencer(IOrchestrionSequencerPtr sequencer)
@@ -89,7 +114,6 @@ void Orchestrion::setSequencer(IOrchestrionSequencerPtr sequencer)
   if (sequencer == m_sequencer)
     return;
   m_sequencer = std::move(sequencer);
-
 
   m_sequencerChanged.notify();
 }

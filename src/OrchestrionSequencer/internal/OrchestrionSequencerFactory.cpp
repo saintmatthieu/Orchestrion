@@ -21,6 +21,8 @@
 #include "MuseChord.h"
 #include "MuseRest.h"
 #include "OrchestrionSequencer.h"
+#include "OrnamentGesture.h"
+#include "OrnamentSchedule.h"
 #include "VoiceBlank.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/masterscore.h"
@@ -111,10 +113,48 @@ void ForAllSegments(
                  });
 }
 
+/**
+ * The gestures the engraved chord asks for: itself, or, when its ornament is
+ * written out, one per ornament note, sharing out its span.
+ */
+std::vector<std::shared_ptr<IMelodySegment>>
+ChordGestures(std::shared_ptr<MuseChord> chord, bool writeOutOrnaments)
+{
+  std::vector<std::shared_ptr<IMelodySegment>> gestures;
+  const IChord &c = *chord;
+  const Ornament *ornament = writeOutOrnaments ? c.GetOrnament() : nullptr;
+  if (!ornament)
+  {
+    gestures.push_back(chord);
+    return gestures;
+  }
+  const Tick begin = c.GetBeginTick();
+  const int nominalTicks = c.GetEndTick().withRepeats - begin.withRepeats;
+  constexpr double ticksPerQuarter = 480.0;
+  const double bpm = c.GetNominalBpm() > 0.0 ? c.GetNominalBpm() : 120.0;
+  const std::vector<WrittenNote> notes = WriteOutOrnament(
+      *ornament, c.GetPitches(), nominalTicks, bpm * ticksPerQuarter / 60000.0);
+  if (notes.size() < 2)
+  {
+    gestures.push_back(chord);
+    return gestures;
+  }
+  Tick from = begin;
+  for (const WrittenNote &note : notes)
+  {
+    Tick to = from;
+    to += note.ticks;
+    gestures.push_back(
+        std::make_shared<OrnamentGesture>(chord, note.pitches, from, to));
+    from = to;
+  }
+  return gestures;
+}
+
 auto GetChordSequence(mu::engraving::Score &score,
                       ISegmentRegistry &segmentRegistry,
                       IModifiableItemRegistry &modifiableItemRegistry,
-                      TrackIndex track)
+                      TrackIndex track, bool writeOutOrnaments)
 {
   std::vector<ChordRestPtr> sequence;
   auto prevWasRest = true;
@@ -123,44 +163,48 @@ auto GetChordSequence(mu::engraving::Score &score,
       score,
       [&](const mu::engraving::Segment &segment, int measureTick)
       {
-        if (TakeIt(segment, track, prevWasRest))
+        if (!TakeIt(segment, track, prevWasRest))
+          return;
+        const auto isChord = dynamic_cast<const mu::engraving::Chord *>(
+                                 segment.element(track.value)) != nullptr;
+
+        // The gestures this engraved chord or rest asks for.
+        std::vector<std::shared_ptr<IMelodySegment>> melodySegs;
+        if (isChord)
         {
-          const auto isChord = dynamic_cast<const mu::engraving::Chord *>(
-                                   segment.element(track.value)) != nullptr;
+          auto chord = std::make_shared<MuseChord>(segment, track, measureTick);
+          modifiableItemRegistry.RegisterItem(chord);
+          melodySegs = ChordGestures(std::move(chord), writeOutOrnaments);
+        }
+        else
+          melodySegs.push_back(
+              std::make_shared<MuseRest>(segment, track, measureTick));
 
-          std::shared_ptr<IMelodySegment> melodySeg;
-          if (isChord)
+        const auto &first = melodySegs.front();
+        const auto chordEndTick = melodySegs.back()->GetEndTick();
+        if (endTick.withRepeats > 0 // we don't care if the voice doesn't
+                                    // begin at the start.
+            && endTick.withRepeats < first->GetBeginTick().withRepeats)
+        {
+          // There is a blank in this voice ...
+          if (first->AsRest())
+            // ... but we shall not insert a voice blank leading to a rest ;
+            // let the next iteration create a longer voice blank ...
+            return;
+          else if (!sequence.empty() && sequence.back()->AsRest())
           {
-            auto chord =
-                std::make_shared<MuseChord>(segment, track, measureTick);
-            modifiableItemRegistry.RegisterItem(chord);
-            melodySeg = chord;
+            // ... neither should we have a rest leading to a blank.
+            const auto lastRest = sequence.back().get();
+            endTick = lastRest->GetBeginTick();
+            segmentRegistry.UnregisterSegment(lastRest);
+            sequence.pop_back();
           }
-          else
-            melodySeg = std::make_shared<MuseRest>(segment, track, measureTick);
-
-          const auto chordEndTick = melodySeg->GetEndTick();
-          if (endTick.withRepeats > 0 // we don't care if the voice doesn't
-                                      // begin at the start.
-              && endTick.withRepeats < melodySeg->GetBeginTick().withRepeats)
-          {
-            // There is a blank in this voice ...
-            if (melodySeg->AsRest())
-              // ... but we shall not insert a voice blank leading to a rest ;
-              // let the next iteration create a longer voice blank ...
-              return;
-            else if (!sequence.empty() && sequence.back()->AsRest())
-            {
-              // ... neither should we have a rest leading to a blank.
-              const auto lastRest = sequence.back().get();
-              endTick = lastRest->GetBeginTick();
-              segmentRegistry.UnregisterSegment(lastRest);
-              sequence.pop_back();
-            }
-            sequence.push_back(
-                std::make_shared<VoiceBlank>(endTick, chordEndTick));
-          }
-          endTick = chordEndTick;
+          sequence.push_back(
+              std::make_shared<VoiceBlank>(endTick, chordEndTick));
+        }
+        endTick = chordEndTick;
+        for (auto &melodySeg : melodySegs)
+        {
           segmentRegistry.RegisterSegment(melodySeg, &segment);
           sequence.push_back(std::move(melodySeg));
         }
@@ -346,15 +390,19 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   Staff rightHand;
   Staff leftHand;
   const auto staff = *rightHandStaff;
+  // In the manual mode the ornaments are written out: one gesture per note.
+  const bool writeOutOrnaments =
+      sequencerConfig()->ornamentMode() == OrnamentMode::manual;
   for (auto v = 0; v < numVoices; ++v)
   {
-    if (auto sequence = GetChordSequence(
-            score, *segmentRegistry(), *modifiableItems, TrackIndex{staff, v});
+    if (auto sequence =
+            GetChordSequence(score, *segmentRegistry(), *modifiableItems,
+                             TrackIndex{staff, v}, writeOutOrnaments);
         !sequence.empty())
       rightHand.emplace(v, std::move(sequence));
     if (auto sequence =
             GetChordSequence(score, *segmentRegistry(), *modifiableItems,
-                             TrackIndex{staff + 1, v});
+                             TrackIndex{staff + 1, v}, writeOutOrnaments);
         !sequence.empty())
       leftHand.emplace(v, std::move(sequence));
   }

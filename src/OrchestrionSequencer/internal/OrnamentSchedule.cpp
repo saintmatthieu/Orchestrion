@@ -145,4 +145,83 @@ OrnamentSchedule ScheduleOrnament(const Ornament &ornament,
   }
   return schedule;
 }
+
+namespace
+{
+/**
+ * The odd number of notes, three at least, that divides `spanTicks` into
+ * notes closest to a 32nd — odd, so that a trill started on the main note
+ * ends on it.
+ */
+int TrillNoteCount(int spanTicks)
+{
+  const double pairs = (spanTicks / double(ornamentNoteTicks) - 1.0) / 2.0;
+  return 2 * std::max(1, static_cast<int>(std::lround(pairs))) + 1;
+}
+} // namespace
+
+std::vector<WrittenNote> WriteOutOrnament(const Ornament &ornament,
+                                          const std::vector<int> &mainPitches,
+                                          int nominalTicks, double ticksPerMs)
+{
+  const OrnamentSchedule schedule =
+      ScheduleOrnament(ornament, mainPitches, nominalTicks, ticksPerMs);
+  const auto ticksOf = [ticksPerMs](const TimedOrnamentStep &step)
+  {
+    return static_cast<int>(
+        std::lround(step.duration.count() / 1000.0 * ticksPerMs));
+  };
+
+  std::vector<WrittenNote> notes;
+  // The closing notes come last, at their length, taking half the chord at
+  // most from what the others share out.
+  std::vector<int> closingTicks;
+  int closingTotal = 0;
+  for (const TimedOrnamentStep &step : schedule.closing)
+  {
+    closingTicks.push_back(std::max(1, ticksOf(step)));
+    closingTotal += closingTicks.back();
+  }
+  if (closingTotal > nominalTicks / 2)
+  {
+    const double scale = (nominalTicks / 2) / double(closingTotal);
+    closingTotal = 0;
+    for (int &ticks : closingTicks)
+    {
+      ticks = std::max(1, static_cast<int>(std::lround(ticks * scale)));
+      closingTotal += ticks;
+    }
+  }
+  int left = nominalTicks - closingTotal;
+
+  const bool cycling = schedule.cycleBegin < schedule.cycleEnd;
+  // The timed steps — all of them, or those before the trill — at their
+  // schedule's length; a held one takes what is left.
+  const size_t fixed = cycling ? schedule.cycleBegin : schedule.steps.size();
+  for (size_t i = 0; i < fixed; ++i)
+  {
+    const TimedOrnamentStep &step = schedule.steps[i];
+    const bool held = step.duration.count() == 0;
+    const int ticks = held ? std::max(left, 1)
+                           : std::clamp(ticksOf(step), 1, std::max(left, 1));
+    notes.push_back({step.pitches, ticks});
+    left -= ticks;
+  }
+  if (cycling)
+  {
+    // The trill: the odd number of 32nds that divides what is left.
+    const int count = TrillNoteCount(left);
+    const size_t length = schedule.cycleEnd - schedule.cycleBegin;
+    for (int i = 0; i < count; ++i)
+    {
+      const int ticks = std::max(1, left / (count - i));
+      notes.push_back(
+          {schedule.steps[schedule.cycleBegin + i % length].pitches, ticks});
+      left -= ticks;
+    }
+  }
+  for (size_t i = 0; i < schedule.closing.size(); ++i)
+    notes.push_back({schedule.closing[i].pitches, closingTicks[i]});
+  return notes;
+}
 } // namespace dgk

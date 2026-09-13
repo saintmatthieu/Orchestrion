@@ -76,4 +76,26 @@ OrnamentSchedule PlainChord(std::vector<int> pitches);
 OrnamentSchedule ScheduleOrnament(const Ornament &ornament,
                                   const std::vector<int> &mainPitches,
                                   int nominalTicks, double ticksPerMs);
+
+/**
+ * One note of an ornament written out for the player to strike note by note
+ * (the manual mode), with its share of the chord's duration in ticks.
+ */
+struct WrittenNote
+{
+  std::vector<int> pitches;
+  int ticks = 0;
+};
+
+/**
+ * The ornament of a chord of `mainPitches` and `nominalTicks` written out for
+ * the player, at the score's tempo `ticksPerMs`: the notes of the automatic
+ * schedule with their durations in ticks, the last one taking what is left, a
+ * trill as the odd number of 32nds, three at least, that divides its span.
+ * The notes add up to `nominalTicks`. A chord with nothing to write out is
+ * one note.
+ */
+std::vector<WrittenNote> WriteOutOrnament(const Ornament &ornament,
+                                          const std::vector<int> &mainPitches,
+                                          int nominalTicks, double ticksPerMs);
 } // namespace dgk
