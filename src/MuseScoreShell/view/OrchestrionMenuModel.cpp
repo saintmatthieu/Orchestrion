@@ -74,7 +74,7 @@ void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   QList<muse::uicomponents::MenuItem *> menus{
       makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-      makeAudioMidiMenu()};
+      makeAudioMidiMenu(), makeOrnamentsMenu()};
   if (sequencerConfiguration()->gradingExposed())
     menus << makeGradingMenu();
   if (sequencerConfiguration()->autoPlayExposed())
@@ -111,6 +111,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->pedalIndicatorVisibleChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->ornamentModeChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -445,6 +449,39 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
               muse::TranslatableString("appshell/menu/autoplay", "&Right hand"),
               autoPlayedStaff == 0)},
       "menu-orchestrion-autoplay");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeOrnamentsMenu()
+{
+  using namespace muse::uicomponents;
+
+  // How the score's ornaments are played: a one-of-three choice.
+  const OrnamentMode mode = sequencerConfiguration()->ornamentMode();
+  const auto choice = [this, mode](const char *actionCode,
+                                   const muse::TranslatableString &title,
+                                   OrnamentMode value)
+  {
+    MenuItem *const item = makeMenuItem(actionCode, title);
+    item->setCheckable(true);
+    item->setChecked(mode == value);
+    return item;
+  };
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/ornaments", "&Ornaments"),
+      QList<MenuItem *>{
+          choice(
+              actionIds::ornamentsDisabled,
+              muse::TranslatableString("appshell/menu/ornaments", "&Disabled"),
+              OrnamentMode::disabled),
+          choice(actionIds::ornamentsManual,
+                 muse::TranslatableString("appshell/menu/ornaments", "&Manual"),
+                 OrnamentMode::manual),
+          choice(
+              actionIds::ornamentsAutomatic,
+              muse::TranslatableString("appshell/menu/ornaments", "&Automatic"),
+              OrnamentMode::automatic)},
+      "menu-orchestrion-ornaments");
 }
 
 #ifdef MUSE_APP_UNSTABLE

@@ -275,5 +275,8 @@ private:
   int m_autoPlayTick = 0;
 
   bool m_velocityRecordingEnabled = false;
+  //! Whether the score's ornaments are played by the app (the automatic
+  //! mode); otherwise every chord is struck plain.
+  bool m_ornamentsEnabled = true;
 };
 } // namespace dgk

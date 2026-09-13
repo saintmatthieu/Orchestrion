@@ -150,6 +150,14 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
             configuration()->velocityRecordingEnabled();
       });
 
+  const auto readOrnamentMode = [this]
+  {
+    m_ornamentsEnabled =
+        configuration()->ornamentMode() == OrnamentMode::automatic;
+  };
+  readOrnamentMode();
+  configuration()->ornamentModeChanged().onNotify(this, readOrnamentMode);
+
   dispatcher()->reg(this, "nav-first-control",
                     [this] { GoToTick(0, JumpReason::Rewind); });
   interactionProcessor()->itemClicked().onReceive(
@@ -818,7 +826,7 @@ OrnamentSchedule OrchestrionSequencer::ScheduleChord(const IChord &chord,
                                                      const Hand &hand) const
 {
   const Ornament *ornament = chord.GetOrnament();
-  if (!ornament)
+  if (!ornament || !m_ornamentsEnabled)
     return PlainChord(chord.GetPitches());
   const int nominalTicks =
       chord.GetEndTick().withRepeats - chord.GetBeginTick().withRepeats;

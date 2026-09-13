@@ -81,4 +81,12 @@ static constexpr const char *playModeFittedTempo =
     "orchestrion-advanced-play-mode-fitted-tempo";
 static constexpr const char *playModeMetronome =
     "orchestrion-advanced-play-mode-metronome";
+
+//! Ornaments menu: how the score's ornaments are played, a one-of-three
+//! choice.
+static constexpr const char *ornamentsDisabled =
+    "orchestrion-ornaments-disabled";
+static constexpr const char *ornamentsManual = "orchestrion-ornaments-manual";
+static constexpr const char *ornamentsAutomatic =
+    "orchestrion-ornaments-automatic";
 } // namespace dgk::actionIds

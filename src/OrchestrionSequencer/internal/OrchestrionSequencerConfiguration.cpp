@@ -57,6 +57,7 @@ const muse::Settings::Key
     MIDI_KEYBOARD_ICON_VISIBLE(module_name, "MIDI_KEYBOARD_ICON_VISIBLE");
 const muse::Settings::Key PEDAL_INDICATOR_VISIBLE(module_name,
                                                   "PEDAL_INDICATOR_VISIBLE");
+const muse::Settings::Key ORNAMENT_MODE(module_name, "ORNAMENT_MODE");
 } // namespace
 
 void OrchestrionSequencerConfiguration::init()
@@ -169,6 +170,13 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(PEDAL_INDICATOR_VISIBLE)
       .onReceive(this, [this](const muse::Val &)
                  { m_pedalIndicatorVisibleChanged.notify(); });
+
+  muse::settings()->setDefaultValue(
+      ORNAMENT_MODE, muse::Val{static_cast<int>(OrnamentMode::automatic)});
+  muse::settings()
+      ->valueChanged(ORNAMENT_MODE)
+      .onReceive(this,
+                 [this](const muse::Val &) { m_ornamentModeChanged.notify(); });
 }
 
 bool OrchestrionSequencerConfiguration::velocityRecordingEnabled() const
@@ -447,6 +455,31 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::pedalIndicatorVisibleChanged() const
 {
   return m_pedalIndicatorVisibleChanged;
+}
+
+OrnamentMode OrchestrionSequencerConfiguration::ornamentMode() const
+{
+  switch (muse::settings()->value(ORNAMENT_MODE).toInt())
+  {
+  case static_cast<int>(OrnamentMode::disabled):
+    return OrnamentMode::disabled;
+  case static_cast<int>(OrnamentMode::manual):
+    return OrnamentMode::manual;
+  default:
+    return OrnamentMode::automatic;
+  }
+}
+
+void OrchestrionSequencerConfiguration::setOrnamentMode(OrnamentMode mode)
+{
+  muse::settings()->setSharedValue(ORNAMENT_MODE,
+                                   muse::Val{static_cast<int>(mode)});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::ornamentModeChanged() const
+{
+  return m_ornamentModeChanged;
 }
 
 } // namespace dgk

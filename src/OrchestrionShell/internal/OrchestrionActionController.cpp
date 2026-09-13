@@ -17,10 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionActionController.h"
-#include <notation/imasternotation.h>
-#include <project/inotationproject.h>
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <async/async.h>
+#include <notation/imasternotation.h>
+#include <project/inotationproject.h>
 
 #include <QApplication>
 #include <QWindow>
@@ -135,6 +135,16 @@ void OrchestrionActionController::init()
       [this] { orchestrion()->setPlayMode(PlayMode::replayFittedTempo); });
   dispatcher()->reg(this, actionIds::playModeMetronome, [this]
                     { orchestrion()->setPlayMode(PlayMode::metronome); });
+
+  dispatcher()->reg(
+      this, actionIds::ornamentsDisabled,
+      [this] { sequencerConfig()->setOrnamentMode(OrnamentMode::disabled); });
+  dispatcher()->reg(
+      this, actionIds::ornamentsManual,
+      [this] { sequencerConfig()->setOrnamentMode(OrnamentMode::manual); });
+  dispatcher()->reg(
+      this, actionIds::ornamentsAutomatic,
+      [this] { sequencerConfig()->setOrnamentMode(OrnamentMode::automatic); });
 
   dispatcher()->reg(this, actionIds::reverbOff, [this]
                     { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
@@ -259,7 +269,8 @@ bool OrchestrionActionController::closeCurrentProject() const
     using muse::IInteractive;
     const IInteractive::Result result = interactive()->questionSync(
         muse::trc("project", "Save changes to the score before closing?"),
-        muse::trc("project", "Your changes will be lost if you don't save them."),
+        muse::trc("project",
+                  "Your changes will be lost if you don't save them."),
         IInteractive::Buttons{IInteractive::Button::Save,
                               IInteractive::Button::Discard,
                               IInteractive::Button::Cancel},

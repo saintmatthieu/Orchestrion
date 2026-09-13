@@ -1417,4 +1417,27 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
         <translation>Mise à jour de MuseScore Studio</translation>
     </message>
 </context>
+<context>
+    <name>appshell/menu/ornaments</name>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Ornaments</source>
+        <translation>&amp;Ornements</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Disabled</source>
+        <translation>&amp;Désactivés</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Manual</source>
+        <translation>&amp;Manuels</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Automatic</source>
+        <translation>&amp;Automatiques</translation>
+    </message>
+</context>
 </TS>

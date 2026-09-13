@@ -102,6 +102,10 @@ private:
   void setPedalIndicatorVisible(bool) override;
   muse::async::Notification pedalIndicatorVisibleChanged() const override;
 
+  OrnamentMode ornamentMode() const override;
+  void setOrnamentMode(OrnamentMode) override;
+  muse::async::Notification ornamentModeChanged() const override;
+
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
   muse::async::Notification m_tempoVisualizationEnabledChanged;
@@ -118,5 +122,6 @@ private:
   muse::async::Notification m_unrollRepeatsEnabledChanged;
   muse::async::Notification m_midiKeyboardIconVisibleChanged;
   muse::async::Notification m_pedalIndicatorVisibleChanged;
+  muse::async::Notification m_ornamentModeChanged;
 };
 } // namespace dgk

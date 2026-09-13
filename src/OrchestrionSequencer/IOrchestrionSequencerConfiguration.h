@@ -23,6 +23,20 @@
 
 namespace dgk
 {
+/**
+ * How the score's ornaments — trills, mordents, turns, grace notes — are
+ * played. The values are persisted to settings: don't renumber them.
+ */
+enum class OrnamentMode
+{
+  /** Not at all: the plain note. */
+  disabled = 0,
+  /** By the player. For now the same as disabled. */
+  manual = 1,
+  /** By the app, unfolding from the key press at the player's tempo. */
+  automatic = 2,
+};
+
 class IOrchestrionSequencerConfiguration : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IOrchestrionSequencerConfiguration);
@@ -159,5 +173,13 @@ public:
   virtual bool pedalIndicatorVisible() const = 0;
   virtual void setPedalIndicatorVisible(bool) = 0;
   virtual muse::async::Notification pedalIndicatorVisibleChanged() const = 0;
+
+  /**
+   * How ornaments are played (see OrnamentMode). Automatic by default;
+   * chosen from the Ornaments menu.
+   */
+  virtual OrnamentMode ornamentMode() const = 0;
+  virtual void setOrnamentMode(OrnamentMode) = 0;
+  virtual muse::async::Notification ornamentModeChanged() const = 0;
 };
 } // namespace dgk
