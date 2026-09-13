@@ -22,6 +22,8 @@
 #include "IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
+#include "PositionEstimation/PositionTracker.h"
+#include "internal/OrnamentSchedule.h"
 #include "internal/VoiceSequencer.h"
 
 #include <actions/actionable.h>
@@ -51,7 +53,8 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 {
   dgk::Inject<mu::context::IGlobalContext> globalContext{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
-  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{this};
+  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
+      this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
 
 public:
@@ -83,6 +86,48 @@ private:
   {
     HandVoices voices;
     std::optional<int> pressedKey;
+    /**
+     * The hand's tempo, estimated from the onsets it plays (ticks with
+     * repeats against the steady clock), for timing the ornaments it
+     * strikes. Reset on a jump, and started over after a pause.
+     */
+    PositionTracker tempo{};
+  };
+
+  /**
+   * What a track has sounding and is to sound: the schedule of the chord
+   * struck on it, where it has got to, and the move a gesture asked for
+   * while a timed step was under way, to be made when the step ends.
+   */
+  struct TrackSchedule
+  {
+    OrnamentSchedule schedule;
+    /** The step to sound next. */
+    size_t next = 0;
+    /** The pitches on — those a move silences. */
+    std::vector<int> sounding;
+    float velocity = 0.f;
+    /** Tells this schedule's queue entry from a superseded one's. */
+    unsigned generation = 0;
+    /** When the timed step under way ends; empty while a step is held. */
+    std::optional<std::chrono::steady_clock::time_point> stepEnd;
+    struct Move
+    {
+      /** What to move on to; empty for a release. */
+      std::optional<OrnamentSchedule> strike;
+      float velocity = 0.f;
+      /** Wait for the closing steps to run out, not for the step to end. */
+      bool afterClosing = false;
+    };
+    std::optional<Move> move;
+  };
+
+  /** The ornament thread's queue entry: a step's end falling due on a track. */
+  struct OrnamentStepDue
+  {
+    TrackIndex track;
+    unsigned generation;
+    std::chrono::steady_clock::time_point time;
   };
 
   void SendTransitions(std::map<TrackIndex, ChordTransition>,
@@ -126,7 +171,54 @@ private:
    * has been up for the dampers to act, and a lift supersedes a pending press.
    */
   void PostPedalEvent(PedalEvent event);
-  void PostNoteEvents(NoteEvents events);
+  /**
+   * Sends the events, several simultaneous strikes slightly spread and
+   * shaded like a human's unless `strum` is false.
+   */
+  void PostNoteEvents(NoteEvents events, bool strum = true);
+
+  /**
+   * Feeds the hand's tempo estimate the onset of the chords struck in this
+   * batch of transitions, if any.
+   */
+  void ObserveOnset(Hand &, const std::map<TrackIndex, ChordTransition> &);
+  /**
+   * The tempo to time the chord's ornament with, in ticks per millisecond:
+   * the hand's estimate once it has one, the score's tempo until then.
+   */
+  double TicksPerMs(const Hand &, const IChord &) const;
+  /** How the chord is to sound, struck now at the hand's tempo. */
+  OrnamentSchedule ScheduleChord(const IChord &, const Hand &) const;
+  /**
+   * Moves the track on to what the gesture struck — nothing for a release —
+   * and returns the note events to send now. Returns none while the track is
+   * mid-way through a timed ornament step: the move then waits for the step
+   * to end, so that every note of a trill lasts its full length, the last one
+   * included. A chord's closing notes, if any, sound first, the move
+   * following them.
+   */
+  NoteEvents ProceedOnTrack(TrackIndex, const IChord *past,
+                            std::optional<OrnamentSchedule> strike,
+                            float velocity);
+  /**
+   * Starts sounding the schedule on the track from `start`: records it and
+   * queues its first step's end if timed. Returns the first step's pitches,
+   * for the caller to strike. The caller holds the mutex.
+   */
+  std::vector<int> Begin(TrackIndex, TrackSchedule &, OrnamentSchedule,
+                         float velocity,
+                         std::chrono::steady_clock::time_point start);
+  /**
+   * Ornament thread: the timed step on the track ended — sounds the next, or
+   * makes the move a gesture asked for meanwhile.
+   */
+  void OnOrnamentStepDue(OrnamentStepDue);
+  /** Queues the step's end in due-time order. The caller holds the mutex. */
+  static void QueueOrnamentStep(std::deque<QueueEntry<OrnamentStepDue>> &,
+                                OrnamentStepDue);
+  /** Silences and forgets every track's schedule: a jump. */
+  void CancelOrnaments();
+  double NowMs() const;
 
   const InstrumentIndex m_instrument;
 
@@ -141,15 +233,27 @@ private:
   //! The span of m_pedalSequence the pedal is down in, if it is.
   std::optional<size_t> m_pedalSpan;
 
+  // Read by the threads from the moment they start: initialized before them.
+  bool m_finished = false;
+
   //! The pedal thread also carries the releases of notes struck under a pedal
   //! press still pending, held back until the press so that the pedal catches
   //! them.
   ThreadMembers<EventVariant> m_pedalThreadMembers;
   ThreadMembers<NoteEvent> m_noteThreadMembers;
+  //! Its queue is kept sorted by due time. Its mutex also guards m_tracks
+  //! and m_ornamentGeneration.
+  ThreadMembers<OrnamentStepDue> m_ornamentThreadMembers;
+  //! The tracks with a struck chord on record: every ornamented one, and a
+  //! plain one struck while an ornament was under way.
+  std::map<int /*track*/, TrackSchedule> m_tracks;
+  unsigned m_ornamentGeneration = 0;
   std::thread m_pedalThread;
   std::thread m_noteThread;
+  std::thread m_ornamentThread;
+  const std::chrono::steady_clock::time_point m_epoch =
+      std::chrono::steady_clock::now();
 
-  bool m_finished = false;
   bool m_pedalDown = false;
   //! When the pedal was last lifted.
   std::chrono::steady_clock::time_point m_pedalLiftTime{};

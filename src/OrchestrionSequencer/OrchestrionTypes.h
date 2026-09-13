@@ -233,6 +233,66 @@ struct Tick
   value_type withoutRepeats;
 };
 
+/**
+ * A grace note: its pitches, and the value it is to be played at, in ticks.
+ */
+struct GraceNote
+{
+  std::vector<int> pitches;
+  int ticks = 0;
+};
+
+/**
+ * What an ornament sign asks for.
+ */
+enum class OrnamentSign
+{
+  none,
+  /**
+   * A figure of definite shape (a turn, a mordent, the short trill's
+   * flutter, ...): at its natural speed when the note has room for it, the
+   * main note then held; compressed to fill the note otherwise, running into
+   * the next.
+   */
+  figure,
+  /**
+   * The trill proper: an alternation kept up for as long as the note lasts.
+   */
+  trill,
+};
+
+/**
+ * How an ornamented chord (a trill, a mordent, a turn, grace notes, ...)
+ * unfolds from the one gesture that strikes it — the notes only. How long
+ * each lasts is the sequencer's business, decided when the chord is struck
+ * from the performer's tempo. Nothing is anticipated: the first note sounds
+ * at the strike, so an ornament meant to fall before the beat is for the
+ * player to anticipate, by striking a little early.
+ */
+struct Ornament
+{
+  /**
+   * Grace notes before the chord, in order, each at the value it plays at:
+   * 32nds when they resolve a trill (the chord struck before is trilled), a
+   * lone unslashed one (an appoggiatura) its written value, any other — a
+   * crushed one, a run — a 64th. Together they take half the chord at most.
+   */
+  std::vector<GraceNote> gracesBefore;
+  OrnamentSign sign = OrnamentSign::none;
+  /**
+   * The notes the sign spells out, the main note included where it falls
+   * (a turn: main, upper, main, lower, main). For a trill, the two notes it
+   * alternates, the first struck first.
+   */
+  std::vector<std::vector<int>> figure;
+  /**
+   * Grace notes after the chord — 32nds resolving a trill, 64ths otherwise:
+   * played when the gesture that leaves the chord comes, before whatever it
+   * moves on to.
+   */
+  std::vector<GraceNote> gracesAfter;
+};
+
 class Finally
 {
 public:

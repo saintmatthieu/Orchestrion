@@ -1,13 +1,13 @@
-set(MODULE_TEST positionestimation_tests)
+set(MODULE_TEST orchestrionsequencer_tests)
 
+# The scheduler is pure (no Qt, no MuseScore): compiled straight into the
+# test rather than linking the whole module.
 set(MODULE_TEST_SRC
-  ${CMAKE_CURRENT_LIST_DIR}/PositionEstimatorTests.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/PositionSmootherTests.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/PositionTrackerTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/OrnamentScheduleTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentSchedule.cpp
 )
 
 set(MODULE_TEST_LINK
-  PositionEstimation
 )
 
 # gtest.cmake adds the googletest include dir but not googlemock's, which the
@@ -15,6 +15,7 @@ set(MODULE_TEST_LINK
 # its source dir in this property.
 get_property(_gtest_src GLOBAL PROPERTY googletest_SOURCE_DIR)
 set(MODULE_TEST_INCLUDE
+  ${CMAKE_CURRENT_LIST_DIR}/..
   ${_gtest_src}/googletest/googlemock/include
 )
 

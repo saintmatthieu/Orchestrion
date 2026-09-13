@@ -17,13 +17,14 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSequencer.h"
-#include <notation/inotationplayback.h>
-#include <notation/imasternotation.h>
 #include "IChord.h"
 #include <algorithm>
+#include <cassert>
 #include <engraving/dom/note.h>
 #include <iterator>
+#include <notation/imasternotation.h>
 #include <notation/inotationmidiinput.h>
+#include <notation/inotationplayback.h>
 #include <numeric>
 #include <optional>
 
@@ -63,6 +64,8 @@ GetUpperRightHandVoice(const OrchestrionSequencer::HandVoices &rightHand)
       upper = voice.get();
   return upper ? std::make_optional(upper->track) : std::nullopt;
 }
+
+constexpr double ticksPerQuarter = 480.0;
 
 auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
 {
@@ -130,7 +133,10 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
                                              { m_outputEvent.send(event); })},
       m_noteThread{MakeThread<NoteEvent>(
           *this, m_noteThreadMembers,
-          [this](NoteEvent event) { m_outputEvent.send(NoteEvents{event}); })}
+          [this](NoteEvent event) { m_outputEvent.send(NoteEvents{event}); })},
+      m_ornamentThread{MakeThread<OrnamentStepDue>(
+          *this, m_ornamentThreadMembers,
+          [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })}
 {
 #ifdef OS_IS_WIN
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -230,11 +236,10 @@ void OrchestrionSequencer::SendTransitions(
 
   for (auto &[track, transition] : transitions)
   {
-    std::vector<NoteEvent> voiceOutput;
     const auto past = GetPastChord(transition);
     const auto present = GetPresentChord(transition);
-    std::vector<int> noteons;
     auto velocity = controllerVelocity;
+    std::optional<OrnamentSchedule> strike;
     if (present)
     {
       if (!velocity.has_value())
@@ -263,16 +268,17 @@ void OrchestrionSequencer::SendTransitions(
       else if (m_velocityRecordingEnabled)
         present->SetVelocity(*velocity);
 
-      noteons = present->GetPitches();
+      strike = ScheduleChord(*present, isLeftHand ? m_leftHand : m_rightHand);
     }
 
-    if (past)
-      AppendNoteoffs(voiceOutput, past->GetPitches(), track, noteons);
-    if (present)
-      AppendNoteons(voiceOutput, present->GetPitches(), track, *velocity);
-
+    const bool ornamented =
+        strike && (strike->steps.size() > 1 || !strike->closing.empty());
+    NoteEvents voiceOutput =
+        ProceedOnTrack(track, past, std::move(strike), velocity.value_or(0.f));
     if (!voiceOutput.empty())
-      PostNoteEvents(voiceOutput);
+      // An ornament's first note goes out unspread: the next follows closely
+      // and must find it sounding.
+      PostNoteEvents(std::move(voiceOutput), /*strum=*/!ornamented);
   }
 
   m_transitions.val.clear();
@@ -324,8 +330,10 @@ OrchestrionSequencer::~OrchestrionSequencer()
   m_finished = true;
   m_pedalThreadMembers.cv.notify_one();
   m_noteThreadMembers.cv.notify_one();
+  m_ornamentThreadMembers.cv.notify_one();
   m_pedalThread.join();
   m_noteThread.join();
+  m_ornamentThread.join();
 }
 
 namespace
@@ -446,6 +454,9 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type, int pitch,
       AutoPlayEvent{type, isLeftHand,
                     type == NoteEventType::noteOn ? velocity : std::nullopt});
 
+  if (type == NoteEventType::noteOn)
+    ObserveOnset(hand, transitions);
+
   SendTransitions(transitions, std::move(velocity), isLeftHand);
 
   UpdatePedal();
@@ -520,6 +531,11 @@ void OrchestrionSequencer::UpdatePedal()
 void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
 {
   m_aboutToJumpPosition.send(tick, reason);
+  // The position jumps: the tempo estimates start over, and whatever
+  // ornament was under way is cut.
+  m_rightHand.tempo.reset();
+  m_leftHand.tempo.reset();
+  CancelOrnaments();
   {
     std::map<TrackIndex, ChordTransition> transitions;
     for (auto voices : {&m_rightHand.voices, &m_leftHand.voices})
@@ -650,7 +666,7 @@ void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
   m_pedalDown = event.on;
 }
 
-void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
+void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum)
 {
   using namespace std::chrono;
 
@@ -699,7 +715,7 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
   const auto numNoteons =
       std::count_if(events.begin(), events.end(), [](const auto &event)
                     { return event.type == NoteEventType::noteOn; });
-  if (numNoteons < 2)
+  if (numNoteons < 2 || !strum)
   {
     m_outputEvent.send(std::move(events));
     return;
@@ -744,6 +760,238 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events)
   }
 
   m.cv.notify_one();
+}
+
+void OrchestrionSequencer::ObserveOnset(
+    Hand &hand, const std::map<TrackIndex, ChordTransition> &transitions)
+{
+  // The staff's voices are played by the same gesture: one onset, the
+  // furthest struck.
+  std::optional<int> tick;
+  for (const auto &[track, transition] : transitions)
+    if (const IChord *present = GetPresentChord(transition))
+    {
+      const int begin = present->GetBeginTick().withRepeats;
+      tick = tick ? std::max(*tick, begin) : begin;
+    }
+  if (!tick)
+    return;
+  const double nowMs = NowMs();
+  // After a pause — the next note long overdue — the wound-down estimate says
+  // nothing about the tempo playing resumes at: start over.
+  hand.tempo.heartbeat(nowMs);
+  if (hand.tempo.isCoasting())
+    hand.tempo.reset();
+  hand.tempo.addObservation(nowMs, *tick);
+}
+
+double OrchestrionSequencer::TicksPerMs(const Hand &hand,
+                                        const IChord &chord) const
+{
+  const double nominalBpm =
+      chord.GetNominalBpm() > 0.0 ? chord.GetNominalBpm() : 120.0;
+  const double nominal = nominalBpm * ticksPerQuarter / 60000.0;
+  if (!hand.tempo.ready() || hand.tempo.speed() <= 0.0)
+    return nominal;
+  // A young estimate can be wild: kept within reason of the score's tempo.
+  return std::clamp(hand.tempo.speed(), nominal / 4.0, nominal * 4.0);
+}
+
+double OrchestrionSequencer::NowMs() const
+{
+  using namespace std::chrono;
+  return duration<double, std::milli>(steady_clock::now() - m_epoch).count();
+}
+
+void OrchestrionSequencer::QueueOrnamentStep(
+    std::deque<QueueEntry<OrnamentStepDue>> &queue, OrnamentStepDue due)
+{
+  // In due-time order, so that the thread waits on the earliest.
+  const auto pos = std::find_if(queue.begin(), queue.end(),
+                                [&](const QueueEntry<OrnamentStepDue> &entry) {
+                                  return entry.time && *entry.time > due.time;
+                                });
+  queue.insert(pos, QueueEntry<OrnamentStepDue>{due.time, due});
+}
+
+OrnamentSchedule OrchestrionSequencer::ScheduleChord(const IChord &chord,
+                                                     const Hand &hand) const
+{
+  const Ornament *ornament = chord.GetOrnament();
+  if (!ornament)
+    return PlainChord(chord.GetPitches());
+  const int nominalTicks =
+      chord.GetEndTick().withRepeats - chord.GetBeginTick().withRepeats;
+  return ScheduleOrnament(*ornament, chord.GetPitches(), nominalTicks,
+                          TicksPerMs(hand, chord));
+}
+
+std::vector<int>
+OrchestrionSequencer::Begin(TrackIndex track, TrackSchedule &entry,
+                            OrnamentSchedule schedule, float velocity,
+                            std::chrono::steady_clock::time_point start)
+{
+  assert(!schedule.steps.empty());
+  entry.schedule = std::move(schedule);
+  entry.next = 1;
+  entry.velocity = velocity;
+  const TimedOrnamentStep &first = entry.schedule.steps.front();
+  entry.sounding = first.pitches;
+  entry.stepEnd.reset();
+  if (first.duration.count() > 0)
+  {
+    entry.stepEnd = start + first.duration;
+    QueueOrnamentStep(m_ornamentThreadMembers.queue,
+                      OrnamentStepDue{track, entry.generation, *entry.stepEnd});
+  }
+  return first.pitches;
+}
+
+NoteEvents
+OrchestrionSequencer::ProceedOnTrack(TrackIndex track, const IChord *past,
+                                     std::optional<OrnamentSchedule> strike,
+                                     float velocity)
+{
+  const auto now = std::chrono::steady_clock::now();
+  const bool ornamented =
+      strike && (strike->steps.size() > 1 || !strike->closing.empty());
+  NoteEvents events;
+  auto &m = m_ornamentThreadMembers;
+  bool queued = false;
+  {
+    std::unique_lock lock{m.mutex};
+    std::vector<int> noteoffs;
+    std::vector<int> noteons;
+    float noteonVelocity = velocity;
+    const auto it = m_tracks.find(track.value);
+    if (it != m_tracks.end() && it->second.stepEnd)
+    {
+      // Mid-way through a timed step: the move waits for it to end.
+      it->second.move = TrackSchedule::Move{std::move(strike), velocity, false};
+      return {};
+    }
+    else if (it != m_tracks.end() && !it->second.schedule.closing.empty())
+    {
+      // The chord's closing notes sound first; the move follows them.
+      TrackSchedule &entry = it->second;
+      OrnamentSchedule closing;
+      closing.steps = std::move(entry.schedule.closing);
+      noteoffs = std::move(entry.sounding);
+      noteonVelocity = entry.velocity;
+      noteons = Begin(track, entry, std::move(closing), entry.velocity, now);
+      entry.move = TrackSchedule::Move{std::move(strike), velocity, true};
+      queued = true;
+    }
+    else
+    {
+      if (it != m_tracks.end())
+      {
+        noteoffs = std::move(it->second.sounding);
+        m_tracks.erase(it);
+      }
+      else if (past)
+        noteoffs = past->GetPitches();
+
+      if (strike && ornamented)
+      {
+        TrackSchedule &entry = m_tracks[track.value];
+        entry.generation = ++m_ornamentGeneration;
+        noteons = Begin(track, entry, std::move(*strike), velocity, now);
+        queued = entry.stepEnd.has_value();
+      }
+      else if (strike)
+        // A plain chord, struck plainly: nothing to keep track of.
+        noteons = strike->steps.front().pitches;
+    }
+    AppendNoteoffs(events, noteoffs, track, noteons);
+    if (!noteons.empty())
+      AppendNoteons(events, noteons, track, noteonVelocity);
+  }
+  if (queued)
+    m.cv.notify_one();
+  return events;
+}
+
+void OrchestrionSequencer::OnOrnamentStepDue(OrnamentStepDue due)
+{
+  auto &m = m_ornamentThreadMembers;
+  std::unique_lock lock{m.mutex};
+  const auto it = m_tracks.find(due.track.value);
+  if (it == m_tracks.end() || it->second.generation != due.generation)
+    return; // cancelled, or struck anew, in the meantime
+  TrackSchedule &entry = it->second;
+  entry.stepEnd.reset();
+  const OrnamentSchedule &schedule = entry.schedule;
+  const bool cycling = schedule.cycleBegin < schedule.cycleEnd;
+  const bool exhausted = entry.next >= schedule.steps.size() && !cycling;
+
+  NoteEvents events;
+  const auto silence = [&](const std::vector<int> &pitches)
+  {
+    for (const int pitch : pitches)
+      events.emplace_back(NoteEventType::noteOff, due.track, pitch, 0.f);
+  };
+  const auto sound = [&](const std::vector<int> &pitches, float velocity)
+  {
+    for (const int pitch : pitches)
+      events.emplace_back(NoteEventType::noteOn, due.track, pitch, velocity);
+  };
+
+  if (entry.move && (!entry.move->afterClosing || exhausted))
+  {
+    // The gesture that came during the step takes effect now.
+    TrackSchedule::Move move = std::move(*entry.move);
+    entry.move.reset();
+    silence(entry.sounding);
+    if (move.strike)
+      sound(Begin(due.track, entry, std::move(*move.strike), move.velocity,
+                  due.time),
+            move.velocity);
+    else
+      m_tracks.erase(it);
+  }
+  else
+  {
+    if (entry.next >= schedule.steps.size())
+    {
+      if (!cycling)
+        return; // a held step ends with a gesture, not a timer: not reached
+      entry.next = schedule.cycleBegin;
+    }
+    const TimedOrnamentStep &step = schedule.steps[entry.next++];
+    silence(entry.sounding);
+    sound(step.pitches, entry.velocity);
+    entry.sounding = step.pitches;
+    if (step.duration.count() > 0)
+    {
+      entry.stepEnd = due.time + step.duration;
+      QueueOrnamentStep(
+          m.queue, OrnamentStepDue{due.track, due.generation, *entry.stepEnd});
+    }
+  }
+
+  // Sent under the lock: a gesture arriving now must find these sounding, not
+  // silence them before they sound.
+  m_outputEvent.send(std::move(events));
+}
+
+void OrchestrionSequencer::CancelOrnaments()
+{
+  NoteEvents noteoffs;
+  auto &m = m_ornamentThreadMembers;
+  {
+    std::unique_lock lock{m.mutex};
+    for (const auto &[track, entry] : m_tracks)
+      for (const int pitch : entry.sounding)
+        noteoffs.emplace_back(NoteEventType::noteOff, TrackIndex{track}, pitch,
+                              0.f);
+    m_tracks.clear();
+    m.queue.clear();
+  }
+  // The thread may be waiting on an entry just removed.
+  m.cv.notify_one();
+  if (!noteoffs.empty())
+    PostNoteEvents(std::move(noteoffs));
 }
 
 } // namespace dgk

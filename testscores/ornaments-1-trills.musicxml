@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">
+<work><work-title>Ornaments 1 - Trills</work-title></work>
+<identification><creator type="composer">Orchestrion test</creator></identification>
+<part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+<part id="P1">
+<measure number="1">
+<attributes><divisions>8</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign><line>2</line></clef><clef number="2"><sign>F</sign><line>4</line></clef></attributes>
+<direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome></direction-type><sound tempo="60"/></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="2">
+<direction placement="above"><direction-type><words>1. tr on a 16th: no room for three 32nds: C D C compressed, then D</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>2</duration><voice>1</voice><type>16th</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>2</duration><voice>1</voice><type>16th</type><staff>1</staff></note><note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note><note><rest/><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="3">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="4">
+<direction placement="above"><direction-type><words>2. tr on an 8th: 32nds</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><type>eighth</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note><note><rest/><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="5">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="6">
+<direction placement="above"><direction-type><words>3. tr on a quarter</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="7">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="8">
+<direction placement="above"><direction-type><words>4. tr on a half: cycles until the next key</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="9">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="10">
+<direction placement="above"><direction-type><words>5. tr + termination written as graces before D: they resolve the trill, 32nds</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><grace/><pitch><step>B</step><octave>4</octave></pitch><voice>1</voice><type>16th</type><staff>1</staff></note><note><grace/><pitch><step>C</step><octave>5</octave></pitch><voice>1</voice><type>16th</type><staff>1</staff></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="11">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="12">
+<direction placement="above"><direction-type><words>6. tr + Nachschlag as graces after C: 32nds at the leaving gesture</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><grace steal-time-previous="20"/><pitch><step>B</step><octave>4</octave></pitch><voice>1</voice><type>16th</type><staff>1</staff></note><note><grace steal-time-previous="20"/><pitch><step>C</step><octave>5</octave></pitch><voice>1</voice><type>16th</type><staff>1</staff></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="13">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="14">
+<direction placement="above"><direction-type><words>7. tr then turn: the turn waits for the trill note to end</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><turn/></ornaments></notations></note><note><pitch><step>E</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="15">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="16">
+<direction placement="above"><direction-type><words>8. tr then release into a rest</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><rest/><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="17">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="18">
+<direction placement="above"><direction-type><words>9. tr with a wavy line over tied notes (nominal = half + quarter)</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration><tie type="start"/><voice>1</voice><type>half</type><staff>1</staff><notations><tied type="start"/><ornaments><trill-mark/><wavy-line type="start"/></ornaments></notations></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><tie type="stop"/><voice>1</voice><type>quarter</type><staff>1</staff><notations><tied type="stop"/><ornaments><wavy-line type="stop"/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="19">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="20">
+<direction placement="above"><direction-type><words>10. tr on a two-note chord</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="21">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="22">
+<direction placement="above"><direction-type><words>11. tr with a sharp: upper note D sharp</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/><accidental-mark>sharp</accidental-mark></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="23">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="24">
+<direction placement="above"><direction-type><words>12. tr on B: upper note a semitone away</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>B</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+</measure>
+<measure number="25">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="26">
+<direction placement="above"><direction-type><words>13. tr in the left hand (E3, right hand plain)</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>E</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><rest/><duration>16</duration><voice>5</voice><type>half</type><staff>2</staff></note>
+</measure>
+<measure number="27">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="28">
+<direction placement="above"><direction-type><words>14. both hands trill together</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>E</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff><notations><ornaments><trill-mark/></ornaments></notations></note><note><pitch><step>D</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><rest/><duration>16</duration><voice>5</voice><type>half</type><staff>2</staff></note>
+</measure>
+<measure number="29">
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note><note><pitch><step>C</step><octave>3</octave></pitch><duration>8</duration><voice>5</voice><type>quarter</type><staff>2</staff></note>
+</measure>
+<measure number="30">
+<direction placement="above"><direction-type><words>15. plain quarter to end</words></direction-type><staff>1</staff></direction>
+<note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice><type>quarter</type><staff>1</staff></note><note><rest/><duration>16</duration><voice>1</voice><type>half</type><staff>1</staff></note>
+<backup><duration>32</duration></backup>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>32</duration><voice>5</voice><type>whole</type><staff>2</staff></note>
+<barline location="right"><bar-style>light-heavy</bar-style></barline>
+</measure>
+</part></score-partwise>
