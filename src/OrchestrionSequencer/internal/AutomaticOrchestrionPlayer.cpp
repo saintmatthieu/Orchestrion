@@ -19,6 +19,7 @@
 #include "AutomaticOrchestrionPlayer.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <QTimer>
+#include <algorithm>
 #include <cmath>
 
 namespace dgk
@@ -47,8 +48,12 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
           dispatcher()->dispatch(actionIds::playbackStop);
           return;
         }
-        if (!m_firingInputEvents)
+        if (m_playing && !m_firingInputEvents)
+        {
+          // The user moved the position: the schedule restarts from now.
+          m_nextMs = ElapsedMs();
           ScheduleNext();
+        }
       });
 
   // Orchestrion owns its playing state, driven by its own transport actions
@@ -76,7 +81,11 @@ void AutomaticOrchestrionPlayer::TogglePlay()
   if (m_replayTake)
     StartReplay();
   else
+  {
+    m_clock.start();
+    m_nextMs = 0.0;
     ScheduleNext();
+  }
 }
 
 void AutomaticOrchestrionPlayer::Stop()
@@ -163,12 +172,21 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
 
   if (next->deltaTicks > 0)
   {
+    // The due time is accumulated on the play clock and the timer is armed
+    // for what remains until it, not for the tick delta: a timer never fires
+    // early and the fired events are handled before the next one is armed, so
+    // delta-to-delta scheduling lost a few ms per event for good — about a
+    // 32nd per ten bars. (The replay path has always done this, see
+    // ScheduleReplayNext.) After a stall the overdue events catch up.
+    m_nextMs += TicksToMilliseconds(next->deltaTicks);
+    const int delay =
+        std::max(0, static_cast<int>(std::lround(m_nextMs - ElapsedMs())));
     const int gen = m_generation;
     // Qt::PreciseTimer (not the default coarse, ~5%-accurate timer) so the
     // auto-played onsets land close to their intended times even while the UI
     // thread is busy painting; that arrival time is what the tempo model
     // timestamps, so timer jitter shows up as tempo dents.
-    QTimer::singleShot(TicksToMilliseconds(next->deltaTicks), Qt::PreciseTimer,
+    QTimer::singleShot(delay, Qt::PreciseTimer,
                        [this, events = *next, gen]
                        {
                          if (gen == m_generation)
@@ -195,14 +213,17 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
   ScheduleNext();
 }
 
-int AutomaticOrchestrionPlayer::TicksToMilliseconds(int ticks) const
+double AutomaticOrchestrionPlayer::TicksToMilliseconds(int ticks) const
 {
   const double bpm = playbackController()->currentTempo().valueBpm;
   const double multiplier = playbackController()->tempoMultiplier();
   if (bpm <= 0 || multiplier <= 0)
-    return 0;
-  // Round (not truncate) so the per-note delay doesn't bias short.
-  return static_cast<int>(
-      std::lround(ticks * 60000.0 / (bpm * ticksPerQuarterNote * multiplier)));
+    return 0.0;
+  return ticks * 60000.0 / (bpm * ticksPerQuarterNote * multiplier);
+}
+
+double AutomaticOrchestrionPlayer::ElapsedMs() const
+{
+  return m_clock.nsecsElapsed() / 1e6;
 }
 } // namespace dgk

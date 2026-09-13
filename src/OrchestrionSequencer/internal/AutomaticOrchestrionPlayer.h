@@ -56,7 +56,8 @@ private:
   void Stop();
   void ScheduleNext();
   void FireAndContinue(const NextAutoPlayEvents &events);
-  int TicksToMilliseconds(int ticks) const;
+  double TicksToMilliseconds(int ticks) const;
+  double ElapsedMs() const;
   void StartReplay();
   void ScheduleReplayNext();
   void FireReplayEvent();
@@ -73,6 +74,12 @@ private:
   bool m_firingInputEvents = false;
 
   muse::async::Notification m_playingChanged;
+
+  // The play clock, started with nominal playback, and the due time on it of
+  // the events scheduled last: accumulated from the score's tick deltas, so
+  // that timer latency doesn't build up into drift (see ScheduleNext).
+  QElapsedTimer m_clock;
+  double m_nextMs = 0.0;
 
   std::optional<ReplayTake> m_replayTake;
   bool m_replayActive = false;
