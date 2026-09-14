@@ -110,9 +110,13 @@ public:
   virtual void GoToPrevNoteonTick() = 0;
   virtual void GoToNextNoteonTick() = 0;
 
-  //! Returns the next batch of input events to play, with a delta tick count
-  //! relative to the previous call (0 at the start of the score). Returns
-  //! std::nullopt when there is nothing left to play.
+  /**
+   * Returns the next batch of input events to play, with a delta tick count
+   * relative to the previous call (0 at the start of the score). A chord with
+   * grace notes before it is due early by their length, as a performer plays
+   * it, so that the chord itself falls on its beat. Returns std::nullopt when
+   * there is nothing left to play.
+   */
   virtual std::optional<NextAutoPlayEvents> WhatToPlayNext() = 0;
 };
 

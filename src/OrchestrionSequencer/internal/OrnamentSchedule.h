@@ -57,6 +57,14 @@ struct OrnamentSchedule
    * after the chord). All timed.
    */
   std::vector<TimedOrnamentStep> closing;
+  /**
+   * How long the grace notes before the chord take: the chord's own note is
+   * reached this long after the strike. For the player to anticipate — as
+   * the automatic player does — by striking that much ahead of the beat, so
+   * that the chord itself falls on it. Zero for an appoggiatura, which falls
+   * on the beat and takes its time from the chord.
+   */
+  std::chrono::microseconds anticipation{0};
 };
 
 /** A chord with nothing to it: struck, held until the leaving gesture. */

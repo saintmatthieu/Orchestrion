@@ -267,17 +267,26 @@ enum class OrnamentSign
  * each lasts is the sequencer's business, decided when the chord is struck
  * from the performer's tempo. Nothing is anticipated: the first note sounds
  * at the strike, so an ornament meant to fall before the beat is for the
- * player to anticipate, by striking a little early.
+ * player to anticipate, by striking a little early — as the automatic player
+ * does for the grace notes (see IOrchestrionSequencer::WhatToPlayNext).
  */
 struct Ornament
 {
   /**
    * Grace notes before the chord, in order, each at the value it plays at:
    * 32nds when they resolve a trill (the chord struck before is trilled), a
-   * lone unslashed one (an appoggiatura) its written value, any other — a
-   * crushed one, a run — a 64th. Together they take half the chord at most.
+   * lone unslashed one leaning on the chord by step (an appoggiatura) its
+   * written value, any other — a crushed one, a run, one leaping to the
+   * chord or repeating the note before — a 64th. Together they take half the
+   * chord at most.
    */
   std::vector<GraceNote> gracesBefore;
+  /**
+   * Whether the graces before are an appoggiatura: it falls on the beat and
+   * takes its time from the chord, so a player does not anticipate it, unlike
+   * the quick graces, runs and trill resolutions that come before the beat.
+   */
+  bool appoggiatura = false;
   OrnamentSign sign = OrnamentSign::none;
   /**
    * The notes the sign spells out, the main note included where it falls

@@ -20,6 +20,7 @@
 #include "IChord.h"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <engraving/dom/note.h>
 #include <iterator>
 #include <notation/imasternotation.h>
@@ -585,7 +586,7 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
 {
   struct Candidate
   {
-    Tick tick;
+    int tick; // with repeats: when the gesture is due
     NoteEventType type;
     bool isLeftHand;
   };
@@ -596,32 +597,111 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
     auto &hand = isLeftHand ? m_leftHand : m_rightHand;
     for (auto eventType : {NoteEventType::noteOff, NoteEventType::noteOn})
     {
-      auto tick = GetCursorTick(hand.voices, eventType);
-      if (tick)
-        candidates.push_back({*tick, eventType, isLeftHand});
+      const auto tick = GetCursorTick(hand.voices, eventType);
+      if (!tick)
+        continue;
+      const int due = eventType == NoteEventType::noteOn
+                          ? AutoPlayStrikeTick(hand, *tick)
+                          : tick->withRepeats;
+      candidates.push_back({due, eventType, isLeftHand});
     }
   }
 
   if (candidates.empty())
     return std::nullopt;
 
-  const auto minTick =
+  const int minTick =
       std::min_element(candidates.begin(), candidates.end(),
                        [](const Candidate &a, const Candidate &b)
                        { return a.tick < b.tick; })
           ->tick;
 
   NextAutoPlayEvents result;
-  result.deltaTicks = minTick.withRepeats - m_autoPlayTick;
+  result.deltaTicks = minTick - m_autoPlayTick;
 
   // Collect all events at the minimum tick, noteoffs first.
   for (auto type : {NoteEventType::noteOff, NoteEventType::noteOn})
     for (const auto &c : candidates)
-      if (c.tick.withRepeats == minTick.withRepeats && c.type == type)
+      if (c.tick == minTick && c.type == type)
         (c.isLeftHand ? result.leftHandEvent : result.rightHandEvent) = c.type;
 
-  m_autoPlayTick = minTick.withRepeats;
+  m_autoPlayTick = minTick;
   return result;
+}
+
+int OrchestrionSequencer::AnticipationTicks(const Hand &hand,
+                                            const Tick &strike) const
+{
+  int ticks = 0;
+  for (const auto &voice : hand.voices)
+  {
+    const IChord *chord = voice->GetFutureChord();
+    if (!chord || chord->GetBeginTick().withRepeats != strike.withRepeats)
+      continue;
+    // Back from the schedule's time to ticks at the tempo it was timed with.
+    const double ms = ScheduleChord(*chord, hand).anticipation.count() / 1000.0;
+    ticks = std::max(
+        ticks, static_cast<int>(std::lround(ms * TicksPerMs(hand, *chord))));
+  }
+  return ticks;
+}
+
+int OrchestrionSequencer::AutoPlayStrikeTick(const Hand &hand,
+                                             const Tick &strike)
+{
+  using namespace std::chrono;
+  // Grace notes fall before the beat: like a performer, strike the chord
+  // they lead to early by their length, so that the chord itself lands on it.
+  const int target = strike.withRepeats - AnticipationTicks(hand, strike);
+  int due = target;
+  for (const auto &voice : hand.voices)
+  {
+    const IChord *chord = voice->GetFutureChord();
+    if (!chord || chord->GetBeginTick().withRepeats != strike.withRepeats)
+      continue;
+    std::unique_lock lock{m_ornamentThreadMembers.mutex};
+    const auto it = m_tracks.find(voice->track.value);
+    if (it == m_tracks.end() || !it->second.stepEnd ||
+        it->second.schedule.cycleBegin >= it->second.schedule.cycleEnd)
+      continue;
+    // The hand is trilling. The step boundaries ahead, in the player's
+    // ticks: the trill's notes were timed at the hand's tempo, so that is the
+    // rate to count them back with. The events played last went at
+    // m_autoPlayTick, which is now, give or take the timer's lateness.
+    const TrackSchedule &entry = it->second;
+    const OrnamentSchedule &schedule = entry.schedule;
+    const double ticksPerMs = TicksPerMs(hand, *chord);
+    const auto ticksOf = [&](microseconds duration)
+    { return duration.count() / 1000.0 * ticksPerMs; };
+    const double untilStepEnd = std::max(
+        0.0, duration<double, std::milli>(*entry.stepEnd - steady_clock::now())
+                 .count());
+    double boundary = m_autoPlayTick + untilStepEnd * ticksPerMs;
+    size_t next = entry.next;
+    // Walk the boundaries up to the target and settle on the nearest.
+    double nearest = boundary;
+    double stepTicks = 0.0;
+    while (true)
+    {
+      if (next >= schedule.cycleEnd)
+        next = schedule.cycleBegin;
+      stepTicks = ticksOf(schedule.steps[next++].duration);
+      if (boundary >= target || stepTicks <= 0.0)
+        break;
+      const double following = boundary + stepTicks;
+      if (std::abs(following - target) <= std::abs(boundary - target))
+        nearest = following;
+      boundary = following;
+      if (boundary >= target)
+        break;
+    }
+    // Aim a little before the boundary, not at it: a timer a hair late would
+    // find the next step begun and wait it out. Arriving early costs
+    // nothing, the gesture taking effect at the boundary anyway.
+    due = static_cast<int>(std::lround(nearest - stepTicks / 3.0));
+    break;
+  }
+  return std::max(due, m_autoPlayTick);
 }
 
 const std::map<TrackIndex, ChordTransition> &

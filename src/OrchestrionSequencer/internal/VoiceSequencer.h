@@ -52,12 +52,17 @@ public:
   std::optional<dgk::Tick> GetNextNoteonTick() const;
   std::optional<dgk::Tick> GetPreviousNoteonTick() const;
 
+  /**
+   * The chord the next note-on strikes, or, for an `offset` > 0, the chord
+   * that many gestures further on; null if none is left.
+   */
+  const IChord *GetFutureChord(unsigned offset = 0u) const;
+
 private:
   static VoiceEvent GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                                   int index);
   ChordTransitionType GetNextTransition(NoteEventType event,
                                         const Tick &cursorTick) const;
-  const IChord *GetFutureChord(unsigned offset = 0u) const;
   const IMelodySegment *GetPresentThing() const;
   std::optional<dgk::Tick> GetNextMatchingTickForNoteoff() const;
   std::optional<dgk::Tick>

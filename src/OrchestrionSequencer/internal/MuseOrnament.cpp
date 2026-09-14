@@ -232,6 +232,53 @@ const me::Chord *PreviousChord(const me::Chord &chord)
 }
 
 /**
+ * The pitches of the chord's notes that play, sorted.
+ */
+std::vector<int> PlayedPitches(const me::Chord &chord)
+{
+  std::vector<int> pitches;
+  for (const me::Note *note : chord.notes())
+    if (note->play())
+      pitches.push_back(note->pitch());
+  std::sort(pitches.begin(), pitches.end());
+  return pitches;
+}
+
+/**
+ * Whether the lone grace before the chord is an appoggiatura, leaning on the
+ * chord by step — a semitone or a tone away from one of the notes it
+ * strikes — rather than a quick grace: one that leaps to the chord, or
+ * repeats the note before it (a re-articulation, however it is engraved), is
+ * played crushed.
+ */
+bool IsAppoggiatura(const std::vector<me::Chord *> &graces,
+                    const me::Chord &chord,
+                    const std::vector<const me::Note *> &struckNotes)
+{
+  if (graces.size() != 1 ||
+      graces.front()->noteType() == me::NoteType::ACCIACCATURA)
+    return false;
+  const std::vector<int> gracePitches = PlayedPitches(*graces.front());
+  if (gracePitches.empty())
+    return false;
+  if (const me::Chord *previous = PreviousChord(chord);
+      previous && PlayedPitches(*previous) == gracePitches)
+    return false;
+  return std::all_of(gracePitches.begin(), gracePitches.end(),
+                     [&](int pitch)
+                     {
+                       return std::any_of(
+                           struckNotes.begin(), struckNotes.end(),
+                           [&](const me::Note *note)
+                           {
+                             const int distance =
+                                 std::abs(note->pitch() - pitch);
+                             return distance >= 1 && distance <= 2;
+                           });
+                     });
+}
+
+/**
  * Whether the chord resolves a trill: the chord struck before it in its
  * voice, with no rest between, is trilled.
  */
@@ -269,18 +316,19 @@ std::optional<Ornament> BuildOrnament(const me::Chord &chord)
       result.figure.push_back(FigureNote(notes, sign->ornament, offset));
   }
 
-  // Graces resolving a trill inherit its 32nds; a lone unslashed one is an
-  // appoggiatura and keeps its written value; any other, alone or in a run,
-  // is a 64th.
+  // Graces resolving a trill inherit its 32nds; a lone unslashed one leaning
+  // on the chord by step is an appoggiatura and keeps its written value; any
+  // other — in a run, leaping to the chord, repeating the note before — is a
+  // 64th.
   const std::vector<me::Chord *> &gracesBefore = chord.graceNotesBefore(true);
   if (!gracesBefore.empty())
   {
-    const bool appoggiatura =
-        gracesBefore.size() == 1 &&
-        gracesBefore.front()->noteType() != me::NoteType::ACCIACCATURA;
+    const bool resolvesATrill = ResolvesATrill(chord);
+    result.appoggiatura =
+        !resolvesATrill && IsAppoggiatura(gracesBefore, chord, notes);
     result.gracesBefore =
-        Graces(gracesBefore, ResolvesATrill(chord) ? thirtySecond
-                             : appoggiatura        ? 0
+        Graces(gracesBefore, resolvesATrill        ? thirtySecond
+                             : result.appoggiatura ? 0
                                                    : sixtyFourth);
   }
   result.gracesAfter =

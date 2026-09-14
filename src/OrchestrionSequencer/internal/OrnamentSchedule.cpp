@@ -80,9 +80,10 @@ OrnamentSchedule ScheduleOrnament(const Ornament &ornament,
 
   // Grace notes take half the note at most; the closing ones sound at the
   // leaving gesture and take nothing from it.
-  const double remaining =
-      noteMs - AppendGraces(schedule.steps, ornament.gracesBefore, ticksPerMs,
-                            noteMs / 2);
+  const double graceMs = AppendGraces(schedule.steps, ornament.gracesBefore,
+                                      ticksPerMs, noteMs / 2);
+  schedule.anticipation = ornament.appoggiatura ? Us(0.0) : Us(graceMs);
+  const double remaining = noteMs - graceMs;
   AppendGraces(schedule.closing, ornament.gracesAfter, ticksPerMs, noteMs / 2);
 
   const auto hold = [&](const std::vector<int> &pitches)

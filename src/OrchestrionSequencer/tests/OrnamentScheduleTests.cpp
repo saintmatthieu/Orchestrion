@@ -200,16 +200,29 @@ TEST(OrnamentScheduleTests, GracesPlayAtTheValueTheyCarry)
   EXPECT_TRUE(Holds(s.steps[3]));
 }
 
-// A lone unslashed grace is an appoggiatura and takes its written value ...
+// An appoggiatura takes its written value ...
 TEST(OrnamentScheduleTests, AppoggiaturaTakesItsWrittenValue)
 {
   Ornament ornament;
   ornament.gracesBefore = {{D, eighth}};
+  ornament.appoggiatura = true;
   const OrnamentSchedule s =
       ScheduleOrnament(ornament, C, half, TicksPerMs(60));
   ASSERT_EQ(s.steps.size(), 2u);
   EXPECT_NEAR(Ms(s.steps[0]), 500.0, 0.01);
   EXPECT_TRUE(Holds(s.steps[1]));
+}
+
+// ... and falls on the beat, taking its time from the chord: nothing to
+// anticipate.
+TEST(OrnamentScheduleTests, AppoggiaturaIsNotAnticipated)
+{
+  Ornament ornament;
+  ornament.gracesBefore = {{D, eighth}};
+  ornament.appoggiatura = true;
+  const OrnamentSchedule s =
+      ScheduleOrnament(ornament, C, half, TicksPerMs(60));
+  EXPECT_EQ(s.anticipation.count(), 0);
 }
 
 // ... capped at half the chord.
@@ -245,6 +258,39 @@ TEST(OrnamentScheduleTests, GracesAreFlooredAtFastTempi)
   const OrnamentSchedule s =
       ScheduleOrnament(ornament, C, quarter, TicksPerMs(240));
   EXPECT_NEAR(Ms(s.steps[0]), 40.0, 0.01);
+}
+
+// The graces' length is the chord's anticipation: struck that much early, the
+// chord itself falls on the beat. Chopin Op. 9/2 bar 7: two 32nds resolving
+// the trill, before a quaver.
+TEST(OrnamentScheduleTests, AnticipationIsTheLengthOfTheGracesBefore)
+{
+  Ornament ornament;
+  ornament.gracesBefore = {{{76}, thirtySecond}, {{77}, thirtySecond}};
+  const OrnamentSchedule s =
+      ScheduleOrnament(ornament, {79}, eighth, TicksPerMs(60));
+  EXPECT_NEAR(s.anticipation.count() / 1000.0, 250.0, 0.01);
+}
+
+// ... capped along with them.
+TEST(OrnamentScheduleTests, AnticipationIsCappedAlongWithTheGraces)
+{
+  Ornament ornament;
+  ornament.gracesBefore = {{D, half}};
+  const OrnamentSchedule s =
+      ScheduleOrnament(ornament, C, quarter, TicksPerMs(60));
+  EXPECT_NEAR(s.anticipation.count() / 1000.0, 500.0, 0.01);
+}
+
+// Nothing to anticipate without graces before: not a trill, not graces after.
+TEST(OrnamentScheduleTests, NoAnticipationWithoutGracesBefore)
+{
+  Ornament ornament = Trill();
+  ornament.gracesAfter = {{D, thirtySecond}};
+  const OrnamentSchedule s =
+      ScheduleOrnament(ornament, C, half, TicksPerMs(60));
+  EXPECT_EQ(s.anticipation.count(), 0);
+  EXPECT_EQ(PlainChord(C).anticipation.count(), 0);
 }
 
 // A trill after graces cycles the two steps that follow them.

@@ -190,6 +190,24 @@ private:
   /** How the chord is to sound, struck now at the hand's tempo. */
   OrnamentSchedule ScheduleChord(const IChord &, const Hand &) const;
   /**
+   * How far ahead of `strike` the hand is to come down on the chords due
+   * there, in ticks, for the grace notes before them to be over by then: the
+   * graces' length at the hand's tempo (see OrnamentSchedule::anticipation),
+   * the longest across the voices struck; 0 when there are none.
+   */
+  int AnticipationTicks(const Hand &, const Tick &strike) const;
+  /**
+   * When the automatic player is to make the gesture striking the chords due
+   * at `strike`, in ticks with repeats: ahead of them by their grace notes'
+   * length (AnticipationTicks), and, if the hand is trilling, timed for the
+   * trill step boundary nearest to that. A gesture takes effect when the
+   * step under way ends, so one aimed at a boundary lands the resolution
+   * within half a trill note of the beat, where one aimed at the beat itself
+   * would fall anywhere in a step and wait out the rest of it. Never before
+   * the events played last.
+   */
+  int AutoPlayStrikeTick(const Hand &, const Tick &strike);
+  /**
    * Moves the track on to what the gesture struck — nothing for a release —
    * and returns the note events to send now. Returns none while the track is
    * mid-way through a timed ornament step: the move then waits for the step
