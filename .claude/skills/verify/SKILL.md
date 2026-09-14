@@ -71,4 +71,27 @@ through `AutomaticOrchestrionPlayer` and has its own re-entrancy/timing paths
   `keydown N` / `keyup N` give held gesture notes; keep a hand's presses
   non-overlapping — a note-off for a pitch other than the last pressed one is
   ignored.
+- **`pkill -f` self-match**: the launch command line contains the pattern, so
+  `pkill -f "build/Debug/install/bin/Orchestrion"` kills your own shell (exit 144).
+  Anchor it to how the binary was launched: `pkill -f "^build/Debug/install/bin/Orchestrion"`
+  (same for `pgrep`).
+- **VST plugin editors need X11**: on the VNC platform (and on Qt's wayland
+  platform, which is why `main.cpp` forces xcb) a plugin's X11 GUI dies on an X
+  `BadWindow` error that kills the app. To test editors headlessly use Xvfb
+  instead of VNC: `Xvfb :99 -screen 0 1600x900x24 +extension GLX &`, launch with
+  `DISPLAY=:99` (no `QT_QPA_PLATFORM`), drive with `python3 .claude/skills/verify/xin.py` (python-xlib XTEST: `move X Y`,
+  `click`, `key`/`keydown`/`keyup`, `sleep`; no xdotool here) and capture with `scrot`.
+  The scratchpad is wiped daily, so keep helpers here, not there. Isolate settings from the user's running
+  instance with `XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointing at scratch copies of
+  `OrchestrionDevelopment.ini`, `known_audio_plugins.json` and the `workspaces/`
+  dir (a Debug build asserts without the Default workspace).
+- **Submenus open on hover, after several pointer motions**: a single
+  `move X Y click` on a submenu item does nothing (also under Xvfb). Move onto
+  the item, wait, move a few pixels, wait again:
+  `move 210 147 sleep 1.5 move 230 147 sleep 1.5 move 250 147 sleep 2`.
+  Without a window manager on Xvfb the window stays 800x350 and the maximize
+  button is a no-op; popups still open beyond its edge.
+- **Tall menus don't open**: a StyledMenu submenu taller than the screen never
+  shows. If a dynamic list is long, launch with `vnc:size=1600x1500` to see it, or
+  better, keep the list short (see the memory note on StyledMenu height).
 - Logs also land in `~/.local/share/OrchestrionDevelopment/logs/`.
