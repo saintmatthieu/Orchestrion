@@ -94,4 +94,9 @@ static constexpr const char *ornamentsDisabled =
 static constexpr const char *ornamentsManual = "orchestrion-ornaments-manual";
 static constexpr const char *ornamentsAutomatic =
     "orchestrion-ornaments-automatic";
+//! Effects menu: the master effect chain (see
+//! IEffectChain). All three take the effect's id as argument.
+static constexpr const char *addEffect = "orchestrion-effects-add";
+static constexpr const char *removeEffect = "orchestrion-effects-remove";
+static constexpr const char *editEffect = "orchestrion-effects-edit";
 } // namespace dgk::actionIds

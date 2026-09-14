@@ -26,6 +26,9 @@ namespace dgk
 class SynthesizerConnector;
 class SynthesizerManager;
 class OrchestrionSynthesisConfiguration;
+class EffectChain;
+class BuiltInEffects;
+class OrchestrionFxResolver;
 
 class OrchestrionSynthesisModule : public muse::modularity::IModuleSetup
 {
@@ -35,6 +38,8 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
+  void registerUiTypes() override;
+  void resolveImports() override;
   void onDelayedInit() override;
   muse::modularity::IContextSetup *
   newContext(const muse::modularity::ContextPtr &ctx) const override;
@@ -45,5 +50,8 @@ private:
   const std::shared_ptr<SynthesizerConnector> m_synthesizerConnector;
   const std::shared_ptr<SynthesizerManager> m_synthesizerManager;
   const std::shared_ptr<OrchestrionSynthesisConfiguration> m_configuration;
+  const std::shared_ptr<BuiltInEffects> m_builtInEffects;
+  const std::shared_ptr<OrchestrionFxResolver> m_fxResolver;
+  const std::shared_ptr<EffectChain> m_effectChain;
 };
 } // namespace dgk

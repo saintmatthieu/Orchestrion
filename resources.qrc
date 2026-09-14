@@ -6,6 +6,9 @@
     <file>src/qml/GradingButton.qml</file>
     <file>src/qml/AutoPlayButton.qml</file>
     <file>src/qml/PedalIndicator.qml</file>
+    <file>src/qml/BuiltInEffectDialog.qml</file>
+    <file>src/qml/EffectHeader.qml</file>
+    <file>src/qml/OrchestrionVstEditorDialog.qml</file>
     <file>src/qml/GradingSettingsPopup.qml</file>
     <file>src/qml/AutoPlaySettingsPopup.qml</file>
     <file>src/qml/AttributionToast.qml</file>

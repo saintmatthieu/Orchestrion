@@ -1,8 +1,34 @@
 declare_module(OrchestrionSynthesis)
 
+# Vendored DSP (see thirdparty/README.md): kept out of the unity build and the
+# precompiled header, as foreign code.
+set(THIRDPARTY_DSP_SRC
+    thirdparty/DynamicRangeProcessor/CompressorProcessor.cpp
+    thirdparty/DynamicRangeProcessor/CompressorProcessor.h
+    thirdparty/DynamicRangeProcessor/DynamicRangeProcessorTypes.h
+    thirdparty/DynamicRangeProcessor/MathApprox.h
+    thirdparty/SimpleCompressor/GainReductionComputer.cpp
+    thirdparty/SimpleCompressor/GainReductionComputer.h
+    thirdparty/SimpleCompressor/LookAheadGainReduction.cpp
+    thirdparty/SimpleCompressor/LookAheadGainReduction.h
+)
+set_source_files_properties(${THIRDPARTY_DSP_SRC} PROPERTIES
+    SKIP_UNITY_BUILD_INCLUSION ON
+    SKIP_PRECOMPILE_HEADERS ON
+)
+
 set(MODULE_SRC
     internal/AntiMetronomeSynthesizer.cpp
     internal/AntiMetronomeSynthesizer.h
+    internal/BuiltInEffectResources.h
+    internal/BuiltInEffectRuntime.h
+    internal/BuiltInEffects.cpp
+    internal/BuiltInEffects.h
+    internal/DynamicsProcessor.cpp
+    internal/DynamicsProcessor.h
+    internal/ParameterStore.h
+    internal/EffectChain.cpp
+    internal/EffectChain.h
     internal/FluidSynthesizer.cpp
     internal/FluidSynthesizer.h
     internal/IOrchestrionSynthesizer.h
@@ -16,6 +42,8 @@ set(MODULE_SRC
     internal/OrchestrionSynthesisConfiguration.h
     internal/OrchestrionSynthResolver.cpp
     internal/OrchestrionSynthResolver.h
+    internal/OrchestrionFxResolver.cpp
+    internal/OrchestrionFxResolver.h
     internal/OrchestrionVstSynthesizer.cpp
     internal/OrchestrionVstSynthesizer.h
     internal/PolyphonicSynthesizerImpl.cpp
@@ -28,12 +56,20 @@ set(MODULE_SRC
     internal/SynthesizerManager.h
     internal/TrackChannelMapper.cpp
     internal/TrackChannelMapper.h
+    BuiltInEffectTypes.h
+    IBuiltInEffects.h
+    IEffectChain.h
     ITrackChannelMapper.h
     ISynthesizerConnector.h
     ISynthesizerManager.h
     IOrchestrionSynthesisConfiguration.h
     OrchestrionSynthesisModule.cpp
     OrchestrionSynthesisModule.h
+    view/EffectMeterModel.cpp
+    view/EffectMeterModel.h
+    view/EffectHeaderModel.cpp
+    view/EffectHeaderModel.h
+    ${THIRDPARTY_DSP_SRC}
 )
 
 set(FLUIDSYNTH_DIR ${MUSE_FRAMEWORK_SRC_PATH}/audio/thirdparty/fluidsynth/fluidsynth-2.3.3)

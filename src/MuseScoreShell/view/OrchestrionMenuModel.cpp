@@ -22,12 +22,14 @@
 #include "types/translatablestring.h"
 
 #include <QDir>
+#include <map>
 
 namespace dgk
 {
 namespace
 {
 constexpr auto audioMidiMenuId = "menu-audio-midi";
+constexpr auto effectsMenuId = "menu-orchestrion-effects";
 constexpr auto keyboardMenuId = "menu-keyboard";
 constexpr auto recentScoresMenuId = "menu-orchestrion-recent-scores";
 constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
@@ -75,7 +77,7 @@ void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   QList<muse::uicomponents::MenuItem *> menus{
       makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-      makeAudioMidiMenu(), makeOrnamentsMenu()};
+      makeAudioMidiMenu(), makeEffectsMenu(), makeOrnamentsMenu()};
   if (sequencerConfiguration()->gradingExposed())
     menus << makeGradingMenu();
   if (sequencerConfiguration()->autoPlayExposed())
@@ -150,6 +152,9 @@ void OrchestrionMenuModel::load()
   recentFilesController()->recentFilesListChanged().onNotify(
       this, [this] { updateRecentScoresSubmenu(); });
 
+  effectChain()->availableEffectsChanged().onNotify(this, [this]
+                                                    { updateEffectsMenu(); });
+  effectChain()->chainChanged().onNotify(this, [this] { updateEffectsMenu(); });
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -225,6 +230,7 @@ QString OrchestrionMenuModel::openedMenuId() const { return m_openedMenuId; }
 void OrchestrionMenuModel::openMenu(const QString &menuId, bool byHover)
 {
   if (menuId == audioMidiMenuId)
+  {
     for (auto deviceType : kDeviceTypes)
     {
       const auto menuId = actionIds::chooseDevicesSubmenu.at(deviceType);
@@ -233,6 +239,9 @@ void OrchestrionMenuModel::openMenu(const QString &menuId, bool byHover)
       selectMenuItem(menuId,
                      orchestrionUiActions()->selectedDevice(deviceType));
     }
+  }
+  else if (menuId == effectsMenuId)
+    updateEffectsMenu();
   emit openMenuRequested(menuId, byHover);
 }
 
@@ -445,6 +454,149 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
        makeAudioMidiSubmenu(DeviceType::MidiSynthesizer),
        makeAudioMidiSubmenu(DeviceType::PlaybackDevice)},
       audioMidiMenuId);
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeEffectsMenu()
+{
+  return makeMenu(muse::TranslatableString("appshell/menu/effects", "&Effects"),
+                  makeEffectsMenuItems(), effectsMenuId);
+}
+
+QList<muse::uicomponents::MenuItem *>
+OrchestrionMenuModel::makeEffectsMenuItems()
+{
+  using namespace muse::uicomponents;
+  // The master effect chain: the effects in it, in processing order, each
+  // with its editor and its removal, then what can be added. These aren't
+  // registered UI actions, one per effect: like the example scores, they are
+  // items of a shared action taking the effect's id as argument.
+  const std::vector<EffectDesc> chain = effectChain()->chain();
+  std::vector<EffectDesc> effects = effectChain()->availableEffects();
+  // Orchestrion's own effects sit at the top of the Add list; the plugins
+  // below them.
+  std::vector<EffectDesc> builtIn;
+  std::copy_if(effects.begin(), effects.end(), std::back_inserter(builtIn),
+               [](const EffectDesc &effect) { return effect.builtIn; });
+  effects.erase(std::remove_if(effects.begin(), effects.end(),
+                               [](const EffectDesc &effect)
+                               { return effect.builtIn; }),
+                effects.end());
+  int index = 0;
+  const auto makeItem = [this, &index](const char *actionCode,
+                                       const muse::TranslatableString &title,
+                                       const std::string &effectId)
+  {
+    auto *item = new MenuItem(this);
+    item->setId(QString("effect-%1").arg(index++));
+    muse::ui::UiAction action;
+    action.code = actionCode;
+    action.title = title;
+    item->setAction(action);
+    muse::ui::UiActionState state;
+    state.enabled = !effectId.empty();
+    item->setState(state);
+    if (!effectId.empty())
+      item->setArgs(
+          muse::actions::ActionData::make_arg1<std::string>(effectId));
+    return item;
+  };
+  const auto untranslatable = [](const std::string &text)
+  {
+    return muse::TranslatableString::untranslatable(
+        muse::String::fromStdString(text));
+  };
+
+  QList<MenuItem *> items;
+  for (const EffectDesc &entry : chain)
+  {
+    // An effect whose plugin has gone missing must remain removable.
+    const bool available =
+        entry.builtIn || std::any_of(effects.begin(), effects.end(),
+                                     [&entry](const EffectDesc &effect)
+                                     { return effect.id == entry.id; });
+    const QList<MenuItem *> entryItems{
+        makeItem(actionIds::editEffect,
+                 muse::TranslatableString("appshell/menu/effects", "&Show…"),
+                 entry.id),
+        makeItem(actionIds::removeEffect,
+                 muse::TranslatableString("appshell/menu/effects", "&Remove"),
+                 entry.id)};
+    const muse::String name = muse::String::fromStdString(entry.name);
+    items.append(makeMenu(
+        !available ? muse::TranslatableString("appshell/menu/effects",
+                                              "%1 (not found)")
+                         .arg(name)
+        : !entry.active
+            ? muse::TranslatableString("appshell/menu/effects", "%1 (bypassed)")
+                  .arg(name)
+            : untranslatable(entry.name),
+        entryItems, QString("effect-chain-%1").arg(index++)));
+  }
+  if (!chain.empty())
+    items.append(makeSeparator());
+
+  // What can be added. An effect already in the chain is shown checked and
+  // greyed out. A menu taller than the screen does not open at all, so a long
+  // list is split by vendor.
+  const auto makeAddItem = [&](const EffectDesc &effect)
+  {
+    MenuItem *const item =
+        makeItem(actionIds::addEffect, untranslatable(effect.name), effect.id);
+    if (effectChain()->contains(effect.id))
+    {
+      item->setCheckable(true);
+      muse::ui::UiActionState state;
+      state.enabled = false;
+      state.checked = true;
+      item->setState(state);
+    }
+    return item;
+  };
+  constexpr size_t maxFlatListSize = 12;
+  QList<MenuItem *> addItems;
+  for (const EffectDesc &effect : builtIn)
+    addItems.append(makeAddItem(effect));
+  if (!builtIn.empty())
+    addItems.append(makeSeparator());
+  if (effects.empty())
+    addItems.append(makeItem(actionIds::addEffect,
+                             muse::TranslatableString("appshell/menu/effects",
+                                                      "No VST3 effects found"),
+                             {}));
+  else if (effects.size() <= maxFlatListSize)
+    for (const EffectDesc &effect : effects)
+      addItems.append(makeAddItem(effect));
+  else
+  {
+    std::map<std::string, std::vector<EffectDesc>> byVendor;
+    for (const EffectDesc &effect : effects)
+      byVendor[effect.vendor].push_back(effect);
+    for (const auto &[vendor, vendorEffects] : byVendor)
+    {
+      QList<MenuItem *> vendorItems;
+      for (const EffectDesc &effect : vendorEffects)
+        vendorItems.append(makeAddItem(effect));
+      addItems.append(makeMenu(
+          vendor.empty() ? muse::TranslatableString("appshell/menu/effects",
+                                                    "Unknown vendor")
+                         : untranslatable(vendor),
+          vendorItems, QString("effect-vendor-%1").arg(index++)));
+    }
+  }
+  items.append(
+      makeMenu(muse::TranslatableString("appshell/menu/effects", "&Add"),
+               addItems, "effect-add"));
+  return items;
+}
+
+void OrchestrionMenuModel::updateEffectsMenu()
+{
+  using namespace muse::uicomponents;
+  MenuItem &menu = findItem(QString{effectsMenuId});
+  if (!menu.isValid())
+    return;
+  menu.setSubitems(makeEffectsMenuItems());
+  emit itemChanged(&menu);
 }
 
 muse::uicomponents::MenuItem *

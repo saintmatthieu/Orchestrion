@@ -235,6 +235,9 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/OrchestrionSystemButtons.qml"
     QML_FILES "src/qml/TitleBarButtonBackground.qml"
     QML_FILES "src/qml/OrchestrionStandardDialog.qml"
+    QML_FILES "src/qml/BuiltInEffectDialog.qml"
+    QML_FILES "src/qml/EffectHeader.qml"
+    QML_FILES "src/qml/OrchestrionVstEditorDialog.qml"
     QML_FILES "src/qml/Theme.qml"
 )
 

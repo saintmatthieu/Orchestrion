@@ -160,6 +160,17 @@ void OrchestrionActionController::init()
       this, actionIds::reverbCathedral,
       [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral); });
 
+  // The master effect chain (the Effects menu); the argument is the
+  // effect's id.
+  dispatcher()->reg(this, actionIds::addEffect,
+                    [this](const muse::actions::ActionData &args)
+                    { effectChain()->addEffect(args.arg<std::string>(0)); });
+  dispatcher()->reg(this, actionIds::removeEffect,
+                    [this](const muse::actions::ActionData &args)
+                    { effectChain()->removeEffect(args.arg<std::string>(0)); });
+  dispatcher()->reg(this, actionIds::editEffect,
+                    [this](const muse::actions::ActionData &args)
+                    { effectChain()->openEditor(args.arg<std::string>(0)); });
   dispatcher()->reg(this, actionIds::toggleMidiKeyboardIcon,
                     [this]
                     {

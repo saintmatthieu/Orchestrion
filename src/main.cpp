@@ -98,6 +98,15 @@ int main(int argc, char **argv)
   {
     qputenv("QT_QPA_PLATFORMTHEME", "gtk3");
   }
+  // X11 (XWayland on a Wayland desktop), as MuseScore does: the VST module
+  // embeds plugin editors through an X11 window id, and on Qt's wayland
+  // platform a plugin's X11 GUI dies on a BadWindow error, taking the
+  // application with it. An explicit QT_QPA_PLATFORM (offscreen, vnc, ...)
+  // is respected.
+  if (qEnvironmentVariable("QT_QPA_PLATFORM").isEmpty())
+  {
+    qputenv("QT_QPA_PLATFORM", "xcb");
+  }
 #endif
 
 #ifdef Q_OS_WIN
