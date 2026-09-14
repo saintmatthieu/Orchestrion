@@ -29,6 +29,7 @@ namespace
 {
 constexpr auto audioMidiMenuId = "menu-audio-midi";
 constexpr auto keyboardMenuId = "menu-keyboard";
+constexpr auto recentScoresMenuId = "menu-orchestrion-recent-scores";
 constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
 constexpr auto toggleNoteInfoMenuId = "orchestrion-advanced-toggle-note-info";
 constexpr auto toggleTempoVizMenuId =
@@ -146,6 +147,9 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  recentFilesController()->recentFilesListChanged().onNotify(
+      this, [this] { updateRecentScoresSubmenu(); });
+
   for (const auto &[deviceType, menuId] : actionIds::chooseDevicesSubmenu)
   {
     orchestrionUiActions()
@@ -239,6 +243,7 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
       makeMenuItem("orchestrion-file-open",
                    muse::TranslatableString("appshell/menu/file",
                                             "Open from &computer…")),
+      makeRecentScoresSubmenu(),
       makeExampleScoresSubmenu(),
       makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
@@ -327,29 +332,88 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeExampleScoresSubmenu()
   for (const auto &entry : entries)
   {
     const QString displayName = entry.completeBaseName().replace('_', ' ');
-
-    auto *item = new MenuItem(this);
-    item->setId(QString("example-score-%1").arg(index++));
-
-    muse::ui::UiAction action;
-    action.code = "orchestrion-file-open";
-    action.title = muse::TranslatableString::untranslatable(
-        muse::String::fromQString(displayName));
-    item->setAction(action);
-
-    muse::ui::UiActionState state;
-    state.enabled = true;
-    item->setState(state);
-
-    item->setArgs(muse::actions::ActionData::make_arg2<QUrl, QString>(
-        QUrl::fromLocalFile(entry.absoluteFilePath()), displayName));
-
-    items.append(item);
+    items.append(
+        makeOpenScoreItem(QString("example-score-%1").arg(index++),
+                          QUrl::fromLocalFile(entry.absoluteFilePath()),
+                          displayName, displayName));
   }
 
   return makeMenu(
       muse::TranslatableString("appshell/menu/file", "&Example scores"), items,
       "menu-orchestrion-example-scores");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeRecentScoresSubmenu()
+{
+  const QList<muse::uicomponents::MenuItem *> items = makeRecentScoresItems();
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/file", "Open &recent"), items,
+      recentScoresMenuId, /*enabled=*/!items.empty());
+}
+
+QList<muse::uicomponents::MenuItem *>
+OrchestrionMenuModel::makeRecentScoresItems()
+{
+  using namespace muse::uicomponents;
+
+  // MuseScore's project module maintains the list (on open and on save);
+  // this only reads it. Scores are named as in the "Example scores" submenu:
+  // file name without extension, underscores as spaces.
+  QList<MenuItem *> items;
+  int index = 0;
+  for (const mu::project::RecentFile &file :
+       recentFilesController()->recentFilesList())
+    items.append(makeOpenScoreItem(
+        QString("recent-score-%1").arg(index++), file.path.toQUrl(),
+        file.displayName(/*includingExtension=*/false).replace('_', ' '),
+        file.displayNameOverride));
+
+  if (!items.empty())
+  {
+    items.append(makeSeparator());
+    items.append(makeMenuItem(
+        actionIds::clearRecentFiles,
+        muse::TranslatableString("appshell/menu/file", "&Clear recent files")));
+  }
+
+  return items;
+}
+
+void OrchestrionMenuModel::updateRecentScoresSubmenu()
+{
+  using namespace muse::uicomponents;
+  MenuItem &menu = findItem(QString{recentScoresMenuId});
+  IF_ASSERT_FAILED(menu.isValid()) return;
+  const QList<MenuItem *> items = makeRecentScoresItems();
+  menu.setSubitems(items);
+  menu.setEnabled(!items.empty());
+  emit itemChanged(&menu);
+}
+
+muse::uicomponents::MenuItem *
+OrchestrionMenuModel::makeOpenScoreItem(const QString &id, const QUrl &url,
+                                        const QString &title,
+                                        const QString &displayNameOverride)
+{
+  using namespace muse::uicomponents;
+
+  auto *item = new MenuItem(this);
+  item->setId(id);
+
+  muse::ui::UiAction action;
+  action.code = "orchestrion-file-open";
+  action.title = muse::TranslatableString::untranslatable(
+      muse::String::fromQString(title));
+  item->setAction(action);
+
+  muse::ui::UiActionState state;
+  state.enabled = true;
+  item->setState(state);
+
+  item->setArgs(muse::actions::ActionData::make_arg2<QUrl, QString>(
+      url, displayNameOverride));
+
+  return item;
 }
 
 muse::uicomponents::MenuItem *

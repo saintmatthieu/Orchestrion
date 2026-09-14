@@ -38,6 +38,8 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, "orchestrion-file-save", [this] { onFileSave(); });
   dispatcher()->reg(this, "orchestrion-file-save-as",
                     [this] { onFileSaveAs(); });
+  dispatcher()->reg(this, actionIds::clearRecentFiles,
+                    [this] { recentFilesController()->clearRecentFiles(); });
 
   dispatcher()->reg(this, "orchestrion-search-musescore",
                     [this]

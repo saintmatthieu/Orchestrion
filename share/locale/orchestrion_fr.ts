@@ -374,6 +374,14 @@
         <source>&amp;Open</source>
         <translation type="vanished">&amp;Ouvrir</translation>
     </message>
+    <message>
+        <source>Open &amp;recent</source>
+        <translation>Ouvrir un fichier &amp;récent</translation>
+    </message>
+    <message>
+        <source>&amp;Clear recent files</source>
+        <translation>&amp;Vider la liste des fichiers récents</translation>
+    </message>
 </context>
 <context>
     <name>appshell/menu/help</name>

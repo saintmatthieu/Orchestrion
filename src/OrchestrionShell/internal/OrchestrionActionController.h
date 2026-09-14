@@ -32,6 +32,7 @@
 #include <modularity/ioc.h>
 #include <project/iprojectconfiguration.h>
 #include <project/iprojectfilescontroller.h>
+#include <project/irecentfilescontroller.h>
 #include <ui/imainwindow.h>
 
 #include <QObject>
@@ -52,6 +53,7 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IProjectConfiguration> projectConfiguration{this};
   dgk::Inject<mu::project::IProjectFilesController> projectFilesController{this};
+  dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};

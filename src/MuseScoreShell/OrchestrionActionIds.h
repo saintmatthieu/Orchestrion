@@ -82,6 +82,11 @@ static constexpr const char *playModeFittedTempo =
 static constexpr const char *playModeMetronome =
     "orchestrion-advanced-play-mode-metronome";
 
+/**
+ * File menu: empties the "Open recent" submenu.
+ */
+static constexpr const char *clearRecentFiles = "orchestrion-file-clear-recent";
+
 //! Ornaments menu: how the score's ornaments are played, a one-of-three
 //! choice.
 static constexpr const char *ornamentsDisabled =

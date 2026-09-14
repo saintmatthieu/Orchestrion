@@ -43,6 +43,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-file-save-as", mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::clearRecentFiles, mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-recording",
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-note-info",

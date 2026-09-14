@@ -29,6 +29,7 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <global/iglobalconfiguration.h>
+#include <project/irecentfilescontroller.h>
 #include <ui/iuiconfiguration.h>
 #include <uicomponents/qml/Muse/UiComponents/abstractmenumodel.h>
 
@@ -55,6 +56,7 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
 
 public:
   explicit OrchestrionMenuModel(QObject *parent = nullptr);
@@ -89,6 +91,21 @@ private:
 
   muse::uicomponents::MenuItem *makeFileMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeExampleScoresSubmenu();
+  muse::uicomponents::MenuItem *makeRecentScoresSubmenu();
+  QList<muse::uicomponents::MenuItem *> makeRecentScoresItems();
+  /**
+   * Refreshes the "Open recent" submenu in place, from the current
+   * recent-files list.
+   */
+  void updateRecentScoresSubmenu();
+  /**
+   * An item that opens the score at `url`, titled `title`;
+   * `displayNameOverride` is forwarded to the open action (see
+   * mu::project::ProjectFile::displayNameOverride).
+   */
+  muse::uicomponents::MenuItem *
+  makeOpenScoreItem(const QString &id, const QUrl &url, const QString &title,
+                    const QString &displayNameOverride);
   muse::uicomponents::MenuItem *makeViewMenu();
   muse::uicomponents::MenuItem *makeHelpMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
