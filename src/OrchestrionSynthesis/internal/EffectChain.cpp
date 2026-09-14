@@ -103,7 +103,8 @@ muse::audio::AudioFxChain defaultChain()
 {
   muse::audio::AudioFxChain chain;
   muse::audio::AudioFxChainOrder order = 0;
-  for (const auto effect : {BuiltInEffect::Compressor, BuiltInEffect::Limiter})
+  for (const auto effect : {BuiltInEffect::Compressor, BuiltInEffect::Reverb,
+                            BuiltInEffect::Limiter})
   {
     chain.emplace(order, makeParams(builtInEffectMeta(effect), order));
     ++order;

@@ -25,7 +25,8 @@ namespace dgk
 {
 /**
  * Resolves Orchestrion's built-in effects for the audio engine, in place of
- * MuseScore's native-fx resolver.
+ * MuseScore's native-fx resolver (Muse Reverb is one of them, wrapped so that
+ * its parameters can be driven).
  */
 class OrchestrionFxResolver : public muse::audio::fx::AbstractFxResolver
 {

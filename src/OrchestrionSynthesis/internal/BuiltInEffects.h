@@ -24,6 +24,8 @@
 #include <global/iglobalconfiguration.h>
 #include <modularity/ioc.h>
 
+#include <async/notification.h>
+
 #include <QFileSystemWatcher>
 #include <QJsonObject>
 #include <QString>
@@ -31,10 +33,11 @@
 namespace dgk
 {
 /**
- * Owns the built-in effects' parameters and meters. The parameters come from
- * a JSON file in the application's data directory, written with the defaults
- * on first use and watched afterwards: saving it in an editor changes the
- * running effects.
+ * Owns the built-in effects' parameters and meters. The compressor's and
+ * limiter's parameters come from a JSON file in the application's data
+ * directory, written with the defaults on first use and watched afterwards:
+ * saving it in an editor changes the running effects. The reverb has presets
+ * instead, the chosen one kept in the settings.
  */
 class BuiltInEffects : public IBuiltInEffects, public dgk::Injectable
 {
@@ -52,6 +55,9 @@ public:
 private:
   std::shared_ptr<EffectMeter> meter(BuiltInEffect effect) const override;
   muse::io::path_t parametersFilePath() const override;
+  ReverbPreset reverbPreset() const override;
+  void setReverbPreset(ReverbPreset preset) override;
+  muse::async::Notification reverbPresetChanged() const override;
 
 private:
   void writeDefaults(const QString &path, const QJsonObject &legacyDynamics) const;
@@ -60,5 +66,6 @@ private:
 
   const BuiltInEffectRuntime m_runtime;
   QFileSystemWatcher m_watcher;
+  muse::async::Notification m_reverbPresetChanged;
 };
 } // namespace dgk

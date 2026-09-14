@@ -24,7 +24,6 @@
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionShell/IOrchestrionUiActions.h"
 #include "OrchestrionSynthesis/IEffectChain.h"
-#include "OrchestrionSynthesis/IOrchestrionSynthesisConfiguration.h"
 #include "muse_framework_config.h" // MUSE_APP_UNSTABLE
 #include <QWindow>
 #include <actions/actionable.h>
@@ -56,7 +55,6 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
   dgk::Inject<IMidiDeviceService> midiDeviceService{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IEffectChain> effectChain{this};
-  dgk::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
 
@@ -119,7 +117,6 @@ private:
   muse::uicomponents::MenuItem *makeDevelopmentMenu();
 #endif
   muse::uicomponents::MenuItem *makeAudioMidiSubmenu(DeviceType);
-  muse::uicomponents::MenuItem *makeReverbSubmenu(ReverbPreset current);
   muse::uicomponents::MenuItem *makeEffectsMenu();
   QList<muse::uicomponents::MenuItem *> makeEffectsMenuItems();
   void updateEffectsMenu();

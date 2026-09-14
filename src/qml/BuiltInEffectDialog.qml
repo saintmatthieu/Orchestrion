@@ -22,9 +22,10 @@ import Muse.Ui
 import Muse.UiComponents
 import Orchestrion.OrchestrionSynthesis 1.0
 
-// The window of a built-in effect (Effects > <effect> > Show…): bypass in the
-// header, input and output level, gain reduction, clip indicator. The
-// parameters themselves are edited in the JSON file named at the bottom.
+// The window of a built-in effect (Effects > <effect> > Show…): bypass in
+// the header, the reverb's presets, input and output level, gain reduction for
+// the dynamics effects, clip indicator. The compressor's and limiter's
+// parameters are edited in the JSON file named at the bottom.
 StyledDialogView {
     id: root
 
@@ -104,6 +105,26 @@ StyledDialogView {
             effectId: meters.effectId
         }
 
+        // The reverb's presets: one of them is always on.
+        Row {
+            visible: meters.hasPresets
+            Layout.fillWidth: true
+            spacing: 6
+
+            Repeater {
+                model: meters.presets
+
+                FlatRadioButton {
+                    required property var modelData
+
+                    width: (layout.width - 3 * 6) / 4
+                    text: modelData.name
+                    checked: meters.preset === modelData.key
+                    onToggled: meters.preset = modelData.key
+                }
+            }
+        }
+
         MeterBar {
             label: qsTrc("effects", "Input")
             valueDb: meters.inputDb
@@ -156,6 +177,7 @@ StyledDialogView {
         }
 
         StyledTextLabel {
+            visible: !meters.hasPresets
             Layout.fillWidth: true
             text: qsTrc("effects", "Parameters: %1 (saved changes apply at once)").arg(meters.parametersFilePath)
             font: ui.theme.bodyFont

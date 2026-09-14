@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include "IOrchestrionSynthesisConfiguration.h"
 #include "IOrchestrionSynthesizer.h"
 #include "PolyphonicSynthesizerImpl.h"
 #include <audio/engine/isoundfontrepository.h>
@@ -34,7 +33,6 @@ class FluidSynthesizer : public IOrchestrionSynthesizer,
                          private PolyphonicSynthesizerImpl
 {
   dgk::Inject<muse::audio::synth::ISoundFontRepository> soundFontRepository{this};
-  dgk::Inject<IOrchestrionSynthesisConfiguration> synthesisConfiguration{this};
 
 public:
   FluidSynthesizer(int sampleRate);
@@ -53,18 +51,11 @@ private:
   void allNotesOff() override;
   void doAllNotesOff() override;
 
-  // Applies the given ReverbPreset to the live synth. Must only be called from
-  // the audio thread (the constructor counts, as no rendering happens yet).
-  void applyReverb(int preset);
 
   const int m_sampleRate;
   bool m_allSet = false;
   fluid_synth_t *m_fluidSynth = nullptr;
   fluid_settings_t *m_fluidSettings = nullptr;
 
-  // Lock-free reverb preset shared with the configuration. Polled in process()
-  // so a menu change takes effect without recreating the synth.
-  std::shared_ptr<const std::atomic<int>> m_reverbPreset;
-  int m_appliedReverbPreset = -1;
 };
 } // namespace dgk

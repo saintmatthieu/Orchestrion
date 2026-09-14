@@ -19,7 +19,6 @@
 #include "OrchestrionSynthesisModule.h"
 #include "IBuiltInEffects.h"
 #include "IEffectChain.h"
-#include "IOrchestrionSynthesisConfiguration.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/BuiltInEffects.h"
 #include "internal/EffectChain.h"
@@ -60,8 +59,6 @@ void OrchestrionSynthesisModule::registerExports()
                                                    new TrackChannelMapper);
   globalIoc()->registerExport<ISynthesizerManager>(moduleName(),
                                                    m_synthesizerManager);
-  globalIoc()->registerExport<IOrchestrionSynthesisConfiguration>(
-      moduleName(), m_configuration);
   globalIoc()->registerExport<IEffectChain>(moduleName(), m_effectChain);
   globalIoc()->registerExport<IBuiltInEffects>(moduleName(),
                                                m_builtInEffects);

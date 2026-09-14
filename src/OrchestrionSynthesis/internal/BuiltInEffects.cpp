@@ -18,6 +18,8 @@
  */
 #include "BuiltInEffects.h"
 #include "BuiltInEffectResources.h"
+#include "ReverbPresetParameters.h"
+#include <global/settings.h>
 #include <log.h>
 
 #include <QDir>
@@ -30,8 +32,11 @@ namespace dgk
 namespace
 {
 constexpr auto fileName = "effects.json";
-// An earlier name of the file; the values in it carry over.
+// The file the compressor and limiter had before the reverb joined them.
 constexpr auto legacyFileName = "dynamics.json";
+const muse::Settings::Key REVERB_PRESET("OrchestrionSynthesis",
+                                        "REVERB_PRESET");
+constexpr ReverbPreset defaultReverbPreset = ReverbPreset::SmallHall;
 
 // The defaults are Audacity's, but for the compressor's look-ahead: 1 ms
 // rather than 3, this being played live.
@@ -105,6 +110,23 @@ QJsonObject readObject(const QString &path)
     return {};
   return QJsonDocument::fromJson(file.readAll()).object();
 }
+
+// The reverb's parameters used to be in the file too, before it got presets:
+// a file from those days loses them, lest someone edit them in vain.
+void dropReverbSections(const QString &path)
+{
+  QJsonObject root = readObject(path);
+  if (!root.contains("reverb") && !root.contains("reverbRanges"))
+    return;
+  root.remove("reverb");
+  root.remove("reverbRanges");
+  QFile file(path);
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    return;
+  file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+  LOGI() << "Reverb parameters dropped from " << path.toStdString()
+         << " (the reverb has presets now)";
+}
 } // namespace
 
 BuiltInEffects::BuiltInEffects()
@@ -113,13 +135,20 @@ BuiltInEffects::BuiltInEffects()
               DynamicRangeProcessorSettings{defaultCompressor()}),
           std::make_shared<ParameterStore<DynamicRangeProcessorSettings>>(
               DynamicRangeProcessorSettings{defaultLimiter()}),
+          std::make_shared<ParameterStore<ReverbParameters>>(
+              reverbPresetParameters(defaultReverbPreset)),
           {{BuiltInEffect::Compressor, std::make_shared<EffectMeter>()},
-           {BuiltInEffect::Limiter, std::make_shared<EffectMeter>()}}}
+           {BuiltInEffect::Limiter, std::make_shared<EffectMeter>()},
+           {BuiltInEffect::Reverb, std::make_shared<EffectMeter>()}}}
 {
 }
 
 void BuiltInEffects::init()
 {
+  muse::settings()->setDefaultValue(
+      REVERB_PRESET, muse::Val{std::string(reverbPresetKey(defaultReverbPreset))});
+  m_runtime.reverb->set(reverbPresetParameters(reverbPreset()));
+
   const QString path = parametersFilePath().toQString();
   if (!QFileInfo::exists(path))
   {
@@ -129,6 +158,8 @@ void BuiltInEffects::init()
             .toQString();
     writeDefaults(path, readObject(legacyPath));
   }
+  else
+    dropReverbSections(path);
   load(path);
   watch(path);
 }
@@ -143,6 +174,28 @@ std::shared_ptr<EffectMeter> BuiltInEffects::meter(BuiltInEffect effect) const
 muse::io::path_t BuiltInEffects::parametersFilePath() const
 {
   return globalConfiguration()->userAppDataPath() + "/" + fileName;
+}
+
+ReverbPreset BuiltInEffects::reverbPreset() const
+{
+  return reverbPresetFromKey(muse::settings()->value(REVERB_PRESET).toString())
+      .value_or(defaultReverbPreset);
+}
+
+void BuiltInEffects::setReverbPreset(ReverbPreset preset)
+{
+  if (preset == reverbPreset())
+    return;
+  muse::settings()->setSharedValue(
+      REVERB_PRESET, muse::Val{std::string(reverbPresetKey(preset))});
+  m_runtime.reverb->set(reverbPresetParameters(preset));
+  LOGI() << "Reverb preset: " << reverbPresetKey(preset);
+  m_reverbPresetChanged.notify();
+}
+
+muse::async::Notification BuiltInEffects::reverbPresetChanged() const
+{
+  return m_reverbPresetChanged;
 }
 
 void BuiltInEffects::writeDefaults(const QString &path,

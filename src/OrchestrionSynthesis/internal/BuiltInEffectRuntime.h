@@ -24,9 +24,13 @@
 
 #include <map>
 #include <memory>
+#include <string>
 
 namespace dgk
 {
+/** Muse Reverb's parameters, by the names the processor gives them. */
+using ReverbParameters = std::map<std::string, float>;
+
 /**
  * What the built-in effects need at run time, shared between the main thread
  * (parameters in, meters out) and the audio engine (which creates the effects).
@@ -35,6 +39,7 @@ struct BuiltInEffectRuntime
 {
   std::shared_ptr<ParameterStore<DynamicRangeProcessorSettings>> compressor;
   std::shared_ptr<ParameterStore<DynamicRangeProcessorSettings>> limiter;
+  std::shared_ptr<ParameterStore<ReverbParameters>> reverb;
   std::map<BuiltInEffect, std::shared_ptr<EffectMeter>> meters;
 };
 } // namespace dgk

@@ -148,18 +148,6 @@ void OrchestrionActionController::init()
       this, actionIds::ornamentsAutomatic,
       [this] { sequencerConfig()->setOrnamentMode(OrnamentMode::automatic); });
 
-  dispatcher()->reg(this, actionIds::reverbOff, [this]
-                    { synthesisConfig()->setReverbPreset(ReverbPreset::Off); });
-  dispatcher()->reg(
-      this, actionIds::reverbRoom,
-      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Room); });
-  dispatcher()->reg(
-      this, actionIds::reverbHall,
-      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Hall); });
-  dispatcher()->reg(
-      this, actionIds::reverbCathedral,
-      [this] { synthesisConfig()->setReverbPreset(ReverbPreset::Cathedral); });
-
   // The master effect chain (the Effects menu); the argument is the
   // effect's id.
   dispatcher()->reg(this, actionIds::addEffect,

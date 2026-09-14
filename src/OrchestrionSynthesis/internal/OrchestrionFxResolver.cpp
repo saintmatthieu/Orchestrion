@@ -19,6 +19,7 @@
 #include "OrchestrionFxResolver.h"
 #include "BuiltInEffectResources.h"
 #include "DynamicsProcessor.h"
+#include "ReverbEffect.h"
 #include <log.h>
 
 namespace dgk
@@ -72,6 +73,10 @@ OrchestrionFxResolver::createFx(const muse::audio::AudioFxParams &fxParams,
   case BuiltInEffect::Limiter:
     processor = std::make_shared<DynamicsProcessor>(
         *effect, fxParams, m_runtime.limiter, m_runtime.meters.at(*effect));
+    break;
+  case BuiltInEffect::Reverb:
+    processor = std::make_shared<ReverbEffect>(fxParams, m_runtime.reverb,
+                                               m_runtime.meters.at(*effect));
     break;
   }
   processor->setOutputSpec(outputSpec);

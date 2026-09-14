@@ -25,12 +25,26 @@ namespace dgk
 /**
  * Orchestrion's built-in effects: a compressor and a limiter (the same
  * processor, Daniel Rudrich's SimpleCompressor driven by Audacity's
- * CompressorProcessor, with two sets of parameters).
+ * CompressorProcessor, with two sets of parameters) and MuseScore's reverb.
  */
 enum class BuiltInEffect
 {
   Compressor,
   Limiter,
+  Reverb,
+};
+
+/**
+ * The reverb's presets: the spaces a pianist knows, from the living room to
+ * the nave. Tuned by ear on the piano; the parameters behind them are in
+ * internal/ReverbPresetParameters.h.
+ */
+enum class ReverbPreset
+{
+  Room,
+  SmallHall,
+  LargeHall,
+  Cathedral,
 };
 
 /**

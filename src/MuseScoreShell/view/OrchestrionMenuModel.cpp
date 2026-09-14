@@ -105,10 +105,6 @@ void OrchestrionMenuModel::load()
         createMenus(recordingEnabled);
       });
 
-  synthesisConfiguration()->reverbPresetChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
   sequencerConfiguration()->midiKeyboardIconVisibleChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
@@ -625,9 +621,7 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   tempoVizItem->setChecked(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
-  const QList<MenuItem *> menu{
-      item, noteInfoItem, tempoVizItem,
-      makeReverbSubmenu(synthesisConfiguration()->reverbPreset())};
+  const QList<MenuItem *> menu{item, noteInfoItem, tempoVizItem};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");
@@ -746,40 +740,6 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeGradingMenu()
   return makeMenu(muse::TranslatableString("appshell/menu/grading", "&Grading"),
                   QList<MenuItem *>{toggleItem, settingsItem},
                   "menu-orchestrion-grading");
-}
-
-muse::uicomponents::MenuItem *
-OrchestrionMenuModel::makeReverbSubmenu(ReverbPreset current)
-{
-  using namespace muse::uicomponents;
-  QList<MenuItem *> items;
-  const auto addItem =
-      [this, &items, current](const char *actionCode,
-                              const muse::TranslatableString &title,
-                              ReverbPreset preset)
-  {
-    auto *const item = makeMenuItem(actionCode, title);
-    IF_ASSERT_FAILED(item) return;
-    item->setCheckable(true);
-    item->setChecked(preset == current);
-    items.append(item);
-  };
-
-  addItem(actionIds::reverbOff,
-          muse::TranslatableString("appshell/menu/advanced", "Off"),
-          ReverbPreset::Off);
-  addItem(actionIds::reverbRoom,
-          muse::TranslatableString("appshell/menu/advanced", "Room"),
-          ReverbPreset::Room);
-  addItem(actionIds::reverbHall,
-          muse::TranslatableString("appshell/menu/advanced", "Hall"),
-          ReverbPreset::Hall);
-  addItem(actionIds::reverbCathedral,
-          muse::TranslatableString("appshell/menu/advanced", "Cathedral"),
-          ReverbPreset::Cathedral);
-
-  return makeMenu(muse::TranslatableString("appshell/menu/advanced", "&Reverb"),
-                  items, "menu-orchestrion-reverb");
 }
 
 QList<muse::uicomponents::MenuItem *>

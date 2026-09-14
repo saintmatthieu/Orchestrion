@@ -27,6 +27,9 @@ set(MODULE_SRC
     internal/DynamicsProcessor.cpp
     internal/DynamicsProcessor.h
     internal/ParameterStore.h
+    internal/ReverbPresetParameters.h
+    internal/ReverbEffect.cpp
+    internal/ReverbEffect.h
     internal/EffectChain.cpp
     internal/EffectChain.h
     internal/FluidSynthesizer.cpp
@@ -59,10 +62,10 @@ set(MODULE_SRC
     BuiltInEffectTypes.h
     IBuiltInEffects.h
     IEffectChain.h
+    ReverbPresets.h
     ITrackChannelMapper.h
     ISynthesizerConnector.h
     ISynthesizerManager.h
-    IOrchestrionSynthesisConfiguration.h
     OrchestrionSynthesisModule.cpp
     OrchestrionSynthesisModule.h
     view/EffectMeterModel.cpp

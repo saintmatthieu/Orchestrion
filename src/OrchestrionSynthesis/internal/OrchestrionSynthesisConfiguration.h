@@ -19,37 +19,25 @@
 #pragma once
 
 #include "ISynthesizerManager.h"
-#include "IOrchestrionSynthesisConfiguration.h"
 #include <async/asyncable.h>
 #include <modularity/ioc.h>
 
-#include <atomic>
 #include <memory>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class OrchestrionSynthesisConfiguration
-    : public IOrchestrionSynthesisConfiguration,
-      public muse::async::Asyncable,
-      public dgk::Injectable
+/**
+ * Remembers the chosen synthesizer across sessions.
+ */
+class OrchestrionSynthesisConfiguration : public muse::async::Asyncable,
+                                          public dgk::Injectable
 {
 public:
   void init();
   void postInit();
 
 private:
-  ReverbPreset reverbPreset() const override;
-  void setReverbPreset(ReverbPreset) override;
-  muse::async::Notification reverbPresetChanged() const override;
-  std::shared_ptr<const std::atomic<int>>
-  reverbPresetForAudioThread() const override;
-
   dgk::Inject<ISynthesizerManager> synthManager{this};
-
-  const std::shared_ptr<std::atomic<int>> m_reverbPreset =
-      std::make_shared<std::atomic<int>>(
-          static_cast<int>(ReverbPreset::Hall));
-  muse::async::Notification m_reverbPresetChanged;
 };
 } // namespace dgk

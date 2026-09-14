@@ -20,10 +20,12 @@
 
 #include "IBuiltInEffects.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
+#include <async/asyncable.h>
 #include <modularity/ioc.h>
 
 #include <QObject>
 #include <QTimer>
+#include <QVariantList>
 #include <memory>
 
 namespace dgk
@@ -31,9 +33,12 @@ namespace dgk
 /**
  * The meters of a built-in effect for its window: input and output level in
  * dBFS, gain reduction in dB for the dynamics effects (all with a peak hold
- * that falls back at a readable pace), and the clip indicator.
+ * that falls back at a readable pace), the clip indicator, and for the reverb
+ * its presets.
  */
-class EffectMeterModel : public QObject, public dgk::Injectable
+class EffectMeterModel : public QObject,
+                         public dgk::Injectable,
+                         public muse::async::Asyncable
 {
   Q_OBJECT
   Q_PROPERTY(QString effect READ effect WRITE setEffect NOTIFY effectChanged)
@@ -46,6 +51,10 @@ class EffectMeterModel : public QObject, public dgk::Injectable
   Q_PROPERTY(double outputDb READ outputDb NOTIFY metersChanged)
   Q_PROPERTY(double gainReductionDb READ gainReductionDb NOTIFY metersChanged)
   Q_PROPERTY(bool clipped READ clipped NOTIFY metersChanged)
+  Q_PROPERTY(bool hasPresets READ hasPresets NOTIFY effectChanged)
+  //! [{key, name}], in order; \c preset is the current one's key.
+  Q_PROPERTY(QVariantList presets READ presets NOTIFY effectChanged)
+  Q_PROPERTY(QString preset READ preset WRITE setPreset NOTIFY presetChanged)
 
   dgk::Inject<IBuiltInEffects> builtInEffects{this};
 
@@ -62,11 +71,17 @@ public:
   double outputDb() const;
   double gainReductionDb() const;
   bool clipped() const;
+  bool hasPresets() const;
+  QVariantList presets() const;
+  QString preset() const;
+  void setPreset(const QString &key);
+
   Q_INVOKABLE void resetClip();
 
 signals:
   void effectChanged();
   void metersChanged();
+  void presetChanged();
 
 private:
   void refresh();

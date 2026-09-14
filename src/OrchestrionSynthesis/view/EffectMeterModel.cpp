@@ -17,7 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "EffectMeterModel.h"
+#include "ReverbPresets.h"
 #include "internal/BuiltInEffectResources.h"
+
+#include <QVariantMap>
 
 #include <algorithm>
 #include <cmath>
@@ -42,6 +45,8 @@ EffectMeterModel::EffectMeterModel(QObject *parent) : QObject(parent)
 {
   m_timer.setInterval(refreshIntervalMs);
   connect(&m_timer, &QTimer::timeout, this, [this] { refresh(); });
+  builtInEffects()->reverbPresetChanged().onNotify(this, [this]
+                                                   { emit presetChanged(); });
 }
 
 QString EffectMeterModel::effect() const { return m_effect; }
@@ -73,7 +78,7 @@ QString EffectMeterModel::effectId() const
 
 bool EffectMeterModel::hasGainReduction() const
 {
-  return m_kind.has_value();
+  return m_kind && *m_kind != BuiltInEffect::Reverb;
 }
 
 QString EffectMeterModel::parametersFilePath() const
@@ -85,6 +90,37 @@ double EffectMeterModel::inputDb() const { return m_inputDb; }
 double EffectMeterModel::outputDb() const { return m_outputDb; }
 double EffectMeterModel::gainReductionDb() const { return m_gainReductionDb; }
 bool EffectMeterModel::clipped() const { return m_clipped; }
+
+bool EffectMeterModel::hasPresets() const
+{
+  return m_kind && *m_kind == BuiltInEffect::Reverb;
+}
+
+QVariantList EffectMeterModel::presets() const
+{
+  QVariantList result;
+  if (!hasPresets())
+    return result;
+  for (const auto preset : allReverbPresets)
+    result.append(QVariantMap{
+        {"key", QString::fromUtf8(reverbPresetKey(preset))},
+        {"name", QString::fromStdString(reverbPresetName(preset))}});
+  return result;
+}
+
+QString EffectMeterModel::preset() const
+{
+  return hasPresets()
+             ? QString::fromUtf8(reverbPresetKey(builtInEffects()->reverbPreset()))
+             : QString();
+}
+
+void EffectMeterModel::setPreset(const QString &key)
+{
+  if (const std::optional<ReverbPreset> preset =
+          reverbPresetFromKey(key.toStdString()))
+    builtInEffects()->setReverbPreset(*preset);
+}
 
 void EffectMeterModel::resetClip()
 {

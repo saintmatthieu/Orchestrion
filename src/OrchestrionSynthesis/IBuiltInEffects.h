@@ -19,6 +19,7 @@
 #pragma once
 
 #include "BuiltInEffectTypes.h"
+#include <async/notification.h>
 #include <global/io/path.h>
 #include <modularity/imoduleinterface.h>
 
@@ -38,6 +39,11 @@ public:
   virtual ~IBuiltInEffects() = default;
 
   virtual std::shared_ptr<EffectMeter> meter(BuiltInEffect effect) const = 0;
+  /** The compressor's and limiter's parameters; the reverb has presets. */
   virtual muse::io::path_t parametersFilePath() const = 0;
+
+  virtual ReverbPreset reverbPreset() const = 0;
+  virtual void setReverbPreset(ReverbPreset preset) = 0;
+  virtual muse::async::Notification reverbPresetChanged() const = 0;
 };
 } // namespace dgk

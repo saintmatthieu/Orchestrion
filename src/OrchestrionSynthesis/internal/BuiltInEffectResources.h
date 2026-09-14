@@ -20,6 +20,7 @@
 
 #include "BuiltInEffectTypes.h"
 #include <audio/common/audiotypes.h>
+#include <audio/common/audioutils.h>
 #include <translation.h>
 
 #include <array>
@@ -41,12 +42,14 @@ inline muse::audio::AudioResourceId builtInEffectId(BuiltInEffect effect)
     return "Orchestrion Compressor";
   case BuiltInEffect::Limiter:
     return "Orchestrion Limiter";
+  case BuiltInEffect::Reverb:
+    return muse::audio::MUSE_REVERB_ID;
   }
   return {};
 }
 
-constexpr std::array<BuiltInEffect, 2> allBuiltInEffects{
-    BuiltInEffect::Compressor, BuiltInEffect::Limiter};
+constexpr std::array<BuiltInEffect, 3> allBuiltInEffects{
+    BuiltInEffect::Compressor, BuiltInEffect::Limiter, BuiltInEffect::Reverb};
 
 inline std::optional<BuiltInEffect>
 builtInEffectOf(const muse::audio::AudioResourceId &id)
@@ -59,6 +62,8 @@ builtInEffectOf(const muse::audio::AudioResourceId &id)
 
 inline muse::audio::AudioResourceMeta builtInEffectMeta(BuiltInEffect effect)
 {
+  if (effect == BuiltInEffect::Reverb)
+    return muse::audio::makeReverbMeta();
   muse::audio::AudioResourceMeta meta;
   meta.id = builtInEffectId(effect);
   meta.vendor = "Orchestrion";
@@ -75,6 +80,8 @@ inline std::string builtInEffectName(BuiltInEffect effect)
     return muse::trc("effects", "Compressor");
   case BuiltInEffect::Limiter:
     return muse::trc("effects", "Limiter");
+  case BuiltInEffect::Reverb:
+    return muse::trc("effects", "Reverb");
   }
   return {};
 }
@@ -87,6 +94,8 @@ inline const char *builtInEffectKey(BuiltInEffect effect)
     return "compressor";
   case BuiltInEffect::Limiter:
     return "limiter";
+  case BuiltInEffect::Reverb:
+    return "reverb";
   }
   return "";
 }
