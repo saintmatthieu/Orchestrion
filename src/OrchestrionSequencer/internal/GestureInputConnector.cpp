@@ -43,7 +43,10 @@ void GestureInputConnector::onNoteOn(int pitch, std::optional<float> velocity)
 void GestureInputConnector::onNoteOff(int pitch)
 {
   const auto sequencer = orchestrion()->sequencer();
-  IF_ASSERT_FAILED(sequencer) return;
+  if (!sequencer)
+    // A key released before a score is loaded (a MIDI keyboard's events
+    // arrive from startup on); nothing to release.
+    return;
   sequencer->OnInputEvent(NoteEventType::noteOff, pitch, 0.0f);
 }
 } // namespace dgk
