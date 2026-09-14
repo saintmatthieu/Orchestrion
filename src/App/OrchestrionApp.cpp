@@ -18,10 +18,12 @@
  */
 #include "OrchestrionApp.h"
 
+#include <audioplugins/iregisteraudiopluginsscenario.h>
 #include <engraving/dom/mscore.h>
 #include <engraving/types/constants.h>
 #include <log.h>
 #include <project/types/migrationtypes.h>
+#include <QCoreApplication>
 
 namespace dgk
 {
@@ -75,9 +77,21 @@ QString OrchestrionApp::mainWindowQmlPath(const QString &) const
   return QStringLiteral("qrc:/qt/qml/Orchestrion/src/qml/Main.qml");
 }
 
-void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &)
+void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &ctx)
 {
   // Orchestrion's main window drives its own startup (see
-  // OrchestrionOnboardingModel, which opens the startup score).
+  // OrchestrionOnboardingModel, which opens the startup score). What runs
+  // here is the VST3 plugin discovery: newly found plugins are examined in
+  // subprocesses (see OrchestrionConsoleApp) behind a progress dialog; the
+  // effects among them then show up in the Effects menu.
+  muse::ContextInject<muse::audioplugins::IRegisterAudioPluginsScenario>
+      registerAudioPluginsScenario{ctx};
+  if (!registerAudioPluginsScenario())
+    return;
+  // The progress dialog may be the only window for a moment (see MuseScore's
+  // StartupScenario::registerAudioPlugins).
+  qApp->setQuitLockEnabled(false);
+  registerAudioPluginsScenario()->updatePluginsRegistry();
+  qApp->setQuitLockEnabled(true);
 }
 } // namespace dgk

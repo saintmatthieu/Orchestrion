@@ -152,11 +152,14 @@ struct CommandOptions : public muse::CmdOptions
     QString testCaseFuncArgs;
   } autobot;
 
+  // --register-audio-plugin <path> [--register-audio-plugin-out <file>]: the
+  // subprocess the GUI application runs to examine a newly found plugin (see
+  // OrchestrionConsoleApp). With an output file the result is written there;
+  // without it the plugin is registered directly.
   struct AudioPluginRegistration
   {
     muse::io::path_t pluginPath;
-    bool failedPlugin = false;
-    int failCode = 0;
+    muse::io::path_t outputFile;
   } audioPluginRegistration;
 };
 } // namespace dgk

@@ -18,6 +18,7 @@
  */
 #include "OrchestrionAppFactory.h"
 #include "OrchestrionApp.h"
+#include "OrchestrionConsoleApp.h"
 
 // Orchestrion modules
 #include "ExternalDevices/ExternalDevicesModule.h"
@@ -93,7 +94,7 @@
 #ifdef MUSE_MODULE_DOCKWINDOW
 #include <framework/dockwindow/dockmodule.h>
 #endif
-#include <stubs/audioplugins/audiopluginsstubmodule.h> // Orchestrion's own stub
+#include <framework/audioplugins/audiopluginsmodule.h>
 
 // MuseScore modules (and stubs)
 #include <context/contextmodule.h>
@@ -202,9 +203,24 @@ std::shared_ptr<muse::IApplication> OrchestrionAppFactory::newGuiApp(
 }
 
 std::shared_ptr<muse::IApplication> OrchestrionAppFactory::newConsoleApp(
-    const std::shared_ptr<CommandOptions> &) const
+    const std::shared_ptr<CommandOptions> &options) const
 {
-  // For now
-  return nullptr;
+  // Only the audio plugin registration run mode so far: the GUI application
+  // examines each newly found VST3 plugin in a subprocess, so that a plugin
+  // crashing while being loaded does not take the application down. That
+  // needs plugin discovery (audioplugins), the VST host (vst) and, for the
+  // latter, the audio module, which does not start the engine in this mode.
+  const auto app = std::make_shared<OrchestrionConsoleApp>(options);
+#ifdef MUSE_MODULE_DIAGNOSTICS
+  app->addModule(new muse::diagnostics::DiagnosticsModule());
+#endif
+  // The diagnostics module registers commands.
+  app->addModule(new muse::actions::ActionsModule());
+  app->addModule(new muse::rcommand::RCommandModule());
+  app->addModule(new muse::rcontrol::RControlModule());
+  app->addModule(new muse::audio::AudioModule());
+  app->addModule(new muse::audioplugins::AudioPluginsModule());
+  app->addModule(new muse::vst::VSTModule());
+  return app;
 }
 } // namespace dgk

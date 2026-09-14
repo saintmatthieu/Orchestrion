@@ -70,7 +70,7 @@ set(MUSESCORE_REVISION "" CACHE STRING "Build revision")
 # calls there pick these up (CMP0077).
 set(MUSE_ENABLE_UNIT_TESTS OFF)
 set(MUSE_MODULE_AUDIO_EXPORT OFF)            # no mp3/ogg/flac/aac export: avoids the encoder dependencies
-set(MUSE_MODULE_AUDIOPLUGINS OFF)            # Orchestrion provides its own stub (src/stubs/audioplugins)
+set(MUSE_MODULE_AUDIOPLUGINS ON) # VST3 plugin discovery: the Effects menu and the VST instruments
 set(MUSE_MODULE_AUTOMATION OFF)
 set(MUSE_MODULE_CLOUD OFF)
 set(MUSE_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT OFF)

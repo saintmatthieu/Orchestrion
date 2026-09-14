@@ -32,6 +32,10 @@ void SynthesizerManager::init()
 {
   midiOutPort()->availableDevicesChanged().onNotify(
       this, [this] { m_availableSynthsChanged.notify(); });
+  // VST instruments show up once the plugin registry has been (re)loaded, at
+  // startup after the scan of newly installed plugins.
+  knownPlugins()->pluginInfoListChanged().onNotify(
+      this, [this] { m_availableSynthsChanged.notify(); });
 }
 
 void SynthesizerManager::onAllInited() { m_availableSynthsChanged.notify(); }

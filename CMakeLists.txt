@@ -71,7 +71,6 @@ add_subdirectory(src/OrchestrionShell)
 add_subdirectory(src/OrchestrionSynthesis)
 add_subdirectory(src/ScoreAnimation)
 add_subdirectory(src/PositionEstimation)
-add_subdirectory(src/stubs/audioplugins)
 
 set(MACOSX_BUNDLE_ICON_FILE icons/orchestrion.icns)
 
@@ -84,6 +83,8 @@ qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/App/OrchestrionApp.h
     src/App/OrchestrionAppFactory.cpp
     src/App/OrchestrionAppFactory.h
+    src/App/OrchestrionConsoleApp.cpp
+    src/App/OrchestrionConsoleApp.h
 )
 
 set_target_properties(Orchestrion PROPERTIES
