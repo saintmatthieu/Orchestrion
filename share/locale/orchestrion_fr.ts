@@ -272,31 +272,6 @@
         <source>A&amp;dvanced</source>
         <translation>A&amp;vancé</translation>
     </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="339"/>
-        <source>Off</source>
-        <translation>Désactivé</translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="342"/>
-        <source>Room</source>
-        <translation>Salle</translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="345"/>
-        <source>Hall</source>
-        <translation>Hall</translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="348"/>
-        <source>Cathedral</source>
-        <translation>Cathédrale</translation>
-    </message>
-    <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="351"/>
-        <source>&amp;Reverb</source>
-        <translation>&amp;Réverbération</translation>
-    </message>
 </context>
 <context>
     <name>appshell/menu/audio-midi</name>
@@ -319,6 +294,49 @@
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="288"/>
         <source>&amp;Audio/MIDI</source>
         <translation>&amp;Audio/MIDI</translation>
+    </message>
+</context>
+<context>
+    <name>appshell/menu/effects</name>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="393"/>
+        <source>&amp;Effects</source>
+        <translation>&amp;Effets</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="451"/>
+        <source>&amp;Show…</source>
+        <translation>&amp;Afficher…</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="454"/>
+        <source>&amp;Remove</source>
+        <translation>&amp;Retirer</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="458"/>
+        <source>%1 (not found)</source>
+        <translation>%1 (introuvable)</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="462"/>
+        <source>%1 (bypassed)</source>
+        <translation>%1 (désactivé)</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="495"/>
+        <source>No VST3 effects found</source>
+        <translation>Aucun effet VST3 trouvé</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="512"/>
+        <source>Unknown vendor</source>
+        <translation>Éditeur inconnu</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="519"/>
+        <source>&amp;Add</source>
+        <translation>A&amp;jouter</translation>
     </message>
 </context>
 <context>
@@ -501,6 +519,94 @@
         <location filename="../../MuseScore/src/framework/diagnostics/internal/savediagnosticfilesscenario.cpp" line="52"/>
         <source>Save diagnostic files</source>
         <translation>Enregistrer les fichiers de diagnostic</translation>
+    </message>
+</context>
+<context>
+    <name>effects</name>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/internal/BuiltInEffectResources.h" line="80"/>
+        <source>Compressor</source>
+        <translation>Compresseur</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/internal/BuiltInEffectResources.h" line="82"/>
+        <source>Limiter</source>
+        <translation>Limiteur</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/internal/BuiltInEffectResources.h" line="84"/>
+        <source>Reverb</source>
+        <translation>Réverbération</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/ReverbPresets.h" line="64"/>
+        <source>Room</source>
+        <translation>Pièce</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/ReverbPresets.h" line="66"/>
+        <source>Small hall</source>
+        <translation>Petite salle</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/ReverbPresets.h" line="68"/>
+        <source>Large hall</source>
+        <translation>Grande salle</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/ReverbPresets.h" line="70"/>
+        <source>Cathedral</source>
+        <translation>Cathédrale</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/internal/EffectChain.cpp" line="464"/>
+        <source>Plugin editors need X11</source>
+        <translation>Les fenêtres des plugins nécessitent X11</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionSynthesis/internal/EffectChain.cpp" line="465"/>
+        <source>Start Orchestrion with QT_QPA_PLATFORM=xcb to open a plugin&apos;s settings window.</source>
+        <translation>Démarrez Orchestrion avec QT_QPA_PLATFORM=xcb pour ouvrir la fenêtre de réglages d&apos;un plugin.</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/EffectHeader.qml" line="94"/>
+        <source>Bypass</source>
+        <translation>Désactiver</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/EffectHeader.qml" line="94"/>
+        <source>Bypassed: click to re-enable</source>
+        <translation>Désactivé : cliquer pour réactiver</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/BuiltInEffectDialog.qml" line="129"/>
+        <source>Input</source>
+        <translation>Entrée</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/BuiltInEffectDialog.qml" line="134"/>
+        <source>Output</source>
+        <translation>Sortie</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/BuiltInEffectDialog.qml" line="140"/>
+        <source>Gain reduction</source>
+        <translation>Réduction de gain</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/BuiltInEffectDialog.qml" line="168"/>
+        <source>Clipped (click to reset)</source>
+        <translation>Écrêtage (cliquer pour réinitialiser)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/BuiltInEffectDialog.qml" line="168"/>
+        <source>No clipping</source>
+        <translation>Pas d&apos;écrêtage</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/BuiltInEffectDialog.qml" line="182"/>
+        <source>Parameters: %1 (saved changes apply at once)</source>
+        <translation>Paramètres : %1 (les modifications enregistrées s&apos;appliquent immédiatement)</translation>
     </message>
 </context>
 <context>
