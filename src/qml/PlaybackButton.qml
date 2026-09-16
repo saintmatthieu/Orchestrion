@@ -17,15 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import QtQuick.Controls 2.15
-import Qt5Compat.GraphicalEffects
 
-import Muse.Ui
-import Muse.UiComponents
 import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
+// The transport row at the top right of the score view. Play and loop show
+// whether they are running by glowing, so neither ever swaps its glyph.
 Row {
     id: root
 
@@ -39,80 +36,43 @@ Row {
         playbackModel.load()
     }
 
-    Repeater {
-        model: [
-            { icon: "back.png", action: () => playbackModel.rewind(), tooltip: "Rewind (Home)" },
-            { icon: "rewind-button.png", action: () => playbackModel.backStep(), tooltip: "Previous (Left)" },
-            { icon: playbackModel.isPlaying ? "pause-button.png" : "play.png", action: () => playbackModel.togglePlay(), tooltip: "Play/Pause (Space)" },
-            { icon: "stop-sign.png", action: () => playbackModel.stop(), tooltip: "Stop" },
-            { icon: "rewind-button.png", action: () => playbackModel.forwardStep(), tooltip: "Next (Right)", flipped: true },
-            { icon: "loop.svg", action: () => playbackModel.toggleLoop(), tooltip: "Loop (Ctrl+L)", checked: playbackModel.isLoopEnabled }
-        ]
+    TransportButton {
+        icon: "rewind.svg"
+        tooltip: qsTr("Rewind (Home)")
+        onClicked: playbackModel.rewind()
+    }
 
-        Item {
-            id: iconImage
-            width: 36
-            height: 36
-            rotation: modelData.flipped ? 180 : 0
+    TransportButton {
+        icon: "previous.svg"
+        tooltip: qsTr("Previous (Left)")
+        onClicked: playbackModel.backStep()
+    }
 
-            Rectangle {
-                anchors.fill: parent
-                radius: 6
-                color: Theme.accent
-                opacity: modelData.checked ? 0.3 : 0
-            }
+    TransportButton {
+        icon: "play.svg"
+        tooltip: qsTr("Play/Pause (Space)")
+        engaged: playbackModel.isPlaying
+        onClicked: playbackModel.togglePlay()
+    }
 
-            Image {
-                id: iconSource
-                anchors.fill: parent
-                source: "qrc:/icons/player/" + modelData.icon
-                fillMode: Image.PreserveAspectFit
-                mipmap: true
-                visible: false
-            }
+    TransportButton {
+        icon: "stop.svg"
+        tooltip: qsTr("Stop")
+        onClicked: playbackModel.stop()
+    }
 
-            ColorOverlay {
-                anchors.fill: iconSource
-                source: iconSource
-                color: Theme.accent
-            }
+    // Drawn from the font's own right guillemet rather than the previous icon
+    // rotated, which would carry the ring's stress round with it.
+    TransportButton {
+        icon: "next.svg"
+        tooltip: qsTr("Next (Right)")
+        onClicked: playbackModel.forwardStep()
+    }
 
-            MouseArea {
-                id: mouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: { hideTimer.stop(); tip.visible = true }
-                onExited: hideTimer.restart()
-                onClicked: modelData.action()
-            }
-
-            Timer {
-                id: hideTimer
-                interval: 300
-                onTriggered: tip.visible = false
-            }
-
-            ToolTip {
-                id: tip
-                delay: 500
-                contentItem: Text {
-                    text: modelData.tooltip + "<br><span style='font-size:9px'><a href='https://www.flaticon.com/free-icons/ui' title='ui icons'>Ui icons created by chehuna - Flaticon</a></span>"
-                    textFormat: Text.RichText
-                    onLinkActivated: function(link) {
-                        Qt.openUrlExternally(link);
-                    }
-                    HoverHandler {
-                        cursorShape: Qt.PointingHandCursor
-                        onHoveredChanged: {
-                            if (hovered) {
-                                hideTimer.stop()
-                            } else {
-                                hideTimer.restart()
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    TransportButton {
+        icon: "loop.svg"
+        tooltip: qsTr("Loop (Ctrl+L)")
+        engaged: playbackModel.isLoopEnabled
+        onClicked: playbackModel.toggleLoop()
     }
 }

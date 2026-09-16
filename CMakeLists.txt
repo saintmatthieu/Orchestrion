@@ -208,9 +208,9 @@ if (OS_IS_WIN)
 endif()
 
 # Add QML files to the project (for IDEs and resource system).
-# Mark Theme.qml as a singleton BEFORE qt_add_qml_module consumes it —
+# Mark the singletons BEFORE qt_add_qml_module consumes them —
 # qt_add_qml_module reads QT_QML_SINGLETON_TYPE at registration time.
-set_source_files_properties(src/qml/Theme.qml PROPERTIES
+set_source_files_properties(src/qml/Theme.qml src/qml/TransportGlow.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -239,6 +239,8 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/EffectHeader.qml"
     QML_FILES "src/qml/OrchestrionVstEditorDialog.qml"
     QML_FILES "src/qml/Theme.qml"
+    QML_FILES "src/qml/TransportButton.qml"
+    QML_FILES "src/qml/TransportGlow.qml"
 )
 
 qt_add_resources(RESOURCES resources.qrc)

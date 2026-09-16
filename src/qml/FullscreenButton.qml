@@ -18,37 +18,22 @@
  */
 import QtQuick 2.15
 import QtQuick.Window 2.15
-import Qt5Compat.GraphicalEffects
 
 import Orchestrion 1.0
 
-Item {
-    width: 36
-    height: 36
+TransportButton {
+    id: root
 
-    Image {
-        id: iconSource
-        anchors.fill: parent
-        source: "qrc:/icons/player/fullscreen.svg"
-        fillMode: Image.PreserveAspectFit
-        mipmap: true
-        visible: false
-    }
+    icon: "fullscreen.svg"
+    tooltip: qsTr("Full screen")
+    engaged: Window.window && Window.window.visibility === Window.FullScreen
 
-    ColorOverlay {
-        anchors.fill: iconSource
-        source: iconSource
-        color: Theme.accent
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        onClicked: {
-            const w = Window.window
-            if (w.visibility === Window.FullScreen)
-                w.showMaximized()
-            else
-                w.showFullScreen()
+    onClicked: {
+        const w = Window.window
+        if (w.visibility === Window.FullScreen) {
+            w.showMaximized()
+        } else {
+            w.showFullScreen()
         }
     }
 }
