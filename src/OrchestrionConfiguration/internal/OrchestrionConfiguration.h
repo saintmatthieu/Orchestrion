@@ -21,6 +21,7 @@
 #include <async/asyncable.h>
 #include <global/iglobalconfiguration.h>
 #include <notation/inotationconfiguration.h>
+#include <ui/iuiconfiguration.h>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -30,8 +31,16 @@ class OrchestrionConfiguration : public dgk::Injectable,
 {
   dgk::Inject<mu::notation::INotationConfiguration> notationConfiguration{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
+  dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
 
 public:
   void init();
+
+private:
+  /**
+   * Points the notation view at the current theme's backdrop. Called again
+   * whenever the View menu switches theme.
+   */
+  void applyThemeBackground();
 };
 } // namespace dgk

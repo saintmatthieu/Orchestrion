@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionNotationPaintView.h"
+#include "OrchestrionCommon/OrchestrionPalette.h"
 #include <notation/imasternotation.h>
 #include <notation/inotation.h>
 #include <notation/inotationelements.h>
@@ -94,6 +95,11 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
       });
   m_warpTimer.setInterval(warpAnimStepMs);
   m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
+  // NOTE: nothing subscribes to currentThemeChanged() here, although the
+  // highlights, loop markers and beat grid are all painted from the
+  // palette: AbstractNotationPaintView already redraws on it from
+  // onNotationSetup(), and a second subscription from the same receiver
+  // would replace that one (or assert, being SetOnce by default).
 }
 
 bool OrchestrionNotationPaintView::tempoVisualizationEnabled() const
@@ -294,12 +300,11 @@ void OrchestrionNotationPaintView::OnTransitions(
     Highlight &box = m_boxes[track.value];
     box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
     box.spatium = spatium;
-    // Mahogany theme color; a ringing note is highlighted at full strength,
-    // the next note sits faintly pre-lit. (Decaying the intensity over the
-    // note's ring would need a render timer feeding a ring level here.)
-    constexpr auto mahogany = "#5A2B25";
-
-    box.color = QColor(mahogany);
+    // A ringing note is highlighted at full strength, the next note sits
+    // faintly pre-lit. (Decaying the intensity over the note's ring would
+    // need a render timer feeding a ring level here.)
+    box.color =
+        paletteColor(uiConfiguration()->currentTheme(), paletteKeys::highlight);
     box.intensity = active ? 1.0 : 0.3;
 
     if (active)
@@ -1948,7 +1953,11 @@ void OrchestrionNotationPaintView::paintBeatLines(QPainter *painter)
 
   const QRectF view = viewport().toQRectF();
   painter->save();
-  QPen pen(QColor(90, 43, 37, 60)); // faint mahogany hairline
+  // A hairline in the highlight colour, faint enough to sit under the score.
+  QColor gridColor =
+      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::highlight);
+  gridColor.setAlpha(60);
+  QPen pen(gridColor);
   pen.setWidthF(0.0);
   pen.setCosmetic(true);
   painter->setPen(pen);
@@ -2012,13 +2021,17 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   painter->restore();
 }
 
-namespace
+QColor OrchestrionNotationPaintView::loopHandleColor() const
 {
-// Orchestrion loop-marker palette: the wallpaper's dark espresso for the
-// handles and the region shading, the cream accent (Theme.accent) for the dot.
-const QColor loopHandleColor{0x3C, 0x1F, 0x19};
-const QColor loopAccentColor{0xF0, 0xE5, 0xC8};
-} // namespace
+  return paletteColor(uiConfiguration()->currentTheme(),
+                      paletteKeys::backdrop);
+}
+
+QColor OrchestrionNotationPaintView::loopAccentColor() const
+{
+  return paletteColor(uiConfiguration()->currentTheme(),
+                      paletteKeys::accent);
+}
 
 void OrchestrionNotationPaintView::paintLoopRegionUnderlay(QPainter *painter)
 {
@@ -2038,9 +2051,9 @@ void OrchestrionNotationPaintView::paintLoopRegionUnderlay(QPainter *painter)
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing);
   painter->setPen(Qt::NoPen);
-  // The score band is itself cream, so shade the looped span with a whisper
-  // of the handles' espresso instead of the accent color.
-  QColor tint = loopHandleColor;
+  // The score band is itself the accent colour, so shade the looped span
+  // with a whisper of the handles' backdrop instead of the accent.
+  QColor tint = loopHandleColor();
   tint.setAlpha(28);
   painter->setBrush(tint);
   const QRectF region{QPointF{inRect.left(), inRect.top()},
@@ -2070,7 +2083,7 @@ void OrchestrionNotationPaintView::paintLoopMarkers(
 
     painter->setNoPen();
     painter->setAntialiasing(true);
-    painter->setBrush(loopHandleColor);
+    painter->setBrush(loopHandleColor());
 
     // A slim vertical pill spanning the system...
     const double barWidth = 0.45 * spatium;
@@ -2087,8 +2100,8 @@ void OrchestrionNotationPaintView::paintLoopMarkers(
                           rect.top(), tabWidth, tabHeight};
     painter->drawRoundedRect(tab, 0.5 * spatium, 0.5 * spatium);
 
-    // ...and the cream accent dot on the tab.
-    painter->setBrush(loopAccentColor);
+    // ...and the accent dot on the tab.
+    painter->setBrush(loopAccentColor());
     const double dotRadius = 0.32 * spatium;
     painter->drawEllipse(tab.center(), dotRadius, dotRadius);
   };

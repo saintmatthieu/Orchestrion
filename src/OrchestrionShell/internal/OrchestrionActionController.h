@@ -34,6 +34,7 @@
 #include <project/iprojectfilescontroller.h>
 #include <project/irecentfilescontroller.h>
 #include <ui/imainwindow.h>
+#include <ui/iuiconfiguration.h>
 
 #include <QObject>
 
@@ -57,6 +58,7 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
+  dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
 
 public:
   void preInit();

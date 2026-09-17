@@ -60,8 +60,9 @@ through `AutomaticOrchestrionPlayer` and has its own re-entrancy/timing paths
   clickable at their computed positions. With the default 800x350 window the
   playback row sits at y≈56, buttons at x≈514,552,590,628,666,704 (loop),
   fullscreen ≈756.
-- **VNC captures swap red/blue**: `vncdo capture` PNGs come out BGR (the app's
-  warm cream/espresso theme shows as cool blue). Geometry is trustworthy;
+- **VNC captures swap red/blue**: `vncdo capture` PNGs come out BGR (the gold
+  theme shows as cool blue, the silver one as warm brown). Geometry is
+  trustworthy;
   before judging COLORS, swap channels:
   `python3 -c "from PIL import Image; i=Image.open('x.png').convert('RGB'); r,g,b=i.split(); Image.merge('RGB',(b,g,r)).save('x_true.png')"`
 - **Long `vncdo` action chains hang**: a single invocation with ~40+ actions

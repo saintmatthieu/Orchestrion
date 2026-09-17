@@ -31,10 +31,10 @@ import Orchestrion 1.0
 // warning and error boxes), registered for the same muse://interactive/standard
 // URI. On Windows and Linux the dialog draws its own frame, like the main
 // window: the system's title bar (Qt's Adwaita decoration on GNOME, the native
-// one on Windows) knows nothing of the mahogany palette and shows the title in
-// stark white on grey. Here the title bar is part of the card, with the title
-// in cream and a close button, and it drags the window. On macOS the native
-// title bar is kept, as for the main window.
+// one on Windows) knows nothing of Orchestrion's palette and shows the title in
+// stark white on grey. Here the title bar is part of the card, with the
+// title in the accent colour and a close button, and it drags the window.
+// On macOS the native title bar is kept, as for the main window.
 StyledDialogView {
     id: root
 

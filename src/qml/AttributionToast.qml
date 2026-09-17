@@ -65,7 +65,7 @@ Item {
         width: layout.implicitWidth + 32
         height: layout.implicitHeight + 24
         radius: 8
-        color: "#2B2B2B"
+        color: Theme.toast
         border.color: Theme.accent
         border.width: 1
 
@@ -102,7 +102,7 @@ Item {
                 Text {
                     visible: model.license.length > 0
                     text: qsTr("Licensed under %1").arg(model.license)
-                    color: "#CCCCCC"
+                    color: Theme.inkMuted
                     font.pixelSize: 12
                 }
             }

@@ -26,13 +26,13 @@ import Orchestrion 1.0
 
 // The in-window title bar (Windows and Linux): Orchestrion's menus and the
 // system buttons; the empty strip between them drags the window (Main.qml's
-// move area). Kept visible in full screen. Painted mahogany with cream text,
-// like the macOS title bar (MacWindowChrome), so it blends into the wallpaper
-// whatever the MuseScore UI theme.
+// move area). Kept visible in full screen. Painted in the theme's backdrop
+// colour with accent text, like the macOS title bar (MacWindowChrome), so
+// that it blends into the wallpaper whichever theme is current.
 Rectangle {
     id: root
 
-    color: Theme.mahogany
+    color: Theme.backdrop
 
     property int windowVisibility: Window.Windowed
     property alias appWindow: menu.appWindow

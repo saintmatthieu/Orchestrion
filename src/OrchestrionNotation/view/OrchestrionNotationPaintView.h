@@ -40,6 +40,7 @@
 #include <notation/inotationconfiguration.h>
 #include <notation/inotationcontextconfiguration.h>
 #include <notationscene/qml/MuseScore/NotationScene/notationpaintview.h>
+#include <ui/iuiconfiguration.h>
 #include <unordered_map>
 #include <vector>
 
@@ -96,6 +97,10 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   dgk::Inject<mu::notation::INotationContextConfiguration> contextConfiguration{this};
   dgk::Inject<mu::context::IGlobalContext> globalContext{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
+  //! For the Orchestrion palette (see OrchestrionPalette.h): what this view
+  //! paints itself — highlights, loop markers, the beat grid — follows the
+  //! theme the View menu chose.
+  dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
   dgk::Inject<ISegmentRegistry> chordRegistry{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
@@ -172,10 +177,14 @@ private:
   void paint(QPainter *painter) override;
   void paintNotationUnderlay(QPainter *painter) override;
   //! Orchestrion-styled loop boundaries (replaces MuseScore's orange flags):
-  //! navy pill handles with a cream accent, plus — via the underlay — a soft
-  //! cream tint across the looped span.
+  //! slate pill handles with a pearl accent, plus — via the underlay — a
+  //! soft slate tint across the looped span.
   void paintLoopMarkers(muse::draw::Painter *painter) override;
   void paintLoopRegionUnderlay(QPainter *painter);
+  //! Loop-marker palette: the wallpaper's own backdrop colour for the
+  //! handles and the region shading, the accent for the dot on the tab.
+  QColor loopHandleColor() const;
+  QColor loopAccentColor() const;
   //! Post-take: a vertical grid line behind the score at each beat of the
   //! fitted tempo curve. With the performance warp baked (x = performed
   //! time), the lines' spacing is the performed beat duration: they spread

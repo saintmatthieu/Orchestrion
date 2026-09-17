@@ -107,6 +107,7 @@ private:
   makeOpenScoreItem(const QString &id, const QUrl &url, const QString &title,
                     const QString &displayNameOverride);
   muse::uicomponents::MenuItem *makeViewMenu();
+  muse::uicomponents::MenuItem *makeThemeSubmenu();
   muse::uicomponents::MenuItem *makeHelpMenu();
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);

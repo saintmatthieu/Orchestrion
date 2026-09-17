@@ -21,6 +21,7 @@ import QtQuick.Layouts
 import Muse.Ui
 import Muse.UiComponents
 import Orchestrion.OrchestrionSynthesis 1.0
+import Orchestrion 1.0
 
 // The window of a built-in effect (Effects > <effect> > Show…): bypass in
 // the header, the reverb's presets, input and output level, gain reduction for
@@ -143,7 +144,7 @@ StyledDialogView {
             minDb: 0
             maxDb: 24
             fromRight: true
-            fillColor: "#d9a441"
+            fillColor: Theme.metal
         }
 
         Item {

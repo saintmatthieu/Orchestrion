@@ -20,11 +20,12 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Window 2.15
 
+import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
 // The sustain-pedal indicator, centred at the bottom of the score view,
 // opposite the grading toggle: a piano's three pedals seen head-on from the
-// floor, brass over the lyre's dark slots. The rightmost pedal is the
+// floor, polished metal over the lyre's dark slots. The rightmost pedal is the
 // sustain pedal: it slides down its slot while the sequencer holds the
 // pedal down and back up when it lifts. The position alone tells the state,
 // so nothing is dimmed. An indicator only: the pedalling follows the score's
@@ -51,9 +52,10 @@ Item {
         Component.onCompleted: load()
     }
 
-    // The icons carry their own colours (gold pedals, cream-rimmed slots), so
-    // they are drawn as they are, without the colour overlay the monochrome
-    // top-row icons go through. Rasterised at the displayed size, for a
+    // The icons carry their own colours (the theme's metal over dark slots),
+    // so they are drawn as they are, without the colour overlay the
+    // monochrome top-row icons go through — which is why each theme has its
+    // own pair rather than a tint. Rasterised at the displayed size, for a
     // sharp result at any pixel ratio.
     Image {
         id: base
@@ -62,7 +64,7 @@ Item {
         height: root.iconHeight
         sourceSize.width: width * Screen.devicePixelRatio
         sourceSize.height: height * Screen.devicePixelRatio
-        source: "qrc:/icons/player/pedals.svg"
+        source: "qrc:/icons/player/pedals_" + Theme.name + ".svg"
         fillMode: Image.PreserveAspectFit
     }
 
@@ -78,7 +80,7 @@ Item {
         height: root.iconHeight
         sourceSize.width: width * Screen.devicePixelRatio
         sourceSize.height: height * Screen.devicePixelRatio
-        source: "qrc:/icons/player/pedal-sustain.svg"
+        source: "qrc:/icons/player/pedal-sustain_" + Theme.name + ".svg"
         fillMode: Image.PreserveAspectFit
     }
 

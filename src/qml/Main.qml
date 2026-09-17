@@ -29,6 +29,7 @@ import Orchestrion.OrchestrionSequencer 1.0
 import Orchestrion.OrchestrionShell 1.0
 import Orchestrion.OrchestrionNotation 1.0
 import Orchestrion.OrchestrionOnboarding 1.0
+import Orchestrion 1.0
 
 ApplicationWindow {
     id: root
@@ -123,11 +124,12 @@ ApplicationWindow {
         window: root
     }
 
-    // Paints the native macOS title bar mahogany, so it blends with the
-    // wallpaper instead of showing the Qt palette grey that MuseScore's
-    // platform styling applies. Must come after MainWindowBridge: setting the
-    // bridge's window is what triggers that styling, and this must overwrite
-    // it. (A Loader because the MacOSWindowChrome type only exists on macOS.)
+    // Paints the native macOS title bar in the theme's backdrop colour, so
+    // that it blends with the wallpaper instead of showing the Qt palette
+    // grey that MuseScore's platform styling applies. Must come after
+    // MainWindowBridge: setting the bridge's window is what triggers that
+    // styling, and this must overwrite it. (A Loader because the
+    // MacOSWindowChrome type only exists on macOS.)
     Loader {
         active: root.isMac
         source: "MacWindowChrome.qml"
@@ -242,10 +244,10 @@ ApplicationWindow {
                     onTriggered: notationPaintView.controlsVisible = false
                 }
 
-                // The backdrop's gold lining, mirrored top and bottom; the top
+                // The backdrop's metal lining, mirrored top and bottom; the top
                 // one carries the score's title and composer. Declared first
                 // so that every control and popup draws above it.
-                GoldOrnament {
+                BackdropOrnament {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height * 0.15 - height / 2
                     viewWidth: parent.width
@@ -254,7 +256,7 @@ ApplicationWindow {
                     subtitle: scoreHeading.scoreComposer
                 }
 
-                GoldOrnament {
+                BackdropOrnament {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height * 0.85 - height / 2
                     viewWidth: parent.width
@@ -434,8 +436,8 @@ ApplicationWindow {
                     radius: scoreBanner.expanded ? 24 : height / 2
                     Behavior on height { NumberAnimation { duration: 200 } }
                     Behavior on width { NumberAnimation { duration: 200 } }
-                    color: "#E8241811"
-                    border.color: "#E5B84B"
+                    color: Theme.overlay
+                    border.color: Theme.metalBright
                     border.width: 2
                     visible: opacity > 0
                     opacity: notationPaintView.finalScore >= 0 ? 1 : 0
@@ -457,7 +459,7 @@ ApplicationWindow {
                             id: scoreBannerText
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: qsTr("You scored %1 !").arg(scoreBanner.shownScore)
-                            color: "#E5B84B"
+                            color: Theme.metalBright
                             font.pixelSize: 40
                             font.bold: true
                         }
@@ -466,7 +468,7 @@ ApplicationWindow {
                             visible: scoreBanner.shownBreakdown.length > 0
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: scoreBanner.shownBreakdown
-                            color: "#C9B583"
+                            color: Theme.inkMuted
                             font.pixelSize: 17
                         }
 
@@ -476,7 +478,7 @@ ApplicationWindow {
                             visible: scoreBanner.shownMetrics.length > 0
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: scoreBanner.expanded ? "▴" : "▾"
-                            color: "#C9B583"
+                            color: Theme.inkMuted
                             font.pixelSize: 18
 
                             MouseArea {
@@ -510,13 +512,13 @@ ApplicationWindow {
 
                                         Text {
                                             text: modelData.label
-                                            color: "#F0E5C8"
+                                            color: Theme.accent
                                             font.pixelSize: 15
                                         }
 
                                         Text {
                                             text: modelData.detail
-                                            color: "#C9B583"
+                                            color: Theme.inkMuted
                                             font.pixelSize: 12
                                         }
                                     }
@@ -526,7 +528,7 @@ ApplicationWindow {
                                         horizontalAlignment: Text.AlignRight
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: modelData.score
-                                        color: "#E5B84B"
+                                        color: Theme.metalBright
                                         font.pixelSize: 20
                                         font.bold: true
                                     }
@@ -537,7 +539,7 @@ ApplicationWindow {
 
                     Text {
                         text: "✕"
-                        color: "#B8A88F"
+                        color: Theme.inkFaint
                         font.pixelSize: 16
                         anchors.top: parent.top
                         anchors.right: parent.right
@@ -573,8 +575,8 @@ ApplicationWindow {
                     width: tunerRow.width + 48
                     height: tunerRow.height + 24
                     radius: height / 2
-                    color: "#E8241811"
-                    border.color: "#E5B84B"
+                    color: Theme.overlay
+                    border.color: Theme.metalBright
                     border.width: 1
                     visible: opacity > 0
                     opacity: notationPaintView.smoothingTunerVisible ? 1 : 0
@@ -589,7 +591,7 @@ ApplicationWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("tempo smoothing: %1")
                                       .arg(notationPaintView.tempoSmoothing.toFixed(2))
-                            color: "#C9B583"
+                            color: Theme.inkMuted
                             font.pixelSize: 15
                         }
 

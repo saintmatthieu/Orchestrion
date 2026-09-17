@@ -20,10 +20,10 @@ import QtQuick 2.15
 import Orchestrion 1.0
 
 // Background of the in-window title bar's buttons (menu titles and system
-// buttons): a cream tint over the mahogany bar, shown on hover, on press and
+// buttons): an accent tint over the backdrop bar, shown on hover, on press and
 // while the button's menu is open. Stands in for MuseScore's
 // AppButtonBackground, whose theme colors (grey hover, accent blue for an
-// open menu) don't sit well on the mahogany.
+// open menu) don't sit well on the backdrop.
 Rectangle {
     id: root
 

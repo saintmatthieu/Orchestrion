@@ -13,7 +13,7 @@
     <file>src/qml/AutoPlaySettingsPopup.qml</file>
     <file>src/qml/AttributionToast.qml</file>
     <file>src/qml/MidiKeyboardIcon.qml</file>
-    <file>src/qml/GoldOrnament.qml</file>
+    <file>src/qml/BackdropOrnament.qml</file>
     <file>src/qml/MacMenuBar.qml</file>
     <file>src/qml/MacWindowChrome.qml</file>
     <file>src/qml/OrchestrionTitleBar.qml</file>
@@ -33,7 +33,9 @@
     <file>icons/player/loop.svg</file>
     <file>icons/player/grading.svg</file>
     <file>icons/player/autoplay.svg</file>
-    <file>icons/player/pedals.svg</file>
-    <file>icons/player/pedal-sustain.svg</file>
+    <file>icons/player/pedals_gold.svg</file>
+    <file>icons/player/pedal-sustain_gold.svg</file>
+    <file>icons/player/pedals_silver.svg</file>
+    <file>icons/player/pedal-sustain_silver.svg</file>
   </qresource>
 </RCC>

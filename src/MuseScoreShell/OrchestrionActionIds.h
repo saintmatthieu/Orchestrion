@@ -46,6 +46,13 @@ static constexpr const char *toggleMidiKeyboardIcon =
 static constexpr const char *togglePedalIndicator =
     "orchestrion-view-toggle-pedal-indicator";
 
+//! View ▸ Theme: the two looks Orchestrion ships, gold on mahogany and
+//! silver on slate. They live in MuseScore's "light" and "dark" theme
+//! slots — see src/OrchestrionCommon/OrchestrionPalette.h.
+static constexpr const char *setGoldTheme = "orchestrion-view-theme-gold";
+static constexpr const char *setSilverTheme =
+    "orchestrion-view-theme-silver";
+
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
 //! by MuseScore code with its rendered-track playback in mind (e.g. the

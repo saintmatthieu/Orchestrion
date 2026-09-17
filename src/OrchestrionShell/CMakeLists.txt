@@ -24,6 +24,8 @@ set(MODULE_SRC
   internal/SynthesizerMenuManager.h
   view/NotationPaintViewLoaderModel.cpp
   view/NotationPaintViewLoaderModel.h
+  view/OrchestrionTheme.cpp
+  view/OrchestrionTheme.h
   view/ScoreHeadingModel.cpp
   view/ScoreHeadingModel.h
   view/AutoPlayModel.cpp

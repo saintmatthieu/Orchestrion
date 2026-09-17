@@ -18,8 +18,10 @@
  */
 import QtQuick 2.15
 
-// The gold lining of the score's backdrop: a thin centred rule broken by a
-// small diamond, mirrored at the top and bottom of the view. Given a title,
+import Orchestrion 1.0
+
+// The metal lining of the score's backdrop: a thin centred rule broken by
+// a small diamond, mirrored at the top and bottom of the view. Given a title,
 // the rule opens up and carries it between two diamonds, with an optional
 // subtitle (the composer) in smaller capitals beneath:
 //
@@ -40,7 +42,7 @@ Item {
     property real viewWidth: parent ? parent.width : 800
     property real viewHeight: parent ? parent.height : 600
 
-    readonly property color gold: "#D4A858"
+    readonly property color metal: Theme.metal
     readonly property real gap: 12
     readonly property real diamondHalf: 5
     // Each rule, so that the plain ornament spans 32 % of the view.
@@ -61,7 +63,7 @@ Item {
         source: "qrc:/fonts/CinzelDecorative/CinzelDecorative-Regular.ttf"
     }
 
-    // A solid hairline with a soft halo, for a faint glow on the mahogany.
+    // A solid hairline with a soft halo, for a faint glow on the backdrop.
     component Rule: Item {
         width: root.ruleLength
         height: 4
@@ -70,7 +72,7 @@ Item {
             anchors.centerIn: parent
             width: parent.width
             height: 4
-            color: root.gold
+            color: root.metal
             opacity: 0.28
             antialiasing: true
         }
@@ -78,7 +80,7 @@ Item {
             anchors.centerIn: parent
             width: parent.width
             height: 1.5
-            color: root.gold
+            color: root.metal
             antialiasing: true
         }
     }
@@ -92,7 +94,7 @@ Item {
             width: parent.width / Math.SQRT2
             height: width
             rotation: 45
-            color: root.gold
+            color: root.metal
             antialiasing: true
         }
     }
@@ -111,7 +113,7 @@ Item {
             visible: root.hasTitle
             anchors.verticalCenter: parent.verticalCenter
             text: root.title
-            color: root.gold
+            color: root.metal
             font.family: titleFont.name
             font.pixelSize: root.titlePixelSize
             font.letterSpacing: root.titlePixelSize * 0.06
@@ -145,7 +147,7 @@ Item {
         anchors.topMargin: Math.round(root.titlePixelSize * 0.35)
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.subtitle
-        color: root.gold
+        color: root.metal
         opacity: 0.85
         font.family: titleFont.name
         font.pixelSize: Math.max(11, Math.round(root.titlePixelSize * 0.5))

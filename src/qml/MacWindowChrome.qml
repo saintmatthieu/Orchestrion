@@ -25,5 +25,5 @@ import Orchestrion.OrchestrionShell 1.0
 // C++ type is only registered there, and referencing it in Main.qml directly
 // would break the QML load on the other platforms.
 MacOSWindowChrome {
-    color: Theme.mahogany
+    color: Theme.backdrop
 }

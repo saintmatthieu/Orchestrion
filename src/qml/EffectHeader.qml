@@ -31,7 +31,7 @@ Item {
     property alias effectId: header.effectId
     property alias vstInstanceId: header.vstInstanceId
 
-    readonly property color gold: "#D4A858"
+    readonly property color metal: Theme.metal
 
     implicitHeight: 36
     height: implicitHeight
@@ -53,9 +53,9 @@ Item {
         opacity: header.active ? 1 : 0.6
     }
 
-    // A power-style toggle: gold when the effect is in, filled gold when it
-    // is bypassed (the switch is "on"), a cream tint on hover as on the title
-    // bar's buttons.
+    // A power-style toggle: outlined in the theme's metal when the effect is
+    // in, filled with it when bypassed (the switch is "on"), an accent tint
+    // on hover as on the title bar's buttons.
     Rectangle {
         id: bypassButton
 
@@ -65,8 +65,8 @@ Item {
         width: 26
         height: 26
         radius: width / 2
-        color: header.active ? "transparent" : root.gold
-        border.color: root.gold
+        color: header.active ? "transparent" : root.metal
+        border.color: root.metal
         border.width: 1
 
         Rectangle {
@@ -80,7 +80,7 @@ Item {
             anchors.centerIn: parent
             iconCode: IconCode.BYPASS
             font.pixelSize: 16
-            color: header.active ? root.gold : Theme.mahogany
+            color: header.active ? root.metal : Theme.backdrop
         }
 
         MouseArea {

@@ -452,6 +452,21 @@
         <source>&amp;Pedal indicator</source>
         <translation>&amp;Pedalanzeige</translation>
     </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Theme</source>
+        <translation>&amp;Design</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Gold</source>
+        <translation>&amp;Gold</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Silver</source>
+        <translation>&amp;Silber</translation>
+    </message>
 </context>
 <context>
     <name>audio</name>

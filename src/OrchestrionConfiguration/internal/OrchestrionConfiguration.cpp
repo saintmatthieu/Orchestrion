@@ -18,8 +18,11 @@
  */
 #include "OrchestrionConfiguration.h"
 #include "ConfigurationUtils.h"
+#include "OrchestrionCommon/OrchestrionPalette.h"
 
 #include "global/settings.h"
+
+#include <log.h>
 
 namespace dgk
 {
@@ -30,17 +33,29 @@ const std::string module_name("Orchestrion");
 
 void OrchestrionConfiguration::init()
 {
+  notationConfiguration()->setBackgroundUseColor(false);
+  notationConfiguration()->setForegroundColor("transparent");
+  notationConfiguration()->setForegroundUseColor(true);
+
+  applyThemeBackground();
+  uiConfiguration()->currentThemeChanged().onNotify(
+      this, [this] { applyThemeBackground(); });
+}
+
+void OrchestrionConfiguration::applyThemeBackground()
+{
+  const auto wallpaper = paletteString(uiConfiguration()->currentTheme(),
+                                       paletteKeys::wallpaper);
+  IF_ASSERT_FAILED(!wallpaper.isEmpty()) { return; }
+
   const auto config = globalConfiguration();
   const auto directory = config->appDataPath().toStdString() + "wallpapers";
   constexpr auto opacity = 0.0f;
   const std::string path = ConfigurationUtils::GetPathToProcessedWallpaper(
       directory, config->userAppDataPath().toStdString(),
-      "orchestrion_parchment.jpg", opacity);
+      wallpaper.toStdString(), opacity);
 
   notationConfiguration()->setBackgroundWallpaperPath(path);
-  notationConfiguration()->setBackgroundUseColor(false);
-  notationConfiguration()->setForegroundColor("transparent");
-  notationConfiguration()->setForegroundUseColor(true);
 }
 
 } // namespace dgk

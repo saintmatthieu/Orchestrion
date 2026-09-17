@@ -173,6 +173,20 @@ void OrchestrionActionController::init()
                           !sequencerConfig()->pedalIndicatorVisible());
                     });
 
+  // View ▸ Theme. The framework persists the choice and hot-reloads the
+  // palette, so switching is the one call; everything that paints from
+  // the palette follows its currentThemeChanged().
+  dispatcher()->reg(this, actionIds::setGoldTheme,
+                    [this] {
+                      uiConfiguration()->setCurrentTheme(
+                          muse::ui::LIGHT_THEME_CODE);
+                    });
+  dispatcher()->reg(this, actionIds::setSilverTheme,
+                    [this] {
+                      uiConfiguration()->setCurrentTheme(
+                          muse::ui::DARK_THEME_CODE);
+                    });
+
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
                     {

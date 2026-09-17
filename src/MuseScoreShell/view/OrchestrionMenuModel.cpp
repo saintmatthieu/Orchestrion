@@ -18,6 +18,7 @@
  */
 #include "OrchestrionMenuModel.h"
 #include "OrchestrionActionIds.h"
+#include "OrchestrionCommon/OrchestrionPalette.h"
 #include "log.h"
 #include "types/translatablestring.h"
 
@@ -31,6 +32,7 @@ namespace
 constexpr auto audioMidiMenuId = "menu-audio-midi";
 constexpr auto effectsMenuId = "menu-orchestrion-effects";
 constexpr auto keyboardMenuId = "menu-keyboard";
+constexpr auto themeMenuId = "menu-orchestrion-theme";
 constexpr auto recentScoresMenuId = "menu-orchestrion-recent-scores";
 constexpr auto toggleRecordingMenuId = "orchestrion-advanced-toggle-recording";
 constexpr auto toggleNoteInfoMenuId = "orchestrion-advanced-toggle-note-info";
@@ -142,6 +144,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->autoPlayExposedChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  uiConfiguration()->currentThemeChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -302,13 +308,45 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   pedalItem->setChecked(sequencerConfiguration()->pedalIndicatorVisible());
 
   QList<muse::uicomponents::MenuItem *> menu{
-      jumpAnticipationItem, midiIconItem, pedalItem,
+      jumpAnticipationItem, midiIconItem, pedalItem, makeThemeSubmenu(),
       makeMenuItem(
           "view-toggle-fullscreen",
           muse::TranslatableString("appshell/menu/view", "&Fullscreen"))};
 
   return makeMenu(muse::TranslatableString("appshell/menu/view", "&View"), menu,
                   "menu-orchestrion-view");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makeThemeSubmenu()
+{
+  using namespace muse::uicomponents;
+
+  // The two looks Orchestrion ships. They are radio items rather than a
+  // single toggle: the check has to say which one is on, and a third theme
+  // would drop in beside them.
+  const auto current =
+      paletteString(uiConfiguration()->currentTheme(), paletteKeys::themeName);
+
+  const auto makeThemeItem = [&](const char *actionId,
+                                 const muse::TranslatableString &title,
+                                 const char *themeName)
+  {
+    MenuItem *const item = makeMenuItem(actionId, title);
+    item->setCheckable(true);
+    item->setChecked(current == QString::fromLatin1(themeName));
+    return item;
+  };
+
+  QList<MenuItem *> items{
+      makeThemeItem(actionIds::setGoldTheme,
+                    muse::TranslatableString("appshell/menu/view", "&Gold"),
+                    goldThemeName),
+      makeThemeItem(actionIds::setSilverTheme,
+                    muse::TranslatableString("appshell/menu/view", "&Silver"),
+                    silverThemeName)};
+
+  return makeMenu(muse::TranslatableString("appshell/menu/view", "&Theme"),
+                  items, themeMenuId);
 }
 
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeHelpMenu()

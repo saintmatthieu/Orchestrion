@@ -36,6 +36,7 @@
 #endif
 #include "view/MidiKeyboardIconModel.h"
 #include "view/NotationPaintViewLoaderModel.h"
+#include "view/OrchestrionTheme.h"
 #include "view/PedalIndicatorModel.h"
 #include "view/PlaybackButtonModel.h"
 #include "view/ScoreAttributionModel.h"
@@ -94,6 +95,13 @@ void OrchestrionShellModule::registerUiTypes()
                                        "PedalIndicatorModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "ScoreAttributionModel");
+  // The palette, which the `Theme` QML singleton forwards to. A singleton
+  // rather than a type: every binding on it has to see the same instance so
+  // that one theme switch re-evaluates them all.
+  qmlRegisterSingletonType<OrchestrionTheme>(
+      "Orchestrion.OrchestrionShell", 1, 0, "OrchestrionTheme",
+      [](QQmlEngine *, QJSEngine *) -> QObject *
+      { return new OrchestrionTheme(); });
 #ifdef Q_OS_MAC
   qmlRegisterType<MacOSWindowChrome>("Orchestrion.OrchestrionShell", 1, 0,
                                      "MacOSWindowChrome");

@@ -37,10 +37,10 @@ Item {
     //! controls overlay up while this is true.
     property bool hovered: false
 
-    // The panel is a slip of the score's own parchment.
+    // The panel is a slip of the score's own backdrop plateau.
     readonly property color panelColor: Theme.accent
     readonly property color panelBorder: Qt.rgba(0.14, 0.09, 0.07, 0.35)
-    readonly property color panelText: "#241811"
+    readonly property color panelText: Theme.accentInk
     //! The icon dims while no keyboard is connected; the cross follows it.
     readonly property real dimOpacity: model.connected ? 1 : 0.25
 

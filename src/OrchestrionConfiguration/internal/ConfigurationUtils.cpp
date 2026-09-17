@@ -39,8 +39,10 @@ std::string dgk::ConfigurationUtils::GetPathToProcessedWallpaper(
   QPainter painter(&wallpaper);
   painter.fillRect(wallpaper.rect(), QColor(255, 255, 255, 255 * opacity));
   painter.end();
-  // 3. Save the modified wallpaper to a temporary file
-  const std::string path = userDataPath + "/wallpaper.jpg";
+  // 3. Save the modified wallpaper to a temporary file, named after the
+  // original: the themes have one backdrop each, and a shared name would
+  // leave a switch showing whichever was written first.
+  const std::string path = userDataPath + "/processed_" + original;
   wallpaper.save(path.c_str());
   return path;
 }

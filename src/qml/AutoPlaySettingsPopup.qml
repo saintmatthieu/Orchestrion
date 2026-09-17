@@ -19,6 +19,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import Orchestrion 1.0
 
 // Which hand the machine plays for you, following your tempo. Opened from
 // the top-row auto-play button and from the Auto-play menu.
@@ -33,14 +34,14 @@ Popup {
     padding: 24
 
     background: Rectangle {
-        color: "#F5241811"
-        border.color: "#E5B84B"
+        color: Theme.popup
+        border.color: Theme.metalBright
         border.width: 2
         radius: 12
     }
 
-    readonly property color ink: "#F0E5C8"
-    readonly property color dimInk: "#C9B583"
+    readonly property color ink: Theme.accent
+    readonly property color dimInk: Theme.inkMuted
 
     contentItem: ColumnLayout {
         spacing: 6
