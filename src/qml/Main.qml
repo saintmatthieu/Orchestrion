@@ -206,10 +206,10 @@ ApplicationWindow {
                 id: notationPaintView
                 anchors.fill: parent
 
-                property bool controlsVisible: false
+                property bool controlsVisible: true // root.visibility !== Window.FullScreen
 
                 onMouseActivity: {
-                    notationPaintView.controlsVisible = true
+                    // notationPaintView.controlsVisible = true
                     hideControlsTimer.restart()
                 }
 
@@ -241,7 +241,7 @@ ApplicationWindow {
                     id: hideControlsTimer
                     interval: 2000
                     repeat: false
-                    onTriggered: notationPaintView.controlsVisible = false
+                    onTriggered: notationPaintView.controlsVisible = true // root.visibility !== Window.FullScreen
                 }
 
                 // The backdrop's metal lining, mirrored top and bottom; the top
@@ -270,29 +270,108 @@ ApplicationWindow {
                     x: 10
                     y: 10
                     visible: shown && opacity > 0
-                    opacity: notationPaintView.controlsVisible || hovered ? 1 : 0
+                    opacity: notationPaintView.controlsVisible || hovered
+                             || dragMidi.active ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    // EXPERIMENT (throwaway): see the position probe below.
+                    DragHandler {
+                        id: dragMidi
+                        target: midiKeyboardIcon
+                        acceptedButtons: Qt.RightButton
+                    }
                 }
 
                 Row {
                     id: topRightControls
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 8
+                    // EXPERIMENT (throwaway): x/y rather than anchors, so the
+                    // drag handler can move it. The bindings give the position
+                    // the anchors used to, until the first drag breaks them.
+                    // Where the row sat when full screen was still part of it,
+                    // so detaching that button moved nothing.
+                    x: parent.width - width - 202
+                    y: 8
                     spacing: 16
                     visible: opacity > 0
-                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    opacity: notationPaintView.controlsVisible
+                             || dragTransport.active ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    DragHandler {
+                        id: dragTransport
+                        target: topRightControls
+                        acceptedButtons: Qt.RightButton
+                    }
 
                     PlaybackButton {
                         id: playbackRow
                     }
+                }
 
-                    FullscreenButton {
-                        anchors.verticalCenter: parent.verticalCenter
+                // On its own, so it can be placed independently of the
+                // transport row.
+                FullscreenButton {
+                    id: fullscreenButton
+                    x: parent.width - width - 150
+                    y: 8
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible
+                             || dragFullscreen.active ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                    DragHandler {
+                        id: dragFullscreen
+                        target: fullscreenButton
+                        acceptedButtons: Qt.RightButton
                     }
                 }
+
+                // ---- EXPERIMENT (throwaway) --------------------------------
+                // Right-drag the transport row or the MIDI icon to try it
+                // somewhere else; the label under each shows the margins that
+                // position corresponds to, so it can be read off and written
+                // back as anchors. To remove: delete this block, both
+                // DragHandlers, and give topRightControls its anchors back.
+                component PositionProbe: Text {
+                    required property var view
+                    required property Item group
+                    required property bool dragging
+
+                    x: Math.min(group.x, view.width - width - 6)
+                    y: group.y + group.height + 5
+                    visible: dragging || linger.running
+                    color: Theme.metalBright
+                    font.pixelSize: 11
+                    font.family: "monospace"
+                    text: "left " + Math.round(group.x)
+                          + "   top " + Math.round(group.y)
+                          + "   right " + Math.round(view.width - group.x - group.width)
+                          + "   bottom " + Math.round(view.height - group.y - group.height)
+                          + "   off-centre " + Math.round(group.x + group.width / 2 - view.width / 2)
+
+                    // Keeps the numbers up for a moment after the drop.
+                    Timer { id: linger; interval: 4000 }
+                    onDraggingChanged: if (!dragging) linger.restart()
+                }
+
+                PositionProbe {
+                    view: notationPaintView
+                    group: topRightControls
+                    dragging: dragTransport.active
+                }
+
+                PositionProbe {
+                    view: notationPaintView
+                    group: fullscreenButton
+                    dragging: dragFullscreen.active
+                }
+
+                PositionProbe {
+                    view: notationPaintView
+                    group: midiKeyboardIcon
+                    dragging: dragMidi.active
+                }
+                // ---- end EXPERIMENT ----------------------------------------
 
                 // The two first-class controls get the top centre: grading
                 // switches between plain playing and the graded performance,

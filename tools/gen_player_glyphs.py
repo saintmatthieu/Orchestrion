@@ -51,8 +51,9 @@ from fontTools.ttLib import TTFont
 
 FONT = "fonts/CinzelDecorative/CinzelDecorative-Regular.ttf"
 OUT_DIR = "icons/player"
+CONTROLLER_DIR = "icons/controllers"
 # Only ever seen when a file is opened on its own: in the app every glyph is
-# re-tinted with the current theme's metal (see GoldGlyph/TransportButton).
+# re-tinted with the current theme's metal (see MetalGlyph).
 PREVIEW_FILL = "#D4A858"
 
 BOX = 36.0          # the icon's box, and the size the buttons run at
@@ -280,6 +281,72 @@ def loop(w=RING_W, head=4.5, gap=36.0):
     return "".join(out)
 
 
+KEYS = 4            # white keys in the MIDI keyboard indicator
+KEY_START = "F"     # the note it starts on, which decides where the black keys go
+
+# Whether the step up to the next white key is a whole tone, and so has a black
+# key between them.
+WHITE = "CDEFGAB"
+WHOLE_TONE = {"C": True, "D": True, "E": False,
+              "F": True, "G": True, "A": True, "B": False}
+
+
+def keyboard(keys=None, start=None):
+    """The MIDI keyboard indicator, built on the square the full-screen corners
+    imply, so the two marks stand on the same footprint.
+
+    Its case is drawn with the corners' own two widths, and the lines between
+    the white keys are the Roman stem's width. The keys themselves take what is
+    left over rather than the stem's serif width: the serif would fit six keys
+    into the case, which leaves a gap 47 % as wide as a key and reads as a
+    railing rather than an instrument. Four keys give a gap of 27 % and leave
+    room for a black key.
+
+    Which white key it starts on decides where the black keys fall, since a
+    black key sits only where the step up to the next white key is a whole
+    tone. Starting on F gives F G A B, whose three gaps all take one; starting
+    on C would leave the E to F gap bare.
+
+    A black key is half again the width of the line it stands on, rather than
+    the 0.55 of a white key an instrument would use: at this size that came out
+    heavy enough to read as the subject of the drawing. Below it, the line
+    between two white keys carries on down to the bottom rail.
+    """
+    keys = KEYS if keys is None else keys
+    start = KEY_START if start is None else start
+    side = math.sqrt(ring_area())
+    tv, th = stroke_w(90), stroke_w(0)
+    x0, y0 = CX - side / 2, CY - side / 2
+    x1, y1 = CX + side / 2, CY + side / 2
+
+    # The case, as a frame.
+    out = [f'<path fill-rule="evenodd" d="M{fmt(x0)},{fmt(y0)} H{fmt(x1)} V{fmt(y1)} '
+           f'H{fmt(x0)} Z M{fmt(x0 + tv)},{fmt(y0 + th)} V{fmt(y1 - th)} '
+           f'H{fmt(x1 - tv)} V{fmt(y0 + th)} Z"/>']
+
+    ix0, iy0 = x0 + tv, y0 + th                  # the case's inside
+    ix1, iy1 = x1 - tv, y1 - th
+    sep = W * STEM_CORR                          # the stem
+    key_w = (ix1 - ix0 - (keys - 1) * sep) / keys
+    black_w = sep * 1.5
+    black_d = (iy1 - iy0) * 0.6                  # how far a black key reaches down
+
+    first = WHITE.index(start)
+    for i in range(1, keys):
+        # The gap between white key i and the one after it.
+        cx = ix0 + i * key_w + (i - 0.5) * sep
+        note = WHITE[(first + i - 1) % len(WHITE)]
+        if not WHOLE_TONE[note]:                 # a semitone: no black key here
+            out.append(f'<rect x="{fmt(cx - sep / 2)}" y="{fmt(iy0)}" '
+                       f'width="{fmt(sep)}" height="{fmt(iy1 - iy0)}"/>')
+        else:
+            out.append(f'<rect x="{fmt(cx - black_w / 2)}" y="{fmt(iy0)}" '
+                       f'width="{fmt(black_w)}" height="{fmt(black_d)}"/>')
+            out.append(f'<rect x="{fmt(cx - sep / 2)}" y="{fmt(iy0 + black_d)}" '
+                       f'width="{fmt(sep)}" height="{fmt(iy1 - iy0 - black_d)}"/>')
+    return "".join(out)
+
+
 def fullscreen():
     """Four corners. The square they imply is given the letter's area, so the
     two marks cover the same ground even though one is round."""
@@ -322,18 +389,24 @@ def build(font):
     }
 
 
+def write(path, body):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{fmt(BOX)}" '
+                f'height="{fmt(BOX)}" viewBox="0 0 {fmt(BOX)} {fmt(BOX)}">'
+                f'<g fill="{PREVIEW_FILL}">{body}</g></svg>\n')
+    print(f"wrote {path}")
+
+
 def main():
     if not os.path.isfile(FONT):
         sys.exit(f"{FONT} not found. Run this from the repository root.")
     font = TTFont(FONT)
     os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(CONTROLLER_DIR, exist_ok=True)
     for name, body in build(font).items():
-        path = os.path.join(OUT_DIR, name + ".svg")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{fmt(BOX)}" '
-                    f'height="{fmt(BOX)}" viewBox="0 0 {fmt(BOX)} {fmt(BOX)}">'
-                    f'<g fill="{PREVIEW_FILL}">{body}</g></svg>\n')
-        print(f"wrote {path}")
+        write(os.path.join(OUT_DIR, name + ".svg"), body)
+    # Not a transport control, but cut from the same drawing.
+    write(os.path.join(CONTROLLER_DIR, "midi-keyboard.svg"), keyboard())
 
 
 if __name__ == "__main__":
