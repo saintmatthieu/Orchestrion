@@ -60,6 +60,6 @@ QString MidiKeyboardIconModel::iconSource() const
 {
   return QString{"file:///"} +
          globalConfiguration()->appDataPath().toQString() +
-         "icons/controllers/piano_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg";
+         "icons/controllers/midi-keyboard.svg";
 }
 } // namespace dgk

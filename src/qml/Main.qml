@@ -239,9 +239,16 @@ ApplicationWindow {
 
                 Timer {
                     id: hideControlsTimer
-                    interval: 2000
+                    interval: 5000
                     repeat: false
                     onTriggered: notationPaintView.controlsVisible = false
+                }
+
+                // The lining that frames the whole view, on its own border:
+                // the edge of the screen in full screen, just under the menu
+                // bar in a window.
+                BackdropFrame {
+                    anchors.fill: parent
                 }
 
                 // The backdrop's metal lining, mirrored top and bottom; the top
@@ -257,6 +264,7 @@ ApplicationWindow {
                 }
 
                 BackdropOrnament {
+                    id: bottomOrnament
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height * 0.85 - height / 2
                     viewWidth: parent.width
@@ -274,12 +282,18 @@ ApplicationWindow {
                     Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
+                // Under the backdrop's lower rule, centred, so the two read as
+                // one piece of furniture. Hung off the ornament rather than off
+                // the view's bottom edge, so the gap between them is the same
+                // whatever shape the window is — coming out of full screen
+                // especially, which is where absolute positions came unstuck.
+                // The floor keeps the row on screen when the view is too short
+                // to hold both, as it is at the 800 x 350 default size.
                 Row {
-                    id: topRightControls
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 8
+                    id: transportControls
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: Math.min(bottomOrnament.y + bottomOrnament.height + 31,
+                                parent.height - height - 8)
                     spacing: 16
                     visible: opacity > 0
                     opacity: notationPaintView.controlsVisible ? 1 : 0
@@ -288,10 +302,19 @@ ApplicationWindow {
                     PlaybackButton {
                         id: playbackRow
                     }
+                }
 
-                    FullscreenButton {
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+                // Its own corner, mirroring the MIDI indicator's inset in the
+                // opposite one.
+                FullscreenButton {
+                    id: fullscreenButton
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.rightMargin: 10
+                    anchors.topMargin: 10
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
                 // The two first-class controls get the top centre: grading

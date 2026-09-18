@@ -17,18 +17,18 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 import QtQuick 2.15
-import Qt5Compat.GraphicalEffects
 import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
-// The MIDI keyboard indicator, top-left of the score view: a piano icon, dimmed
-// while no MIDI keyboard is connected. Hovering it shows a panel underneath with
-// the connection status and, on the icon's upper-right corner, a cross that
-// hides the icon (the View menu's "MIDI keyboard icon" brings it back).
+// The MIDI keyboard indicator, top-left of the score view: a keyboard cut from
+// the title's typeface, glowing while a MIDI keyboard is connected and plain
+// metal otherwise. Hovering it shows a panel underneath with the connection
+// status and, on the icon's upper-right corner, a cross that hides the icon
+// (the View menu's "MIDI keyboard icon" brings it back).
 Item {
     id: root
 
-    property int iconSize: 40
+    property int iconSize: 36
 
     //! Whether the user chose to see the icon at all.
     readonly property bool shown: model.iconVisible
@@ -41,8 +41,6 @@ Item {
     readonly property color panelColor: Theme.accent
     readonly property color panelBorder: Qt.rgba(0.14, 0.09, 0.07, 0.35)
     readonly property color panelText: Theme.accentInk
-    //! The icon dims while no keyboard is connected; the cross follows it.
-    readonly property real dimOpacity: model.connected ? 1 : 0.25
 
     readonly property bool rawHovered: iconHover.hovered
                                        || crossArea.containsMouse
@@ -72,19 +70,15 @@ Item {
     }
 
     // ---- The icon ---------------------------------------------------------
-    Image {
-        id: iconSource
+    // Glowing means a keyboard is connected, exactly as a lit transport button
+    // means its action is running.
+    MetalGlyph {
         anchors.fill: parent
         source: model.iconSource
-        sourceSize.width: root.iconSize
-        sourceSize.height: root.iconSize
-        visible: false
-    }
-    ColorOverlay {
-        anchors.fill: iconSource
-        source: iconSource
-        color: Theme.accent
-        opacity: root.dimOpacity
+        engaged: model.connected
+        hovered: root.hovered
+        // Held back, or the halo closes the gaps between the white keys.
+        glowStrength: 0.4
     }
     HoverHandler {
         id: iconHover
@@ -101,9 +95,9 @@ Item {
         anchors.right: parent.right
         anchors.topMargin: -6
         anchors.rightMargin: -6
-        // Greyed out like the icon (still clickable); full strength under
-        // the pointer.
-        opacity: crossArea.containsMouse ? 1 : root.dimOpacity
+        // Slightly held back until the pointer is on it, so it does not
+        // compete with the icon it sits on.
+        opacity: crossArea.containsMouse ? 1 : 0.7
         color: crossArea.containsMouse ? "#ffffff" : Theme.accent
         border.color: root.panelText
         border.width: 1
