@@ -56,7 +56,7 @@ constexpr double compressorReleaseMsDefault = 100;
 
 constexpr double compressorMaxLookaheadMs = 100.;
 
-constexpr double limiterThresholdDbDefault = -6;
+constexpr double limiterThresholdDbDefault = -1;
 constexpr double limiterMakeupTargetDbDefault = -1;
 constexpr double limiterKneeWidthDbDefault = 2;
 constexpr double limiterLookaheadMsDefault = 1;
