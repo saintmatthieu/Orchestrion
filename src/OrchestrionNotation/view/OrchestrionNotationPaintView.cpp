@@ -1748,6 +1748,13 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   constrainScorePosition();
 }
 
+void OrchestrionNotationPaintView::onViewSizeChanged()
+{
+  NotationPaintView::onViewSizeChanged();
+  if (notation())
+    constrainScorePosition();
+}
+
 void OrchestrionNotationPaintView::updateNotation()
 {
   m_kineticScroller.stop(); // the score changed under us; cancel any glide

@@ -146,6 +146,7 @@ private:
   void onMatrixChanged(const muse::draw::Transform &oldMatrix,
                        const muse::draw::Transform &newMatrix,
                        bool overrideZoomType = true) override;
+  void onViewSizeChanged() override;
   void subscribe(const IOrchestrionSequencer &sequencer,
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
