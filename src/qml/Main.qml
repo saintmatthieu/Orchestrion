@@ -249,6 +249,8 @@ ApplicationWindow {
                 // bar in a window.
                 BackdropFrame {
                     anchors.fill: parent
+                    opacity: notationPaintView.controlsVisible || root.visibility === Window.FullScreen ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
                 // The backdrop's metal lining, mirrored top and bottom; the top
