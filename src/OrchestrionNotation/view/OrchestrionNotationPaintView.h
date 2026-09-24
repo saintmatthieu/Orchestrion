@@ -33,6 +33,7 @@
 #include "TempoVizModel.h"
 #include "TimingFeedbackOverlay.h"
 #include <QElapsedTimer>
+#include <QImage>
 #include <QVariantList>
 #include <actions/iactionsdispatcher.h>
 #include <context/iglobalcontext.h>
@@ -90,6 +91,36 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
                  smoothingTunerVisibleChanged)
   Q_PROPERTY(double tempoSmoothing READ tempoSmoothing WRITE setTempoSmoothing
                  NOTIFY tempoSmoothingChanged)
+  // The score reads as the belt of a treadmill: at either end it wraps a
+  // quarter turn around a cylinder and runs away from the viewer. The
+  // cylinder's radius is this fraction of the parchment's height, so that the
+  // two keep their proportions when the score is zoomed — a rod does not get
+  // thinner because the belt on it got wider. 0 = flat ends.
+  Q_PROPERTY(double rollRadiusRatio READ rollRadiusRatio WRITE
+                 setRollRadiusRatio NOTIFY rollRadiusRatioChanged)
+  // How far short of the view's edge the belt goes edge-on, in pixels: the
+  // strip outside it is backdrop and nothing else.
+  Q_PROPERTY(double rollMargin READ rollMargin WRITE setRollMargin NOTIFY
+                 rollMarginChanged)
+  // How steeply the belt falls into shadow as it turns: it is darkened by
+  // cos(turn) raised to this power, so 1 is the plain Lambert law and higher
+  // values keep it lit until the last moment.
+  Q_PROPERTY(double rollShadePower READ rollShadePower WRITE setRollShadePower
+                 NOTIFY rollShadePowerChanged)
+  // How much clear parchment there is around the notation, in pixels. The
+  // parchment is sized to the score's skyline, so this is margin on top of
+  // everything the engraving actually puts there — at its ends as well as
+  // above and below.
+  Q_PROPERTY(double beltPadding READ beltPadding WRITE setBeltPadding NOTIFY
+                 beltPaddingChanged)
+  // How many pixels of the cylinders show past the parchment they carry, top
+  // and bottom. 0 hides them.
+  Q_PROPERTY(double rollerOverhang READ rollerOverhang WRITE setRollerOverhang
+                 NOTIFY rollerOverhangChanged)
+  // How far down the view the title's ornament reaches, from QML: zooming in
+  // stops before the treadmill would come within a margin of it.
+  Q_PROPERTY(double titleClearance READ titleClearance WRITE setTitleClearance
+                 NOTIFY titleClearanceChanged)
 
   dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{this};
   dgk::Inject<ILoopBoundariesController> loopBoundariesController{this};
@@ -122,6 +153,18 @@ public:
   bool smoothingTunerVisible() const;
   double tempoSmoothing() const;
   void setTempoSmoothing(double memory);
+  double rollRadiusRatio() const { return m_rollRadiusRatio; }
+  void setRollRadiusRatio(double ratio);
+  double titleClearance() const { return m_titleClearance; }
+  void setTitleClearance(double clearance);
+  double rollMargin() const { return m_rollMargin; }
+  void setRollMargin(double margin);
+  double rollShadePower() const { return m_rollShadePower; }
+  void setRollShadePower(double power);
+  double beltPadding() const { return m_beltPadding; }
+  void setBeltPadding(double padding);
+  double rollerOverhang() const { return m_rollerOverhang; }
+  void setRollerOverhang(double overhang);
 
   bool contextMenuHasTarget() const;
   Q_INVOKABLE void contextMenuSetLoopStart();
@@ -139,6 +182,12 @@ signals:
   void finalScoreChanged();
   void smoothingTunerVisibleChanged();
   void tempoSmoothingChanged();
+  void rollRadiusRatioChanged();
+  void titleClearanceChanged();
+  void rollMarginChanged();
+  void rollShadePowerChanged();
+  void beltPaddingChanged();
+  void rollerOverhangChanged();
 
 private:
   void onLoadNotation(mu::notation::INotationPtr notation) override;
@@ -150,6 +199,14 @@ private:
   void subscribe(const IOrchestrionSequencer &sequencer,
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
+  /**
+   * The logical y that puts the parchment in the middle of the view — the
+   * page's own margins are not symmetric about the music, so centring those
+   * leaves the belt and its cylinders sitting off centre. Shared by the
+   * constraint and by the follow, which both place the canvas: if they
+   * disagree, they pull it up and down between them.
+   */
+  double centredTopY(double scaling) const;
   //! (Re)connect the follow to \p window's per-frame hook.
   void connectFrameTick(QQuickWindow *window);
   //! Clamp a desired viewport-left (logical) so the empty space past either end
@@ -191,6 +248,153 @@ private:
   //! time), the lines' spacing is the performed beat duration: they spread
   //! where the performer slowed and bunch where they rushed.
   void paintBeatLines(QPainter *painter);
+  //! Everything this view draws — background, highlights, notation, loop
+  //! marks, timing gauges — in one call, so that it can be rendered either
+  //! straight onto the item or into the roll buffer.
+  void paintContents(QPainter *painter);
+  /**
+   * Zooming is bounded by the machine the score sits on: wound right out, the
+   * parchment has to fit between the two cylinders — nothing left on either
+   * roll — and wound in, the belt must not climb into the title. Both ends
+   * are closed forms, since the cylinders' size follows the parchment's.
+   */
+  void setScaling(qreal scaling, const muse::PointF &pos,
+                  bool overrideZoomType = true) override;
+  std::pair<double, double> scalingLimits() const;
+
+  //! The margin and core radius the rolls are drawn with, clamped to what the
+  //! view can hold. Shared by the painting and by the scroll limits, which
+  //! stop when the parchment's end reaches a cylinder's crown.
+  std::pair<double, double> rollBase() const;
+  /**
+   * The whole treadmill's geometry, sampled once and then passed around.
+   * Sampled, because paint() runs on the render thread while the main thread
+   * may be scrolling the canvas: anything that reads the matrix again part
+   * way through a frame draws its share of the picture at a slightly later
+   * scroll position than the rest, and the parchment, the rolls, the
+   * cylinders and the tacks drift apart by a pixel or two — a jitter that
+   * shows only while the score is moving, and never once it is still.
+   */
+  struct BeltGeometry
+  {
+    bool valid = false;
+    QRectF paper;        //!< the parchment, in logical (score) coordinates
+    double originX = 0;  //!< where logical 0 falls on the view's axes...
+    double originY = 0;
+    double scaling = 1;  //!< ...and the scale that goes with it
+    double viewWidth = 0;
+    double viewHeight = 0;
+    //! The rows the parchment occupies, clamped to the view. Only these have
+    //! to be rendered into the roll buffers and warped: everywhere else the
+    //! wallpaper is the same all the way across, so wrapping it changes
+    //! nothing.
+    double bandTop = 0;
+    double bandBottom = 0;
+    double margin = 0;
+    double core = 0;        //!< the bare cylinder
+    double radius[2] = {};  //!< what each end actually wraps around: [left, right]
+
+    double viewX(double logicalX) const { return originX + logicalX * scaling; }
+    double viewY(double logicalY) const { return originY + logicalY * scaling; }
+    //! How far the parchment has run, in view pixels: what turns the rolls.
+    double travel() const { return -originX; }
+    double wrap(bool leftEnd) const { return radius[leftEnd ? 0 : 1]; }
+    //! Where the parchment leaves the flat run and starts round the cylinder.
+    double tangent(bool leftEnd) const
+    {
+      return leftEnd ? margin + wrap(true) : viewWidth - margin - wrap(false);
+    }
+    //! The view x of the parchment's near end at this cylinder, before the
+    //! wrap is taken into account.
+    double flatEnd(bool leftEnd) const
+    {
+      return viewX(leftEnd ? paper.left() : paper.right());
+    }
+  };
+  BeltGeometry sampleBelt() const;
+
+  /**
+   * One end of the belt. The flat run of the score spans [radius, width() -
+   * radius]; past its tangent point the belt turns a quarter circle away from
+   * the viewer, so the last `radius` pixels of the view show
+   * `radius * pi / 2` pixels of score — including what lies just beyond the
+   * view — squeezed as the sine of the turn and shaded as its cosine.
+   */
+  void paintRoll(QPainter *painter, const BeltGeometry &belt, bool leftEnd);
+  /**
+   * The stretch of score one roll shows, rendered flat at device resolution
+   * with item x = \p originX at the image's left edge. \p clipItem, when
+   * given, restricts the painting to that slice of it — everything outside is
+   * left as it was, which is what makes the strip cache worth having.
+   */
+  void renderStrip(QImage &image, int originX, int originY, int logicalWidth,
+                   int logicalHeight, double dpr,
+                   const QRectF *clipItem = nullptr);
+  /**
+   * One end's flat strip, kept between frames. While the score is scrolling,
+   * this frame's strip is the last one shifted along, so only the sliver of
+   * belt that has just come into it has to be painted — the rest is a row-wise
+   * move. Everything in it travels with the parchment (its own fill is
+   * uniform, its grain is anchored in score space, the ink and the highlights
+   * move with the notes), which is what makes the shift legitimate; the
+   * wallpaper, which is pinned to the viewport and would smear, is outside the
+   * band and no longer in here.
+   */
+  struct StripCache
+  {
+    QImage image;
+    bool valid = false;
+    int originX = 0, originY = 0, logicalWidth = 0, logicalHeight = 0;
+    double dpr = 0, scaling = 0;
+    //! The belt travel the pixels correspond to, which lags the current one
+    //! by up to half a device pixel — the blit carries that remainder.
+    double travel = 0;
+    //! Frames since it was painted in full; a full repaint every so often is
+    //! the backstop for anything that changed in place without scrolling.
+    int age = 0;
+  };
+  //! Prepare one end's strip for this frame, in full or by shifting.
+  StripCache &updateStrip(bool leftEnd, const BeltGeometry &belt, int originX,
+                          int originY, int logicalWidth, int logicalHeight,
+                          double dpr);
+  //! (Re)build the backdrop strips that fill the margins, where the belt has
+  //! already gone. A no-op unless the view size, the backdrop or the margin
+  //! changed.
+  void ensureMarginBackdrops(double margin);
+  /**
+   * The parchment, in logical (score) coordinates: everything the engraving
+   * lays out — the staves and whatever the skyline says sticks out of them —
+   * grown by beltPadding on every side. Nothing when no score is laid out.
+   */
+  std::optional<QRectF> beltRect() const;
+  //! What the parchment is sized to before its padding: everything the
+  //! engraving lays out, staves and skyline, in logical coordinates.
+  std::optional<QRectF> scoreExtent() const;
+  //! The parchment itself, drawn behind the notation (from the underlay hook)
+  //! so that the score reads as printed on something.
+  void paintBelt(QPainter *painter);
+  /**
+   * The cylinders the parchment is wound on, at either end: as wide as their
+   * diameter, a little taller than the parchment, lit as a barrel. Drawn last
+   * and clipped to where they are not covered — the overhang above and below
+   * the parchment, and whatever crown the parchment has not yet come round.
+   */
+  void paintRollers(QPainter *painter, const BeltGeometry &belt);
+  //! Where the parchment's near end lies on the view's x axis, following it
+  //! around the cylinder once it is past the tangent point.
+  double paperEdgeX(const BeltGeometry &belt, bool leftEnd) const;
+  /**
+   * A little tile of grain, laid over the parchment and the cylinders so that
+   * neither is a perfectly flat fill. Built once, from a fixed seed, so the
+   * same flecks land in the same places every run.
+   */
+  const QPixmap &grainTile();
+  //! How much light the cylinder's surface catches at \p across (−1 to 1 over
+  //! the barrel, 0 at the crown).
+  static double barrelLight(double across);
+  //! Turns of parchment already wound past this end's tangent point: none at
+  //! the end the score is wound back to, the whole roll at the other.
+  double woundTurns(const BeltGeometry &belt, bool leftEnd) const;
   void onMousePressed(const QPointF &pos, Qt::KeyboardModifiers modifiers,
                       Qt::MouseButton button);
   void onMouseDragged(const QPointF &pos, Qt::MouseButtons buttons);
@@ -402,5 +606,33 @@ private:
   std::optional<mu::notation::LoopBoundaryType> m_draggedLoopBoundary;
   // A horizontal-resize override cursor is active (hovering a loop flag).
   bool m_loopFlagCursor = false;
+
+  // The treadmill ends: the cylinder radius and the scratch buffer the belt
+  // is rendered flat into before being wrapped around it (device pixels,
+  // reused between frames).
+  double m_rollRadiusRatio = 0.0;
+  double m_titleClearance = 0.0;
+  double m_rollMargin = 0.0;
+  double m_rollShadePower = 1.0;
+  double m_beltPadding = 0.0;
+  double m_rollerOverhang = 0.0;
+  //! The parchment's centre the last time painting asked for the canvas to be
+  //! re-centred, so that a position the constraint cannot reach is asked for
+  //! once and not every frame.
+  double m_lastRecentreAt = 0.0;
+  QPixmap m_grain;
+  StripCache m_strip[2]; //!< [left, right]
+  //! Something other than the scroll changed what the strips show: paint them
+  //! in full next time.
+  bool m_stripsDirty = true;
+  //! The theme the strips were painted in. Watched rather than subscribed to:
+  //! the base view already holds the one currentThemeChanged() subscription
+  //! this object may have, and a second would replace it.
+  muse::ui::ThemeCode m_stripThemeKey;
+  QPixmap m_marginBackdropLeft;
+  QPixmap m_marginBackdropRight;
+  QSize m_marginBackdropViewSize;
+  qint64 m_marginBackdropSourceKey = 0;
+  int m_marginBackdropWidth = -1;
 };
 } // namespace dgk

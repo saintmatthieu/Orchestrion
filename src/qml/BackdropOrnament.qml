@@ -58,6 +58,17 @@ Item {
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
 
+    // The item's own height stops at the rule, because the subtitle hangs
+    // outside it (see below). These say where the ink really ends, and how
+    // much air the layout puts between the title and the composer — enough
+    // for a caller to keep the same gap under it.
+    readonly property real inkBottom: subtitleText.visible
+        ? subtitleText.y + subtitleText.height
+        : row.y + row.height
+    readonly property real titleGap: subtitleText.visible
+        ? subtitleText.anchors.topMargin
+        : 0
+
     FontLoader {
         id: titleFont
         source: "qrc:/fonts/CinzelDecorative/CinzelDecorative-Regular.ttf"

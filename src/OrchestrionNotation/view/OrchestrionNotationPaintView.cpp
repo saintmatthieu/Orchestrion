@@ -30,6 +30,9 @@
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include "OrchestrionSequencer/IRest.h"
 #include <QApplication>
+#include <QImage>
+#include <QLinearGradient>
+#include <QPainterPath>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QQuickWindow>
@@ -49,7 +52,9 @@
 #include <notation/imasternotation.h>
 
 #include <cmath>
+#include <cstring>
 #include <optional>
+#include <random>
 
 namespace dgk
 {
@@ -74,11 +79,67 @@ constexpr int warpAnimStepMs = 40;
 // The post-take beat grid: one line per quarter note (the sequencer's tick
 // resolution is 480 per quarter).
 constexpr int beatGridTicks = 480;
+
+// The treadmill ends: the number of stops the shading the belt turns into is
+// built from (enough that the steps are invisible).
+constexpr int rollShadeStops = 96;
+//! How far the wrap's piecewise-linear slices are allowed to stray from the
+//! true sine, in view pixels; the slice count follows from it and from the
+//! radius. Each slice costs a drawImage call, and at a couple of dozen calls
+//! an end that overhead is most of what the wrap costs — so no more of them
+//! than the curve actually needs.
+constexpr double rollWarpTolerance = 1.;
+
+//! How many frames a strip may be carried along by shifting before it is
+//! painted in full again — the backstop for anything that changed inside it
+//! without the score scrolling.
+constexpr int stripCacheMaxAge = 8;
+
+// ...and the number of bands the cylinders' barrel lighting is built from.
+constexpr int rollerShadeStops = 96;
+// How tight the cylinders' specular band is, and how much of the bright metal
+// it brings up.
+constexpr double rollerGlossPower = 14.0;
+constexpr double rollerGlossStrength = 0.85;
+// The cylinders' corners, rounded off a touch so they read as turned metal
+// rather than as cut rectangles.
+constexpr double rollerCornerRadius = 4.0;
+
+// The tacks that pin the parchment's end to the cylinder: how many down the
+// sheet, how big their heads are, and how far in from the edge they are
+// driven.
+constexpr int tackCount = 7;
+// Heads and their inset, and the shadow the parchment's cut end throws, as
+// fractions of the cylinder's radius — hardware on the machine, so it grows
+// and shrinks with it rather than staying a fixed number of screen pixels.
+constexpr double tackRadiusRatio = 0.032;
+constexpr double tackInsetRatio = 0.071;
+constexpr double paperEdgeShadowRatio = 0.035;
+//! Over how much of the turn the tacks fade in, rather than popping into
+//! existence at the silhouette (where they cross the barrel in a frame or two
+//! and would strobe).
+constexpr double tackFadeIn = 0.25;
+
+// The parchment's own thickness, as radius gained per turn wound on, and how
+// fat a roll is allowed to get relative to its core.
+constexpr double paperThicknessPerTurn = 0.9;
+constexpr double maxWrapGrowth = 1.7;
+
+// The grain both the parchment and the cylinders wear: a tile of faint
+// flecks, drawn at this many view pixels each, so it reads as grain at any
+// zoom. Kept dark-biased — paper takes dirt more readily than it takes light.
+constexpr int grainTileSize = 64;
+constexpr double grainPixelSize = 1.0;
+constexpr int grainDarkAlpha = 14;
+constexpr int grainLightAlpha = 8;
+// Metal holds less of it than paper does.
+constexpr double rollerGrainStrength = 0.55;
 } // namespace
 
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
-    : mu::notation::NotationPaintView(parent), m_fader([this] { update(); }),
-      m_timingOverlay([this] { update(); }), m_follower(*this),
+    : mu::notation::NotationPaintView(parent),
+      m_fader([this] { m_stripsDirty = true; update(); }),
+      m_timingOverlay([this] { m_stripsDirty = true; update(); }), m_follower(*this),
       m_kineticScroller([this](qreal physicalDx)
                         { return moveCanvasBy(physicalDx); })
 {
@@ -116,6 +177,7 @@ void OrchestrionNotationPaintView::subscribe(
       [this](std::map<TrackIndex, ChordTransition> transitions)
       {
         OnTransitions(transitions);
+        m_stripsDirty = true;
         update();
       });
 
@@ -1034,12 +1096,8 @@ void OrchestrionNotationPaintView::centerOn(double logicalX)
   const double leftX =
       clampLeftX(logicalX - ScoreFollower::anchorFrac * logicalWidth, scaling);
 
-  const auto content = notationContentRect();
-  const double emptyAbovePhysical =
-      (height() - content.height() * scaling) / 2.;
-  const double topY = content.top() - emptyAbovePhysical / scaling;
-
-  const bool moved = moveCanvasToPosition(muse::PointF{leftX, topY});
+  const bool moved =
+      moveCanvasToPosition(muse::PointF{leftX, centredTopY(scaling)});
 
   m_drivingScroll = false;
   // The follow runs every frame, but the page stands still between turns:
@@ -1554,6 +1612,7 @@ void OrchestrionNotationPaintView::zoomBy(const QWheelEvent &event)
     scaling = std::clamp(scaling, minScaling, maxScaling);
   }
 
+  // setScaling() clamps again to what the machine allows (scalingLimits).
   setScaling(scaling, muse::PointF::fromQPointF(event.position()));
   // onMatrixChanged() records this as the user's new default zoom.
 }
@@ -1746,6 +1805,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   }
 
   constrainScorePosition();
+
 }
 
 void OrchestrionNotationPaintView::onViewSizeChanged()
@@ -1783,6 +1843,14 @@ void OrchestrionNotationPaintView::updateNotation()
     config.config[ScoreConfigType::ShowSoundFlags] = false;
     notation->interaction()->setScoreConfig(config);
     constrainScorePosition();
+    // ...and again once the score has actually been laid out: the view mode
+    // and the config above only ask for a relayout, so the systems this
+    // centres on (see beltRect) are still the old ones — or not there at all
+    // — when the call above runs. Without this the parchment sits off centre
+    // until something else moves the canvas, a resize being the usual one.
+    notation->notationChanged().onReceive(
+        this, [this](const muse::RectF &) { constrainScorePosition(); },
+        Mode::SetReplace);
   }
   m_boxes.clear();
   m_fader.clear();
@@ -1797,6 +1865,7 @@ void OrchestrionNotationPaintView::updateNotation()
   orchestrion()->player()->SetReplayTake(std::nullopt);
   clearPerformanceWarp();
   dismissFinalScore();
+  m_stripsDirty = true;
   emit smoothingTunerVisibleChanged();
   update();
 }
@@ -1808,6 +1877,15 @@ void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)
     return;
   notation->viewState()->setViewMode(mode);
   notation->painting()->setViewMode(mode);
+}
+
+double OrchestrionNotationPaintView::centredTopY(double scaling) const
+{
+  const auto content = notationContentRect();
+  const auto belt = beltRect();
+  const double bandTop = belt ? belt->top() : content.top();
+  const double bandHeight = belt ? belt->height() : content.height();
+  return bandTop - (height() - bandHeight * scaling) / 2. / scaling;
 }
 
 void OrchestrionNotationPaintView::constrainScorePosition()
@@ -1826,10 +1904,8 @@ void OrchestrionNotationPaintView::constrainScorePosition()
     return;
   m_constrainingScorePosition = true;
 
-  const auto content = notationContentRect(); // logical
   const auto scaling = currentScaling();
-  const auto emptyAbovePhysical = (height() - content.height() * scaling) / 2.;
-  const auto topLogicalY = content.top() - emptyAbovePhysical / scaling;
+  const auto topLogicalY = centredTopY(scaling);
 
   const double leftLogicalX = clampLeftX(viewport().left(), scaling);
 
@@ -1928,14 +2004,21 @@ double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
   // 1. not more than maxEmptyPhysical empty pixels past either end of the
   // system;
   // 2. if the system is narrower than the view, it stays centered.
-  const auto content = notationContentRect();
-  constexpr double maxEmptyPhysical = 200.;
+  const auto belt = beltRect();
+  const QRectF content =
+      belt ? *belt : notationContentRect().toQRectF();
+  // Wound right out, the end of the parchment sits on the crown of the
+  // cylinder — the tangent point, a margin and a radius in from the view's
+  // edge — so half of that cylinder is bare. Without the rolls, the old
+  // allowance of a couple of hundred pixels of empty space.
+  const auto [margin, radius] = rollBase();
+  const double emptyPhysical = radius >= 1 ? margin + radius : 200.;
   const double contentWidthPhysical = content.width() * scaling;
   if (contentWidthPhysical < width())
     return content.left() - (width() - contentWidthPhysical) / (2 * scaling);
-  const double minLeft = content.left() - maxEmptyPhysical / scaling;
+  const double minLeft = content.left() - emptyPhysical / scaling;
   const double maxLeft =
-      content.right() + maxEmptyPhysical / scaling - width() / scaling;
+      content.right() + emptyPhysical / scaling - width() / scaling;
   return std::clamp(desiredLeftX, minLeft, maxLeft);
 }
 
@@ -1995,6 +2078,7 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // transform and before the notation is drawn — so the highlight sits behind
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
+  paintBelt(painter);
   paintLoopRegionUnderlay(painter);
   paintBeatLines(painter);
 
@@ -2117,7 +2201,7 @@ void OrchestrionNotationPaintView::paintLoopMarkers(
   paintHandle(loopOutMarkerRect(), false);
 }
 
-void OrchestrionNotationPaintView::paint(QPainter *painter)
+void OrchestrionNotationPaintView::paintContents(QPainter *painter)
 {
   NotationPaintView::paint(painter);
 
@@ -2131,5 +2215,807 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   // of the notation.
   if (sequencerConfiguration()->gradingEnabled())
     m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());
+}
+
+
+void OrchestrionNotationPaintView::paint(QPainter *painter)
+{
+  // Sampled once, just before the score is drawn, and used by everything
+  // after it: see BeltGeometry for why that matters.
+  // A theme change repaints the view, but the strips are carried between
+  // frames and would keep the old parchment until something scrolled them
+  // out: notice it here, where the one subscription the base view holds is
+  // not in the way.
+  const muse::ui::ThemeCode themeKey =
+      uiConfiguration()->currentTheme().codeKey;
+  if (themeKey != m_stripThemeKey)
+  {
+    m_stripThemeKey = themeKey;
+    m_stripsDirty = true;
+  }
+
+  const BeltGeometry belt = sampleBelt();
+  const double flatLeft = belt.tangent(true);
+  const double flatRight = belt.tangent(false);
+
+  painter->save();
+  if (belt.valid)
+  {
+    // Only the band stops at the tangent points. Above and below it there is
+    // nothing but wallpaper, which is stretched to the viewport and therefore
+    // the same at both ends as in the middle — so the flat paint covers the
+    // full width there, and the rolls need not carry it.
+    const int bandTop = static_cast<int>(std::floor(belt.bandTop));
+    const int bandBottom = static_cast<int>(std::ceil(belt.bandBottom));
+    const int viewWidth = static_cast<int>(std::ceil(width()));
+    const int viewHeight = static_cast<int>(std::ceil(height()));
+    // Both edges rounded outwards, each in its own right: taking the width as
+    // ceil(right - left) from a floored left can land short of the tangent
+    // point by most of a pixel, and the roll only laps half a one over it —
+    // which shows as a pale column at the crown, at the scroll positions
+    // where the fractions line up that way.
+    const int flatFrom = static_cast<int>(std::floor(flatLeft));
+    const int flatTo = static_cast<int>(std::ceil(flatRight));
+    QRegion flat{QRect{0, 0, viewWidth, bandTop}};
+    flat += QRect{flatFrom, bandTop, flatTo - flatFrom, bandBottom - bandTop};
+    flat += QRect{0, bandBottom, viewWidth, viewHeight - bandBottom};
+    painter->setClipRegion(flat, Qt::IntersectClip);
+  }
+  paintContents(painter);
+  painter->restore();
+
+  if (!belt.valid)
+    return;
+
+  paintRoll(painter, belt, true);
+  paintRoll(painter, belt, false);
+  m_stripsDirty = false; // both strips have just been brought up to date
+  paintRollers(painter, belt);
+
+  // If the parchment is not where constrainScorePosition() would have put it,
+  // the layout landed after the last time that ran — at startup it does —
+  // so ask for it again, on the thread that owns the canvas. Once per
+  // position, so that a centre the constraint cannot reach is not asked for
+  // every frame.
+  const double bandCentre =
+      (belt.viewY(belt.paper.top()) + belt.viewY(belt.paper.bottom())) / 2;
+  if (std::abs(bandCentre - height() / 2) > 1.0 &&
+      !qFuzzyCompare(bandCentre, m_lastRecentreAt))
+  {
+    m_lastRecentreAt = bandCentre;
+    QMetaObject::invokeMethod(
+        this, [this] { constrainScorePosition(); }, Qt::QueuedConnection);
+  }
+}
+
+void OrchestrionNotationPaintView::setRollRadiusRatio(double ratio)
+{
+  ratio = std::max(0.0, ratio);
+  if (qFuzzyCompare(ratio, m_rollRadiusRatio))
+    return;
+  m_rollRadiusRatio = ratio;
+  emit rollRadiusRatioChanged();
+  m_stripsDirty = true;
+  update();
+}
+
+void OrchestrionNotationPaintView::setTitleClearance(double clearance)
+{
+  clearance = std::max(0.0, clearance);
+  if (qFuzzyCompare(clearance, m_titleClearance))
+    return;
+  m_titleClearance = clearance;
+  emit titleClearanceChanged();
+}
+
+void OrchestrionNotationPaintView::setRollMargin(double margin)
+{
+  margin = std::max(0.0, margin);
+  if (qFuzzyCompare(margin, m_rollMargin))
+    return;
+  m_rollMargin = margin;
+  emit rollMarginChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::setRollShadePower(double power)
+{
+  power = std::max(0.0, power);
+  if (qFuzzyCompare(power, m_rollShadePower))
+    return;
+  m_rollShadePower = power;
+  emit rollShadePowerChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::setBeltPadding(double padding)
+{
+  padding = std::max(0.0, padding);
+  if (qFuzzyCompare(padding, m_beltPadding))
+    return;
+  m_beltPadding = padding;
+  emit beltPaddingChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::setRollerOverhang(double overhang)
+{
+  overhang = std::max(0.0, overhang);
+  if (qFuzzyCompare(overhang, m_rollerOverhang))
+    return;
+  m_rollerOverhang = overhang;
+  emit rollerOverhangChanged();
+  update();
+}
+
+std::optional<QRectF> OrchestrionNotationPaintView::beltRect() const
+{
+  const auto extent = scoreExtent();
+  if (!extent)
+    return std::nullopt;
+  const double padding = m_beltPadding / std::max(currentScaling(), 1e-6);
+  return extent->adjusted(-padding, -padding, padding, padding);
+}
+
+std::optional<QRectF> OrchestrionNotationPaintView::scoreExtent() const
+{
+  const auto notation = this->notation();
+  if (!notation)
+    return std::nullopt;
+  const mu::engraving::Score *score = notation->elements()->msScore();
+  if (!score)
+    return std::nullopt;
+
+  double left = std::numeric_limits<double>::max();
+  double right = std::numeric_limits<double>::lowest();
+  double top = std::numeric_limits<double>::max();
+  double bottom = std::numeric_limits<double>::lowest();
+  for (const mu::engraving::System *system : score->systems())
+  {
+    if (!system)
+      continue;
+    const muse::RectF rect = system->pageBoundingRect();
+    left = std::min(left, rect.left());
+    right = std::max(right, rect.right());
+    // minTop and minBottom are the distances the skyline asks for past the
+    // staves — the fingerings and tempo text above, the pedal marks below.
+    top = std::min(top, rect.top() - system->minTop());
+    bottom = std::max(bottom, rect.bottom() + system->minBottom());
+  }
+  if (top > bottom || left > right)
+    return std::nullopt;
+
+  return QRectF{QPointF{left, top}, QPointF{right, bottom}};
+}
+
+std::pair<double, double> OrchestrionNotationPaintView::rollBase() const
+{
+  const double margin = std::clamp(m_rollMargin, 0.0, width() / 4);
+  // The cylinder is sized to the parchment it carries, so the two hold their
+  // proportions through a zoom.
+  const auto paper = beltRect();
+  const double paperHeight =
+      paper ? paper->height() * currentScaling() : 0.0;
+  const double radius =
+      std::min(m_rollRadiusRatio * paperHeight, (width() - 2 * margin) / 3);
+  return {margin, std::max(0.0, radius)};
+}
+
+std::pair<double, double> OrchestrionNotationPaintView::scalingLimits() const
+{
+  // Measured on what the parchment is actually sized to — the engraving's own
+  // extent — not on the page it sits on, whose margins are not the paper's.
+  const auto extent = scoreExtent();
+  const double pad = m_beltPadding;
+  const double margin = std::clamp(m_rollMargin, 0.0, width() / 4);
+  const double ratio = m_rollRadiusRatio;
+  if (!extent || extent->width() <= 0 || extent->height() <= 0)
+    return {0.0, std::numeric_limits<double>::max()};
+  const QRectF content = *extent;
+
+  // Wound right out: the parchment lies between the two tangent points, so
+  //   contentW * s + 2 pad  =  W - 2 margin - 2 radius,
+  // with radius = ratio * (contentH * s + 2 pad).
+  const double minScaling =
+      (width() - 2 * margin - 2 * pad * (1 + 2 * ratio)) /
+      std::max(1e-6, content.width() + 2 * ratio * content.height());
+
+  // Wound in: the parchment is centred, so its top is (H - height) / 2 down
+  // the view, and that is as far up as the title's ornament reaches. QML
+  // hands over where that is, so tightening or loosening the headroom is a
+  // matter of what it passes.
+  const double maxScaling = (height() - 2 * pad - 2 * m_titleClearance) /
+                            std::max(1e-6, content.height());
+
+  return {std::max(0.0, minScaling), std::max(minScaling, maxScaling)};
+}
+
+void OrchestrionNotationPaintView::setScaling(qreal scaling,
+                                              const muse::PointF &pos,
+                                              bool overrideZoomType)
+{
+  const auto [minScaling, maxScaling] = scalingLimits();
+  NotationPaintView::setScaling(std::clamp(scaling, minScaling, maxScaling),
+                                pos, overrideZoomType);
+}
+
+OrchestrionNotationPaintView::BeltGeometry
+OrchestrionNotationPaintView::sampleBelt() const
+{
+  BeltGeometry belt;
+  const auto [margin, core] = rollBase();
+  belt.margin = margin;
+  belt.core = core;
+  belt.viewWidth = width();
+  belt.viewHeight = height();
+  // One read of the canvas matrix for the whole frame (see BeltGeometry).
+  const muse::PointF origin = fromLogical(muse::PointF{0.0, 0.0});
+  belt.originX = origin.x();
+  belt.originY = origin.y();
+  belt.scaling = currentScaling();
+
+  const auto paper = beltRect();
+  if (!paper || core < 1)
+    return belt;
+  belt.paper = *paper;
+  belt.valid = true;
+  // A pixel or two of slack, so the parchment's own edges are inside the
+  // band rather than on its boundary.
+  belt.bandTop = std::max(0.0, belt.viewY(belt.paper.top()) - 2);
+  belt.bandBottom = std::min(belt.viewHeight, belt.viewY(belt.paper.bottom()) + 2);
+
+  // Each end wraps around its own roll — the core plus whatever is already
+  // wound on it, a paper's thickness a turn — so the two are rarely the same
+  // size. The rod inside keeps its own, which is why a full roll stands
+  // visibly proud of the metal above and below.
+  for (const bool leftEnd : {true, false})
+  {
+    const double fat =
+        core + paperThicknessPerTurn * woundTurns(belt, leftEnd);
+    belt.radius[leftEnd ? 0 : 1] = std::min(fat, core * maxWrapGrowth);
+  }
+  return belt;
+}
+
+double OrchestrionNotationPaintView::paperEdgeX(const BeltGeometry &belt,
+                                                bool leftEnd) const
+{
+  if (!belt.valid)
+    return leftEnd ? -std::numeric_limits<double>::max()
+                   : std::numeric_limits<double>::max();
+
+  const double radius = belt.wrap(leftEnd);
+  const double tangent = belt.tangent(leftEnd);
+  const double flat = belt.flatEnd(leftEnd);
+  // While the end of the parchment is still on the flat run it is where it
+  // looks; past the tangent point it is being carried round the cylinder, and
+  // stops at the silhouette, where the surface turns away from us.
+  const double past = leftEnd ? tangent - flat : flat - tangent;
+  if (past <= 0)
+    return flat;
+  const double turned = std::min(past, radius * M_PI / 2);
+  const double onRoll = radius * std::sin(turned / radius);
+  return leftEnd ? tangent - onRoll : tangent + onRoll;
+}
+
+void OrchestrionNotationPaintView::paintRollers(QPainter *painter,
+                                                const BeltGeometry &belt)
+{
+  if (!belt.valid || m_rollerOverhang <= 0)
+    return;
+
+  const double radius = belt.core;
+  const double beltTop = belt.viewY(belt.paper.top());
+  const double beltBottom = belt.viewY(belt.paper.bottom());
+  if (beltBottom <= beltTop)
+    return;
+
+  const auto &theme = uiConfiguration()->currentTheme();
+  const QColor metal = paletteColor(theme, paletteKeys::metal);
+  const QColor gloss = paletteColor(theme, paletteKeys::metalBright);
+  const auto mix = [](const QColor &a, const QColor &b, double t)
+  {
+    return QColor{static_cast<int>(std::lround(a.red() + (b.red() - a.red()) * t)),
+                  static_cast<int>(std::lround(a.green() + (b.green() - a.green()) * t)),
+                  static_cast<int>(std::lround(a.blue() + (b.blue() - a.blue()) * t))};
+  };
+
+  const auto paintOne = [&](bool leftEnd)
+  {
+    // The rod is the core; the roll of parchment on it is fatter, and shares
+    // its axis — which is why a full roll stands proud of the metal above and
+    // below.
+    const double wrap = belt.wrap(leftEnd);
+    const double axis = belt.tangent(leftEnd);
+    const QRectF barrel{axis - radius, beltTop - m_rollerOverhang, 2 * radius,
+                        beltBottom - beltTop + 2 * m_rollerOverhang};
+
+    // What of the cylinder is not hidden by the parchment on it: the overhang
+    // at top and bottom, always...
+    QPainterPath visible;
+    // Winding, not the default odd-even: where the bare crown overlaps the
+    // overhang the two would cancel out and cut the corners away.
+    visible.setFillRule(Qt::WindingFill);
+    visible.addRect(QRectF{barrel.left(), barrel.top(), barrel.width(),
+                           m_rollerOverhang});
+    visible.addRect(QRectF{barrel.left(), barrel.bottom() - m_rollerOverhang,
+                           barrel.width(), m_rollerOverhang});
+    // ...and the bare crown the parchment has not reached, which is the whole
+    // cylinder before the score starts and nothing once it has wound past.
+    const double edge = paperEdgeX(belt, leftEnd);
+    const double bareLeft =
+        leftEnd ? barrel.left() : std::max(edge, barrel.left());
+    const double bareRight =
+        leftEnd ? std::min(edge, barrel.right()) : barrel.right();
+    if (bareRight > bareLeft)
+      visible.addRect(QRectF{bareLeft, barrel.top(), bareRight - bareLeft,
+                             barrel.height()});
+
+    // Barrel lighting: full on where the cylinder faces us, gone at either
+    // silhouette, with a tight gloss along the crown.
+    QLinearGradient light{QPointF{barrel.left(), 0}, QPointF{barrel.right(), 0}};
+    for (int i = 0; i <= rollerShadeStops; ++i)
+    {
+      const double t = static_cast<double>(i) / rollerShadeStops;
+      const double across = 2.0 * t - 1.0;
+      const double lit = barrelLight(across);
+      QColor shade = mix(QColor{0, 0, 0}, metal, lit);
+      shade = mix(shade, gloss,
+                  std::pow(lit, rollerGlossPower) * rollerGlossStrength);
+      light.setColorAt(t, shade);
+    }
+
+    QPainterPath rounded;
+    rounded.addRoundedRect(barrel, rollerCornerRadius, rollerCornerRadius);
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->setClipPath(visible.intersected(rounded), Qt::IntersectClip);
+    painter->fillRect(barrel, light);
+    QBrush grain{grainTile()};
+    grain.setTransform(QTransform::fromScale(grainPixelSize, grainPixelSize));
+    painter->setOpacity(rollerGrainStrength);
+    painter->fillRect(barrel, grain);
+    painter->restore();
+
+    // What holds the parchment's end to the cylinder: a row of tacks driven
+    // through it a few pixels in from its edge. They are in the barrel, so
+    // they are foreshortened with the surface they sit on and gone once it
+    // has turned past the silhouette. Which is always a surface: the scroll
+    // stops before the parchment could be pulled off its own fixing (see
+    // clampLeftX).
+    const double edgeAcross = std::clamp((edge - axis) / wrap, -1.0, 1.0);
+    // Wound onto the cylinder, or still short of it: at a stop the
+    // parchment's end rests *on* the crown, where those two meet, so a
+    // sub-pixel wobble in the scroll must not decide between drawing this
+    // and not drawing it at all. Short of the crown it is simply flat on,
+    // facing us square.
+    const bool wrapped = leftEnd ? edgeAcross <= 0.0 : edgeAcross >= 0.0;
+    const double face =
+        wrapped ? std::sqrt(std::max(0.0, 1.0 - edgeAcross * edgeAcross)) : 1.0;
+    // Faded in over the first of the turn rather than popping at the
+    // silhouette: thrown hard, the end of the roll crosses the barrel in a
+    // frame or two, and small bright things doing that strobe.
+    const double appearance = std::clamp(face / tackFadeIn, 0.0, 1.0);
+    if (appearance <= 0.0)
+      return;
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->setClipPath(rounded, Qt::IntersectClip);
+    painter->setPen(Qt::NoPen);
+    painter->setOpacity(appearance);
+
+    // The hardware is sized to the cylinder, so it scales with the zoom
+    // along with everything else on the machine.
+    const double tackRadius = tackRadiusRatio * radius;
+    const double tackInset = tackInsetRatio * radius;
+    const double paperEdgeShadow = paperEdgeShadowRatio * radius;
+
+    // The paper has thickness, and its cut end throws a little shadow on the
+    // bare rod beside it.
+    const double shadowWidth = paperEdgeShadow * face;
+    if (shadowWidth > 0.2)
+    {
+      const double outer = leftEnd ? edge - shadowWidth : edge + shadowWidth;
+      QLinearGradient lip{QPointF{outer, 0}, QPointF{edge, 0}};
+      lip.setColorAt(0.0, QColor{0, 0, 0, 0});
+      lip.setColorAt(1.0, QColor{0, 0, 0, 90});
+      painter->fillRect(QRectF{QPointF{std::min(outer, edge), beltTop},
+                               QPointF{std::max(outer, edge), beltBottom}},
+                        lip);
+    }
+
+    const double tackX = edge + (leftEnd ? tackInset : -tackInset) * face;
+    const double tackLit = barrelLight((tackX - axis) / wrap);
+    const double rx = tackRadius * face;
+    // The first and last sit in the corners of the sheet — as far down from
+    // its edge as they are in from its end — and the rest spread between.
+    const double firstY = beltTop + tackInset;
+    const double lastY = beltBottom - tackInset;
+    for (int i = 0; i < tackCount; ++i)
+    {
+      const double y =
+          tackCount > 1 ? firstY + (lastY - firstY) * i / (tackCount - 1.0)
+                        : (firstY + lastY) / 2;
+      // A domed head: lit from the same side as everything else, over the
+      // small shadow it casts on the parchment.
+      painter->setBrush(QColor{0, 0, 0, 70});
+      painter->drawEllipse(QPointF{tackX + 0.7 * face, y + 0.8}, rx,
+                           tackRadius);
+      QRadialGradient head{QPointF{tackX - 0.3 * rx, y - 0.3 * tackRadius},
+                           tackRadius * 1.6};
+      head.setColorAt(0.0, mix(mix(QColor{0, 0, 0}, gloss, tackLit),
+                               QColor{255, 255, 255}, 0.4));
+      head.setColorAt(0.55, mix(QColor{0, 0, 0}, gloss, tackLit));
+      head.setColorAt(1.0, mix(QColor{0, 0, 0}, metal, tackLit * 0.5));
+      painter->setBrush(head);
+      painter->drawEllipse(QPointF{tackX, y}, rx, tackRadius);
+    }
+    painter->restore();
+  };
+
+  paintOne(true);
+  paintOne(false);
+}
+
+double OrchestrionNotationPaintView::woundTurns(const BeltGeometry &belt,
+                                                bool leftEnd) const
+{
+  if (belt.core <= 0)
+    return 0.0;
+  // Measured before the wrap, where the belt is still flat: how much
+  // parchment has gone past the tangent point and onto this cylinder. The
+  // core, not the roll, sets the tangent here — the roll's own size is what
+  // this is being used to work out.
+  const double tangent = leftEnd ? belt.margin + belt.core
+                                 : belt.viewWidth - belt.margin - belt.core;
+  const double end = belt.flatEnd(leftEnd);
+  const double wound = std::max(0.0, leftEnd ? tangent - end : end - tangent);
+  return wound / (2 * M_PI * belt.core);
+}
+
+double OrchestrionNotationPaintView::barrelLight(double across)
+{
+  across = std::clamp(across, -1.0, 1.0);
+  return std::sqrt(std::max(0.0, 1.0 - across * across));
+}
+
+const QPixmap &OrchestrionNotationPaintView::grainTile()
+{
+  if (!m_grain.isNull())
+    return m_grain;
+
+  QImage tile{grainTileSize, grainTileSize, QImage::Format_ARGB32_Premultiplied};
+  tile.fill(Qt::transparent);
+  // A fixed seed: the flecks are part of the picture, not something that
+  // shimmers differently every time the app starts.
+  std::mt19937 noise{20260919u};
+  std::uniform_int_distribution<int> roll{0, 255};
+  for (int y = 0; y < grainTileSize; ++y)
+    for (int x = 0; x < grainTileSize; ++x)
+    {
+      const int value = roll(noise);
+      // Most of the tile stays clear; a fifth of it darkens, a tenth lifts.
+      if (value < 52)
+        tile.setPixelColor(x, y,
+                           QColor{0, 0, 0, grainDarkAlpha * value / 52});
+      else if (value > 232)
+        tile.setPixelColor(
+            x, y, QColor{255, 255, 255, grainLightAlpha * (value - 232) / 23});
+    }
+  m_grain = QPixmap::fromImage(tile);
+  return m_grain;
+}
+
+void OrchestrionNotationPaintView::paintBelt(QPainter *painter)
+{
+  const auto band = beltRect();
+  if (!band)
+    return;
+
+  // Drawn across whatever is being painted: the flat run when the view is
+  // painting itself, the whole stretch of belt when a roll's buffer is.
+  const QRectF drawn = painter->clipBoundingRect();
+  if (drawn.isEmpty())
+    return;
+
+  // The parchment's own ends, so it can run out on the cylinders.
+  const double left = std::max(band->left(), drawn.left());
+  const double right = std::min(band->right(), drawn.right());
+  if (right <= left)
+    return;
+  const QRectF belt{left, band->top(), right - left, band->height()};
+  const QColor accent =
+      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::accent);
+  // A pixel of the view, in the logical units this paints in.
+  const double px = 1.0 / std::max(currentScaling(), 1e-6);
+
+  painter->save();
+  painter->setRenderHint(QPainter::Antialiasing, false);
+  painter->setPen(Qt::NoPen);
+  painter->setBrush(accent.lighter(105));
+  painter->drawRect(belt);
+  // Its grain. Sized to the view rather than to the score, so it stays grain
+  // instead of turning into blotches when the score is zoomed in.
+  QBrush grain{grainTile()};
+  grain.setTransform(QTransform::fromScale(grainPixelSize * px,
+                                           grainPixelSize * px));
+  painter->fillRect(belt, grain);
+  // Its two edges, a shade darker: what makes it read as a thing lying on the
+  // backdrop rather than a lighter patch of it.
+  painter->setBrush(accent.darker(118));
+  painter->drawRect(QRectF{belt.left(), belt.top(), belt.width(), px});
+  painter->drawRect(QRectF{belt.left(), belt.bottom() - px, belt.width(), px});
+  painter->restore();
+}
+
+void OrchestrionNotationPaintView::renderStrip(QImage &image, int originX,
+                                               int originY, int logicalWidth,
+                                               int logicalHeight, double dpr,
+                                               const QRectF *clipItem)
+{
+  const QSize deviceSize{static_cast<int>(std::lround(logicalWidth * dpr)),
+                         static_cast<int>(std::lround(logicalHeight * dpr))};
+  if (image.size() != deviceSize)
+  {
+    image = QImage{deviceSize, QImage::Format_ARGB32_Premultiplied};
+    clipItem = nullptr; // nothing to keep
+  }
+  if (!clipItem)
+    image.fill(Qt::transparent);
+
+  QPainter bufferPainter{&image};
+  // Set up exactly as the item's own painter is: the device pixel ratio in
+  // the world transform (the background is drawn in item pixels through it),
+  // knowing that the base view then *replaces* that transform with the
+  // score's matrix pre-scaled by the same ratio — guiScaling, see
+  // AbstractNotationPaintView::paint(). Which is why the shift to the stretch
+  // of belt this roll shows cannot live there either: it goes in the
+  // window/viewport mapping, which survives the replacement because it
+  // composes after it — and is therefore in device pixels.
+  bufferPainter.setWindow(QRect{static_cast<int>(std::lround(originX * dpr)),
+                                static_cast<int>(std::lround(originY * dpr)),
+                                deviceSize.width(), deviceSize.height()});
+  bufferPainter.setViewport(QRect{QPoint{0, 0}, deviceSize});
+  bufferPainter.scale(dpr, dpr);
+  // A painter with no clip reports an *empty* clipBoundingRect(), and the
+  // base view reads that as "no rect" and falls back to painting the item's
+  // own rectangle — which would leave the stretch of belt beyond the view's
+  // edge, the whole point of the roll, unpainted.
+  bufferPainter.setClipRect(
+      clipItem ? *clipItem
+               : QRectF{static_cast<double>(originX),
+                        static_cast<double>(originY),
+                        static_cast<double>(logicalWidth),
+                        static_cast<double>(logicalHeight)});
+  paintContents(&bufferPainter);
+}
+
+OrchestrionNotationPaintView::StripCache &
+OrchestrionNotationPaintView::updateStrip(bool leftEnd, const BeltGeometry &belt,
+                                          int originX, int originY,
+                                          int logicalWidth, int logicalHeight,
+                                          double dpr)
+{
+  StripCache &cache = m_strip[leftEnd ? 0 : 1];
+  const bool sameShape =
+      cache.valid && cache.originX == originX && cache.originY == originY &&
+      cache.logicalWidth == logicalWidth &&
+      cache.logicalHeight == logicalHeight && qFuzzyCompare(cache.dpr, dpr) &&
+      qFuzzyCompare(cache.scaling, belt.scaling);
+
+  // How far the score has run since these pixels were painted, in whole
+  // device pixels; the remainder stays in cache.travel for the blit to carry.
+  const int deviceWidth = static_cast<int>(std::lround(logicalWidth * dpr));
+  const double lag = sameShape ? belt.travel() - cache.travel : 0.0;
+  const int shift = static_cast<int>(std::lround(lag * dpr));
+
+  const bool full = !sameShape || m_stripsDirty ||
+                    cache.age >= stripCacheMaxAge ||
+                    std::abs(shift) >= deviceWidth;
+  if (full)
+  {
+    renderStrip(cache.image, originX, originY, logicalWidth, logicalHeight,
+                dpr);
+    cache.valid = true;
+    cache.originX = originX;
+    cache.originY = originY;
+    cache.logicalWidth = logicalWidth;
+    cache.logicalHeight = logicalHeight;
+    cache.dpr = dpr;
+    cache.scaling = belt.scaling;
+    cache.travel = belt.travel();
+    cache.age = 0;
+    return cache;
+  }
+
+  ++cache.age;
+  if (shift == 0)
+    return cache; // nothing has moved; the pixels still stand
+
+  // Slide what is already painted, row by row — the rows are independent,
+  // the move is horizontal — and paint only the sliver that has just come
+  // into the strip behind it.
+  const int rows = cache.image.height();
+  const int keep = deviceWidth - std::abs(shift);
+  constexpr int bpp = 4;
+  for (int y = 0; y < rows; ++y)
+  {
+    uchar *row = cache.image.scanLine(y);
+    if (shift > 0)
+      std::memmove(row, row + std::size_t(shift) * bpp, std::size_t(keep) * bpp);
+    else
+      std::memmove(row + std::size_t(-shift) * bpp, row, std::size_t(keep) * bpp);
+  }
+
+  const double sliverDeviceLeft = shift > 0 ? keep : 0;
+  const QRectF sliver{originX + sliverDeviceLeft / dpr,
+                      static_cast<double>(originY), std::abs(shift) / dpr,
+                      static_cast<double>(logicalHeight)};
+  cache.travel += shift / dpr;
+  renderStrip(cache.image, originX, originY, logicalWidth, logicalHeight, dpr,
+              &sliver);
+  return cache;
+}
+
+void OrchestrionNotationPaintView::ensureMarginBackdrops(double margin)
+{
+  const QSize viewSize{static_cast<int>(width()), static_cast<int>(height())};
+  const int stripWidth =
+      std::min(static_cast<int>(std::lround(margin)), viewSize.width() / 2);
+  const QPixmap &wallpaper = configuration()->backgroundWallpaper();
+  const bool useColor =
+      configuration()->backgroundUseColor() || wallpaper.isNull();
+  const QColor color = configuration()->backgroundColor();
+  const qint64 sourceKey =
+      useColor ? static_cast<qint64>(color.rgba()) : wallpaper.cacheKey();
+
+  if (viewSize == m_marginBackdropViewSize &&
+      stripWidth == m_marginBackdropWidth &&
+      sourceKey == m_marginBackdropSourceKey)
+    return;
+
+  m_marginBackdropViewSize = viewSize;
+  m_marginBackdropWidth = stripWidth;
+  m_marginBackdropSourceKey = sourceKey;
+  m_marginBackdropLeft = {};
+  m_marginBackdropRight = {};
+  if (stripWidth <= 0 || viewSize.isEmpty())
+    return;
+
+  // The backdrop as the base view lays it down — the wallpaper stretched to
+  // the viewport, see AbstractNotationPaintView::paintBackground(). Anything
+  // else would show as a seam against the run of it either side.
+  if (useColor)
+  {
+    QPixmap strip{stripWidth, viewSize.height()};
+    strip.fill(color);
+    m_marginBackdropLeft = strip;
+    m_marginBackdropRight = strip;
+    return;
+  }
+
+  const QPixmap backdrop = wallpaper.scaled(viewSize, Qt::IgnoreAspectRatio,
+                                            Qt::SmoothTransformation);
+  m_marginBackdropLeft = backdrop.copy(0, 0, stripWidth, viewSize.height());
+  m_marginBackdropRight = backdrop.copy(viewSize.width() - stripWidth, 0,
+                                        stripWidth, viewSize.height());
+}
+
+void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
+                                             const BeltGeometry &belt,
+                                             bool leftEnd)
+{
+  const double radius = belt.wrap(leftEnd);
+  const double margin = belt.margin;
+  if (radius < 1)
+    return;
+
+  // A quarter turn of the cylinder: `arc` pixels of belt disappear into
+  // `radius` pixels of view, the last of them edge-on.
+  const double arc = radius * M_PI / 2;
+  const double dpr =
+      window() ? window()->effectiveDevicePixelRatio() : qreal(1);
+  // Where the turn starts, and which way it runs off the view.
+  const double tangentX = belt.tangent(leftEnd);
+  const double sign = leftEnd ? -1.0 : 1.0;
+  // Item x of the buffer's left edge: the belt's far end at the left roll,
+  // the tangent point at the right one. Floored, so the buffer's mapping is a
+  // whole number of item pixels.
+  const int originX =
+      static_cast<int>(std::floor(std::min(tangentX, tangentX + sign * arc)));
+  const int bufferWidth = static_cast<int>(std::ceil(arc)) + 2;
+  // Only the band: the rows above and below it are wallpaper, which the flat
+  // paint now covers across the full width.
+  const int bandTop = static_cast<int>(std::floor(belt.bandTop));
+  const int bandHeight =
+      static_cast<int>(std::ceil(belt.bandBottom)) - bandTop;
+  if (bandHeight <= 0)
+    return;
+  const StripCache &strip =
+      updateStrip(leftEnd, belt, originX, bandTop, bufferWidth, bandHeight, dpr);
+  // What the strip holds is up to half a device pixel behind the score, since
+  // it is carried along in whole pixels: take that up here.
+  const double lag = belt.travel() - strip.travel;
+  painter->save();
+  painter->setRenderHint(QPainter::SmoothPixmapTransform, true);
+  painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+  // Where the belt goes edge-on: a margin short of the view's own edge.
+  const double outerX = leftEnd ? margin : width() - margin;
+  const double seam = 0.5 / dpr;
+
+  // A slice of the turn at a time rather than a slice of the
+  // view: equal steps of the angle turned through, so the pieces are as fine
+  // where the belt is racing away from us as they are at the crown, and a
+  // couple of dozen of them stand in for what used to be one blit per device
+  // pixel — which cost more in per-call overhead than the whole rest of the
+  // frame. Drawn from the silhouette inwards, each lapping a whisker over the
+  // one before, so no rounding can leave a hairline between them or against
+  // the flat run.
+  const double quarter = M_PI / 2;
+  // Linear interpolation over a slice strays from the sine by about
+  // radius * step^2 / 8, so the step that keeps that within tolerance is
+  // sqrt(8 * tolerance / radius) — and the count follows.
+  const int segments = std::max(
+      1, static_cast<int>(
+             std::ceil(quarter / std::sqrt(8 * rollWarpTolerance / radius))));
+  for (int i = 0; i < segments; ++i)
+  {
+    const double turnOuter = quarter * (segments - i) / segments;
+    const double turnInner = quarter * (segments - i - 1) / segments;
+    // Screen x is the sine of the turn; the belt itself runs by its arc.
+    const double outer = tangentX + sign * radius * std::sin(turnOuter);
+    const double inner = tangentX + sign * radius * std::sin(turnInner);
+    const double srcOuter =
+        (tangentX + sign * radius * turnOuter - originX + lag) * dpr;
+    const double srcInner =
+        (tangentX + sign * radius * turnInner - originX + lag) * dpr;
+    const QRectF target{std::min(outer, inner) - seam,
+                        static_cast<double>(bandTop),
+                        std::abs(inner - outer) + 2 * seam,
+                        static_cast<double>(bandHeight)};
+    // The buffer holds the band and nothing else, so its own top row is the
+    // band's.
+    const QRectF source{std::min(srcOuter, srcInner), 0.0,
+                        std::max(std::abs(srcInner - srcOuter), 1e-3),
+                        bandHeight * dpr};
+    painter->drawImage(target, strip.image, source);
+  }
+
+  // ...and the belt falls into shadow as it turns away, by the cosine of the
+  // angle it has turned through. Only over the belt: the backdrop around it
+  // is not on the treadmill and keeps its own light.
+  {
+    const double top = belt.viewY(belt.paper.top());
+    const double bottom = belt.viewY(belt.paper.bottom());
+    // The parchment is pressed against the cylinder, so it takes the
+    // cylinder's surface: the same lighting, which is what makes the shading
+    // run on from the bare rod above and below it.
+    QLinearGradient shade{QPointF{outerX, 0}, QPointF{tangentX, 0}};
+    for (int i = 0; i <= rollShadeStops; ++i)
+    {
+      const double t = static_cast<double>(i) / rollShadeStops;
+      const double across = leftEnd ? t - 1.0 : 1.0 - t;
+      const double lit = std::pow(barrelLight(across), m_rollShadePower);
+      shade.setColorAt(
+          t, QColor{0, 0, 0, static_cast<int>(std::lround((1.0 - lit) * 255))});
+    }
+    painter->fillRect(QRectF{std::min(outerX, tangentX), top, radius,
+                             bottom - top},
+                      shade);
+  }
+
+  // Past the belt's end there is only backdrop, and nothing has painted it:
+  // the flat run is clipped to itself and the roll stops at the edge-on line.
+  ensureMarginBackdrops(margin);
+  const QPixmap &backdrop =
+      leftEnd ? m_marginBackdropLeft : m_marginBackdropRight;
+  if (!backdrop.isNull())
+    painter->drawPixmap(QRectF{leftEnd ? 0.0 : width() - margin, 0.0, margin,
+                               height()},
+                        backdrop, QRectF{backdrop.rect()});
+  painter->restore();
 }
 } // namespace dgk

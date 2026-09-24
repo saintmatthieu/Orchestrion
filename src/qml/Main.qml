@@ -206,6 +206,29 @@ ApplicationWindow {
                 id: notationPaintView
                 anchors.fill: parent
 
+                // The score runs on a belt: at either end it turns around a
+                // cylinder and away from the viewer. The knobs sit here so
+                // they can be tried out without recompiling the view.
+                // The cylinders' radius, as a fraction of the parchment's
+                // height — so the rod keeps its proportion to the belt at any
+                // zoom. 0.22 is the old 85 px at the default zoom.
+                rollRadiusRatio: 0.22
+                // How far short of the view's edge the belt turns edge-on.
+                rollMargin: 10
+                // How steeply the belt darkens over the turn: 1 is the plain
+                // cosine, higher keeps it lit until the last moment.
+                rollShadePower: 1
+                // Clear parchment around the notation; its size is the
+                // score's own skyline plus this, ends included.
+                beltPadding: 24
+                // How much of the cylinders shows past the parchment.
+                rollerOverhang: 6
+                // Zooming in stops with as much air between the composer's
+                // name and the parchment as the heading puts between the
+                // title and the composer.
+                titleClearance: topOrnament.y + topOrnament.inkBottom
+                                + topOrnament.titleGap
+
                 property bool controlsVisible: false
 
                 onMouseActivity: {
@@ -257,6 +280,7 @@ ApplicationWindow {
                 // one carries the score's title and composer. Declared first
                 // so that every control and popup draws above it.
                 BackdropOrnament {
+                    id: topOrnament
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height * 0.15 - height / 2
                     viewWidth: parent.width
