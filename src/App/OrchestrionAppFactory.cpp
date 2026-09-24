@@ -46,7 +46,6 @@
 #include <framework/multiwindows/multiwindowsmodule.h>
 #include <framework/network/networkmodule.h>
 #include <framework/rcommand/rcommandmodule.h>
-#include <framework/rcontrol/rcontrolmodule.h>
 #include <framework/shortcuts/shortcutsmodule.h>
 #ifdef MUSE_MODULE_AUTOMATION
 #include <framework/automation/automationmodule.h>
@@ -140,7 +139,6 @@ std::shared_ptr<muse::IApplication> OrchestrionAppFactory::newGuiApp(
   app->addModule(new muse::accessibility::AccessibilityModule());
   app->addModule(new muse::actions::ActionsModule());
   app->addModule(new muse::rcommand::RCommandModule());
-  app->addModule(new muse::rcontrol::RControlModule());
   app->addModule(new muse::audio::AudioModule());
   app->addModule(new muse::audioplugins::AudioPluginsModule());
   app->addModule(new muse::automation::AutomationModule());
@@ -217,7 +215,6 @@ std::shared_ptr<muse::IApplication> OrchestrionAppFactory::newConsoleApp(
   // The diagnostics module registers commands.
   app->addModule(new muse::actions::ActionsModule());
   app->addModule(new muse::rcommand::RCommandModule());
-  app->addModule(new muse::rcontrol::RControlModule());
   app->addModule(new muse::audio::AudioModule());
   app->addModule(new muse::audioplugins::AudioPluginsModule());
   app->addModule(new muse::vst::VSTModule());

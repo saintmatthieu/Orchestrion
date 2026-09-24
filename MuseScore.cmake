@@ -78,6 +78,7 @@ set(MUSE_MODULE_LEARN OFF)
 set(MUSE_MODULE_MEDIA ON) # the media stub does not compile (missing include path); the real module has no extra deps
 set(MUSE_MODULE_MIDIREMOTE OFF)
 set(MUSE_MODULE_MUSESAMPLER OFF)
+set(MUSE_MODULE_RCONTROL OFF) # MuseScore's MCP remote-control server: it listens on TCP 2212, which makes Windows ask for firewall permission at first launch
 set(MUSE_MODULE_TESTFLOW OFF)
 set(MUSE_MODULE_TOURS OFF)
 set(MUSE_MODULE_UPDATE OFF)
