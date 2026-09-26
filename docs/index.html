@@ -2,6 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <script>
+    // Send first-time visitors to their browser's language. A language
+    // picked explicitly in the header is remembered and wins.
+    (function () {
+      var chosen = null;
+      try { chosen = localStorage.getItem("lang"); } catch (e) {}
+      if (chosen) return;
+      var prefs = navigator.languages || [navigator.language || ""];
+      for (var i = 0; i < prefs.length; i++) {
+        var l = (prefs[i] || "").toLowerCase().slice(0, 2);
+        if (l === "en") return;
+        if (l === "fr" || l === "de") {
+          location.replace(l + "/" + location.search + location.hash);
+          return;
+        }
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Orchestrion — second only to playing the piano</title>
   <meta name="description" content="Orchestrion is a free, open-source app that turns any score into an instrument: tap the rhythm on a MIDI or computer keyboard and it plays the notes. For classrooms, kids, music lovers and bands. Windows, macOS, Linux.">
@@ -344,6 +362,13 @@
         }
       })
       .catch(function () { /* keep fallback links */ });
+
+    // Remember an explicit language choice (see the redirect in <head>).
+    Array.prototype.forEach.call(document.querySelectorAll("a.lang"), function (a) {
+      a.addEventListener("click", function () {
+        try { localStorage.setItem("lang", a.getAttribute("hreflang")); } catch (e) {}
+      });
+    });
 
     // Emphasize the visitor's platform.
     var ua = navigator.userAgent;

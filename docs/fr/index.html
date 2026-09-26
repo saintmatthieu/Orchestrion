@@ -345,6 +345,13 @@
       })
       .catch(function () { /* conserver les liens par défaut */ });
 
+    // Mémoriser le choix explicite de langue (cf. la redirection dans <head>).
+    Array.prototype.forEach.call(document.querySelectorAll("a.lang"), function (a) {
+      a.addEventListener("click", function () {
+        try { localStorage.setItem("lang", a.getAttribute("hreflang")); } catch (e) {}
+      });
+    });
+
     // Mettre en avant la plateforme du visiteur.
     var ua = navigator.userAgent;
     var id = ua.indexOf("Win") !== -1 ? "dl-win"
