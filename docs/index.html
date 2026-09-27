@@ -19,6 +19,13 @@
         }
       }
     })();
+
+    // Phones and tablets can't run the app: swap the downloads for a way to
+    // send the page to a computer. (iPadOS reports itself as a Mac.)
+    if (/Android|iPhone|iPad|iPod|Mobi/.test(navigator.userAgent) ||
+        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) {
+      document.documentElement.classList.add("mobile");
+    }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Orchestrion — second only to playing the piano</title>
@@ -40,15 +47,14 @@
     :root {
       --espresso: #2e1a12;
       --espresso-soft: #4a3126;
-      --parchment: #f4ecd9;
-      --parchment-deep: #ece0c6;
+      --espresso-warm: #3a2318;
       --gold: #b9863e;
       --gold-bright: #d6a85c;
       --cream: #f7f1e3;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: var(--parchment);
+      background: var(--espresso-warm);
       color: var(--espresso);
       font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
       line-height: 1.6;
@@ -63,20 +69,27 @@
     }
     header.site .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
     header.site img { width: 2.2rem; height: 2.2rem; }
-    header.site .name { font-size: 1.35rem; font-style: italic; letter-spacing: 0.02em; }
+    header.site .name {
+      font-size: 1.35rem;
+      font-style: italic;
+      letter-spacing: 0.02em;
+      color: var(--cream);
+    }
     header.site nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; }
     header.site nav a { color: var(--gold-bright); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
     header.site nav a:hover { text-decoration: underline; }
     .langs {
       display: flex; align-items: center; gap: 0.6rem;
-      padding-left: 1.1rem;
-      border-left: 1px solid rgba(214,168,92,0.4);
     }
     .langs .lang { font-size: 0.85rem; letter-spacing: 0.05em; }
     .langs span.lang { color: var(--cream); }
+    .langs a.lang { text-decoration: none; }
+    .langs a.lang:hover { text-decoration: underline; }
+    /* The footer copy of the language links is for wide screens only. */
+    .footer-langs { display: none; }
 
     .hero {
-      background: linear-gradient(var(--espresso), #3a2318);
+      background: linear-gradient(var(--espresso), var(--espresso-warm));
       color: var(--cream);
       text-align: center;
       padding: 3.5rem 0 4rem;
@@ -85,6 +98,7 @@
       font-size: clamp(1.8rem, 4.5vw, 3rem);
       font-style: italic;
       font-weight: 500;
+      line-height: 1.2;
       color: var(--gold-bright);
       max-width: 40ch;
       margin: 0 auto 1rem;
@@ -101,7 +115,7 @@
     @media (max-width: 44rem) { .hero p.sub br { display: none; } }
     .video-frame {
       max-width: 50rem;
-      margin: 0 auto 2.5rem;
+      margin: 2.5rem auto 0;
       border: 1px solid var(--gold);
       border-radius: 10px;
       overflow: hidden;
@@ -131,72 +145,115 @@
     .dl.primary { background: var(--gold); border-color: var(--gold); color: var(--espresso); }
     .dl.primary strong, .dl.primary small { color: var(--espresso); }
     .dl.primary:hover { background: var(--gold-bright); }
+    .mobile-note { display: none; }
+    .mobile .downloads { display: none; }
+    .mobile .mobile-note { display: block; }
+    .mobile-note p { margin-bottom: 1rem; color: #e8ddc8; }
+    button.dl { font: inherit; font-size: 1.05rem; cursor: pointer; background: none; }
+    button.dl.primary { background: var(--gold); }
     .release-note { margin-top: 1.1rem; font-size: 0.9rem; color: #cbbfa5; }
     .release-note a { color: var(--gold-bright); }
 
-    section.band { padding: 3.5rem 0; }
-    section.band.deep { background: var(--parchment-deep); }
-    h2 {
-      font-size: 1.9rem;
-      font-style: italic;
-      font-weight: 500;
-      text-align: center;
-      margin-bottom: 2.25rem;
+    @media (max-width: 63.99rem) {
+      .hero .wrap { display: flex; flex-direction: column; }
+      .hero .copy { display: contents; }
+      .video-frame { order: 1; width: 100%; }
+      .hero footer.site { order: 2; }
+      /* Phones: the screenshot between the subtitle and the note. */
+      .mobile .video-frame { margin: 0 auto 2.25rem; }
+      .mobile .get { order: 2; }
+      .mobile .hero footer.site { order: 3; }
     }
-    h2::after {
-      content: "";
-      display: block;
-      width: 5rem; height: 2px;
-      background: var(--gold);
-      margin: 0.7rem auto 0;
-    }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-    @media (max-width: 44rem) { .steps { grid-template-columns: 1fr; } }
-    .step .num {
-      width: 2.6rem; height: 2.6rem;
-      border-radius: 50%;
-      background: var(--espresso);
-      color: var(--gold-bright);
-      font-size: 1.25rem;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 0.9rem;
-    }
-    .step h3 { font-size: 1.2rem; margin-bottom: 0.4rem; }
-    .step p { color: var(--espresso-soft); }
 
-    .uses h2 { margin-bottom: 1.1rem; }
-    .uses-intro {
-      max-width: 44rem;
-      margin: 0 auto 1.6rem;
-      text-align: center;
-      color: var(--espresso-soft);
+    /* Wide screens: a left column beside a larger screenshot, spanning its
+       height - headline at the top, footer at the bottom, downloads between
+       them. The rows around the downloads are equal when there is room,
+       which centres them on the screenshot; when there isn't, they shrink,
+       and if the column still outgrows the screenshot, the screenshot centres
+       on the column instead. */
+    @media (min-width: 64rem) {
+      /* The page is three rows: the header centred in a top band, the hero,
+         and a bottom band as tall as the margin right of the screenshot.
+         The logo scales with the viewport height so that it always fits. */
+      :root {
+        --logo: clamp(4rem, 12.5vh, 9rem);
+        --wrap-max: 110rem;
+        --wrap-pad: 2.5rem;
+        --col: 26rem;
+        --margin: calc(max(0px, (100vw - var(--wrap-max)) / 2) + var(--wrap-pad));
+      }
+      body {
+        min-height: 100vh;
+        background: linear-gradient(var(--espresso), var(--espresso-warm));
+        display: grid;
+        grid-template-rows:
+          minmax(calc(var(--logo) + 2.5rem), 1fr) auto var(--margin);
+      }
+      header.site { align-self: center; background: none; padding: 0; }
+      header.site .wrap { gap: calc(var(--logo) * 0.25); }
+      header.site img { width: var(--logo); height: var(--logo); }
+      header.site .name { font-size: calc(var(--logo) * 0.62); }
+      .wrap { max-width: var(--wrap-max); padding: 0 var(--wrap-pad); }
+      .hero {
+        padding: 0;
+        background: none;
+        text-align: left;
+      }
+      .hero .wrap {
+        width: 100%;
+        display: grid;
+        grid-template-columns: var(--col) 1fr;
+        column-gap: 3.5rem;
+      }
+      .hero .copy {
+        grid-column: 1; grid-row: 1;
+        display: grid;
+        grid-template-rows: 1fr auto 1fr;
+      }
+      .hero .intro { align-self: start; }
+      .hero h1 {
+        margin-bottom: 0.5rem;
+        font-size: clamp(1.8rem, min(4.5vw, 5.5vh), 3rem);
+      }
+      .hero p.sub { margin-bottom: 0; }
+      /* The release note sits in the last of three rows; the first, empty
+         row is as tall, which keeps the buttons centred. */
+      .hero .get { display: grid; grid-template-rows: 1fr auto 1fr; }
+      .hero .get > * { grid-row: 2; }
+      .hero .get .release-note { grid-row: 3; align-self: start; margin-top: 0.35rem; }
+      .video-frame { grid-column: 2; grid-row: 1; align-self: center; }
+      .hero footer.site {
+        align-self: end;
+        padding: 0;
+        text-align: left;
+        font-size: 0.85rem;
+      }
+      .hero footer.site p { margin: 0.15rem 0 0; }
+      header.site nav { display: none; }
+      .hero footer.site .footer-langs { display: flex; margin-top: 0.6rem; }
+      .hero h1, .hero p.sub { margin-left: 0; }
+      .hero p.sub br { display: none; }
+      .video-frame { max-width: none; margin: 0; }
+      /* Compacted on short viewports, where the column is crowded. */
+      .downloads { flex-direction: column; max-width: 22rem; gap: min(0.9rem, 1.2vh); }
+      .dl {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+        padding: min(0.75rem, 1.1vh) 1.25rem;
+      }
+      .dl small { display: inline; }
     }
-    .uses ul { list-style: none; max-width: 44rem; margin: 0 auto; }
-    .uses li {
-      padding-left: 2rem;
-      position: relative;
-      margin-bottom: 1.1rem;
-      color: var(--espresso-soft);
-    }
-    .uses li::before {
-      content: "♪";
-      position: absolute; left: 0;
-      color: var(--gold);
-      font-size: 1.1rem;
-    }
-    .uses li strong { color: var(--espresso); }
-    .uses-note {
-      max-width: 44rem;
-      margin: 1.8rem auto 0;
-      text-align: center;
-      font-style: italic;
-      color: var(--espresso-soft);
+
+    /* Short wide screens: tighter text so the column fits the screenshot. */
+    @media (min-width: 64rem) and (max-height: 62rem) {
+      .hero h1 { font-size: clamp(1.8rem, 5vh, 3rem); }
+      .hero p.sub { font-size: 1rem; line-height: 1.5; }
+      .hero footer.site { font-size: 0.8rem; line-height: 1.4; }
+      .release-note { font-size: 0.82rem; }
     }
 
     footer.site {
-      background: var(--espresso);
       color: #cbbfa5;
-      padding: 2rem 0;
+      padding: 3rem 0 1rem;
       font-size: 0.92rem;
       text-align: center;
     }
@@ -211,10 +268,6 @@
     <img src="assets/icon.png" alt="" width="36" height="36">
     <span class="name">Orchestrion</span>
     <nav>
-      <a href="#how">How it works</a>
-      <a href="#uses">What for?</a>
-      <a href="#download">Download</a>
-      <a href="https://github.com/saintmatthieu/Orchestrion">GitHub</a>
       <span class="langs">
         <span class="lang">EN</span>
         <a class="lang" href="fr/" hreflang="fr" lang="fr">FR</a>
@@ -226,102 +279,63 @@
 
 <section class="hero" id="download">
   <div class="wrap">
-    <h1>Second only to playing the piano.</h1>
-    <p class="sub">
-      You tap the rhythm — on a MIDI keyboard or the computer keyboard —<br>
-      Orchestrion plays the notes.
-    </p>
+    <div class="copy">
+      <div class="intro">
+        <h1>Second only to playing the piano.</h1>
+        <p class="sub">
+          You tap the rhythm — on a MIDI keyboard or the computer keyboard —<br>
+          Orchestrion plays the notes.
+        </p>
+      </div>
+
+      <div class="get">
+        <div class="downloads">
+          <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
+            <strong>Windows</strong><small>installer (.msi)</small>
+          </a>
+          <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
+            <strong>macOS</strong><small>signed &amp; notarized (.dmg)</small>
+          </a>
+          <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
+            <strong>Linux</strong><small>AppImage</small>
+          </a>
+        </div>
+        <div class="mobile-note">
+          <p>Orchestrion is a desktop app for Windows, macOS and Linux.</p>
+          <button type="button" class="dl primary" id="send-link">Send this link to my computer</button>
+        </div>
+        <p class="release-note" id="release-note">
+          Free &amp; open source (GPL-3.0) · <a href="https://github.com/saintmatthieu/Orchestrion/releases">all releases</a>
+        </p>
+      </div>
+
+      <footer class="site">
+        <p>
+          <a href="https://github.com/saintmatthieu/Orchestrion">Source code on GitHub</a> ·
+          <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/LICENSE">GPL-3.0 license</a> ·
+          <a href="https://github.com/saintmatthieu/Orchestrion/issues">Report an issue</a>
+        </p>
+        <p>Bundled scores include community engravings —
+           see <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/scores/attributions.json">attributions</a>.</p>
+        <p>© 2024–2026 Matthieu Hodgkinson</p>
+        <p class="langs footer-langs">
+          <span class="lang">EN</span>
+          <a class="lang" href="fr/" hreflang="fr" lang="fr">FR</a>
+          <a class="lang" href="de/" hreflang="de" lang="de">DE</a>
+        </p>
+      </footer>
+    </div>
 
     <!--
       Demo video: after uploading to YouTube, set VIDEO_ID in the script at the
       bottom of this file. Until then the app screenshot is shown instead.
     -->
     <div class="video-frame" id="video-slot">
-      <img src="assets/hero.png" width="800" height="350"
-           alt="Orchestrion showing the score of Frère Jacques on a parchment background">
-    </div>
-
-    <div class="downloads">
-      <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
-        <strong>Windows</strong><small>installer (.msi)</small>
-      </a>
-      <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
-        <strong>macOS</strong><small>signed &amp; notarized (.dmg)</small>
-      </a>
-      <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest">
-        <strong>Linux</strong><small>AppImage</small>
-      </a>
-    </div>
-    <p class="release-note" id="release-note">
-      Free &amp; open source (GPL-3.0) · <a href="https://github.com/saintmatthieu/Orchestrion/releases">all releases</a>
-    </p>
-  </div>
-</section>
-
-<section class="band" id="how">
-  <div class="wrap">
-    <h2>How it works</h2>
-    <div class="steps">
-      <div class="step">
-        <div class="num">1</div>
-        <h3>Open a score</h3>
-        <p>Start with the bundled pieces — from Frère Jacques to a Chopin nocturne —
-           or open any MuseScore or MusicXML file.</p>
-      </div>
-      <div class="step">
-        <div class="num">2</div>
-        <h3>Choose how to play</h3>
-        <p>Plug in any MIDI keyboard, or use the computer keyboard as-is.
-           There is nothing to configure.</p>
-      </div>
-      <div class="step">
-        <div class="num">3</div>
-        <h3>Tap the rhythm</h3>
-        <p>Each tap plays the next notes of the piece. You own the timing;
-           Orchestrion takes care of the pitches.</p>
-      </div>
+      <img src="assets/hero.png" width="1600" height="1000"
+           alt="Orchestrion playing Chopin's Nocturne Op. 9 No. 2">
     </div>
   </div>
 </section>
-
-<section class="band deep uses" id="uses">
-  <div class="wrap">
-    <h2>What for?</h2>
-    <p class="uses-intro">Orchestrion is a simple idea with many uses:</p>
-    <ul>
-      <li><strong>In the music lesson.</strong> Let pupils focus entirely on rhythm, phrasing
-          and pulse with real repertoire — wrong-note anxiety is simply removed from the
-          equation. Orchestrion opens MuseScore (<code>.mscz</code>) and MusicXML
-          (<code>.mxl</code>, <code>.musicxml</code>) files, so it works with the material
-          you already teach with.</li>
-      <li><strong>For kids, at home.</strong> A playful way to get familiar with music
-          notation and sharpen a sense of rhythm — following the score is the game.</li>
-      <li><strong>For music lovers.</strong> Don't just listen to the repertoire you love —
-          play it. Discover pieces from the inside, at your own pulse, and challenge your
-          inner metronome along the way.</li>
-      <li><strong>With your band.</strong> That song where the keyboard is too central to be
-          left aside — "November Rain", "Bohemian Rhapsody", "You" — play the part yourself,
-          without years of piano lessons first.</li>
-      <li><strong>Around the piano.</strong> Karaoke-like sing-song evenings, with an
-          accompaniment that follows the singers instead of dragging them along.</li>
-    </ul>
-    <p class="uses-note">Some of these scenarios will grow their own dedicated features over
-       time — the fundamentals are already here: any score, your rhythm.</p>
-  </div>
-</section>
-
-<footer class="site">
-  <div class="wrap">
-    <p>
-      <a href="https://github.com/saintmatthieu/Orchestrion">Source code on GitHub</a> ·
-      <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/LICENSE">GPL-3.0 license</a> ·
-      <a href="https://github.com/saintmatthieu/Orchestrion/issues">Report an issue</a>
-    </p>
-    <p>Bundled scores include community engravings —
-       see <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/scores/attributions.json">attributions</a>.</p>
-    <p>© 2024–2026 Matthieu Hodgkinson</p>
-  </div>
-</footer>
 
 <script>
   // ---- Demo video -----------------------------------------------------
@@ -368,6 +382,29 @@
       a.addEventListener("click", function () {
         try { localStorage.setItem("lang", a.getAttribute("hreflang")); } catch (e) {}
       });
+    });
+
+    // Send the page to a computer: the share sheet where there is one,
+    // else the clipboard, else an email to oneself.
+    var sendLink = document.getElementById("send-link");
+    sendLink.addEventListener("click", function () {
+      var url = document.querySelector('link[rel="canonical"]').href;
+      var title = "Orchestrion";
+      function mail() {
+        location.href = "mailto:?subject=" + encodeURIComponent(title) +
+                        "&body=" + encodeURIComponent(url);
+      }
+      if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(function () {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function () {
+          var label = sendLink.textContent;
+          sendLink.textContent = "Link copied";
+          setTimeout(function () { sendLink.textContent = label; }, 2000);
+        }, mail);
+      } else {
+        mail();
+      }
     });
 
     // Emphasize the visitor's platform.
