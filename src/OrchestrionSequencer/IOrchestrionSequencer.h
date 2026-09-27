@@ -85,6 +85,16 @@ public:
                             std::optional<float> velocity) = 0;
 
   /**
+   * A key the performer played in the play-pitches mode (see
+   * IOrchestrionSequencerConfiguration::playPitches): it sounds as it is, on
+   * the part's instrument, and the performer's position in the score is
+   * followed from it, the chord transitions telling where. Velocity as for
+   * OnInputEvent.
+   */
+  virtual void OnPitchInput(NoteEventType, int pitch,
+                            std::optional<float> velocity) = 0;
+
+  /**
    * Releases whatever is sounding — the hands' held keys and the sustain
    * pedal — as if the player had lifted hands and foot. Called when playback
    * is stopped, so the notes don't ring on.

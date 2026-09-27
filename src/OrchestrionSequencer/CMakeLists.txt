@@ -31,6 +31,10 @@ set(MODULE_SRC
     internal/OrnamentGesture.h
     internal/OrnamentSchedule.cpp
     internal/OrnamentSchedule.h
+    internal/PerformanceFollower.cpp
+    internal/PerformanceFollower.h
+    internal/ScoreEvents.cpp
+    internal/ScoreEvents.h
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp

@@ -114,6 +114,7 @@ private:
   muse::uicomponents::MenuItem *makeGradingMenu();
   muse::uicomponents::MenuItem *makeAutoPlayMenu();
   muse::uicomponents::MenuItem *makeOrnamentsMenu();
+  muse::uicomponents::MenuItem *makePlayModeMenu();
 #ifdef MUSE_APP_UNSTABLE
   muse::uicomponents::MenuItem *makeDevelopmentMenu();
 #endif

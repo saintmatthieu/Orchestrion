@@ -20,6 +20,7 @@
 
 #include "GestureControllers/IGestureInput.h"
 #include "IOrchestrion.h"
+#include "IOrchestrionSequencerConfiguration.h"
 
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
@@ -29,12 +30,16 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-//! Feeds the gesture controllers' note events to the sequencer.
+/**
+ * Feeds the gesture controllers' note events to the sequencer: as gestures,
+ * or as pitches in the play-pitches mode.
+ */
 class GestureInputConnector : public dgk::Injectable,
                               public muse::async::Asyncable
 {
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<IGestureInput> gestureInput{this};
+  dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
 
 public:
   void init();

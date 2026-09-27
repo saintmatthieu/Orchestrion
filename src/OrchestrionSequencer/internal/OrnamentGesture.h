@@ -51,6 +51,9 @@ public:
   double GetNominalBpm() const override;
   const mu::engraving::Chord *GetEngravingChord() const override;
 
+  /** The chord whose ornament this is a note of. */
+  const IChord &GetOrnamentedChord() const { return *m_chord; }
+
 private:
   const std::shared_ptr<IChord> m_chord;
   const std::vector<int> m_pitches;

@@ -37,7 +37,10 @@ void GestureInputConnector::onNoteOn(int pitch, std::optional<float> velocity)
   if (!sequencer)
     // Things don't look ready yet
     return;
-  sequencer->OnInputEvent(NoteEventType::noteOn, pitch, std::move(velocity));
+  if (configuration()->playPitches())
+    sequencer->OnPitchInput(NoteEventType::noteOn, pitch, std::move(velocity));
+  else
+    sequencer->OnInputEvent(NoteEventType::noteOn, pitch, std::move(velocity));
 }
 
 void GestureInputConnector::onNoteOff(int pitch)
@@ -47,6 +50,9 @@ void GestureInputConnector::onNoteOff(int pitch)
     // A key released before a score is loaded (a MIDI keyboard's events
     // arrive from startup on); nothing to release.
     return;
+  // Both paths ignore a release they have no press for, so a key pressed
+  // before the mode changed is released on either.
+  sequencer->OnPitchInput(NoteEventType::noteOff, pitch, 0.0f);
   sequencer->OnInputEvent(NoteEventType::noteOff, pitch, 0.0f);
 }
 } // namespace dgk

@@ -181,5 +181,15 @@ public:
   virtual OrnamentMode ornamentMode() const = 0;
   virtual void setOrnamentMode(OrnamentMode) = 0;
   virtual muse::async::Notification ornamentModeChanged() const = 0;
+
+  /**
+   * Whether the performer plays the score's pitches: the keys played sound
+   * as they are, and the performer is followed in the score (see
+   * PerformanceFollower) rather than stepping through it. Off by default;
+   * toggled from the Play mode menu.
+   */
+  virtual bool playPitches() const = 0;
+  virtual void setPlayPitches(bool) = 0;
+  virtual muse::async::Notification playPitchesChanged() const = 0;
 };
 } // namespace dgk

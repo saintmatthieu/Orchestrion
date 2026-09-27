@@ -118,10 +118,10 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
       }};
 }
 
-OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
-                                           HandVoices rightHand,
-                                           HandVoices leftHand,
-                                           PedalSequence pedalSequence)
+OrchestrionSequencer::OrchestrionSequencer(
+    InstrumentIndex instrument, HandVoices rightHand, HandVoices leftHand,
+    PedalSequence pedalSequence, std::vector<ScoreEvent> followedEvents,
+    double nominalTicksPerMs)
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
       m_leftHand{std::move(leftHand), std::nullopt},
@@ -137,7 +137,11 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
           [this](NoteEvent event) { m_outputEvent.send(NoteEvents{event}); })},
       m_ornamentThread{MakeThread<OrnamentStepDue>(
           *this, m_ornamentThreadMembers,
-          [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })}
+          [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
+      m_follower{followedEvents.empty()
+                     ? nullptr
+                     : std::make_unique<PerformanceFollower>(
+                           std::move(followedEvents), nominalTicksPerMs)}
 {
 #ifdef OS_IS_WIN
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -158,6 +162,10 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   };
   readOrnamentMode();
   configuration()->ornamentModeChanged().onNotify(this, readOrnamentMode);
+
+  m_playPitches = configuration()->playPitches();
+  configuration()->playPitchesChanged().onNotify(
+      this, [this] { SetPlayPitches(configuration()->playPitches()); });
 
   dispatcher()->reg(this, "nav-first-control",
                     [this] { GoToTick(0, JumpReason::Rewind); });
@@ -290,6 +298,12 @@ void OrchestrionSequencer::SendTransitions(
       PostNoteEvents(std::move(voiceOutput), /*strum=*/!ornamented);
   }
 
+  PublishTransitions(transitions);
+}
+
+void OrchestrionSequencer::PublishTransitions(
+    const std::map<TrackIndex, ChordTransition> &transitions)
+{
   m_transitions.val.clear();
   for (const auto &[track, transition] : transitions)
     m_transitions.val.emplace(track, transition);
@@ -389,8 +403,121 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
     PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
+void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
+                                        std::optional<float> velocity)
+{
+  if (type == NoteEventType::noteOff)
+  {
+    const auto it = m_playedPitches.find(pitch);
+    if (it == m_playedPitches.end())
+      return;
+    PostNoteEvents({NoteEvent{NoteEventType::noteOff, it->second, pitch, 0.f}},
+                   /*strum=*/false);
+    m_playedPitches.erase(it);
+    return;
+  }
+
+  const auto &hand =
+      pitch < 60 && !m_leftHand.voices.empty() ? m_leftHand : m_rightHand;
+  if (hand.voices.empty())
+    return;
+  ++m_inputSerial;
+  NoteEvents events;
+  if (const auto it = m_playedPitches.find(pitch); it != m_playedPitches.end())
+    // Struck again without a release in between: restrike.
+    events.emplace_back(NoteEventType::noteOff, it->second, pitch, 0.f);
+  const auto track = hand.voices.front()->track;
+  // A controller without velocity (the computer keyboard) plays at the
+  // neutral loudness SendTransitions defaults to.
+  events.emplace_back(NoteEventType::noteOn, track, pitch,
+                      velocity.value_or(0.5f));
+  m_playedPitches.insert_or_assign(pitch, track);
+  PostNoteEvents(std::move(events), /*strum=*/false);
+
+  if (!m_follower)
+    return;
+  m_follower->OnNoteOn(pitch, NowMs());
+  const auto followed = m_follower->FollowedEvent();
+  if (m_shownEvent == followed)
+    return;
+  m_shownEvent = followed;
+  FollowTo(m_follower->Events()[followed].tick);
+}
+
+void OrchestrionSequencer::FollowTo(int tickWithRepeats)
+{
+  std::map<TrackIndex, ChordTransition> transitions;
+  for (auto voices : {&m_rightHand.voices, &m_leftHand.voices})
+    transitions.merge(
+        PrepareStaffTransitions(*voices, [&](VoiceSequencer &voice)
+                                { return voice.FollowTo(tickWithRepeats); }));
+  if (!transitions.empty())
+    PublishTransitions(transitions);
+}
+
+void OrchestrionSequencer::ResetFollower()
+{
+  m_shownEvent.reset();
+  if (!m_follower)
+    return;
+  // Where the next note-on is due: the earliest of the voices' future chords.
+  std::optional<Tick> next;
+  for (const auto *voice : m_allVoices)
+    if (const auto chord = voice->GetFutureChord();
+        chord && (!next || chord->GetBeginTick() < *next))
+      next = chord->GetBeginTick();
+  const auto &events = m_follower->Events();
+  const auto tick = next ? next->withRepeats : 0;
+  const auto it =
+      std::lower_bound(events.begin(), events.end(), tick,
+                       [](const ScoreEvent &e, int t) { return e.tick < t; });
+  m_follower->Reset(static_cast<size_t>(it - events.begin()));
+}
+
+void OrchestrionSequencer::SetPlayPitches(bool playPitches)
+{
+  if (playPitches == m_playPitches)
+    return;
+  if (playPitches)
+  {
+    // Let go of what the gestures hold, then follow from where they were.
+    AllNotesOff();
+    m_playPitches = true;
+    ResetFollower();
+    return;
+  }
+  ReleasePlayedPitches();
+  m_playPitches = false;
+  // Back to the gestures, from where the performer was followed at: the
+  // earliest chord sounding there, or the next one.
+  std::optional<Tick> sounding;
+  std::optional<Tick> next;
+  for (const auto *voice : m_allVoices)
+  {
+    if (const auto chord = voice->GetSoundingChord())
+      if (!sounding || chord->GetBeginTick() < *sounding)
+        sounding = chord->GetBeginTick();
+    if (const auto chord = voice->GetFutureChord();
+        chord && (!next || chord->GetBeginTick() < *next))
+      next = chord->GetBeginTick();
+  }
+  const auto from = sounding ? sounding : next;
+  GoToTick(from ? from->withoutRepeats : 0, JumpReason::Step);
+}
+
+void OrchestrionSequencer::ReleasePlayedPitches()
+{
+  NoteEvents events;
+  for (const auto &[pitch, track] : m_playedPitches)
+    events.emplace_back(NoteEventType::noteOff, track, pitch, 0.f);
+  m_playedPitches.clear();
+  if (!events.empty())
+    PostNoteEvents(std::move(events), /*strum=*/false);
+}
+
 void OrchestrionSequencer::AllNotesOff()
 {
+  ReleasePlayedPitches();
   // Release through the regular input-event path, so that voice cursors,
   // chord-transition subscribers (score highlighting) and the take recording
   // all see an ordinary key release.
@@ -555,6 +682,8 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
   }
   PostPedalEvent(PedalEvent{m_instrument, false});
   m_autoPlayTick = tick;
+  // A click, a rewind, ...: the performer is to be followed from there.
+  ResetFollower();
 }
 
 void OrchestrionSequencer::GoToPrevNoteonTick()

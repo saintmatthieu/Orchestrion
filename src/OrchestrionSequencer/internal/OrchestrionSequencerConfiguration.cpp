@@ -58,6 +58,7 @@ const muse::Settings::Key
 const muse::Settings::Key PEDAL_INDICATOR_VISIBLE(module_name,
                                                   "PEDAL_INDICATOR_VISIBLE");
 const muse::Settings::Key ORNAMENT_MODE(module_name, "ORNAMENT_MODE");
+const muse::Settings::Key PLAY_PITCHES(module_name, "PLAY_PITCHES");
 } // namespace
 
 void OrchestrionSequencerConfiguration::init()
@@ -177,6 +178,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(ORNAMENT_MODE)
       .onReceive(this,
                  [this](const muse::Val &) { m_ornamentModeChanged.notify(); });
+
+  muse::settings()->setDefaultValue(PLAY_PITCHES, muse::Val{false});
+  muse::settings()
+      ->valueChanged(PLAY_PITCHES)
+      .onReceive(this,
+                 [this](const muse::Val &) { m_playPitchesChanged.notify(); });
 }
 
 bool OrchestrionSequencerConfiguration::velocityRecordingEnabled() const
@@ -482,4 +489,19 @@ OrchestrionSequencerConfiguration::ornamentModeChanged() const
   return m_ornamentModeChanged;
 }
 
+bool OrchestrionSequencerConfiguration::playPitches() const
+{
+  return muse::settings()->value(PLAY_PITCHES).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setPlayPitches(bool enabled)
+{
+  muse::settings()->setSharedValue(PLAY_PITCHES, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::playPitchesChanged() const
+{
+  return m_playPitchesChanged;
+}
 } // namespace dgk

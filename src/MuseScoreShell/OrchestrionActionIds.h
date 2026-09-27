@@ -96,6 +96,12 @@ static constexpr const char *ornamentsDisabled =
 static constexpr const char *ornamentsManual = "orchestrion-ornaments-manual";
 static constexpr const char *ornamentsAutomatic =
     "orchestrion-ornaments-automatic";
+/**
+ * Play mode menu: whether the performer plays the score's pitches (see
+ * IOrchestrionSequencerConfiguration::playPitches).
+ */
+static constexpr const char *togglePlayPitches =
+    "orchestrion-play-mode-toggle-pitches";
 //! Effects menu: the master effect chain (see
 //! IEffectChain). All three take the effect's id as argument.
 static constexpr const char *addEffect = "orchestrion-effects-add";

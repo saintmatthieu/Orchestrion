@@ -106,6 +106,10 @@ private:
   void setOrnamentMode(OrnamentMode) override;
   muse::async::Notification ornamentModeChanged() const override;
 
+  bool playPitches() const override;
+  void setPlayPitches(bool) override;
+  muse::async::Notification playPitchesChanged() const override;
+
   muse::async::Notification m_velocityRecordingEnabledChanged;
   muse::async::Notification m_noteInfoTooltipEnabledChanged;
   muse::async::Notification m_tempoVisualizationEnabledChanged;
@@ -123,5 +127,6 @@ private:
   muse::async::Notification m_midiKeyboardIconVisibleChanged;
   muse::async::Notification m_pedalIndicatorVisibleChanged;
   muse::async::Notification m_ornamentModeChanged;
+  muse::async::Notification m_playPitchesChanged;
 };
 } // namespace dgk

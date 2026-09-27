@@ -147,6 +147,12 @@ void OrchestrionActionController::init()
   dispatcher()->reg(
       this, actionIds::ornamentsAutomatic,
       [this] { sequencerConfig()->setOrnamentMode(OrnamentMode::automatic); });
+  dispatcher()->reg(this, actionIds::togglePlayPitches,
+                    [this]
+                    {
+                      sequencerConfig()->setPlayPitches(
+                          !sequencerConfig()->playPitches());
+                    });
 
   // The master effect chain (the Effects menu); the argument is the
   // effect's id.

@@ -24,6 +24,7 @@
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/OrnamentSchedule.h"
+#include "internal/PerformanceFollower.h"
 #include "internal/VoiceSequencer.h"
 
 #include <actions/actionable.h>
@@ -60,11 +61,19 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
+  /**
+   * `followedEvents` are what the play-pitches mode follows the performer
+   * along (see GetScoreEvents), at first at `nominalTicksPerMs`.
+   */
   OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
-                       HandVoices leftHand, PedalSequence);
+                       HandVoices leftHand, PedalSequence,
+                       std::vector<ScoreEvent> followedEvents,
+                       double nominalTicksPerMs);
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch,
+                    std::optional<float> velocity) override;
+  void OnPitchInput(NoteEventType, int pitch,
                     std::optional<float> velocity) override;
   void AllNotesOff() override;
 
@@ -133,6 +142,18 @@ private:
   void SendTransitions(std::map<TrackIndex, ChordTransition>,
                        std::optional<float> velocity = std::nullopt,
                        bool isLeftHand = false);
+  /**
+   * Makes the transitions the current ones and tells the subscribers, with
+   * nothing sounded.
+   */
+  void PublishTransitions(const std::map<TrackIndex, ChordTransition> &);
+  /** Moves the voices, silently, to where the performer is followed at. */
+  void FollowTo(int tickWithRepeats);
+  /** Has the follower expect the next note where the voices are. */
+  void ResetFollower();
+  void SetPlayPitches(bool);
+  /** Releases the keys the performer holds in the play-pitches mode. */
+  void ReleasePlayedPitches();
   std::map<TrackIndex, ChordTransition> PrepareStaffTransitions(
       const HandVoices &,
       std::function<std::optional<ChordTransition>(VoiceSequencer &)>);
@@ -291,6 +312,14 @@ private:
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
   int m_autoPlayTick = 0;
+
+  const std::unique_ptr<PerformanceFollower> m_follower;
+  //! Whether the performer plays the pitches (see OnPitchInput).
+  bool m_playPitches = false;
+  //! The keys held in the play-pitches mode, and the track each sounds on.
+  std::map<int /*pitch*/, TrackIndex> m_playedPitches;
+  //! The follower's event the voices were last moved to.
+  std::optional<size_t> m_shownEvent;
 
   bool m_velocityRecordingEnabled = false;
   //! Whether the score's ornaments are played by the app (the automatic

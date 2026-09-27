@@ -97,6 +97,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::ornamentsAutomatic, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::togglePlayPitches, mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::addEffect, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::removeEffect, mu::context::UiCtxAny,

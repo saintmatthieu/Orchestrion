@@ -79,7 +79,8 @@ void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
 {
   QList<muse::uicomponents::MenuItem *> menus{
       makeFileMenu(velocityRecordingEnabled), makeViewMenu(),
-      makeAudioMidiMenu(), makeEffectsMenu(), makeOrnamentsMenu()};
+      makeAudioMidiMenu(), makeEffectsMenu(), makeOrnamentsMenu(),
+      makePlayModeMenu()};
   if (sequencerConfiguration()->gradingExposed())
     menus << makeGradingMenu();
   if (sequencerConfiguration()->autoPlayExposed())
@@ -116,6 +117,10 @@ void OrchestrionMenuModel::load()
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
   sequencerConfiguration()->ornamentModeChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
+  sequencerConfiguration()->playPitchesChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -730,6 +735,21 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeOrnamentsMenu()
               muse::TranslatableString("appshell/menu/ornaments", "&Automatic"),
               OrnamentMode::automatic)},
       "menu-orchestrion-ornaments");
+}
+
+muse::uicomponents::MenuItem *OrchestrionMenuModel::makePlayModeMenu()
+{
+  using namespace muse::uicomponents;
+
+  MenuItem *const pitchesItem = makeMenuItem(
+      actionIds::togglePlayPitches,
+      muse::TranslatableString("appshell/menu/playmode", "Play &pitches"));
+  pitchesItem->setCheckable(true);
+  pitchesItem->setChecked(sequencerConfiguration()->playPitches());
+
+  return makeMenu(
+      muse::TranslatableString("appshell/menu/playmode", "&Play mode"),
+      QList<MenuItem *>{pitchesItem}, "menu-orchestrion-play-mode");
 }
 
 #ifdef MUSE_APP_UNSTABLE
