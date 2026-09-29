@@ -69,4 +69,10 @@ muse::async::Channel<int> ComputerKeyboardGestureController::noteOff() const
 {
   return m_noteOff;
 }
+
+muse::async::Channel<bool>
+ComputerKeyboardGestureController::sustainPedal() const
+{
+  return m_sustainPedal;
+}
 } // namespace dgk

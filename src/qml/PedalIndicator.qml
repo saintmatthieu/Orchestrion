@@ -29,7 +29,8 @@ import Orchestrion.OrchestrionShell 1.0
 // sustain pedal: it slides down its slot while the sequencer holds the
 // pedal down and back up when it lifts. The position alone tells the state,
 // so nothing is dimmed. An indicator only: the pedalling follows the score's
-// markings, so there is nothing to click. The View menu can hide it.
+// markings, or the sustain pedal plugged into the MIDI keyboard once that has
+// been pressed, so there is nothing to click. The View menu can hide it.
 Item {
     id: root
 

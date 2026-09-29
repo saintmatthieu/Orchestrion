@@ -66,6 +66,8 @@ public:
 
   void OnInputEvent(NoteEventType, int pitch,
                     std::optional<float> velocity) override;
+  void OnSustainPedal(bool down) override;
+  void SetFootPedalling(bool) override;
   void AllNotesOff() override;
 
   const std::map<TrackIndex, ChordTransition> &
@@ -167,10 +169,17 @@ private:
    */
   void UpdatePedal();
   /**
-   * Queues the pedal event for the pedal thread. A press waits until the pedal
-   * has been up for the dampers to act, and a lift supersedes a pending press.
+   * Queues the pedal event for the pedal thread. A lift supersedes a pending
+   * press. A press of the score's pedalling waits until the pedal has been up
+   * for the dampers to act; the foot's is sent right away, the player's
+   * timing being theirs.
    */
-  void PostPedalEvent(PedalEvent event);
+  void PostPedalEvent(PedalEvent event, bool byFoot = false);
+  /**
+   * Lifts the pedal, cutting what it sustains — then, if the foot is holding
+   * it down, puts it back down for what is struck next.
+   */
+  void CutPedal();
   /**
    * Sends the events, several simultaneous strikes slightly spread and
    * shaded like a human's unless `strum` is false.
@@ -273,6 +282,12 @@ private:
       std::chrono::steady_clock::now();
 
   bool m_pedalDown = false;
+  /**
+   * Whether the pedal follows the foot (see SetFootPedalling), and where the
+   * foot has it.
+   */
+  bool m_footPedalling = false;
+  bool m_footDown = false;
   //! When the pedal was last lifted.
   std::chrono::steady_clock::time_point m_pedalLiftTime{};
   //! Counts the input events, to tell the notes struck since the pedal was

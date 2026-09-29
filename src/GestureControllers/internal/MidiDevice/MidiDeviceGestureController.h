@@ -25,6 +25,7 @@
 #include "modularity/ioc.h"
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -42,10 +43,18 @@ private:
   void onMidiEventReceived(const muse::midi::Event &event);
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
+  muse::async::Channel<bool> sustainPedal() const override;
 
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
+  muse::async::Channel<bool> m_sustainPedal;
+  /**
+   * Where the sustain pedal is, empty until it has first gone down: a
+   * keyboard may send "pedal up" on its own (a controller reset), which must
+   * not pass for a pedal being there.
+   */
+  std::optional<bool> m_sustainDown;
 };
 
 } // namespace dgk

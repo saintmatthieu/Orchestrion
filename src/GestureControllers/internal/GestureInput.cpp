@@ -35,6 +35,8 @@ void GestureInput::init()
         { m_noteOn.send(pitch, std::move(velocity)); });
     controller->noteOff().onReceive(this, [this](int pitch)
                                     { m_noteOff.send(pitch); });
+    controller->sustainPedal().onReceive(this, [this](bool down)
+                                         { m_sustainPedal.send(down); });
   }
 }
 
@@ -44,4 +46,9 @@ muse::async::Channel<int, std::optional<float>> GestureInput::noteOn() const
 }
 
 muse::async::Channel<int> GestureInput::noteOff() const { return m_noteOff; }
+
+muse::async::Channel<bool> GestureInput::sustainPedal() const
+{
+  return m_sustainPedal;
+}
 } // namespace dgk

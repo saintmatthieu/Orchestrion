@@ -37,6 +37,8 @@ float compressVelocity(float velocity)
   constexpr auto minVelocity = 0.2f;
   return minVelocity + (1 - minVelocity) * velocity;
 }
+
+constexpr auto sustainPedalController = 64;
 } // namespace
 
 void MidiDeviceGestureController::onMidiEventReceived(
@@ -57,6 +59,17 @@ void MidiDeviceGestureController::onMidiEventReceived(
   }
   else if (event.opcode() == muse::midi::Event::Opcode::NoteOff)
     m_noteOff.send(event.note());
+  else if (event.opcode() == muse::midi::Event::Opcode::ControlChange &&
+           event.index() == sustainPedalController)
+  {
+    // A continuous (half-pedalling) pedal sends every value along its travel:
+    // only its crossing of the half-way mark is a change.
+    const bool down = event.data7() >= 64;
+    if (m_sustainDown == down || (!m_sustainDown && !down))
+      return;
+    m_sustainDown = down;
+    m_sustainPedal.send(down);
+  }
 }
 
 muse::async::Channel<int, std::optional<float>>
@@ -68,5 +81,10 @@ MidiDeviceGestureController::noteOn() const
 muse::async::Channel<int> MidiDeviceGestureController::noteOff() const
 {
   return m_noteOff;
+}
+
+muse::async::Channel<bool> MidiDeviceGestureController::sustainPedal() const
+{
+  return m_sustainPedal;
 }
 } // namespace dgk

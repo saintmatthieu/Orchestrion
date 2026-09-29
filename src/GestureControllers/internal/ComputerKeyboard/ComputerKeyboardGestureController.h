@@ -42,6 +42,7 @@ private:
 
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
+  muse::async::Channel<bool> sustainPedal() const override;
 
   dgk::Inject<IComputerKeyboard> keyboard{this};
 
@@ -53,6 +54,8 @@ private:
 
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
+  /** Never sent: the computer keyboard has no pedal. */
+  muse::async::Channel<bool> m_sustainPedal;
 };
 
 } // namespace dgk

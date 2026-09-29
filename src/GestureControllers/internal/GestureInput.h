@@ -36,10 +36,12 @@ public:
 
   muse::async::Channel<int, std::optional<float>> noteOn() const override;
   muse::async::Channel<int> noteOff() const override;
+  muse::async::Channel<bool> sustainPedal() const override;
 
 private:
   std::vector<std::unique_ptr<IGestureController>> m_controllers;
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
+  muse::async::Channel<bool> m_sustainPedal;
 };
 } // namespace dgk

@@ -29,7 +29,14 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-//! Feeds the gesture controllers' note events to the sequencer.
+/**
+ * Feeds the gesture controllers' note events to the sequencer, and their
+ * sustain pedal. There is no telling whether a pedal is plugged into the MIDI
+ * keyboard until it is used: the sequencer follows the score's pedal markings
+ * until then, and the foot from the first press on, for the rest of the
+ * session — except while the automatic player plays, the foot having no part
+ * in that.
+ */
 class GestureInputConnector : public dgk::Injectable,
                               public muse::async::Asyncable
 {
@@ -42,5 +49,13 @@ public:
 private:
   void onNoteOn(int pitch, std::optional<float> velocity);
   void onNoteOff(int pitch);
+  void onSustainPedal(bool down);
+  void onSequencerChanged();
+  /** Tells the sequencer whether the foot pedals, if that changed. */
+  void updateFootPedalling();
+
+  /** Where the foot has the pedal; empty until a pedal has been used. */
+  std::optional<bool> m_sustainDown;
+  bool m_footPedalling = false;
 };
 } // namespace dgk

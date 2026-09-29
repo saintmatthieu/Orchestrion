@@ -375,6 +375,10 @@ void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                .enabled;
   OnInputEventRecursive(type, pitch, std::move(velocity), loopEnabled);
 
+  if (m_footPedalling)
+    // The foot decides when the pedal lifts.
+    return;
+
   // Make sure to release the pedal once this part is over: nothing sounding
   // and nothing left to play in any voice. Idle hands alone must not lift it,
   // or a staccato bass would never ring through its beat.
@@ -399,6 +403,29 @@ void OrchestrionSequencer::AllNotesOff()
       OnInputEvent(NoteEventType::noteOff, *hand->pressedKey, std::nullopt);
   // Note-offs alone don't silence a piano while the sustain pedal is down.
   if (m_pedalDown)
+    CutPedal();
+}
+
+void OrchestrionSequencer::OnSustainPedal(bool down)
+{
+  m_footDown = down;
+  if (m_footPedalling && down != m_pedalDown)
+    PostPedalEvent(PedalEvent{m_instrument, down}, true);
+}
+
+void OrchestrionSequencer::SetFootPedalling(bool on)
+{
+  if (on == m_footPedalling)
+    return;
+  m_footPedalling = on;
+  if (on)
+  {
+    // The pedal goes where the foot has it.
+    if (m_footDown != m_pedalDown)
+      PostPedalEvent(PedalEvent{m_instrument, m_footDown}, true);
+  }
+  else if (m_pedalDown)
+    // The score's pedalling picks up from the next gesture.
     PostPedalEvent(PedalEvent{m_instrument, false});
 }
 
@@ -490,6 +517,8 @@ const IChord *GetHeldChord(const OrchestrionSequencer::HandVoices &voices)
 
 void OrchestrionSequencer::UpdatePedal()
 {
+  if (m_footPedalling)
+    return;
   // The spans, as [first, last) indices, within which every hand that is down
   // stands — a hand standing within a span when the chord it holds overlaps
   // it. A hand holding a note across a pedal change stands within both spans;
@@ -553,7 +582,7 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
                                   { return voice.GoToTick(tick); }));
     SendTransitions(std::move(transitions));
   }
-  PostPedalEvent(PedalEvent{m_instrument, false});
+  CutPedal();
   m_autoPlayTick = tick;
 }
 
@@ -710,7 +739,14 @@ OrchestrionSequencer::GetCurrentTransitions() const
   return m_transitions.val;
 }
 
-void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
+void OrchestrionSequencer::CutPedal()
+{
+  PostPedalEvent(PedalEvent{m_instrument, false});
+  if (m_footPedalling && m_footDown)
+    PostPedalEvent(PedalEvent{m_instrument, true}, true);
+}
+
+void OrchestrionSequencer::PostPedalEvent(PedalEvent event, bool byFoot)
 {
   using namespace std::chrono;
   using namespace std::chrono_literals;
@@ -746,7 +782,8 @@ void OrchestrionSequencer::PostPedalEvent(PedalEvent event)
         lift();
       const auto pressTime = m_pedalLiftTime + minUpTime;
       m.queue.emplace_back(QueueEntry<EventVariant>{
-          pressTime > now ? std::make_optional(pressTime) : std::nullopt,
+          !byFoot && pressTime > now ? std::make_optional(pressTime)
+                                     : std::nullopt,
           std::move(event)});
     }
   }

@@ -27,7 +27,8 @@ namespace dgk
 //! The note events of every gesture controller, merged into one stream: the
 //! computer keyboard, always, and the MIDI device chosen in the Audio/MIDI
 //! menu, whenever one is connected. There is nothing to select — whatever can
-//! produce notes does.
+//! produce notes does. The same goes for the sustain pedal plugged into the
+//! MIDI keyboard, if any.
 class IGestureInput : public IGestureController, MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IGestureInput);

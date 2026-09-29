@@ -29,6 +29,46 @@ void GestureInputConnector::init()
       { onNoteOn(pitch, std::move(velocity)); });
   gestureInput()->noteOff().onReceive(this,
                                       [this](int pitch) { onNoteOff(pitch); });
+  gestureInput()->sustainPedal().onReceive(this, [this](bool down)
+                                           { onSustainPedal(down); });
+  orchestrion()->sequencerChanged().onNotify(this,
+                                             [this] { onSequencerChanged(); });
+}
+
+void GestureInputConnector::onSequencerChanged()
+{
+  // The player comes and goes with the sequencer.
+  orchestrion()->player()->PlayingChanged().onNotify(
+      this, [this] { updateFootPedalling(); },
+      muse::async::Asyncable::Mode::SetReplace);
+  m_footPedalling = false;
+  const auto sequencer = orchestrion()->sequencer();
+  if (sequencer && m_sustainDown)
+    sequencer->OnSustainPedal(*m_sustainDown);
+  updateFootPedalling();
+}
+
+void GestureInputConnector::onSustainPedal(bool down)
+{
+  m_sustainDown = down;
+  if (const auto sequencer = orchestrion()->sequencer())
+    sequencer->OnSustainPedal(down);
+  updateFootPedalling();
+}
+
+void GestureInputConnector::updateFootPedalling()
+{
+  const auto sequencer = orchestrion()->sequencer();
+  const bool footPedalling = sequencer && m_sustainDown.has_value() &&
+                             !orchestrion()->player()->IsPlaying();
+  if (footPedalling == m_footPedalling)
+    return;
+  m_footPedalling = footPedalling;
+  if (!sequencer)
+    return;
+  if (footPedalling)
+    LOGI() << "Following the sustain pedal rather than the score's pedalling";
+  sequencer->SetFootPedalling(footPedalling);
 }
 
 void GestureInputConnector::onNoteOn(int pitch, std::optional<float> velocity)

@@ -30,5 +30,6 @@ public:
 
   virtual muse::async::Channel<int, std::optional<float>> noteOn() const = 0;
   virtual muse::async::Channel<int> noteOff() const = 0;
+  virtual muse::async::Channel<bool> sustainPedal() const = 0;
 };
 } // namespace dgk

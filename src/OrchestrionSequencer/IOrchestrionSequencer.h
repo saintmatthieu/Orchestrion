@@ -84,6 +84,14 @@ public:
   virtual void OnInputEvent(NoteEventType, int pitch,
                             std::optional<float> velocity) = 0;
 
+  virtual void OnSustainPedal(bool down) = 0;
+  /**
+   * Whether the pedal follows the player's foot rather than the score's pedal
+   * markings — which it does by default, for there is no telling whether a
+   * pedal is plugged in until it is used.
+   */
+  virtual void SetFootPedalling(bool) = 0;
+
   /**
    * Releases whatever is sounding — the hands' held keys and the sustain
    * pedal — as if the player had lifted hands and foot. Called when playback
