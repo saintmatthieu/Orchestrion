@@ -36,6 +36,13 @@ public:
                                               const dgk::Tick &cursorTick);
   std::optional<ChordTransition> GoToTick(int tick);
 
+  /**
+   * Moves on, without a gesture, to before the first chord from the next one
+   * on that begins at or after `tick` (with repeats). Nothing if the next one
+   * does already.
+   */
+  std::optional<ChordTransition> SkipTo(int tick);
+
   dgk::Tick GetFinalTick() const;
 
   /**

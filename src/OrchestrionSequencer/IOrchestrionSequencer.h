@@ -133,6 +133,12 @@ public:
   virtual muse::async::Channel<int /*tick*/, JumpReason>
   AboutToJumpPosition() const = 0;
   virtual void GoToTick(int tick, JumpReason reason) = 0;
+  /**
+   * Moves the hand on, silently, to the first of its chords at or after the
+   * tick (with repeats), letting go of what it holds: what a Follow staff
+   * leaves out while there is no tempo to follow.
+   */
+  virtual void SkipHandTo(bool isLeftHand, int tickWithRepeats) = 0;
   virtual void GoToPrevNoteonTick() = 0;
   virtual void GoToNextNoteonTick() = 0;
 

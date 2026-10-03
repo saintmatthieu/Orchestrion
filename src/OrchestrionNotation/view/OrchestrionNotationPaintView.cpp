@@ -729,7 +729,29 @@ void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
           performedTicks ? std::max(*performedTicks, *tick) : *tick;
   }
   if (!performedTicks)
+  {
+    m_followAwaitsTempo = true;
     return;
+  }
+  if (m_followAwaitsTempo)
+  {
+    // The tempo is known from now on — at first, or again after a pause:
+    // the Follow staves join from where the performer is, leaving out what
+    // they had due before, rather than rattling it off to catch up.
+    m_followAwaitsTempo = false;
+    const auto sequencer = orchestrion()->sequencer();
+    const auto from = *performedTicks;
+    std::vector<int> late;
+    for (const auto &[staff, targets] : m_autoStaffTargets)
+      if (targets.onTick && *targets.onTick < from)
+        late.push_back(staff);
+    // Not while iterating: the skip's transitions rebuild the targets.
+    for (const int staff : late)
+      if (sequencer)
+        sequencer->SkipHandTo(staff > 0, static_cast<int>(std::ceil(from)));
+    if (!late.empty())
+      return;
+  }
 
   const auto fire = [this](int staff, bool noteOn)
   {

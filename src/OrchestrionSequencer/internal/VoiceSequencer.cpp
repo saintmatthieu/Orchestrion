@@ -183,6 +183,32 @@ std::optional<ChordTransition> VoiceSequencer::GoToTick(int tick)
     return std::nullopt;
 }
 
+std::optional<ChordTransition> VoiceSequencer::SkipTo(int tick)
+{
+  const IChord *const before = GetFutureChord();
+  if (!before || before->GetBeginTick().withRepeats >= tick)
+    return std::nullopt;
+  const IChord *const past = m_onImplicitRest || m_index >= m_numGestures
+                                 ? nullptr
+                                 : m_gestures[m_index]->AsChord();
+  m_onImplicitRest = true;
+  const auto reached = [&](int i)
+  {
+    return m_gestures[i]->AsChord() &&
+           m_gestures[i]->GetBeginTick().withRepeats >= tick;
+  };
+  while (m_index < m_numGestures && !reached(m_index))
+    ++m_index;
+  const IChord *const future = GetFutureChord();
+  if (past && future)
+    return PastChordAndFutureChord{past, future};
+  if (past)
+    return PastChord{past};
+  if (future)
+    return FutureChord{future};
+  return std::nullopt;
+}
+
 std::optional<dgk::Tick>
 VoiceSequencer::GetNextMatchingTick(NoteEventType event) const
 {

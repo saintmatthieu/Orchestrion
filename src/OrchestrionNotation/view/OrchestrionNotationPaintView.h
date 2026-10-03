@@ -533,6 +533,10 @@ private:
   };
   std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
   std::map<int /*staff*/, AutoTargets> m_autoStaffTargets;
+  // There was no estimate of the performed staves to follow last time the
+  // targets were polled: the Follow staves have yet to join (see
+  // fireDueAutoEvents).
+  bool m_followAwaitsTempo = true;
   // Polls those targets against the manual hands' estimate. A driver of its
   // own, not the frame hook: between page turns nothing is animating, so no
   // frames are rendered — and the Follow staves must play on regardless.

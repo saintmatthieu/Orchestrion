@@ -85,6 +85,7 @@ public:
   muse::async::Channel<EventVariant> OutputEvent() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
+  void SkipHandTo(bool isLeftHand, int tickWithRepeats) override;
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;

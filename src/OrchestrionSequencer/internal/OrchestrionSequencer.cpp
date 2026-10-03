@@ -649,6 +649,22 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
   m_autoPlayTick = tick;
 }
 
+void OrchestrionSequencer::SkipHandTo(bool isLeftHand, int tickWithRepeats)
+{
+  if (Mode(isLeftHand) == StaffMode::mute)
+    return;
+  auto &hand = isLeftHand ? m_leftHand : m_rightHand;
+  if (hand.pressedKey)
+    OnGesture(NoteEventType::noteOff, isLeftHand, *hand.pressedKey,
+              std::nullopt);
+  // What the hand played so far tells nothing of the tempo it plays on at.
+  hand.tempo.reset();
+  SendTransitions(PrepareStaffTransitions(
+                      hand.voices, [&](VoiceSequencer &voice)
+                      { return voice.SkipTo(tickWithRepeats); }),
+                  std::nullopt, isLeftHand);
+}
+
 std::vector<const VoiceSequencer *> OrchestrionSequencer::PlayingVoices() const
 {
   std::vector<const VoiceSequencer *> voices;
