@@ -72,6 +72,7 @@ enum class JumpReason
   LoopWrap, // the loop's end was reached: back to its start
   ScoreEnd, // the last event was played: back to the start
   Replay,   // the replay rewinds to the take's start
+  Realign,  // the staves changed modes: back where the playing ones were
 };
 
 class IOrchestrionSequencer
@@ -79,8 +80,13 @@ class IOrchestrionSequencer
 public:
   virtual ~IOrchestrionSequencer() = default;
 
-  //! If a note-on comes from a controller that doesn't carry velocity, such as
-  //! a computer keyboard, set velocity to std::nullopt.
+  /**
+   * A key the performer played. It goes to the staff it is for, going by the
+   * staff modes (see IStaffModes): the Rhythm staff if there is one, split
+   * at middle C between the two if both are, nowhere if none is. If a
+   * note-on comes from a controller that doesn't carry velocity, such as a
+   * computer keyboard, set velocity to std::nullopt.
+   */
   virtual void OnInputEvent(NoteEventType, int pitch,
                             std::optional<float> velocity) = 0;
 
@@ -91,6 +97,13 @@ public:
    * pedal is plugged in until it is used.
    */
   virtual void SetFootPedalling(bool) = 0;
+
+  /**
+   * A gesture the machine makes on a hand's staff — the automatic player's,
+   * the Follow mode's — whatever the staff's mode, but for a Mute one.
+   */
+  virtual void OnHandInputEvent(NoteEventType, bool isLeftHand,
+                                std::optional<float> velocity) = 0;
 
   /**
    * Releases whatever is sounding — the hands' held keys and the sustain

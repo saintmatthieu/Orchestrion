@@ -21,6 +21,7 @@
 #include "internal/GestureInputConnector.h"
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
+#include "internal/StaffModes.h"
 #include "view/NumberKeysHelpModel.h"
 
 #include <QQmlEngine>
@@ -31,7 +32,8 @@ OrchestrionModule::OrchestrionModule()
     : m_orchestrion(std::make_shared<Orchestrion>()),
       m_gestureInputConnector(std::make_shared<GestureInputConnector>()),
       m_sequencerConfiguration(
-          std::make_shared<OrchestrionSequencerConfiguration>())
+          std::make_shared<OrchestrionSequencerConfiguration>()),
+      m_staffModes(std::make_shared<StaffModes>())
 {
 }
 
@@ -42,6 +44,7 @@ void OrchestrionModule::registerExports()
   globalIoc()->registerExport<IOrchestrion>(moduleName(), m_orchestrion);
   globalIoc()->registerExport<IOrchestrionSequencerConfiguration>(
       moduleName(), m_sequencerConfiguration);
+  globalIoc()->registerExport<IStaffModes>(moduleName(), m_staffModes);
 }
 
 void OrchestrionModule::registerUiTypes()
@@ -65,5 +68,6 @@ void OrchestrionModule::onContextInit(
   m_orchestrion->init();
   m_gestureInputConnector->init();
   m_sequencerConfiguration->init();
+  m_staffModes->init();
 }
 } // namespace dgk

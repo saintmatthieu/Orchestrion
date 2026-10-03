@@ -28,8 +28,6 @@ set(MODULE_SRC
   view/OrchestrionTheme.h
   view/ScoreHeadingModel.cpp
   view/ScoreHeadingModel.h
-  view/AutoPlayModel.cpp
-  view/AutoPlayModel.h
   view/GradingModel.cpp
   view/GradingModel.h
   view/MidiKeyboardIconModel.cpp

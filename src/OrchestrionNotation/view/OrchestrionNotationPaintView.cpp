@@ -18,6 +18,32 @@
  */
 #include "OrchestrionNotationPaintView.h"
 #include "OrchestrionCommon/OrchestrionPalette.h"
+#include "OrchestrionSequencer/IChord.h"
+#include "OrchestrionSequencer/IOrchestrionSequencer.h"
+#include "OrchestrionSequencer/IRest.h"
+#include <QApplication>
+#include <QImage>
+#include <QLinearGradient>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
+#include <QQuickWindow>
+#include <QTimer>
+#include <QVariantMap>
+#include <QWheelEvent>
+#include <algorithm>
+#include <engraving/dom/bracket.h>
+#include <engraving/dom/chord.h>
+#include <engraving/dom/instrumentname.h>
+#include <engraving/dom/masterscore.h>
+#include <engraving/dom/measure.h>
+#include <engraving/dom/note.h>
+#include <engraving/dom/repeatlist.h>
+#include <engraving/dom/segment.h>
+#include <engraving/dom/staff.h>
+#include <engraving/dom/system.h>
+#include <engraving/dom/tie.h>
+#include <engraving/types/constants.h>
 #include <notation/imasternotation.h>
 #include <notation/inotation.h>
 #include <notation/inotationelements.h>
@@ -26,30 +52,7 @@
 #include <notation/inotationpainting.h>
 #include <notation/inotationplayback.h>
 #include <notation/inotationviewstate.h>
-#include "OrchestrionSequencer/IChord.h"
-#include "OrchestrionSequencer/IOrchestrionSequencer.h"
-#include "OrchestrionSequencer/IRest.h"
-#include <QApplication>
-#include <QImage>
-#include <QLinearGradient>
-#include <QPainterPath>
-#include <QMouseEvent>
-#include <QPainter>
-#include <QQuickWindow>
-#include <QTimer>
-#include <QVariantMap>
-#include <QWheelEvent>
-#include <algorithm>
-#include <engraving/dom/chord.h>
-#include <engraving/dom/masterscore.h>
-#include <engraving/dom/measure.h>
-#include <engraving/dom/note.h>
-#include <engraving/dom/repeatlist.h>
-#include <engraving/dom/segment.h>
-#include <engraving/dom/system.h>
-#include <engraving/dom/tie.h>
-#include <engraving/types/constants.h>
-#include <notation/imasternotation.h>
+#include <translation.h>
 
 #include <cmath>
 #include <cstring>
@@ -65,11 +68,14 @@ namespace
 // same reasoning as the timing judgments' window).
 constexpr std::size_t dynamicsMinKnots = 4;
 
-// The sequencer routes input events to hands by pitch (< 60 = left hand, see
-// OrchestrionSequencer::OnInputEventRecursive) — the same sentinels the
-// automatic player uses.
-constexpr int rightHandPitch = 60;
-constexpr int leftHandPitch = 59;
+// The staff-mode choice (see StaffModeSelector), pencilled on a lead of clear
+// parchment before the score: how wide the lead is, how tall a sketch, and how
+// far before the score its middle is, as fractions of a staff's height —
+// drawn on the score, it zooms with it. The lead has room for the arrows to
+// the sketch's left, and some to spare before the tacks.
+constexpr double staffSelectorLead = 2.3;
+constexpr double staffSelectorSize = 0.8;
+constexpr double staffSelectorInset = 0.8;
 
 // The warp-bake animation: the score morphs from ideal to performed spacing
 // (each step is a full horizontal relayout — cheap in linear view mode).
@@ -137,11 +143,20 @@ constexpr double rollerGrainStrength = 0.55;
 } // namespace
 
 OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
-    : mu::notation::NotationPaintView(parent),
-      m_fader([this] { m_stripsDirty = true; update(); }),
-      m_timingOverlay([this] { m_stripsDirty = true; update(); }), m_follower(*this),
-      m_kineticScroller([this](qreal physicalDx)
-                        { return moveCanvasBy(physicalDx); })
+    : mu::notation::NotationPaintView(parent), m_fader(
+                                                   [this]
+                                                   {
+                                                     m_stripsDirty = true;
+                                                     update();
+                                                   }),
+      m_timingOverlay(
+          [this]
+          {
+            m_stripsDirty = true;
+            update();
+          }),
+      m_follower(*this), m_kineticScroller([this](qreal physicalDx)
+                                           { return moveCanvasBy(physicalDx); })
 {
   m_clock.start();
   m_autoPlayTimer.setInterval(16); // ~60 Hz
@@ -181,8 +196,8 @@ void OrchestrionNotationPaintView::subscribe(
         update();
       });
 
-  registry.ModifiedChanged().onNotify(this, [this] { update(); },
-                                     muse::async::Asyncable::Mode::SetReplace);
+  registry.ModifiedChanged().onNotify(
+      this, [this] { update(); }, muse::async::Asyncable::Mode::SetReplace);
 
   // The raw controller velocity of each gesture, for the dynamics scoring:
   // the event precedes the transitions batch the gesture causes.
@@ -248,7 +263,11 @@ void OrchestrionNotationPaintView::subscribe(
                                               // already, so the follower stays
                                               // suspended (onMousePressed) and
                                               // the next struck note re-frames.
-                                              if (reason != JumpReason::Click)
+                                              // Likewise for a staff-mode
+                                              // choice, the position staying
+                                              // where it was.
+                                              if (reason != JumpReason::Click &&
+                                                  reason != JumpReason::Realign)
                                                 m_follower.jump();
                                               m_focusUtick.reset();
                                               m_resumeUtick.reset();
@@ -447,10 +466,9 @@ void OrchestrionNotationPaintView::OnTransitions(
   // The machine-played hand is tracked (its onsets feed the estimate and the
   // viz) but never judged, and it is synchronised with the performer by
   // construction: it is not a performance.
-  const int autoStaff = autoPlayedStaff();
   // Orchestrion is played with two hands: staff 0 is the right, staff 1 the
   // left. The estimator declines unless both are warmed up and playing.
-  const auto handSync = autoStaff < 0
+  const auto handSync = isPerformedStaff(0) && isPerformedStaff(1)
                             ? m_estimator.asynchrony(0, 1, nowMs)
                             : std::optional<PositionEstimator::Judgment>{};
 
@@ -471,10 +489,9 @@ void OrchestrionNotationPaintView::OnTransitions(
 
   if (replaying)
   {
-    // The recorded take already contains the auto hand's events: keep the
-    // trigger quiet so they don't fire twice.
-    m_autoOffTick.reset();
-    m_autoOnTick.reset();
+    // The recorded take already contains the Follow staves' events: keep
+    // the trigger quiet so they don't fire twice.
+    m_autoStaffTargets.clear();
   }
   else
     updateAutoTargets(transitions);
@@ -521,7 +538,7 @@ void OrchestrionNotationPaintView::OnTransitions(
     // only judged once the spline has warmed up.
     for (const auto &[staff, tMs] : feedback.onsetTMs)
     {
-      if (staff == autoStaff)
+      if (!isPerformedStaff(staff))
         continue;
       if (const auto it = staffHits.find(staff); it != staffHits.end())
       {
@@ -539,7 +556,7 @@ void OrchestrionNotationPaintView::OnTransitions(
              presentAnchors.at(staff)});
     }
     for (const auto &[staff, window] : feedback.judgments)
-      if (!window.empty() && staff != autoStaff)
+      if (!window.empty() && isPerformedStaff(staff))
         m_timingOverlay.updateJudgments(staff, window);
     if (handSync && sequencerConfiguration()->handSyncScoreEnabled())
       m_timingOverlay.addSyncSample(handSync->tMs, handSync->errorMs);
@@ -631,14 +648,10 @@ OrchestrionNotationPaintView::judgeDynamics(
 void OrchestrionNotationPaintView::updateAutoTargets(
     const std::map<TrackIndex, ChordTransition> &batch)
 {
-  const int autoStaff = autoPlayedStaff();
-  if (autoStaff < 0)
-    return;
-
-  // Refresh the ledger entries this batch brings for the auto staff.
+  // Refresh the ledger entries this batch brings for the Follow staves.
   for (const auto &[track, transition] : batch)
   {
-    if (track.staffIndex() != autoStaff)
+    if (!isFollowStaff(track.staffIndex()))
       continue;
     AutoTargets &targets = m_autoTrackTargets[track.value];
     const IChord *present = GetPresentChord(transition);
@@ -656,23 +669,26 @@ void OrchestrionNotationPaintView::updateAutoTargets(
                : std::nullopt;
   }
 
-  // Aggregate: the auto hand's earliest release and strike across its voices,
-  // in playback-unrolled ticks — the coordinate the manual hands' estimate
-  // lives in.
-  std::optional<double> offTick;
-  std::optional<double> onTick;
+  // Aggregate: each Follow staff's earliest release and strike across its
+  // voices, in playback-unrolled ticks — the coordinate the performed
+  // staves' estimate lives in.
+  m_autoStaffTargets.clear();
   for (const auto &[track, targets] : m_autoTrackTargets)
   {
+    AutoTargets &staff = m_autoStaffTargets[TrackIndex{track}.staffIndex()];
     if (targets.offTick)
-      offTick =
-          offTick ? std::min(*offTick, *targets.offTick) : targets.offTick;
+      staff.offTick = staff.offTick ? std::min(*staff.offTick, *targets.offTick)
+                                    : targets.offTick;
     if (targets.onTick)
-      onTick = onTick ? std::min(*onTick, *targets.onTick) : targets.onTick;
+      staff.onTick = staff.onTick ? std::min(*staff.onTick, *targets.onTick)
+                                  : targets.onTick;
   }
-  m_autoOffTick = offTick;
-  m_autoOnTick = onTick;
   // Poll only while there is something to fire.
-  if (m_autoOffTick || m_autoOnTick)
+  const bool due =
+      std::any_of(m_autoStaffTargets.begin(), m_autoStaffTargets.end(),
+                  [](const auto &entry)
+                  { return entry.second.offTick || entry.second.onTick; });
+  if (due)
   {
     if (!m_autoPlayTimer.isActive())
       m_autoPlayTimer.start();
@@ -681,70 +697,71 @@ void OrchestrionNotationPaintView::updateAutoTargets(
     m_autoPlayTimer.stop();
 }
 
-int OrchestrionNotationPaintView::autoPlayedStaff() const
+bool OrchestrionNotationPaintView::isFollowStaff(int staff) const
 {
-  // While auto-play is not exposed it stays inactive, whatever staff the
-  // setting holds (see IOrchestrionSequencerConfiguration::autoPlayExposed).
-  return sequencerConfiguration()->autoPlayExposed()
-             ? sequencerConfiguration()->autoPlayedStaff()
-             : -1;
+  return staffModes()->mode(staff) == StaffMode::follow;
+}
+
+bool OrchestrionNotationPaintView::isPerformedStaff(int staff) const
+{
+  return staffModes()->mode(staff) == StaffMode::rhythm;
 }
 
 void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
 {
-  // Fire the auto hand's due events once the manual hands' estimated position
-  // reaches them. Each target fires once; the resulting transitions bring the
-  // next ones. When the performer stops, the estimate coasts to a halt and
-  // the auto hand halts with it.
-  const int autoStaff = autoPlayedStaff();
-  if (autoStaff < 0 || (!m_autoOnTick && !m_autoOffTick))
+  // Fire the Follow staves' due events once the performed staves' estimated
+  // position reaches them. Each target fires once; the resulting transitions
+  // bring the next ones. When the performer stops, the estimate coasts to a
+  // halt and the Follow staves halt with it.
+  if (m_autoStaffTargets.empty())
   {
     m_autoPlayTimer.stop();
     return;
   }
 
-  std::optional<double> manualTicks;
+  std::optional<double> performedTicks;
   for (int staff = 0; staff < 2; ++staff)
   {
-    if (staff == autoStaff)
+    if (!isPerformedStaff(staff))
       continue;
     if (const auto tick = m_estimator.tickAt(staff, nowMs))
-      manualTicks = manualTicks ? std::max(*manualTicks, *tick) : *tick;
+      performedTicks =
+          performedTicks ? std::max(*performedTicks, *tick) : *tick;
   }
-  if (!manualTicks)
+  if (!performedTicks)
     return;
 
-  const auto fire = [this, autoStaff](bool noteOn)
+  const auto fire = [this](int staff, bool noteOn)
   {
     // Deferred out of the frame tick: the events it causes re-enter this
     // view with fresh targets.
-    QTimer::singleShot(
-        0, this,
-        [this, noteOn]
-        {
-          const int staff = autoPlayedStaff();
-          const auto sequencer = orchestrion()->sequencer();
-          if (staff < 0 || !sequencer)
-            return;
-          sequencer->OnInputEvent(
-              noteOn ? NoteEventType::noteOn : NoteEventType::noteOff,
-              staff > 0 ? leftHandPitch : rightHandPitch, std::nullopt);
-        });
+    QTimer::singleShot(0, this,
+                       [this, staff, noteOn]
+                       {
+                         const auto sequencer = orchestrion()->sequencer();
+                         if (!isFollowStaff(staff) || !sequencer)
+                           return;
+                         sequencer->OnHandInputEvent(
+                             noteOn ? NoteEventType::noteOn
+                                    : NoteEventType::noteOff,
+                             staff > 0, std::nullopt);
+                       });
   };
 
-  if (m_autoOnTick && *manualTicks >= *m_autoOnTick)
-  {
-    // Advancing releases the previous chord itself: the pending noteOff is
-    // superseded.
-    m_autoOnTick.reset();
-    m_autoOffTick.reset();
-    fire(true);
-  }
-  else if (m_autoOffTick && *manualTicks >= *m_autoOffTick)
-  {
-    m_autoOffTick.reset();
-    fire(false);
-  }
+  for (auto &[staff, targets] : m_autoStaffTargets)
+    if (targets.onTick && *performedTicks >= *targets.onTick)
+    {
+      // Advancing releases the previous chord itself: the pending noteOff
+      // is superseded.
+      targets.onTick.reset();
+      targets.offTick.reset();
+      fire(staff, true);
+    }
+    else if (targets.offTick && *performedTicks >= *targets.offTick)
+    {
+      targets.offTick.reset();
+      fire(staff, false);
+    }
 }
 
 void OrchestrionNotationPaintView::endTake()
@@ -820,7 +837,7 @@ std::vector<ReplayEvent> OrchestrionNotationPaintView::fittedTempoEvents() const
     std::sort(series.begin(), series.end());
 
   // The fitted error at any event time, by linear interpolation between the
-  // hand's onsets (clamped at the take's ends). The auto-played hand has no
+  // hand's onsets (clamped at the take's ends). A Follow staff has no
   // judgments, hence no series: its events replay as recorded.
   const auto errorAt = [&errors](bool isLeft, double ms)
   {
@@ -1165,6 +1182,16 @@ void OrchestrionNotationPaintView::onLoadNotation(
   // We want hover events, which NotationPaintView::onLoadNotation may have set
   // to false.
   setAcceptHoverEvents(true);
+  // ...and which it sets to false again whenever the note-input state of this
+  // notation changes: replace its handler with one restoring them. Per
+  // notation, the base class subscribing to each one it loads.
+  if (const auto interaction = notationInteraction())
+    interaction->noteInput()->stateChanged().onNotify(
+        this,
+        [this] {
+          QTimer::singleShot(0, this, [this] { setAcceptHoverEvents(true); });
+        },
+        Mode::SetReplace);
   updateNotation();
 }
 
@@ -1230,9 +1257,23 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
     case QEvent::HoverMove:
       onMouseMoved(mouseEvent->position());
       break;
+    case QEvent::HoverLeave:
+      hoverStaffSelector(std::nullopt);
+      break;
     default:
       break;
     }
+
+    // A click on the staff-mode choice is the choice's alone, the release
+    // after it included.
+    if (type == QEvent::MouseButtonPress || type == QEvent::MouseMove ||
+        type == QEvent::MouseButtonRelease)
+      if (m_staffSelectorClick)
+      {
+        if (type == QEvent::MouseButtonRelease)
+          m_staffSelectorClick = false;
+        return true;
+      }
 
     // A loop-flag drag owns the mouse: swallow its events so the base view
     // doesn't also pan the canvas or interact with the score.
@@ -1248,6 +1289,29 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 void OrchestrionNotationPaintView::onMousePressed(
     const QPointF &pos, Qt::KeyboardModifiers modifiers, Qt::MouseButton button)
 {
+  if (button == Qt::LeftButton && modifiers == Qt::NoModifier)
+  {
+    const muse::PointF logical = toLogical(pos);
+    const auto layout = staffSelectorLayout();
+    if (const auto hit =
+            m_staffSelector.hitAt(layout, QPointF{logical.x(), logical.y()}))
+    {
+      // A click on the sketch itself is just kept from the score.
+      m_staffSelectorClick = true;
+      if (hit->part != StaffModeSelector::Part::sketch)
+      {
+        // The page stays where the choice was made, until the next note.
+        m_kineticScroller.stop();
+        m_follower.suspend();
+        staffModes()->setMode(
+            hit->staff,
+            StaffModeSelector::Step(layout.available, hit->mode, hit->part));
+        hoverStaffSelector(pos);
+      }
+      return;
+    }
+  }
+
   m_kineticScroller.stop(); // a click on the score halts an in-progress glide
   m_follower.suspend();     // ...and hands auto-scroll control back to the user
   m_timingStatsStale = true; // timing stats restart when playing resumes
@@ -1343,8 +1407,69 @@ void OrchestrionNotationPaintView::clearLoop()
   loopBoundariesController()->clearLoop();
 }
 
+bool OrchestrionNotationPaintView::hoverStaffSelector(
+    std::optional<QPointF> pos)
+{
+  std::optional<QPointF> logical;
+  if (pos)
+  {
+    const muse::PointF p = toLogical(*pos);
+    logical = QPointF{p.x(), p.y()};
+  }
+  const auto layout = staffSelectorLayout();
+  if (m_staffSelector.hover(layout, logical))
+  {
+    // It is on the parchment, which the rolls carry too.
+    m_stripsDirty = true;
+    update();
+  }
+  const auto hit =
+      logical ? m_staffSelector.hitAt(layout, *logical) : std::nullopt;
+  if (hit && pos)
+  {
+    m_hoveredNoteInfoPlacement = 0;
+    setHoveredNoteInfo(staffSelectorTooltip(*hit), *pos);
+  }
+  else if (m_staffSelectorTooltip)
+    // Whatever is under the pointer now sets its own, if any.
+    setHoveredNoteInfo({}, pos.value_or(m_hoveredNoteInfoPos));
+  m_staffSelectorTooltip = hit && pos;
+  // Pointing hand on the arrows only: the sketch is not clicked.
+  const bool over = hit && hit->part != StaffModeSelector::Part::sketch;
+  if (over != m_staffSelectorCursor)
+  {
+    if (over)
+      QApplication::setOverrideCursor(Qt::PointingHandCursor);
+    else
+      QApplication::restoreOverrideCursor();
+    m_staffSelectorCursor = over;
+  }
+  return hit.has_value();
+}
+
+QString OrchestrionNotationPaintView::staffSelectorTooltip(
+    const StaffModeSelector::Hit &hit) const
+{
+  if (hit.part != StaffModeSelector::Part::sketch)
+    // The arrows tell nothing: what they lead to is a click away.
+    return {};
+  switch (hit.mode)
+  {
+  case StaffMode::rhythm:
+    return muse::qtrc("orchestrion/staffmode", "Rhythm");
+  case StaffMode::follow:
+    return muse::qtrc("orchestrion/staffmode", "Follow");
+  case StaffMode::mute:
+    return muse::qtrc("orchestrion/staffmode", "Mute");
+  }
+  return {};
+}
+
 void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 {
+  if (hoverStaffSelector(pos))
+    return;
+
   const muse::PointF logicPos = toLogical(pos);
 
   const bool overLoopFlag = loopFlagAt(logicPos).has_value();
@@ -1736,24 +1861,22 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         update();
       });
 
-  // Auto-play: the ledger is rebuilt from scratch when the chosen hand
-  // changes (or when the feature is hidden/exposed), seeded from whatever the
-  // current batch holds — after loading it covers every voice; mid-piece it
-  // may not, and a rewind repopulates it in full.
+  // Auto-play: the ledger is rebuilt from scratch when a staff changes modes,
+  // seeded from whatever the current batch holds — after loading it covers
+  // every voice; mid-piece it may not, and the jump a mode change causes
+  // repopulates it in full.
   const auto configureAutoPlay = [this]
   {
     m_autoTrackTargets.clear();
-    m_autoOffTick.reset();
-    m_autoOnTick.reset();
+    m_autoStaffTargets.clear();
     m_autoPlayTimer.stop();
     if (const auto sequencer = orchestrion()->sequencer())
       updateAutoTargets(sequencer->GetCurrentTransitions());
+    m_stripsDirty = true;
+    update();
   };
   configureAutoPlay();
-  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
-      this, configureAutoPlay);
-  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
-      this, configureAutoPlay);
+  staffModes()->modesChanged().onNotify(this, configureAutoPlay);
 
   // Toggling the layout mode re-lays-out the score; every cached x is stale,
   // which is exactly what updateNotation() resets (follower, stats, marks).
@@ -1776,22 +1899,6 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
                                                              applyGradingMode);
 
   load(); // sets up the notation; see onLoadNotation / onUnloadNotation
-
-  const auto interaction = notationInteraction();
-  IF_ASSERT_FAILED(interaction) { return; }
-  interaction->noteInput()->stateChanged().onNotify(
-      this,
-      [this]
-      {
-        QTimer::singleShot(0, this,
-                           [this]
-                           {
-                             // Same as above: restore this to `true` in case
-                             // the base class has set it to `false`.
-                             setAcceptHoverEvents(true);
-                           });
-      },
-      Mode::SetReplace);
 }
 
 void OrchestrionNotationPaintView::onMatrixChanged(
@@ -1817,7 +1924,6 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   }
 
   constrainScorePosition();
-
 }
 
 void OrchestrionNotationPaintView::onViewSizeChanged()
@@ -2028,8 +2134,7 @@ double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
   // system;
   // 2. if the system is narrower than the view, it stays centered.
   const auto belt = beltRect();
-  const QRectF content =
-      belt ? *belt : notationContentRect().toQRectF();
+  const QRectF content = belt ? *belt : notationContentRect().toQRectF();
   // Wound right out, the end of the parchment sits on the crown of the
   // cylinder — the tangent point, a margin and a radius in from the view's
   // edge — so half of that cylinder is bare. Without the rolls, the old
@@ -2102,6 +2207,9 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
   paintBelt(painter);
+  m_staffSelector.paint(
+      *painter, staffSelectorLayout(),
+      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::accentInk));
   paintLoopRegionUnderlay(painter);
   paintBeatLines(painter);
 
@@ -2137,14 +2245,12 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
 
 QColor OrchestrionNotationPaintView::loopHandleColor() const
 {
-  return paletteColor(uiConfiguration()->currentTheme(),
-                      paletteKeys::backdrop);
+  return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::backdrop);
 }
 
 QColor OrchestrionNotationPaintView::loopAccentColor() const
 {
-  return paletteColor(uiConfiguration()->currentTheme(),
-                      paletteKeys::accent);
+  return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::accent);
 }
 
 void OrchestrionNotationPaintView::paintLoopRegionUnderlay(QPainter *painter)
@@ -2239,7 +2345,6 @@ void OrchestrionNotationPaintView::paintContents(QPainter *painter)
   if (sequencerConfiguration()->gradingEnabled())
     m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());
 }
-
 
 void OrchestrionNotationPaintView::paint(QPainter *painter)
 {
@@ -2377,7 +2482,58 @@ std::optional<QRectF> OrchestrionNotationPaintView::beltRect() const
   if (!extent)
     return std::nullopt;
   const double padding = m_beltPadding / std::max(currentScaling(), 1e-6);
-  return extent->adjusted(-padding, -padding, padding, padding);
+  const double lead = staffSelectorLead * staffHeight();
+  return extent->adjusted(-padding - lead, -padding, padding, padding);
+}
+
+double OrchestrionNotationPaintView::staffHeight() const
+{
+  const auto notation = this->notation();
+  const mu::engraving::Score *score =
+      notation ? notation->elements()->msScore() : nullptr;
+  if (!score || score->nstaves() == 0)
+    return 0.0;
+  return score->staff(0)->staffHeight();
+}
+
+StaffModeSelector::Layout
+OrchestrionNotationPaintView::staffSelectorLayout() const
+{
+  StaffModeSelector::Layout layout;
+  const auto extent = scoreExtent();
+  const auto sequencer = orchestrion()->sequencer();
+  const auto notation = this->notation();
+  if (!extent || !sequencer || !notation)
+    return layout;
+  const mu::engraving::Score *score = notation->elements()->msScore();
+  if (!score || score->systems().empty())
+    return layout;
+  const mu::engraving::System *system = score->systems().front();
+
+  // The played staves, upper first: the right hand's, then the left's.
+  std::vector<int> staves;
+  for (const TrackIndex &track : sequencer->GetAllVoices())
+    staves.push_back(track.staffIndex());
+  std::sort(staves.begin(), staves.end());
+  staves.erase(std::unique(staves.begin(), staves.end()), staves.end());
+
+  const double unit = staffHeight();
+  layout.available = staffModes()->availableModes();
+  const double x = extent->left() - staffSelectorInset * unit;
+  for (size_t hand = 0; hand < staves.size() && hand < 2; ++hand)
+  {
+    const auto staffIdx = static_cast<mu::engraving::staff_idx_t>(staves[hand]);
+    const mu::engraving::Staff *staff = score->staff(staffIdx);
+    if (!staff)
+      continue;
+    const double middle =
+        system->staffYpage(staffIdx) + staff->staffHeight() / 2;
+    layout.staves.push_back({static_cast<int>(hand), QPointF{x, middle},
+                             staffModes()->mode(static_cast<int>(hand))});
+  }
+
+  layout.size = staffSelectorSize * unit;
+  return layout;
 }
 
 std::optional<QRectF> OrchestrionNotationPaintView::scoreExtent() const
@@ -2399,6 +2555,16 @@ std::optional<QRectF> OrchestrionNotationPaintView::scoreExtent() const
       continue;
     const muse::RectF rect = system->pageBoundingRect();
     left = std::min(left, rect.left());
+    // The system's box leaves out what is drawn before its staves: the
+    // brackets and braces, and the instrument names.
+    for (const mu::engraving::Bracket *bracket : system->brackets())
+      if (bracket)
+        left = std::min(left, bracket->pageBoundingRect().left());
+    for (const mu::engraving::SysStaff *staff : system->staves())
+      if (staff)
+        for (const auto &[role, name] : staff->instrumentNames())
+          if (name && name->visible() && !name->ldata()->bbox().isEmpty())
+            left = std::min(left, name->pageBoundingRect().left());
     right = std::max(right, rect.right());
     // minTop and minBottom are the distances the skyline asks for past the
     // staves — the fingerings and tempo text above, the pedal marks below.
@@ -2417,8 +2583,7 @@ std::pair<double, double> OrchestrionNotationPaintView::rollBase() const
   // The cylinder is sized to the parchment it carries, so the two hold their
   // proportions through a zoom.
   const auto paper = beltRect();
-  const double paperHeight =
-      paper ? paper->height() * currentScaling() : 0.0;
+  const double paperHeight = paper ? paper->height() * currentScaling() : 0.0;
   const double radius =
       std::min(m_rollRadiusRatio * paperHeight, (width() - 2 * margin) / 3);
   return {margin, std::max(0.0, radius)};
@@ -2437,11 +2602,12 @@ std::pair<double, double> OrchestrionNotationPaintView::scalingLimits() const
   const QRectF content = *extent;
 
   // Wound right out: the parchment lies between the two tangent points, so
-  //   contentW * s + 2 pad  =  W - 2 margin - 2 radius,
+  //   (contentW + lead) * s + 2 pad  =  W - 2 margin - 2 radius,
   // with radius = ratio * (contentH * s + 2 pad).
+  const double lead = staffSelectorLead * staffHeight();
   const double minScaling =
       (width() - 2 * margin - 2 * pad * (1 + 2 * ratio)) /
-      std::max(1e-6, content.width() + 2 * ratio * content.height());
+      std::max(1e-6, content.width() + lead + 2 * ratio * content.height());
 
   // Wound in: the parchment is centred, so its top is (H - height) / 2 down
   // the view, and that is as far up as the title's ornament reaches. QML
@@ -2485,7 +2651,8 @@ OrchestrionNotationPaintView::sampleBelt() const
   // A pixel or two of slack, so the parchment's own edges are inside the
   // band rather than on its boundary.
   belt.bandTop = std::max(0.0, belt.viewY(belt.paper.top()) - 2);
-  belt.bandBottom = std::min(belt.viewHeight, belt.viewY(belt.paper.bottom()) + 2);
+  belt.bandBottom =
+      std::min(belt.viewHeight, belt.viewY(belt.paper.bottom()) + 2);
 
   // Each end wraps around its own roll — the core plus whatever is already
   // wound on it, a paper's thickness a turn — so the two are rarely the same
@@ -2493,8 +2660,7 @@ OrchestrionNotationPaintView::sampleBelt() const
   // visibly proud of the metal above and below.
   for (const bool leftEnd : {true, false})
   {
-    const double fat =
-        core + paperThicknessPerTurn * woundTurns(belt, leftEnd);
+    const double fat = core + paperThicknessPerTurn * woundTurns(belt, leftEnd);
     belt.radius[leftEnd ? 0 : 1] = std::min(fat, core * maxWrapGrowth);
   }
   return belt;
@@ -2538,9 +2704,10 @@ void OrchestrionNotationPaintView::paintRollers(QPainter *painter,
   const QColor gloss = paletteColor(theme, paletteKeys::metalBright);
   const auto mix = [](const QColor &a, const QColor &b, double t)
   {
-    return QColor{static_cast<int>(std::lround(a.red() + (b.red() - a.red()) * t)),
-                  static_cast<int>(std::lround(a.green() + (b.green() - a.green()) * t)),
-                  static_cast<int>(std::lround(a.blue() + (b.blue() - a.blue()) * t))};
+    return QColor{
+        static_cast<int>(std::lround(a.red() + (b.red() - a.red()) * t)),
+        static_cast<int>(std::lround(a.green() + (b.green() - a.green()) * t)),
+        static_cast<int>(std::lround(a.blue() + (b.blue() - a.blue()) * t))};
   };
 
   const auto paintOne = [&](bool leftEnd)
@@ -2559,8 +2726,8 @@ void OrchestrionNotationPaintView::paintRollers(QPainter *painter,
     // Winding, not the default odd-even: where the bare crown overlaps the
     // overhang the two would cancel out and cut the corners away.
     visible.setFillRule(Qt::WindingFill);
-    visible.addRect(QRectF{barrel.left(), barrel.top(), barrel.width(),
-                           m_rollerOverhang});
+    visible.addRect(
+        QRectF{barrel.left(), barrel.top(), barrel.width(), m_rollerOverhang});
     visible.addRect(QRectF{barrel.left(), barrel.bottom() - m_rollerOverhang,
                            barrel.width(), m_rollerOverhang});
     // ...and the bare crown the parchment has not reached, which is the whole
@@ -2576,7 +2743,8 @@ void OrchestrionNotationPaintView::paintRollers(QPainter *painter,
 
     // Barrel lighting: full on where the cylinder faces us, gone at either
     // silhouette, with a tight gloss along the crown.
-    QLinearGradient light{QPointF{barrel.left(), 0}, QPointF{barrel.right(), 0}};
+    QLinearGradient light{QPointF{barrel.left(), 0},
+                          QPointF{barrel.right(), 0}};
     for (int i = 0; i <= rollerShadeStops; ++i)
     {
       const double t = static_cast<double>(i) / rollerShadeStops;
@@ -2658,9 +2826,9 @@ void OrchestrionNotationPaintView::paintRollers(QPainter *painter,
     const double lastY = beltBottom - tackInset;
     for (int i = 0; i < tackCount; ++i)
     {
-      const double y =
-          tackCount > 1 ? firstY + (lastY - firstY) * i / (tackCount - 1.0)
-                        : (firstY + lastY) / 2;
+      const double y = tackCount > 1
+                           ? firstY + (lastY - firstY) * i / (tackCount - 1.0)
+                           : (firstY + lastY) / 2;
       // A domed head: lit from the same side as everything else, over the
       // small shadow it casts on the parchment.
       painter->setBrush(QColor{0, 0, 0, 70});
@@ -2709,7 +2877,8 @@ const QPixmap &OrchestrionNotationPaintView::grainTile()
   if (!m_grain.isNull())
     return m_grain;
 
-  QImage tile{grainTileSize, grainTileSize, QImage::Format_ARGB32_Premultiplied};
+  QImage tile{grainTileSize, grainTileSize,
+              QImage::Format_ARGB32_Premultiplied};
   tile.fill(Qt::transparent);
   // A fixed seed: the flecks are part of the picture, not something that
   // shimmers differently every time the app starts.
@@ -2721,8 +2890,7 @@ const QPixmap &OrchestrionNotationPaintView::grainTile()
       const int value = roll(noise);
       // Most of the tile stays clear; a fifth of it darkens, a tenth lifts.
       if (value < 52)
-        tile.setPixelColor(x, y,
-                           QColor{0, 0, 0, grainDarkAlpha * value / 52});
+        tile.setPixelColor(x, y, QColor{0, 0, 0, grainDarkAlpha * value / 52});
       else if (value > 232)
         tile.setPixelColor(
             x, y, QColor{255, 255, 255, grainLightAlpha * (value - 232) / 23});
@@ -2762,8 +2930,8 @@ void OrchestrionNotationPaintView::paintBelt(QPainter *painter)
   // Its grain. Sized to the view rather than to the score, so it stays grain
   // instead of turning into blotches when the score is zoomed in.
   QBrush grain{grainTile()};
-  grain.setTransform(QTransform::fromScale(grainPixelSize * px,
-                                           grainPixelSize * px));
+  grain.setTransform(
+      QTransform::fromScale(grainPixelSize * px, grainPixelSize * px));
   painter->fillRect(belt, grain);
   // Its two edges, a shade darker: what makes it read as a thing lying on the
   // backdrop rather than a lighter patch of it.
@@ -2806,20 +2974,20 @@ void OrchestrionNotationPaintView::renderStrip(QImage &image, int originX,
   // base view reads that as "no rect" and falls back to painting the item's
   // own rectangle — which would leave the stretch of belt beyond the view's
   // edge, the whole point of the roll, unpainted.
-  bufferPainter.setClipRect(
-      clipItem ? *clipItem
-               : QRectF{static_cast<double>(originX),
-                        static_cast<double>(originY),
-                        static_cast<double>(logicalWidth),
-                        static_cast<double>(logicalHeight)});
+  bufferPainter.setClipRect(clipItem
+                                ? *clipItem
+                                : QRectF{static_cast<double>(originX),
+                                         static_cast<double>(originY),
+                                         static_cast<double>(logicalWidth),
+                                         static_cast<double>(logicalHeight)});
   paintContents(&bufferPainter);
 }
 
 OrchestrionNotationPaintView::StripCache &
-OrchestrionNotationPaintView::updateStrip(bool leftEnd, const BeltGeometry &belt,
-                                          int originX, int originY,
-                                          int logicalWidth, int logicalHeight,
-                                          double dpr)
+OrchestrionNotationPaintView::updateStrip(bool leftEnd,
+                                          const BeltGeometry &belt, int originX,
+                                          int originY, int logicalWidth,
+                                          int logicalHeight, double dpr)
 {
   StripCache &cache = m_strip[leftEnd ? 0 : 1];
   const bool sameShape =
@@ -2867,9 +3035,11 @@ OrchestrionNotationPaintView::updateStrip(bool leftEnd, const BeltGeometry &belt
   {
     uchar *row = cache.image.scanLine(y);
     if (shift > 0)
-      std::memmove(row, row + std::size_t(shift) * bpp, std::size_t(keep) * bpp);
+      std::memmove(row, row + std::size_t(shift) * bpp,
+                   std::size_t(keep) * bpp);
     else
-      std::memmove(row + std::size_t(-shift) * bpp, row, std::size_t(keep) * bpp);
+      std::memmove(row + std::size_t(-shift) * bpp, row,
+                   std::size_t(keep) * bpp);
   }
 
   const double sliverDeviceLeft = shift > 0 ? keep : 0;
@@ -2952,12 +3122,11 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
   // Only the band: the rows above and below it are wallpaper, which the flat
   // paint now covers across the full width.
   const int bandTop = static_cast<int>(std::floor(belt.bandTop));
-  const int bandHeight =
-      static_cast<int>(std::ceil(belt.bandBottom)) - bandTop;
+  const int bandHeight = static_cast<int>(std::ceil(belt.bandBottom)) - bandTop;
   if (bandHeight <= 0)
     return;
-  const StripCache &strip =
-      updateStrip(leftEnd, belt, originX, bandTop, bufferWidth, bandHeight, dpr);
+  const StripCache &strip = updateStrip(leftEnd, belt, originX, bandTop,
+                                        bufferWidth, bandHeight, dpr);
   // What the strip holds is up to half a device pixel behind the score, since
   // it is carried along in whole pixels: take that up here.
   const double lag = belt.travel() - strip.travel;
@@ -2981,9 +3150,9 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
   // Linear interpolation over a slice strays from the sine by about
   // radius * step^2 / 8, so the step that keeps that within tolerance is
   // sqrt(8 * tolerance / radius) — and the count follows.
-  const int segments = std::max(
-      1, static_cast<int>(
-             std::ceil(quarter / std::sqrt(8 * rollWarpTolerance / radius))));
+  const int segments =
+      std::max(1, static_cast<int>(std::ceil(
+                      quarter / std::sqrt(8 * rollWarpTolerance / radius))));
   for (int i = 0; i < segments; ++i)
   {
     const double turnOuter = quarter * (segments - i) / segments;
@@ -2995,10 +3164,9 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
         (tangentX + sign * radius * turnOuter - originX + lag) * dpr;
     const double srcInner =
         (tangentX + sign * radius * turnInner - originX + lag) * dpr;
-    const QRectF target{std::min(outer, inner) - seam,
-                        static_cast<double>(bandTop),
-                        std::abs(inner - outer) + 2 * seam,
-                        static_cast<double>(bandHeight)};
+    const QRectF target{
+        std::min(outer, inner) - seam, static_cast<double>(bandTop),
+        std::abs(inner - outer) + 2 * seam, static_cast<double>(bandHeight)};
     // The buffer holds the band and nothing else, so its own top row is the
     // band's.
     const QRectF source{std::min(srcOuter, srcInner), 0.0,
@@ -3025,9 +3193,8 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
       shade.setColorAt(
           t, QColor{0, 0, 0, static_cast<int>(std::lround((1.0 - lit) * 255))});
     }
-    painter->fillRect(QRectF{std::min(outerX, tangentX), top, radius,
-                             bottom - top},
-                      shade);
+    painter->fillRect(
+        QRectF{std::min(outerX, tangentX), top, radius, bottom - top}, shade);
   }
 
   // Past the belt's end there is only backdrop, and nothing has painted it:
@@ -3036,9 +3203,9 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
   const QPixmap &backdrop =
       leftEnd ? m_marginBackdropLeft : m_marginBackdropRight;
   if (!backdrop.isNull())
-    painter->drawPixmap(QRectF{leftEnd ? 0.0 : width() - margin, 0.0, margin,
-                               height()},
-                        backdrop, QRectF{backdrop.rect()});
+    painter->drawPixmap(
+        QRectF{leftEnd ? 0.0 : width() - margin, 0.0, margin, height()},
+        backdrop, QRectF{backdrop.rect()});
   painter->restore();
 }
 } // namespace dgk
