@@ -770,18 +770,40 @@ void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
                        });
   };
 
+  // A target fired is forgotten in the ledger too, not only in the
+  // aggregate: the next batch, of any staff, rebuilds the aggregate from the
+  // ledger, and would bring it back to fire again. Only those due, though: a
+  // voice struck later keeps its own.
+  const double now = *performedTicks;
+  const auto forget = [this, now](int staff, bool onTick)
+  {
+    const auto due = [now](std::optional<double> &tick)
+    {
+      if (tick && *tick <= now)
+        tick.reset();
+    };
+    for (auto &[track, targets] : m_autoTrackTargets)
+      if (TrackIndex{track}.staffIndex() == staff)
+      {
+        if (onTick)
+          due(targets.onTick);
+        due(targets.offTick);
+      }
+  };
   for (auto &[staff, targets] : m_autoStaffTargets)
-    if (targets.onTick && *performedTicks >= *targets.onTick)
+    if (targets.onTick && now >= *targets.onTick)
     {
       // Advancing releases the previous chord itself: the pending noteOff
       // is superseded.
       targets.onTick.reset();
       targets.offTick.reset();
+      forget(staff, true);
       fire(staff, true);
     }
-    else if (targets.offTick && *performedTicks >= *targets.offTick)
+    else if (targets.offTick && now >= *targets.offTick)
     {
       targets.offTick.reset();
+      forget(staff, false);
       fire(staff, false);
     }
 }
