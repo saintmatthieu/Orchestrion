@@ -29,7 +29,6 @@
 #include "internal/SynthesizerMenuManager.h"
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
-#include "view/AutoPlayModel.h"
 #include "view/GradingModel.h"
 #ifdef Q_OS_MAC
 #include "view/MacOSWindowChrome.h"
@@ -89,8 +88,6 @@ void OrchestrionShellModule::registerUiTypes()
                                 "GradingModel");
   qmlRegisterType<MidiKeyboardIconModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "MidiKeyboardIconModel");
-  qmlRegisterType<AutoPlayModel>("Orchestrion.OrchestrionShell", 1, 0,
-                                 "AutoPlayModel");
   qmlRegisterType<PedalIndicatorModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "PedalIndicatorModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,

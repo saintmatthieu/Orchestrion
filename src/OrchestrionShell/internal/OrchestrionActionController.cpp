@@ -19,7 +19,11 @@
 #include "OrchestrionActionController.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <async/async.h>
+#include <engraving/dom/masterscore.h>
+#include <engraving/editing/transaction/undostack.h>
 #include <notation/imasternotation.h>
+#include <notation/inotation.h>
+#include <notation/inotationundostack.h>
 #include <project/inotationproject.h>
 
 #include <QApplication>
@@ -107,21 +111,6 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setGradingExposed(
                           !sequencerConfig()->gradingExposed());
                     });
-  dispatcher()->reg(this, actionIds::toggleAutoPlayExposure,
-                    [this]
-                    {
-                      sequencerConfig()->setAutoPlayExposed(
-                          !sequencerConfig()->autoPlayExposed());
-                    });
-  // Tempo-following auto-play: at most one hand at a time (the other one is
-  // yours — for full playback there is the playback button). A one-of-three
-  // choice, so each action sets its value outright.
-  dispatcher()->reg(this, actionIds::autoPlayNone,
-                    [this] { sequencerConfig()->setAutoPlayedStaff(-1); });
-  dispatcher()->reg(this, actionIds::autoPlayLeftHand,
-                    [this] { sequencerConfig()->setAutoPlayedStaff(1); });
-  dispatcher()->reg(this, actionIds::autoPlayRightHand,
-                    [this] { sequencerConfig()->setAutoPlayedStaff(0); });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-proportional-spacing",
                     [this]
                     {
@@ -275,12 +264,8 @@ bool OrchestrionActionController::closeCurrentProject() const
   if (!globalContext()->currentProject())
     return true;
 
-  const IModifiableItemRegistryPtr registry =
-      orchestrion()->modifiableItemRegistry();
-  if (registry && registry->Modified())
+  if (scoreModified())
   {
-    // Orchestrion's own modifications (recorded velocities, ...) are not
-    // in the score's undo stack, so MuseScore wouldn't ask about them.
     using muse::IInteractive;
     const IInteractive::Result result = interactive()->questionSync(
         muse::trc("project", "Save changes to the score before closing?"),
@@ -347,7 +332,29 @@ void OrchestrionActionController::onFileSave() const
 
   if (const mu::project::INotationProjectPtr notationProject =
           globalContext()->currentProject())
-    notationProject->save();
+    if (notationProject->save())
+      markScoreSaved();
+}
+
+bool OrchestrionActionController::scoreModified() const
+{
+  // Orchestrion's own modifications (recorded velocities, ...) are not in the
+  // score's undo stack. Its edits of the score (the staff modes, ...) are.
+  // Not MuseScore's isNeedSave(), which any imported score starts with.
+  const IModifiableItemRegistryPtr registry =
+      orchestrion()->modifiableItemRegistry();
+  if (registry && registry->Modified())
+    return true;
+  const auto master = globalContext()->currentMasterNotation();
+  return master && !master->notation()->undoStack()->isStackClean();
+}
+
+void OrchestrionActionController::markScoreSaved() const
+{
+  // MuseScore doesn't move the clean state of the undo stack when it saves
+  // (it keeps its own isNeedSave() flag): the stack is clean from here on.
+  if (const auto master = globalContext()->currentMasterNotation())
+    master->masterScore()->undoStack()->markClean();
 }
 
 namespace
@@ -370,8 +377,9 @@ void OrchestrionActionController::onFileSaveAs() const
     defaultDir = fallbackPath();
   const muse::io::path_t filePath = interactive()->selectSavingFileSync(
       muse::trc("project", "Save as"), defaultDir, filter);
-  projectFilesController()->saveProjectLocally(filePath,
-                                               mu::project::SaveMode::SaveAs);
+  if (projectFilesController()->saveProjectLocally(
+          filePath, mu::project::SaveMode::SaveAs))
+    markScoreSaved();
 }
 
 void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const

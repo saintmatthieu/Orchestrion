@@ -25,11 +25,13 @@
 #include "KineticScroller.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
+#include "OrchestrionSequencer/IStaffModes.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "PositionEstimation/PositionEstimator.h"
 #include "ReadingFocus.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "ScoreFollower.h"
+#include "StaffModeSelector.h"
 #include "TempoVizModel.h"
 #include "TimingFeedbackOverlay.h"
 #include <QElapsedTimer>
@@ -135,6 +137,7 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   dgk::Inject<ISegmentRegistry> chordRegistry{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
+  dgk::Inject<IStaffModes> staffModes{this};
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
@@ -370,6 +373,24 @@ private:
   //! What the parchment is sized to before its padding: everything the
   //! engraving lays out, staves and skyline, in logical coordinates.
   std::optional<QRectF> scoreExtent() const;
+  /**
+   * Where the staff-mode choice is drawn for each played staff, and what it
+   * offers: on the lead of parchment before the score, level with the
+   * staff's middle.
+   */
+  StaffModeSelector::Layout staffSelectorLayout() const;
+  /**
+   * The height of the score's first staff, in logical coordinates: what the
+   * staff-mode choice is sized to. 0 when no score is laid out.
+   */
+  double staffHeight() const;
+  /**
+   * The pointer is at `pos` (item coordinates), or has left: returns whether
+   * it is on a staff-mode choice.
+   */
+  bool hoverStaffSelector(std::optional<QPointF> pos);
+  /** What the staff mode under the pointer is; nothing for an arrow. */
+  QString staffSelectorTooltip(const StaffModeSelector::Hit &) const;
   //! The parchment itself, drawn behind the notation (from the underlay hook)
   //! so that the score reads as printed on something.
   void paintBelt(QPainter *painter);
@@ -412,18 +433,21 @@ private:
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   //! Per rendered frame: advance the scroll and the estimate, sample the
-  //! debug tempo strip, and fire the auto-played hand's due events.
+  //! debug tempo strip, and fire the Follow staves' due events.
   void onFrameTick();
-  //! Refresh the tempo-following auto-play targets (the auto hand's next due
-  //! release/strike, in playback-unrolled ticks) from a transitions batch.
-  //! Batches only carry the *changed* tracks, so a per-voice ledger
-  //! (m_autoTrackTargets) persists the auto staff's state between batches.
+  //! Refresh the tempo-following auto-play targets (each Follow staff's next
+  //! due release/strike, in playback-unrolled ticks) from a transitions
+  //! batch. Batches only carry the *changed* tracks, so a per-voice ledger
+  //! (m_autoTrackTargets) persists the Follow staves' state between batches.
   void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
-  //! Which hand the machine plays, or −1: the setting, gated on auto-play
-  //! being exposed at all.
-  int autoPlayedStaff() const;
-  //! Fire the auto hand's due strike or release once the manual hands'
-  //! estimate has reached it.
+  /** Whether the machine plays the staff (0 = right hand, 1 = left). */
+  bool isFollowStaff(int staff) const;
+  /** Whether the performer plays the staff: what is followed and judged. */
+  bool isPerformedStaff(int staff) const;
+  /**
+   * Fire the Follow staves' due strikes and releases once the performed
+   * staves' estimate has reached them.
+   */
   void fireDueAutoEvents(double nowMs);
   //! Measure this batch's played velocities against each hand's smoothed
   //! loudness curve — the dynamics counterpart of the timing judgments.
@@ -500,19 +524,18 @@ private:
   // velocity-less devices), from HandNoteEvents — which fires just before the
   // transitions batch the gesture causes; consumed by that batch's onsets.
   std::optional<float> m_pendingHandVelocity[2] = {}; // [0]=right, [1]=left
-  // Per-voice ledger backing updateAutoTargets(), and the auto hand's next
-  // due release/strike aggregated from it.
+  // Per-voice ledger backing updateAutoTargets(), and each Follow staff's
+  // next due release/strike aggregated from it.
   struct AutoTargets
   {
     std::optional<double> offTick;
     std::optional<double> onTick;
   };
   std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
-  std::optional<double> m_autoOffTick;
-  std::optional<double> m_autoOnTick;
+  std::map<int /*staff*/, AutoTargets> m_autoStaffTargets;
   // Polls those targets against the manual hands' estimate. A driver of its
   // own, not the frame hook: between page turns nothing is animating, so no
-  // frames are rendered — and the auto hand must play on regardless.
+  // frames are rendered — and the Follow staves must play on regardless.
   QTimer m_autoPlayTimer;
 
   // The take's onsets, for baking the performance's tempo warp into the
@@ -606,6 +629,15 @@ private:
   std::optional<mu::notation::LoopBoundaryType> m_draggedLoopBoundary;
   // A horizontal-resize override cursor is active (hovering a loop flag).
   bool m_loopFlagCursor = false;
+
+  StaffModeSelector m_staffSelector;
+  // A pointing-hand override cursor is active (hovering a staff-mode arrow).
+  bool m_staffSelectorCursor = false;
+  // The tooltip shown is the staff-mode choice's.
+  bool m_staffSelectorTooltip = false;
+  // The mouse button went down on a staff-mode choice: until it is released,
+  // the mouse is the choice's.
+  bool m_staffSelectorClick = false;
 
   // The treadmill ends: the cylinder radius and the scratch buffer the belt
   // is rendered flat into before being wrapped around it (device pixels,

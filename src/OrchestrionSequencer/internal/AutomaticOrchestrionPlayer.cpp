@@ -26,8 +26,6 @@ namespace dgk
 {
 namespace
 {
-constexpr int rightHandPitch = 60;
-constexpr int leftHandPitch = 59;
 constexpr int ticksPerQuarterNote = 480;
 } // namespace
 
@@ -158,9 +156,7 @@ void AutomaticOrchestrionPlayer::FireReplayEvent()
   if (!m_replayActive)
     return;
   const ReplayEvent &event = m_replayTake->events[m_replayIndex];
-  m_sequencer.OnInputEvent(event.type,
-                           event.isLeftHand ? leftHandPitch : rightHandPitch,
-                           event.velocity);
+  m_sequencer.OnHandInputEvent(event.type, event.isLeftHand, event.velocity);
   ++m_replayIndex;
   ScheduleReplayNext();
 }
@@ -211,11 +207,10 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
     return;
   m_firingInputEvents = true;
   if (events.leftHandEvent)
-    m_sequencer.OnInputEvent(*events.leftHandEvent, leftHandPitch,
-                             std::nullopt);
+    m_sequencer.OnHandInputEvent(*events.leftHandEvent, true, std::nullopt);
   if (events.rightHandEvent)
-    m_sequencer.OnInputEvent(*events.rightHandEvent, rightHandPitch,
-                             std::nullopt);
+    m_sequencer.OnHandInputEvent(*events.rightHandEvent, false,
+                                 std::nullopt);
   m_firingInputEvents = false;
   ScheduleNext();
 }

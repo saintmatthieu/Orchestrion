@@ -77,6 +77,13 @@ private:
   void onFileOpen(const muse::actions::ActionData &data) const;
   void onFileSave() const;
   void onFileSaveAs() const;
+  /**
+   * Whether the score has changes to save: Orchestrion's own modifications,
+   * or edits in the score's undo stack.
+   */
+  bool scoreModified() const;
+  /** The score was just saved: its undo stack is clean from here on. */
+  void markScoreSaved() const;
   void openFromDir(const muse::io::path_t &dir) const;
   void openProject(const mu::project::ProjectFile &) const;
   void toggleRecording() const;

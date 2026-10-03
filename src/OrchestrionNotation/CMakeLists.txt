@@ -18,6 +18,8 @@ set(MODULE_SRC
   ILoopBoundariesController.h
   view/ScoreFollower.cpp
   view/ScoreFollower.h
+  view/StaffModeSelector.cpp
+  view/StaffModeSelector.h
   view/TempoVisualizationView.cpp
   view/TempoVisualizationView.h
   view/TempoVizModel.cpp

@@ -31,6 +31,8 @@ set(MODULE_SRC
     internal/OrnamentGesture.h
     internal/OrnamentSchedule.cpp
     internal/OrnamentSchedule.h
+    internal/StaffModes.cpp
+    internal/StaffModes.h
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp
@@ -48,6 +50,7 @@ set(MODULE_SRC
     IOrchestrionPlayer.h
     IOrchestrionSequencer.h
     IRest.h
+    IStaffModes.h
     OrchestrionModule.cpp
     OrchestrionModule.h
 )

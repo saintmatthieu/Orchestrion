@@ -112,7 +112,6 @@ private:
   muse::uicomponents::MenuItem *makeAudioMidiMenu();
   muse::uicomponents::MenuItem *makeAdvancedMenu(bool velocityRecordingEnabled);
   muse::uicomponents::MenuItem *makeGradingMenu();
-  muse::uicomponents::MenuItem *makeAutoPlayMenu();
   muse::uicomponents::MenuItem *makeOrnamentsMenu();
 #ifdef MUSE_APP_UNSTABLE
   muse::uicomponents::MenuItem *makeDevelopmentMenu();

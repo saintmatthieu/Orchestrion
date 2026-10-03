@@ -20,6 +20,7 @@
 
 #include "IOrchestrionSequencer.h"
 #include "IOrchestrionSequencerConfiguration.h"
+#include "IStaffModes.h"
 #include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
@@ -38,6 +39,7 @@
 #include <map>
 #include <memory>
 #include <modularity/ioc.h>
+#include <notation/imasternotation.h>
 #include <mutex>
 #include <random>
 #include <thread>
@@ -56,6 +58,7 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
   dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
       this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
+  dgk::Inject<IStaffModes> staffModes{this};
 
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
@@ -66,6 +69,8 @@ public:
 
   void OnInputEvent(NoteEventType, int pitch,
                     std::optional<float> velocity) override;
+  void OnHandInputEvent(NoteEventType, bool isLeftHand,
+                        std::optional<float> velocity) override;
   void OnSustainPedal(bool down) override;
   void SetFootPedalling(bool) override;
   void AllNotesOff() override;
@@ -161,8 +166,30 @@ private:
                                 ThreadMembers<EventType> &members,
                                 std::function<void(EventType)> cb);
 
-  void OnInputEventRecursive(NoteEventType, int pitch,
+  /**
+   * The gesture of `key` on the hand: a press, or the release of the key the
+   * hand holds (a release of another is ignored).
+   */
+  void OnInputEventRecursive(NoteEventType, bool isLeftHand, int key,
                              std::optional<float> velocity, bool loop);
+  /**
+   * A gesture on the hand, `key` telling a release from that of another key:
+   * see OnInputEventRecursive.
+   */
+  void OnGesture(NoteEventType, bool isLeftHand, int key,
+                 std::optional<float> velocity);
+  StaffMode Mode(bool isLeftHand) const;
+  /**
+   * The hand a key the performer strikes is for (see OnInputEvent), if any.
+   */
+  std::optional<bool> PerformerHand(int pitch) const;
+  /**
+   * A staff changed modes: let go of what the hands hold, and have those that
+   * play from now on start where the others were.
+   */
+  void OnStaffModesChanged();
+  /** The voices of the staves not muted. */
+  std::vector<const VoiceSequencer *> PlayingVoices() const;
   /**
    * Puts the pedal where the hands want it: down when the hands that are down
    * all stand within one and the same pedal span, up when they stand in
@@ -307,6 +334,13 @@ private:
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
   int m_autoPlayTick = 0;
+
+  /**
+   * The notation the sequencer plays, and the modes its hands were last
+   * found in: the staff modes notify of another score's, too.
+   */
+  const mu::notation::IMasterNotation *const m_notation;
+  std::array<StaffMode, 2> m_modes; // [0]=right, [1]=left
 
   bool m_velocityRecordingEnabled = false;
   //! Whether the score's ornaments are played by the app (the automatic
