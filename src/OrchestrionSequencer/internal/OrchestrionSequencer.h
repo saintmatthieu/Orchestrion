@@ -169,16 +169,19 @@ private:
 
   /**
    * The gesture of `key` on the hand: a press, or the release of the key the
-   * hand holds (a release of another is ignored).
+   * hand holds (a release of another is ignored). One of the performer's
+   * that finds nothing left to play starts the score over; the machine's
+   * never do.
    */
   void OnInputEventRecursive(NoteEventType, bool isLeftHand, int key,
-                             std::optional<float> velocity, bool loop);
+                             std::optional<float> velocity, bool loop,
+                             bool byPerformer);
   /**
    * A gesture on the hand, `key` telling a release from that of another key:
    * see OnInputEventRecursive.
    */
   void OnGesture(NoteEventType, bool isLeftHand, int key,
-                 std::optional<float> velocity);
+                 std::optional<float> velocity, bool byPerformer);
   StaffMode Mode(bool isLeftHand) const;
   /**
    * The hand a key the performer strikes is for (see OnInputEvent), if any.
