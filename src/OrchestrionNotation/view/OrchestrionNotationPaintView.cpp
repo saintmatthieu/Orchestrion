@@ -1909,6 +1909,17 @@ void OrchestrionNotationPaintView::constrainScorePosition()
     return;
   m_constrainingScorePosition = true;
 
+  // The zoom too is held within what the machine allows (scalingLimits):
+  // setScaling() clamps it, but the limits move with what they are worked out
+  // from — the view's size, the score's layout — and a zoom set before they
+  // did is left outside them. A window growing after the score was opened,
+  // or the score laid out after it was zoomed, left it zoomed out past the
+  // point where the parchment reaches the cylinders.
+  if (const auto [minScaling, maxScaling] = scalingLimits();
+      currentScaling() < minScaling || currentScaling() > maxScaling)
+    setScaling(currentScaling(),
+               muse::PointF{width() / 2, height() / 2});
+
   const auto scaling = currentScaling();
   const auto topLogicalY = centredTopY(scaling);
 
