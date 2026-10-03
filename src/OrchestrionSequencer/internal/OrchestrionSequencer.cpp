@@ -312,6 +312,14 @@ muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
   return m_outputEvent;
 }
 
+const IChord *OrchestrionSequencer::GetNextChord(TrackIndex track) const
+{
+  for (const auto *voice : m_allVoices)
+    if (voice->track == track)
+      return voice->GetFutureChord();
+  return nullptr;
+}
+
 std::vector<TrackIndex> OrchestrionSequencer::GetAllVoices() const
 {
   std::vector<TrackIndex> result;

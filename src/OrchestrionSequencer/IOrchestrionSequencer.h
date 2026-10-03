@@ -107,6 +107,11 @@ public:
   virtual const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const = 0;
   virtual std::vector<TrackIndex> GetAllVoices() const = 0;
+  /**
+   * The chord the track's next note-on strikes, null if none is left: what
+   * a transition leaves out when the track moves onto a rest.
+   */
+  virtual const IChord *GetNextChord(TrackIndex) const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
   /**
    * Sent before the position jumps to the given tick, and before the

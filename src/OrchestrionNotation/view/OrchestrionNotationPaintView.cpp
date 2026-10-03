@@ -639,6 +639,11 @@ void OrchestrionNotationPaintView::updateAutoTargets(
         present ? std::make_optional<double>(present->GetEndTick().withRepeats)
                 : std::nullopt;
     const IChord *future = GetFutureChord(transition);
+    if (!future && GetPresentThing(transition) && !present)
+      // Released onto a rest, which the transition says nothing after: the
+      // chord after it is what the staff strikes next.
+      if (const auto sequencer = orchestrion()->sequencer())
+        future = sequencer->GetNextChord(track);
     targets.onTick =
         future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
                : std::nullopt;

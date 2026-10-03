@@ -73,6 +73,7 @@ public:
   const std::map<TrackIndex, ChordTransition> &
   GetCurrentTransitions() const override;
   std::vector<TrackIndex> GetAllVoices() const override;
+  const IChord *GetNextChord(TrackIndex) const override;
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
