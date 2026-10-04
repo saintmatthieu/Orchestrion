@@ -68,7 +68,10 @@ set(MUSESCORE_REVISION "" CACHE STRING "Build revision")
 # Framework modules Orchestrion does not need (a stub is used where the
 # framework provides one). Set before MuseDeclareOptions so the option()
 # calls there pick these up (CMP0077).
-set(MUSE_ENABLE_UNIT_TESTS OFF)
+# Unit tests are off unless asked for (-DMUSE_ENABLE_UNIT_TESTS=ON).
+if (NOT DEFINED MUSE_ENABLE_UNIT_TESTS)
+  set(MUSE_ENABLE_UNIT_TESTS OFF)
+endif()
 set(MUSE_MODULE_AUDIO_EXPORT OFF)            # no mp3/ogg/flac/aac export: avoids the encoder dependencies
 set(MUSE_MODULE_AUDIOPLUGINS ON) # VST3 plugin discovery: the Effects menu and the VST instruments
 set(MUSE_MODULE_AUTOMATION OFF)

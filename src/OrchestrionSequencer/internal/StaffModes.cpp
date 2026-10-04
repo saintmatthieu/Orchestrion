@@ -44,6 +44,8 @@ const char *Name(StaffMode mode)
 {
   switch (mode)
   {
+  case StaffMode::notes:
+    return "notes";
   case StaffMode::rhythm:
     return "rhythm";
   case StaffMode::follow:
@@ -56,8 +58,8 @@ const char *Name(StaffMode mode)
 
 std::optional<StaffMode> Parse(const std::string &name)
 {
-  for (const auto mode :
-       {StaffMode::rhythm, StaffMode::follow, StaffMode::mute})
+  for (const auto mode : {StaffMode::notes, StaffMode::rhythm,
+                          StaffMode::follow, StaffMode::mute})
     if (name == Name(mode))
       return mode;
   return std::nullopt;
@@ -133,7 +135,8 @@ void StaffModes::setMode(int staff, StaffMode mode)
 
 std::vector<StaffMode> StaffModes::availableModes() const
 {
-  return {StaffMode::rhythm, StaffMode::follow, StaffMode::mute};
+  return {StaffMode::notes, StaffMode::rhythm, StaffMode::follow,
+          StaffMode::mute};
 }
 
 muse::async::Notification StaffModes::modesChanged() const

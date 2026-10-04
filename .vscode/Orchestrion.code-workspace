@@ -24,7 +24,7 @@
 			"-DMUE_BUILD_NOTATIONSCENE_TESTS=OFF",
 			"-DMUE_BUILD_PLAYBACK_TESTS=OFF",
 			"-DMUE_BUILD_PROJECT_TESTS=OFF",
-			"-DMUSE_ENABLE_UNIT_TESTS=OFF",
+			"-DMUSE_ENABLE_UNIT_TESTS=ON",
 		],
 		"editor.guides.indentation": true,
 		"editor.detectIndentation": true,

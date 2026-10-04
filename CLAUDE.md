@@ -30,7 +30,7 @@ The Linux executable lives at `build/install/bin/Orchestrion`. The un-installed 
 
 CI mirrors this with `ci_build.cmake` (configures + builds + installs under `build.release`), invoked from `ci_build.bat` on Windows. The GitHub workflow (`.github/workflows/orchestrion.yml`) builds Windows / macOS / Linux and packages NSIS / DMG / AppImage respectively.
 
-There is **no test target** wired into the top-level build (`MUSE_BUILD_UNIT_TESTS` is forced OFF). Don't invent a `ctest` step — there's nothing to run.
+Unit tests are off by default (`MUSE_ENABLE_UNIT_TESTS` defaults to OFF in `MuseScore.cmake`); configure with `-DMUSE_ENABLE_UNIT_TESTS=ON` to get the Orchestrion test targets (`orchestrionsequencer_tests`, `positionestimation_tests`). CI builds none.
 
 ## Runtime layout / data files
 

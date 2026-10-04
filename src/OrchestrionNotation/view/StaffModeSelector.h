@@ -34,8 +34,9 @@ namespace dgk
 {
 /**
  * The choice of the staff modes (see IStaffModes), pencilled on the
- * parchment before each staff: the staff's mode as a little sketch — a
- * percussion note for Rhythm, a matchstick man for Follow, a cross for Mute.
+ * parchment before each staff: the staff's mode as a little sketch — a note
+ * for Notes, a percussion note for Rhythm, a matchstick man for Follow, a
+ * cross for Mute.
  * Two arrows to its left step through the modes, up to the previous one and
  * down to the next, round and round.
  *

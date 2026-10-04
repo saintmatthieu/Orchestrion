@@ -23,6 +23,7 @@
 #include <cmath>
 #include <engraving/dom/note.h>
 #include <iterator>
+#include <limits>
 #include <notation/imasternotation.h>
 #include <notation/inotationmidiinput.h>
 #include <notation/inotationplayback.h>
@@ -118,10 +119,50 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
       }};
 }
 
-OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
-                                           HandVoices rightHand,
-                                           HandVoices leftHand,
-                                           PedalSequence pedalSequence)
+namespace
+{
+std::pair<int, int> PitchRange(const std::vector<ScoreEvent> &events)
+{
+  std::pair<int, int> range{128, -1};
+  for (const ScoreEvent &event : events)
+    for (const int pitch : event.pitches)
+      range = {std::min(range.first, pitch), std::max(range.second, pitch)};
+  return range;
+}
+
+/** The events of several staves, as one: the onsets at a tick merged. */
+std::vector<ScoreEvent>
+Merge(const std::vector<const std::vector<ScoreEvent> *> &staves)
+{
+  std::map<int, ScoreEvent> merged;
+  for (const auto *events : staves)
+    for (const ScoreEvent &event : *events)
+    {
+      auto [it, inserted] = merged.try_emplace(event.tick, event);
+      if (inserted)
+        continue;
+      ScoreEvent &into = it->second;
+      into.pitches.insert(into.pitches.end(), event.pitches.begin(),
+                          event.pitches.end());
+      std::sort(into.pitches.begin(), into.pitches.end());
+      into.pitches.erase(std::unique(into.pitches.begin(), into.pitches.end()),
+                         into.pitches.end());
+      into.startsBar |= event.startsBar;
+      into.trill |= event.trill;
+    }
+  std::vector<ScoreEvent> events;
+  events.reserve(merged.size());
+  for (auto &[tick, event] : merged)
+    events.push_back(std::move(event));
+  return events;
+}
+} // namespace
+
+OrchestrionSequencer::OrchestrionSequencer(
+    InstrumentIndex instrument, HandVoices rightHand, HandVoices leftHand,
+    PedalSequence pedalSequence,
+    std::array<std::vector<ScoreEvent>, 2> staffEvents,
+    double nominalTicksPerMs)
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
       m_leftHand{std::move(leftHand), std::nullopt},
@@ -139,7 +180,9 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
           *this, m_ornamentThreadMembers,
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
       m_notation{globalContext()->currentMasterNotation().get()},
-      m_modes{Mode(false), Mode(true)}
+      m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
+      m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
+      m_nominalTicksPerMs{nominalTicksPerMs}
 {
 #ifdef OS_IS_WIN
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -169,6 +212,7 @@ OrchestrionSequencer::OrchestrionSequencer(InstrumentIndex instrument,
   interactionProcessor()->itemClicked().onReceive(
       this, [this](const mu::engraving::EngravingItem *item)
       { GoToTick(item->tick().ticks(), JumpReason::Click); });
+  RebuildFollower();
   GoToTick(0, JumpReason::Rewind);
 }
 
@@ -295,6 +339,12 @@ void OrchestrionSequencer::SendTransitions(
       PostNoteEvents(std::move(voiceOutput), /*strum=*/!ornamented);
   }
 
+  PublishTransitions(transitions);
+}
+
+void OrchestrionSequencer::PublishTransitions(
+    const std::map<TrackIndex, ChordTransition> &transitions)
+{
   m_transitions.val.clear();
   for (const auto &[track, transition] : transitions)
     m_transitions.val.emplace(track, transition);
@@ -381,6 +431,9 @@ auto GetCursorTick(const OrchestrionSequencer::HandVoices &hand,
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                         std::optional<float> velocity)
 {
+  if (type == NoteEventType::noteOn ? IsNotesKey(pitch)
+                                    : m_playedPitches.count(pitch) > 0)
+    return OnPitchInput(type, pitch, std::move(velocity));
   std::optional<bool> isLeftHand;
   if (type == NoteEventType::noteOn)
     isLeftHand = PerformerHand(pitch);
@@ -410,16 +463,38 @@ StaffMode OrchestrionSequencer::Mode(bool isLeftHand) const
 
 bool OrchestrionSequencer::IsPerformed(bool isLeftHand) const
 {
-  return Mode(isLeftHand) == StaffMode::rhythm;
+  const StaffMode mode = Mode(isLeftHand);
+  return mode == StaffMode::notes || mode == StaffMode::rhythm;
+}
+
+bool OrchestrionSequencer::HandIn(bool isLeftHand, StaffMode mode) const
+{
+  return !(isLeftHand ? m_leftHand : m_rightHand).voices.empty() &&
+         Mode(isLeftHand) == mode;
+}
+
+bool OrchestrionSequencer::IsNotesKey(int pitch) const
+{
+  const bool rightNotes = HandIn(false, StaffMode::notes);
+  const bool leftNotes = HandIn(true, StaffMode::notes);
+  if (!rightNotes && !leftNotes)
+    return false;
+  const bool rightRhythm = HandIn(false, StaffMode::rhythm);
+  const bool leftRhythm = HandIn(true, StaffMode::rhythm);
+  constexpr int minorThird = 3;
+  if (leftRhythm)
+    // Below the right hand's notes.
+    return pitch > m_staffRanges[0].first - minorThird;
+  if (rightRhythm)
+    // Above the left hand's.
+    return pitch < m_staffRanges[1].second + minorThird;
+  return true;
 }
 
 std::optional<bool> OrchestrionSequencer::PerformerHand(int pitch) const
 {
   const auto plays = [this](bool isLeftHand)
-  {
-    const auto &hand = isLeftHand ? m_leftHand : m_rightHand;
-    return !hand.voices.empty() && IsPerformed(isLeftHand);
-  };
+  { return HandIn(isLeftHand, StaffMode::rhythm); };
   const bool right = plays(false);
   const bool left = plays(true);
   if (right && left)
@@ -468,13 +543,157 @@ void OrchestrionSequencer::AllNotesOff()
     if (const auto key = (left ? m_leftHand : m_rightHand).pressedKey)
       OnGesture(NoteEventType::noteOff, left, *key, std::nullopt,
                 /*byPerformer=*/false);
+  ReleasePlayedPitches();
   // Note-offs alone don't silence a piano while the sustain pedal is down.
   if (m_pedalDown)
     CutPedal();
   // Playing has stopped: there is no performance to follow any more, and
-  // the Follow staves must not play on, gliding on the last tempo.
+  // the Follow staves must not play on, gliding on the last tempo. The
+  // follower expects the next note where the staves stopped.
   m_tempo.reset();
   m_tempoTick.reset();
+  ResetFollower();
+}
+
+void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
+                                        std::optional<float> velocity)
+{
+  if (type == NoteEventType::noteOff)
+  {
+    const auto it = m_playedPitches.find(pitch);
+    if (it == m_playedPitches.end())
+      return;
+    PostNoteEvents({NoteEvent{NoteEventType::noteOff, it->second, pitch, 0.f}},
+                   /*strum=*/false);
+    m_playedPitches.erase(it);
+    return;
+  }
+
+  ++m_inputSerial;
+  // Followed first, so that the key sounds on the staff found to be played.
+  if (m_follower)
+  {
+    // The tempo is the performance's, which the Rhythm staves tell too.
+    if (m_tempo.ready() && m_tempo.speed() > 0.0)
+      m_follower->SetTicksPerMs(m_tempo.speed());
+    m_follower->OnNoteOn(pitch, NowMs());
+  }
+  const TrackIndex track = PitchTrack(pitch);
+  NoteEvents events;
+  if (const auto it = m_playedPitches.find(pitch); it != m_playedPitches.end())
+    // Struck again without a release in between: restrike.
+    events.emplace_back(NoteEventType::noteOff, it->second, pitch, 0.f);
+  // A controller without velocity (the computer keyboard) plays at the
+  // neutral loudness SendTransitions defaults to.
+  events.emplace_back(NoteEventType::noteOn, track, pitch,
+                      velocity.value_or(0.5f));
+  m_playedPitches.insert_or_assign(pitch, track);
+  PostNoteEvents(std::move(events), /*strum=*/false);
+
+  if (!m_follower)
+    return;
+  const size_t followed = m_follower->FollowedEvent();
+  if (m_shownEvent == followed)
+    return;
+  m_shownEvent = followed;
+  const int tick = m_follower->Events()[followed].tick;
+  FollowTo(tick);
+  ObserveTick(tick);
+}
+
+TrackIndex OrchestrionSequencer::PitchTrack(int pitch) const
+{
+  std::optional<int> tick;
+  if (m_follower)
+    tick = m_follower->Events()[m_follower->FollowedEvent()].tick;
+  // The Notes staff with a note the closest to the key where the performer
+  // is followed at; failing any there, the one whose range it is closest to.
+  std::optional<bool> closest;
+  int distance = std::numeric_limits<int>::max();
+  for (const bool left : {false, true})
+  {
+    if (!HandIn(left, StaffMode::notes))
+      continue;
+    const auto &events = m_staffEvents[left ? 1 : 0];
+    int d = std::numeric_limits<int>::max() / 2;
+    if (const auto it = std::find_if(events.begin(), events.end(),
+                                     [&](const ScoreEvent &event)
+                                     { return tick && event.tick == *tick; });
+        it != events.end())
+      for (const int p : it->pitches)
+        d = std::min(d, std::abs(p - pitch));
+    else
+    {
+      const auto [lowest, highest] = m_staffRanges[left ? 1 : 0];
+      d = pitch < lowest    ? lowest - pitch + 128
+          : pitch > highest ? pitch - highest + 128
+                            : 128;
+    }
+    if (d < distance)
+    {
+      distance = d;
+      closest = left;
+    }
+  }
+  const auto &hand = closest.value_or(false) ? m_leftHand : m_rightHand;
+  return hand.voices.empty() ? TrackIndex{} : hand.voices.front()->track;
+}
+
+void OrchestrionSequencer::FollowTo(int tickWithRepeats)
+{
+  std::map<TrackIndex, ChordTransition> transitions;
+  for (const bool left : {false, true})
+    if (HandIn(left, StaffMode::notes))
+      transitions.merge(PrepareStaffTransitions(
+          (left ? m_leftHand : m_rightHand).voices, [&](VoiceSequencer &voice)
+          { return voice.FollowTo(tickWithRepeats); }));
+  if (!transitions.empty())
+    PublishTransitions(transitions);
+}
+
+void OrchestrionSequencer::RebuildFollower()
+{
+  std::vector<const std::vector<ScoreEvent> *> staves;
+  for (const bool left : {false, true})
+    if (HandIn(left, StaffMode::notes))
+      staves.push_back(&m_staffEvents[left ? 1 : 0]);
+  auto events = Merge(staves);
+  m_follower = events.empty() ? nullptr
+                              : std::make_unique<PerformanceFollower>(
+                                    std::move(events), m_nominalTicksPerMs);
+  ResetFollower();
+}
+
+void OrchestrionSequencer::ResetFollower()
+{
+  m_shownEvent.reset();
+  if (!m_follower)
+    return;
+  // Where the next note is due: the earliest of the Notes staves' future
+  // chords.
+  std::optional<Tick> next;
+  for (const bool left : {false, true})
+    if (HandIn(left, StaffMode::notes))
+      for (const auto &voice : (left ? m_leftHand : m_rightHand).voices)
+        if (const auto chord = voice->GetFutureChord();
+            chord && (!next || chord->GetBeginTick() < *next))
+          next = chord->GetBeginTick();
+  const auto &events = m_follower->Events();
+  const auto tick = next ? next->withRepeats : 0;
+  const auto it =
+      std::lower_bound(events.begin(), events.end(), tick,
+                       [](const ScoreEvent &e, int t) { return e.tick < t; });
+  m_follower->Reset(static_cast<size_t>(it - events.begin()));
+}
+
+void OrchestrionSequencer::ReleasePlayedPitches()
+{
+  NoteEvents events;
+  for (const auto &[pitch, track] : m_playedPitches)
+    events.emplace_back(NoteEventType::noteOff, track, pitch, 0.f);
+  m_playedPitches.clear();
+  if (!events.empty())
+    PostNoteEvents(std::move(events), /*strum=*/false);
 }
 
 void OrchestrionSequencer::OnSustainPedal(bool down)
@@ -668,6 +887,8 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
   }
   CutPedal();
   m_autoPlayTick = tick;
+  // A click, a rewind, ...: the performer is to be followed from there.
+  ResetFollower();
 }
 
 void OrchestrionSequencer::SkipHandTo(bool isLeftHand, int tickWithRepeats)
@@ -735,6 +956,7 @@ void OrchestrionSequencer::OnStaffModesChanged()
 
   AllNotesOff();
   m_modes = modes;
+  RebuildFollower();
   GoToTick(from ? from->withoutRepeats : 0, JumpReason::Realign);
 }
 
@@ -1057,8 +1279,12 @@ void OrchestrionSequencer::ObserveOnset(
       const int begin = present->GetBeginTick().withRepeats;
       tick = tick ? std::max(*tick, begin) : begin;
     }
-  if (!tick)
-    return;
+  if (tick)
+    ObserveTick(*tick);
+}
+
+void OrchestrionSequencer::ObserveTick(int tick)
+{
   const double nowMs = NowMs();
   // After a pause — the next note long overdue — the wound-down estimate says
   // nothing about the tempo playing resumes at: start over.
@@ -1070,10 +1296,10 @@ void OrchestrionSequencer::ObserveOnset(
   }
   // Not before the onset fed last: the other hand's half of a chord struck
   // by both, or a hand lagging the other, tells the tempo nothing new.
-  if (m_tempoTick && *tick <= *m_tempoTick)
+  if (m_tempoTick && tick <= *m_tempoTick)
     return;
   m_tempoTick = tick;
-  m_tempo.addObservation(nowMs, *tick);
+  m_tempo.addObservation(nowMs, tick);
 }
 
 double OrchestrionSequencer::TicksPerMs(const IChord &chord) const

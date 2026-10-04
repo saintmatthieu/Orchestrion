@@ -25,6 +25,7 @@
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/OrnamentSchedule.h"
+#include "internal/PerformanceFollower.h"
 #include "internal/VoiceSequencer.h"
 
 #include <actions/actionable.h>
@@ -63,8 +64,15 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
+  /**
+   * `staffEvents` are what the Notes mode follows the performer along, staff
+   * by staff — right hand first — (see GetScoreEvents), at first at
+   * `nominalTicksPerMs`.
+   */
   OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
-                       HandVoices leftHand, PedalSequence);
+                       HandVoices leftHand, PedalSequence,
+                       std::array<std::vector<ScoreEvent>, 2> staffEvents,
+                       double nominalTicksPerMs);
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch,
@@ -183,6 +191,43 @@ private:
    * player, in their stead.
    */
   bool IsPerformed(bool isLeftHand) const;
+  /** Whether the hand has voices and is in the mode. */
+  bool HandIn(bool isLeftHand, StaffMode) const;
+  /**
+   * Whether a key the performer strikes is a note of the Notes staves
+   * rather than a gesture on a Rhythm one. With one staff of each, the
+   * Rhythm one gets the keys past the other's range, a minor third clear of
+   * it, so that no key it might be played with strikes a chord instead.
+   */
+  bool IsNotesKey(int pitch) const;
+  /**
+   * A key of the Notes staves: it sounds as it is, and the performer is
+   * followed in the score from it (see PerformanceFollower).
+   */
+  void OnPitchInput(NoteEventType, int pitch, std::optional<float> velocity);
+  /**
+   * The track a key of the Notes staves sounds on: that of the staff whose
+   * notes, where the performer is followed at, it is — or is closest to.
+   */
+  TrackIndex PitchTrack(int pitch) const;
+  /**
+   * Moves the Notes staves' voices, silently, to where the performer is
+   * followed at.
+   */
+  void FollowTo(int tickWithRepeats);
+  /** Follows the Notes staves, any there are, from scratch. */
+  void RebuildFollower();
+  /** Has the follower expect the next note where the Notes staves are. */
+  void ResetFollower();
+  /** Releases the keys the performer holds on the Notes staves. */
+  void ReleasePlayedPitches();
+  /** Feeds the performance's tempo estimate an onset at the tick. */
+  void ObserveTick(int tickWithRepeats);
+  /**
+   * Makes the transitions the current ones and tells the subscribers, with
+   * nothing sounded.
+   */
+  void PublishTransitions(const std::map<TrackIndex, ChordTransition> &);
   /**
    * The hand a key the performer strikes is for (see OnInputEvent), if any.
    */
@@ -366,6 +411,18 @@ private:
    */
   const mu::notation::IMasterNotation *const m_notation;
   std::array<StaffMode, 2> m_modes; // [0]=right, [1]=left
+
+  /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
+  const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;
+  /** Each staff's lowest and highest pitch. */
+  const std::array<std::pair<int, int>, 2> m_staffRanges;
+  const double m_nominalTicksPerMs;
+  /** Follows the Notes staves; none while no staff is in that mode. */
+  std::unique_ptr<PerformanceFollower> m_follower;
+  /** The follower's event the Notes staves were last moved to. */
+  std::optional<size_t> m_shownEvent;
+  /** The keys held on the Notes staves, and the track each sounds on. */
+  std::map<int /*pitch*/, TrackIndex> m_playedPitches;
 
   bool m_velocityRecordingEnabled = false;
   //! Whether the score's ornaments are played by the app (the automatic

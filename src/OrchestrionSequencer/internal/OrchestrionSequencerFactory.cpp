@@ -23,6 +23,7 @@
 #include "OrchestrionSequencer.h"
 #include "OrnamentGesture.h"
 #include "OrnamentSchedule.h"
+#include "ScoreEvents.h"
 #include "VoiceBlank.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/masterscore.h"
@@ -42,6 +43,7 @@
 #include <cassert>
 #include <cctype>
 #include <engraving/dom/mscore.h>
+#include <set>
 #include <string>
 
 namespace dgk
@@ -129,11 +131,7 @@ ChordGestures(std::shared_ptr<MuseChord> chord, bool writeOutOrnaments)
     return gestures;
   }
   const Tick begin = c.GetBeginTick();
-  const int nominalTicks = c.GetEndTick().withRepeats - begin.withRepeats;
-  constexpr double ticksPerQuarter = 480.0;
-  const double bpm = c.GetNominalBpm() > 0.0 ? c.GetNominalBpm() : 120.0;
-  const std::vector<WrittenNote> notes = WriteOutOrnament(
-      *ornament, c.GetPitches(), nominalTicks, bpm * ticksPerQuarter / 60000.0);
+  const std::vector<WrittenNote> notes = WriteOutOrnament(c);
   if (notes.size() < 2)
   {
     gestures.push_back(chord);
@@ -365,6 +363,28 @@ PedalSequence GetPedalSequence(mu::engraving::Score &score, int beginStaffIdx,
   return sequence;
 }
 
+/**
+ * The score's tempo at its first chord, in ticks per millisecond; 120 quarters
+ * per minute if it has none.
+ */
+double NominalTicksPerMs(const std::vector<const Staff *> &staves)
+{
+  const IChord *first = nullptr;
+  for (const Staff *staff : staves)
+    for (const auto &[voice, sequence] : *staff)
+      for (const ChordRestPtr &segment : sequence)
+        if (const IChord *chord = segment->AsChord())
+        {
+          if (!first || chord->GetBeginTick() < first->GetBeginTick())
+            first = chord;
+          break;
+        }
+  constexpr double ticksPerQuarter = 480.0;
+  const double bpm =
+      first && first->GetNominalBpm() > 0.0 ? first->GetNominalBpm() : 120.0;
+  return bpm * ticksPerQuarter / 60000.0;
+}
+
 auto MakeHand(size_t staffIdx, const Staff &staff)
 {
   OrchestrionSequencer::HandVoices hand;
@@ -408,13 +428,24 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   }
   auto pedalSequence = GetPedalSequence(score, staff, staff + 2);
 
+  // What the Notes mode follows the performer along, staff by staff: the
+  // sequencer follows the staves in that mode, whichever they are.
+  std::set<int> barTicks;
+  ForAllMeasures(score, [&](const mu::engraving::Measure &, int measureTick)
+                 { barTicks.insert(measureTick); });
+  std::array<std::vector<ScoreEvent>, 2> staffEvents{
+      GetScoreEvents({&rightHand}, barTicks),
+      GetScoreEvents({&leftHand}, barTicks)};
+  const double nominalTicksPerMs = NominalTicksPerMs({&rightHand, &leftHand});
+
   // Copy the staffs before MakeHand moves them.
   Staff rightHandCopy = rightHand;
   Staff leftHandCopy = leftHand;
 
   auto sequencer = std::make_shared<OrchestrionSequencer>(
       mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
-      MakeHand(staff + 1, leftHand), std::move(pedalSequence));
+      MakeHand(staff + 1, leftHand), std::move(pedalSequence),
+      std::move(staffEvents), nominalTicksPerMs);
 
   return {sequencer, modifiableItems, std::move(rightHandCopy),
           std::move(leftHandCopy)};

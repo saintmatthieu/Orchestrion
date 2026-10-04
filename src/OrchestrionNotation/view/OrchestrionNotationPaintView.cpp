@@ -625,7 +625,8 @@ OrchestrionNotationPaintView::judgeDynamics(
 
 bool OrchestrionNotationPaintView::isPerformedStaff(int staff) const
 {
-  return staffModes()->mode(staff) == StaffMode::rhythm;
+  const StaffMode mode = staffModes()->mode(staff);
+  return mode == StaffMode::notes || mode == StaffMode::rhythm;
 }
 
 void OrchestrionNotationPaintView::endTake()
@@ -1319,6 +1320,8 @@ QString OrchestrionNotationPaintView::staffSelectorTooltip(
     return {};
   switch (hit.mode)
   {
+  case StaffMode::notes:
+    return muse::qtrc("orchestrion/staffmode", "Notes");
   case StaffMode::rhythm:
     return muse::qtrc("orchestrion/staffmode", "Rhythm");
   case StaffMode::follow:
