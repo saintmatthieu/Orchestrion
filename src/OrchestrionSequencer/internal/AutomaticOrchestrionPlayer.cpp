@@ -91,7 +91,14 @@ void AutomaticOrchestrionPlayer::TogglePlay()
 void AutomaticOrchestrionPlayer::Stop()
 {
   if (!m_playing)
+  {
+    // Not the player playing, then, but the performer: stopping is for them
+    // to ask too. What sounds is let go of, and the performance's tempo
+    // estimate with it, so that the Follow staves stop rather than play on,
+    // gliding on the last tempo.
+    m_sequencer.AllNotesOff();
     return;
+  }
   ++m_generation; // cancels all scheduled events, nominal and replay alike
   m_playing = false;
   // Don't leave notes ringing. m_playing is already false, so a position
