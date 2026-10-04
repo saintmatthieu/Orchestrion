@@ -537,7 +537,12 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type,
       loopBoundaries.loopOutTick.ticks() > 0 &&
       cursorTick.withoutRepeats >= loopBoundaries.loopOutTick.ticks())
   {
-    GoToTick(loopBoundaries.loopInTick.ticks(), JumpReason::LoopWrap);
+    if (Mode(isLeftHand) == StaffMode::follow)
+      // Not a Follow staff's to take the loop back: it waits at the loop's
+      // end for the performer to.
+      return;
+    WrapLoop(loopBoundaries.loopInTick.ticks(), cursorTick,
+             [&] { return GetCursorTick(hand.voices, type); });
     return OnInputEventRecursive(type, isLeftHand, key, std::move(velocity),
                                  false, byPerformer);
   }
@@ -641,10 +646,14 @@ void OrchestrionSequencer::UpdatePedal()
 void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
 {
   m_aboutToJumpPosition.send(tick, reason);
-  // The position jumps: the tempo estimates start over, and whatever
-  // ornament was under way is cut.
-  m_tempo.reset();
-  m_tempoTick.reset();
+  // The position jumps: the tempo estimate starts over — but for a loop's
+  // wrap, which the performance carries on through (see WrapLoop) — and
+  // whatever ornament was under way is cut.
+  if (reason != JumpReason::LoopWrap)
+  {
+    m_tempo.reset();
+    m_tempoTick.reset();
+  }
   CancelOrnaments();
   {
     // A muted staff stays where it is, out of sight: it has no position to
@@ -673,6 +682,26 @@ void OrchestrionSequencer::SkipHandTo(bool isLeftHand, int tickWithRepeats)
       PrepareStaffTransitions(hand.voices, [&](VoiceSequencer &voice)
                               { return voice.SkipTo(tickWithRepeats); }),
       std::nullopt, isLeftHand);
+}
+
+void OrchestrionSequencer::WrapLoop(
+    int loopInTick, const Tick &before,
+    const std::function<std::optional<Tick>()> &next)
+{
+  GoToTick(loopInTick, JumpReason::LoopWrap);
+  // The performance carries on through the wrap: its tempo estimate too,
+  // moved back with the position.
+  const auto after = next();
+  if (!after)
+  {
+    m_tempo.reset();
+    m_tempoTick.reset();
+    return;
+  }
+  const int delta = after->withRepeats - before.withRepeats;
+  m_tempo.shift(delta);
+  if (m_tempoTick)
+    *m_tempoTick += delta;
 }
 
 std::vector<const VoiceSequencer *> OrchestrionSequencer::PlayingVoices() const
