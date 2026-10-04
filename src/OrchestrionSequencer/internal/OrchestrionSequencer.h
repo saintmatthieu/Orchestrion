@@ -192,6 +192,14 @@ private:
    * play from now on start where the others were.
    */
   void OnStaffModesChanged();
+  /**
+   * Back to the loop's start from its end: a jump, but one the performance
+   * carries on through, its tempo estimate moved back with the position
+   * rather than started over. `before` is where the staves playing were next
+   * due before the wrap, and `next` tells where they are after it.
+   */
+  void WrapLoop(int loopInTick, const Tick &before,
+                const std::function<std::optional<Tick>()> &next);
   /** The voices of the staves not muted. */
   std::vector<const VoiceSequencer *> PlayingVoices() const;
   /**
