@@ -37,6 +37,14 @@ public:
   std::optional<ChordTransition> GoToTick(int tick);
 
   /**
+   * Moves, without a gesture, to where the performer is found to be at
+   * `tick` (with repeats): the chord sounding then is the present one, or,
+   * if none is, the next is the future one. Nothing if the voice is there
+   * already.
+   */
+  std::optional<ChordTransition> FollowTo(int tick);
+
+  /**
    * Moves on, without a gesture, to before the first chord from the next one
    * on that begins at or after `tick` (with repeats). Nothing if the next one
    * does already.

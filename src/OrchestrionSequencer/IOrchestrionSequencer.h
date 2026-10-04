@@ -92,10 +92,13 @@ public:
 
   /**
    * A key the performer played. It goes to the staff it is for, going by the
-   * staff modes (see IStaffModes): the Rhythm staff if there is one, split
-   * at middle C between the two if both are, nowhere if none is. If a
-   * note-on comes from a controller that doesn't carry velocity, such as a
-   * computer keyboard, set velocity to std::nullopt.
+   * staff modes (see IStaffModes). A key of a Notes staff sounds as it is,
+   * and the performer is followed in the score from it; one of a Rhythm
+   * staff strikes its next chord. With a staff of each, the Rhythm one gets
+   * the keys past the Notes one's range, a minor third clear of it; with two
+   * Rhythm staves, they are split at middle C. If a note-on comes from a
+   * controller that doesn't carry velocity, such as a computer keyboard, set
+   * velocity to std::nullopt.
    */
   virtual void OnInputEvent(NoteEventType, int pitch,
                             std::optional<float> velocity) = 0;

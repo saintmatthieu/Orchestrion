@@ -1,10 +1,16 @@
 set(MODULE_TEST orchestrionsequencer_tests)
 
-# The scheduler is pure (no Qt, no MuseScore): compiled straight into the
-# test rather than linking the whole module.
+# The scheduler, the performance follower and what it follows are pure (no
+# Qt, no MuseScore): compiled straight into the test rather than linking the
+# whole module.
 set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/OrnamentScheduleTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentSchedule.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/PerformanceFollowerTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceFollower.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/ScoreEventsTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/ScoreEvents.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentGesture.cpp
 )
 
 set(MODULE_TEST_LINK

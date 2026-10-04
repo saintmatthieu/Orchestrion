@@ -20,6 +20,7 @@
 
 #include <QPainter>
 #include <QPainterPath>
+#include <QTransform>
 #include <algorithm>
 #include <cmath>
 
@@ -207,8 +208,34 @@ void StaffModeSelector::Sketch(QPainter &painter, StaffMode mode, QPointF c,
   const auto at = [&](double x, double y)
   { return c + QPointF{x * size, y * size}; };
   QPainterPath path;
+  unsigned seed = 0;
   switch (mode)
   {
+  case StaffMode::notes:
+  {
+    // A note: a slanted oval head, scribbled in, its stem up from its right.
+    const QPointF head = at(-0.1, 0.27);
+    const double rx = 0.16 * size;
+    const double ry = 0.11 * size;
+    QTransform slant;
+    slant.translate(head.x(), head.y());
+    slant.rotate(-22);
+    QPainterPath oval;
+    oval.addEllipse(QPointF{}, rx, ry);
+    // The fill, back and forth across the oval as a pencil fills it.
+    for (const double y : {-0.55, -0.15, 0.25, 0.6})
+    {
+      const double x = rx * std::sqrt(1.0 - y * y);
+      oval.moveTo(-x, y * ry);
+      oval.lineTo(x, y * ry);
+    }
+    path.addPath(slant.map(oval));
+    const QPointF right = slant.map(QPointF{rx * 0.92, -ry * 0.25});
+    path.moveTo(right);
+    path.lineTo(QPointF{right.x() + 0.01 * size, at(0, -0.46).y()});
+    seed = 4;
+    break;
+  }
   case StaffMode::rhythm:
   {
     // A percussion note: a cross for a head, its stem up from its right.
@@ -220,6 +247,7 @@ void StaffModeSelector::Sketch(QPainter &painter, StaffMode mode, QPointF c,
     path.lineTo(head + QPointF{h, -h});
     path.moveTo(head + QPointF{h, -h});
     path.lineTo(at(0.04, -0.46));
+    seed = 1;
     break;
   }
   case StaffMode::follow:
@@ -235,6 +263,7 @@ void StaffModeSelector::Sketch(QPainter &painter, StaffMode mode, QPointF c,
     path.moveTo(at(-0.18, 0.45));
     path.lineTo(at(0.01, 0.12));
     path.lineTo(at(0.19, 0.44));
+    seed = 2;
     break;
   }
   case StaffMode::mute:
@@ -243,9 +272,10 @@ void StaffModeSelector::Sketch(QPainter &painter, StaffMode mode, QPointF c,
     path.lineTo(at(0.29, 0.31));
     path.moveTo(at(0.31, -0.32));
     path.lineTo(at(-0.3, 0.33));
+    seed = 3;
     break;
   }
-  Pencil(painter, path, ink, width, static_cast<unsigned>(mode) + 1u);
+  Pencil(painter, path, ink, width, seed);
 }
 
 void StaffModeSelector::Arrow(QPainter &painter, Part part, QPointF c,

@@ -30,6 +30,11 @@ namespace dgk
  */
 enum class StaffMode
 {
+  /**
+   * By the performer, playing its notes: the keys sound as they are, and the
+   * performer is followed in the score from them (see PerformanceFollower).
+   */
+  notes,
   /** By the performer, any key striking the staff's next chord. */
   rhythm,
   /**
