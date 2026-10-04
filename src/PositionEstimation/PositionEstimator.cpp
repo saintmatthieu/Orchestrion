@@ -107,7 +107,9 @@ PositionEstimator::onOnsets(double nowMs, const std::map<int, double> &onsets)
     // A coast means the performer stopped; the wound-down curve says nothing
     // about the tempo they resume at, so the estimate starts over. (Uticks
     // themselves need no such care: they run monotonically through repeats
-    // and jumps.)
+    // and jumps.) Brought up to now first: no heartbeat may have come since
+    // the last onset, the page being still.
+    hand.tracker.heartbeat(nowMs);
     if (hand.tracker.isCoasting())
     {
       hand.tracker.reset();
