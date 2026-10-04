@@ -719,15 +719,11 @@ void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
     return;
   }
 
-  std::optional<double> performedTicks;
-  for (int staff = 0; staff < 2; ++staff)
-  {
-    if (!isPerformedStaff(staff))
-      continue;
-    if (const auto tick = m_estimator.tickAt(staff, nowMs))
-      performedTicks =
-          performedTicks ? std::max(*performedTicks, *tick) : *tick;
-  }
+  const auto sequencer = orchestrion()->sequencer();
+  const std::optional<PerformedTempo> performance =
+      sequencer ? sequencer->PerformedTempoNow() : std::nullopt;
+  const std::optional<double> performedTicks =
+      performance ? std::make_optional(performance->tick) : std::nullopt;
   if (!performedTicks)
   {
     m_followAwaitsTempo = true;
@@ -739,7 +735,6 @@ void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
     // the Follow staves join from where the performer is, leaving out what
     // they had due before, rather than rattling it off to catch up.
     m_followAwaitsTempo = false;
-    const auto sequencer = orchestrion()->sequencer();
     const auto from = *performedTicks;
     std::vector<int> late;
     for (const auto &[staff, targets] : m_autoStaffTargets)
@@ -2074,8 +2069,7 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   // point where the parchment reaches the cylinders.
   if (const auto [minScaling, maxScaling] = scalingLimits();
       currentScaling() < minScaling || currentScaling() > maxScaling)
-    setScaling(currentScaling(),
-               muse::PointF{width() / 2, height() / 2});
+    setScaling(currentScaling(), muse::PointF{width() / 2, height() / 2});
 
   const auto scaling = currentScaling();
   const auto topLogicalY = centredTopY(scaling);
@@ -2146,28 +2140,19 @@ std::optional<double> OrchestrionNotationPaintView::resumeExpectedInMs() const
 {
   if (!m_resumeUtick)
     return std::nullopt;
-  const double nowMs = static_cast<double>(m_clock.elapsed());
-  constexpr double ticksPerQuarter = mu::engraving::Constants::DIVISION;
-  std::optional<double> expectedInMs;
-  for (int staff = 0; staff < 2; ++staff)
-  {
-    // A hand not yet tracked has no say; one coasting — its next note
-    // overdue, winding down — has none either: it would only extrapolate a
-    // tempo it has stopped keeping.
-    if (!m_estimator.ready(staff) || m_estimator.isCoasting(staff))
-      continue;
-    std::optional<double> position = m_estimator.tickAt(staff, nowMs);
-    const std::optional<double> bpm = m_estimator.bpm(staff);
-    if (!position || !bpm || *bpm <= 1.0)
-      continue;
-    // Not past the next note to play (see the declaration).
-    if (m_focusUtick)
-      position = std::min(*position, static_cast<double>(*m_focusUtick));
-    const double ticksPerMs = *bpm * ticksPerQuarter / 60000.0;
-    const double ms = (*m_resumeUtick - *position) / ticksPerMs;
-    expectedInMs = expectedInMs ? std::min(*expectedInMs, ms) : ms;
-  }
-  return expectedInMs;
+  const auto sequencer = orchestrion()->sequencer();
+  const auto performance =
+      sequencer ? sequencer->PerformedTempoNow() : std::nullopt;
+  // No estimate yet has no say; one coasting — the next note overdue, winding
+  // down — has none either: it would only extrapolate a tempo the performer
+  // has stopped keeping.
+  if (!performance || performance->coasting || performance->ticksPerMs <= 0.0)
+    return std::nullopt;
+  // Not past the next note to play (see the declaration).
+  double position = performance->tick;
+  if (m_focusUtick)
+    position = std::min(position, static_cast<double>(*m_focusUtick));
+  return (*m_resumeUtick - position) / performance->ticksPerMs;
 }
 
 double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,

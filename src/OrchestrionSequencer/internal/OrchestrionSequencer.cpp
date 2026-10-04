@@ -282,7 +282,7 @@ void OrchestrionSequencer::SendTransitions(
       else if (m_velocityRecordingEnabled)
         present->SetVelocity(*velocity);
 
-      strike = ScheduleChord(*present, isLeftHand ? m_leftHand : m_rightHand);
+      strike = ScheduleChord(*present);
     }
 
     const bool ornamented =
@@ -408,12 +408,17 @@ StaffMode OrchestrionSequencer::Mode(bool isLeftHand) const
   return staffModes()->mode(isLeftHand ? 1 : 0);
 }
 
+bool OrchestrionSequencer::IsPerformed(bool isLeftHand) const
+{
+  return Mode(isLeftHand) == StaffMode::rhythm;
+}
+
 std::optional<bool> OrchestrionSequencer::PerformerHand(int pitch) const
 {
   const auto plays = [this](bool isLeftHand)
   {
     const auto &hand = isLeftHand ? m_leftHand : m_rightHand;
-    return !hand.voices.empty() && Mode(isLeftHand) == StaffMode::rhythm;
+    return !hand.voices.empty() && IsPerformed(isLeftHand);
   };
   const bool right = plays(false);
   const bool left = plays(true);
@@ -466,6 +471,10 @@ void OrchestrionSequencer::AllNotesOff()
   // Note-offs alone don't silence a piano while the sustain pedal is down.
   if (m_pedalDown)
     CutPedal();
+  // Playing has stopped: there is no performance to follow any more, and
+  // the Follow staves must not play on, gliding on the last tempo.
+  m_tempo.reset();
+  m_tempoTick.reset();
 }
 
 void OrchestrionSequencer::OnSustainPedal(bool down)
@@ -554,7 +563,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type,
                     type == NoteEventType::noteOn ? velocity : std::nullopt});
 
   if (type == NoteEventType::noteOn)
-    ObserveOnset(hand, transitions);
+    ObserveOnset(isLeftHand, transitions);
 
   SendTransitions(transitions, std::move(velocity), isLeftHand);
 
@@ -634,8 +643,8 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
   m_aboutToJumpPosition.send(tick, reason);
   // The position jumps: the tempo estimates start over, and whatever
   // ornament was under way is cut.
-  m_rightHand.tempo.reset();
-  m_leftHand.tempo.reset();
+  m_tempo.reset();
+  m_tempoTick.reset();
   CancelOrnaments();
   {
     // A muted staff stays where it is, out of sight: it has no position to
@@ -660,8 +669,6 @@ void OrchestrionSequencer::SkipHandTo(bool isLeftHand, int tickWithRepeats)
   if (hand.pressedKey)
     OnGesture(NoteEventType::noteOff, isLeftHand, *hand.pressedKey,
               std::nullopt, /*byPerformer=*/false);
-  // What the hand played so far tells nothing of the tempo it plays on at.
-  hand.tempo.reset();
   SendTransitions(
       PrepareStaffTransitions(hand.voices, [&](VoiceSequencer &voice)
                               { return voice.SkipTo(tickWithRepeats); }),
@@ -739,7 +746,9 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
   std::vector<Candidate> candidates;
   for (bool isLeftHand : {false, true})
   {
-    if (Mode(isLeftHand) == StaffMode::mute)
+    // What the performer would play, the player plays in their stead: not a
+    // Follow staff, which follows the player as it would the performer.
+    if (!IsPerformed(isLeftHand))
       continue;
     auto &hand = isLeftHand ? m_leftHand : m_rightHand;
     for (auto eventType : {NoteEventType::noteOff, NoteEventType::noteOn})
@@ -786,9 +795,9 @@ int OrchestrionSequencer::AnticipationTicks(const Hand &hand,
     if (!chord || chord->GetBeginTick().withRepeats != strike.withRepeats)
       continue;
     // Back from the schedule's time to ticks at the tempo it was timed with.
-    const double ms = ScheduleChord(*chord, hand).anticipation.count() / 1000.0;
-    ticks = std::max(
-        ticks, static_cast<int>(std::lround(ms * TicksPerMs(hand, *chord))));
+    const double ms = ScheduleChord(*chord).anticipation.count() / 1000.0;
+    ticks =
+        std::max(ticks, static_cast<int>(std::lround(ms * TicksPerMs(*chord))));
   }
   return ticks;
 }
@@ -817,7 +826,7 @@ int OrchestrionSequencer::AutoPlayStrikeTick(const Hand &hand,
     // m_autoPlayTick, which is now, give or take the timer's lateness.
     const TrackSchedule &entry = it->second;
     const OrnamentSchedule &schedule = entry.schedule;
-    const double ticksPerMs = TicksPerMs(hand, *chord);
+    const double ticksPerMs = TicksPerMs(*chord);
     const auto ticksOf = [&](microseconds duration)
     { return duration.count() / 1000.0 * ticksPerMs; };
     const double untilStepEnd = std::max(
@@ -1006,8 +1015,10 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum)
 }
 
 void OrchestrionSequencer::ObserveOnset(
-    Hand &hand, const std::map<TrackIndex, ChordTransition> &transitions)
+    bool isLeftHand, const std::map<TrackIndex, ChordTransition> &transitions)
 {
+  if (Mode(isLeftHand) == StaffMode::follow)
+    return;
   // The staff's voices are played by the same gesture: one onset, the
   // furthest struck.
   std::optional<int> tick;
@@ -1022,22 +1033,41 @@ void OrchestrionSequencer::ObserveOnset(
   const double nowMs = NowMs();
   // After a pause — the next note long overdue — the wound-down estimate says
   // nothing about the tempo playing resumes at: start over.
-  hand.tempo.heartbeat(nowMs);
-  if (hand.tempo.isCoasting())
-    hand.tempo.reset();
-  hand.tempo.addObservation(nowMs, *tick);
+  m_tempo.heartbeat(nowMs);
+  if (m_tempo.isCoasting())
+  {
+    m_tempo.reset();
+    m_tempoTick.reset();
+  }
+  // Not before the onset fed last: the other hand's half of a chord struck
+  // by both, or a hand lagging the other, tells the tempo nothing new.
+  if (m_tempoTick && *tick <= *m_tempoTick)
+    return;
+  m_tempoTick = tick;
+  m_tempo.addObservation(nowMs, *tick);
 }
 
-double OrchestrionSequencer::TicksPerMs(const Hand &hand,
-                                        const IChord &chord) const
+double OrchestrionSequencer::TicksPerMs(const IChord &chord) const
 {
   const double nominalBpm =
       chord.GetNominalBpm() > 0.0 ? chord.GetNominalBpm() : 120.0;
   const double nominal = nominalBpm * ticksPerQuarter / 60000.0;
-  if (!hand.tempo.ready() || hand.tempo.speed() <= 0.0)
+  if (!m_tempo.ready() || m_tempo.speed() <= 0.0)
     return nominal;
   // A young estimate can be wild: kept within reason of the score's tempo.
-  return std::clamp(hand.tempo.speed(), nominal / 4.0, nominal * 4.0);
+  return std::clamp(m_tempo.speed(), nominal / 4.0, nominal * 4.0);
+}
+
+std::optional<PerformedTempo> OrchestrionSequencer::PerformedTempoNow()
+{
+  const double nowMs = NowMs();
+  // Between onsets the estimate glides on, and coasts to a stop once the
+  // next one is overdue.
+  m_tempo.heartbeat(nowMs);
+  if (!m_tempo.ready())
+    return std::nullopt;
+  return PerformedTempo{m_tempo.positionAt(nowMs), m_tempo.speed(),
+                        m_tempo.isCoasting()};
 }
 
 double OrchestrionSequencer::NowMs() const
@@ -1057,8 +1087,7 @@ void OrchestrionSequencer::QueueOrnamentStep(
   queue.insert(pos, QueueEntry<OrnamentStepDue>{due.time, due});
 }
 
-OrnamentSchedule OrchestrionSequencer::ScheduleChord(const IChord &chord,
-                                                     const Hand &hand) const
+OrnamentSchedule OrchestrionSequencer::ScheduleChord(const IChord &chord) const
 {
   const Ornament *ornament = chord.GetOrnament();
   if (!ornament || !m_ornamentsEnabled)
@@ -1066,7 +1095,7 @@ OrnamentSchedule OrchestrionSequencer::ScheduleChord(const IChord &chord,
   const int nominalTicks =
       chord.GetEndTick().withRepeats - chord.GetBeginTick().withRepeats;
   return ScheduleOrnament(*ornament, chord.GetPitches(), nominalTicks,
-                          TicksPerMs(hand, chord));
+                          TicksPerMs(chord));
 }
 
 std::vector<int>

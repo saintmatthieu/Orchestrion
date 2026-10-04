@@ -64,6 +64,16 @@ struct ReplayTake
   std::vector<ReplayEvent> events;
 };
 
+/** Where the performance is, and how fast it goes. */
+struct PerformedTempo
+{
+  /** Ticks with repeats. */
+  double tick = 0.0;
+  double ticksPerMs = 0.0;
+  /** Whether the next onset is overdue, the estimate coasting to a stop. */
+  bool coasting = false;
+};
+
 enum class JumpReason
 {
   Rewind,   // the rewind action, or a fresh sequencer starting at the top
@@ -108,7 +118,8 @@ public:
   /**
    * Releases whatever is sounding — the hands' held keys and the sustain
    * pedal — as if the player had lifted hands and foot. Called when playback
-   * is stopped, so the notes don't ring on.
+   * is stopped, so the notes don't ring on. The performance's tempo estimate
+   * goes with it (see PerformedTempoNow), so the Follow staves stop too.
    */
   virtual void AllNotesOff() = 0;
   virtual muse::async::Channel<std::map<TrackIndex, ChordTransition>>
@@ -139,6 +150,14 @@ public:
    * leaves out while there is no tempo to follow.
    */
   virtual void SkipHandTo(bool isLeftHand, int tickWithRepeats) = 0;
+
+  /**
+   * The performance now, estimated from the onsets of the staves the
+   * performer plays (not the Follow ones): one estimate for them all, which
+   * the Follow staves play to and the ornaments are timed with. Empty until
+   * two onsets give a tempo — at first, after a jump, after a pause.
+   */
+  virtual std::optional<PerformedTempo> PerformedTempoNow() = 0;
   virtual void GoToPrevNoteonTick() = 0;
   virtual void GoToNextNoteonTick() = 0;
 
@@ -146,8 +165,9 @@ public:
    * Returns the next batch of input events to play, with a delta tick count
    * relative to the previous call (0 at the start of the score). A chord with
    * grace notes before it is due early by their length, as a performer plays
-   * it, so that the chord itself falls on its beat. Returns std::nullopt when
-   * there is nothing left to play.
+   * it, so that the chord itself falls on its beat. Only the staves the
+   * performer would play: not the Follow ones, which follow the player, nor
+   * the Mute ones. Returns std::nullopt when there is nothing left to play.
    */
   virtual std::optional<NextAutoPlayEvents> WhatToPlayNext() = 0;
 };

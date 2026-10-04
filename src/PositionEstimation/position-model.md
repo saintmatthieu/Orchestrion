@@ -419,12 +419,16 @@ Six consumers:
   velocity registers — same retrospective residuals, judged in velocity
   fractions. Only genuine controller velocities are fed (derived ones are
   smooth by construction and would inflate the score).
-- **Auto-play**: the performed staves' *causal* estimate (utick position,
-  live, coasting when the performer stops) paces the staves in the Follow
-  mode (see `IStaffModes`): their next due strike/release ticks come from the
-  sequencer's transitions, and fire when the estimate reaches them — so they
-  follow the performer's tempo. A Follow staff is exempt from judgments, sync
-  and dynamics scoring.
+- **Auto-play**: the performance's *causal* estimate paces the staves in the
+  Follow mode (see `IStaffModes`). It is one tracker for all the staves the
+  performer plays, kept by the sequencer (`PerformedTempoNow`) and fed their
+  onsets — an onset not past the last one fed (the other hand's half of a
+  chord) adding nothing. The Follow staves' next due strike/release ticks
+  come from the sequencer's transitions, and fire when the estimate reaches
+  them — so they follow the performer's tempo. The same estimate times the
+  ornaments. A Follow staff is exempt from judgments, sync and dynamics
+  scoring; the grading keeps its per-hand trackers and smoothers, a hand's
+  timing being judged against its own curve.
 - **Visualization**: the smoothed BPM curve is drawn solid (re-sent per onset —
   its recent end visibly bends into place as new onsets land); the causal
   per-frame estimate stays as a faint trace, carrying the leading edge from the
