@@ -95,9 +95,15 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
       sequencerConfig()->ornamentMode() == OrnamentMode::manual;
 
   m_modifiableItemRegistry = products.modifiableItemRegistry;
+  // It plays on the sequencer and the player it follows: gone before them.
+  m_followPlayer.reset();
   if (products.sequencer)
+  {
     m_autoPlayer =
         std::make_shared<AutomaticOrchestrionPlayer>(*products.sequencer);
+    m_followPlayer =
+        std::make_unique<FollowPlayer>(*products.sequencer, *m_autoPlayer);
+  }
   else
     m_autoPlayer.reset();
   if (products.sequencer && resumeTick)

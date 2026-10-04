@@ -19,6 +19,7 @@
 #pragma once
 
 #include "AutomaticOrchestrionPlayer.h"
+#include "FollowPlayer.h"
 #include "IModifiableItemRegistry.h"
 #include "IOrchestrion.h"
 #include "IOrchestrionSequencerConfiguration.h"
@@ -69,6 +70,7 @@ private:
   IOrchestrionSequencerPtr m_sequencer;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
   std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
+  std::unique_ptr<FollowPlayer> m_followPlayer;
   muse::async::Notification m_sequencerChanged;
   // The master score whose unroll decision was already taken: the choice is
   // made once per loaded score (mid-session unrolling would pull engraved

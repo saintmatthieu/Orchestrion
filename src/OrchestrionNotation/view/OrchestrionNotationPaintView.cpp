@@ -159,16 +159,6 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
                                            { return moveCanvasBy(physicalDx); })
 {
   m_clock.start();
-  m_autoPlayTimer.setInterval(16); // ~60 Hz
-  m_autoPlayTimer.callOnTimeout(
-      [this]
-      {
-        const double nowMs = static_cast<double>(m_clock.elapsed());
-        // The estimate must keep advancing (and coasting) even when the page
-        // is still and no frames are being rendered.
-        m_estimator.heartbeat(nowMs);
-        fireDueAutoEvents(nowMs);
-      });
   m_warpTimer.setInterval(warpAnimStepMs);
   m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
   // NOTE: nothing subscribes to currentThemeChanged() here, although the
@@ -253,9 +243,6 @@ void OrchestrionNotationPaintView::subscribe(
                                               // tempo estimate and re-frame at
                                               // the new location on the next
                                               // transitions.
-                                              // The jump's transitions batch
-                                              // repopulates the ledger.
-                                              m_autoTrackTargets.clear();
                                               m_readingFocus.clear();
                                               // ...except for a click on the
                                               // page: what it jumps to is
@@ -487,15 +474,6 @@ void OrchestrionNotationPaintView::OnTransitions(
                       xOf(focus),
                       ahead ? std::optional{ahead->barrier} : std::nullopt);
 
-  if (replaying)
-  {
-    // The recorded take already contains the Follow staves' events: keep
-    // the trigger quiet so they don't fire twice.
-    m_autoStaffTargets.clear();
-  }
-  else
-    updateAutoTargets(transitions);
-
   // Feed the debug tempo strip: the onsets the estimate reacted to, and each
   // hand's re-fitted curve (replaced wholesale per onset).
   for (const auto &[staff, tMs] : feedback.onsetTMs)
@@ -645,162 +623,9 @@ OrchestrionNotationPaintView::judgeDynamics(
   return windows;
 }
 
-void OrchestrionNotationPaintView::updateAutoTargets(
-    const std::map<TrackIndex, ChordTransition> &batch)
-{
-  // Refresh the ledger entries this batch brings for the Follow staves.
-  for (const auto &[track, transition] : batch)
-  {
-    if (!isFollowStaff(track.staffIndex()))
-      continue;
-    AutoTargets &targets = m_autoTrackTargets[track.value];
-    const IChord *present = GetPresentChord(transition);
-    targets.offTick =
-        present ? std::make_optional<double>(present->GetEndTick().withRepeats)
-                : std::nullopt;
-    const IChord *future = GetFutureChord(transition);
-    if (!future && GetPresentThing(transition) && !present)
-      // Released onto a rest, which the transition says nothing after: the
-      // chord after it is what the staff strikes next.
-      if (const auto sequencer = orchestrion()->sequencer())
-        future = sequencer->GetNextChord(track);
-    targets.onTick =
-        future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
-               : std::nullopt;
-  }
-
-  // Aggregate: each Follow staff's earliest release and strike across its
-  // voices, in playback-unrolled ticks — the coordinate the performed
-  // staves' estimate lives in.
-  m_autoStaffTargets.clear();
-  for (const auto &[track, targets] : m_autoTrackTargets)
-  {
-    AutoTargets &staff = m_autoStaffTargets[TrackIndex{track}.staffIndex()];
-    if (targets.offTick)
-      staff.offTick = staff.offTick ? std::min(*staff.offTick, *targets.offTick)
-                                    : targets.offTick;
-    if (targets.onTick)
-      staff.onTick = staff.onTick ? std::min(*staff.onTick, *targets.onTick)
-                                  : targets.onTick;
-  }
-  // Poll only while there is something to fire.
-  const bool due =
-      std::any_of(m_autoStaffTargets.begin(), m_autoStaffTargets.end(),
-                  [](const auto &entry)
-                  { return entry.second.offTick || entry.second.onTick; });
-  if (due)
-  {
-    if (!m_autoPlayTimer.isActive())
-      m_autoPlayTimer.start();
-  }
-  else
-    m_autoPlayTimer.stop();
-}
-
-bool OrchestrionNotationPaintView::isFollowStaff(int staff) const
-{
-  return staffModes()->mode(staff) == StaffMode::follow;
-}
-
 bool OrchestrionNotationPaintView::isPerformedStaff(int staff) const
 {
   return staffModes()->mode(staff) == StaffMode::rhythm;
-}
-
-void OrchestrionNotationPaintView::fireDueAutoEvents(double nowMs)
-{
-  // Fire the Follow staves' due events once the performed staves' estimated
-  // position reaches them. Each target fires once; the resulting transitions
-  // bring the next ones. When the performer stops, the estimate coasts to a
-  // halt and the Follow staves halt with it.
-  if (m_autoStaffTargets.empty())
-  {
-    m_autoPlayTimer.stop();
-    return;
-  }
-
-  const auto sequencer = orchestrion()->sequencer();
-  const std::optional<PerformedTempo> performance =
-      sequencer ? sequencer->PerformedTempoNow() : std::nullopt;
-  const std::optional<double> performedTicks =
-      performance ? std::make_optional(performance->tick) : std::nullopt;
-  if (!performedTicks)
-  {
-    m_followAwaitsTempo = true;
-    return;
-  }
-  if (m_followAwaitsTempo)
-  {
-    // The tempo is known from now on — at first, or again after a pause:
-    // the Follow staves join from where the performer is, leaving out what
-    // they had due before, rather than rattling it off to catch up.
-    m_followAwaitsTempo = false;
-    const auto from = *performedTicks;
-    std::vector<int> late;
-    for (const auto &[staff, targets] : m_autoStaffTargets)
-      if (targets.onTick && *targets.onTick < from)
-        late.push_back(staff);
-    // Not while iterating: the skip's transitions rebuild the targets.
-    for (const int staff : late)
-      if (sequencer)
-        sequencer->SkipHandTo(staff > 0, static_cast<int>(std::ceil(from)));
-    if (!late.empty())
-      return;
-  }
-
-  const auto fire = [this](int staff, bool noteOn)
-  {
-    // Deferred out of the frame tick: the events it causes re-enter this
-    // view with fresh targets.
-    QTimer::singleShot(0, this,
-                       [this, staff, noteOn]
-                       {
-                         const auto sequencer = orchestrion()->sequencer();
-                         if (!isFollowStaff(staff) || !sequencer)
-                           return;
-                         sequencer->OnHandInputEvent(
-                             noteOn ? NoteEventType::noteOn
-                                    : NoteEventType::noteOff,
-                             staff > 0, std::nullopt);
-                       });
-  };
-
-  // A target fired is forgotten in the ledger too, not only in the
-  // aggregate: the next batch, of any staff, rebuilds the aggregate from the
-  // ledger, and would bring it back to fire again. Only those due, though: a
-  // voice struck later keeps its own.
-  const double now = *performedTicks;
-  const auto forget = [this, now](int staff, bool onTick)
-  {
-    const auto due = [now](std::optional<double> &tick)
-    {
-      if (tick && *tick <= now)
-        tick.reset();
-    };
-    for (auto &[track, targets] : m_autoTrackTargets)
-      if (TrackIndex{track}.staffIndex() == staff)
-      {
-        if (onTick)
-          due(targets.onTick);
-        due(targets.offTick);
-      }
-  };
-  for (auto &[staff, targets] : m_autoStaffTargets)
-    if (targets.onTick && now >= *targets.onTick)
-    {
-      // Advancing releases the previous chord itself: the pending noteOff
-      // is superseded.
-      targets.onTick.reset();
-      targets.offTick.reset();
-      forget(staff, true);
-      fire(staff, true);
-    }
-    else if (targets.offTick && now >= *targets.offTick)
-    {
-      targets.offTick.reset();
-      forget(staff, false);
-      fire(staff, false);
-    }
 }
 
 void OrchestrionNotationPaintView::endTake()
@@ -1900,22 +1725,13 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
         update();
       });
 
-  // Auto-play: the ledger is rebuilt from scratch when a staff changes modes,
-  // seeded from whatever the current batch holds — after loading it covers
-  // every voice; mid-piece it may not, and the jump a mode change causes
-  // repopulates it in full.
-  const auto configureAutoPlay = [this]
-  {
-    m_autoTrackTargets.clear();
-    m_autoStaffTargets.clear();
-    m_autoPlayTimer.stop();
-    if (const auto sequencer = orchestrion()->sequencer())
-      updateAutoTargets(sequencer->GetCurrentTransitions());
-    m_stripsDirty = true;
-    update();
-  };
-  configureAutoPlay();
-  staffModes()->modesChanged().onNotify(this, configureAutoPlay);
+  // The staff-mode choice is drawn on the parchment, which the rolls carry.
+  staffModes()->modesChanged().onNotify(this,
+                                        [this]
+                                        {
+                                          m_stripsDirty = true;
+                                          update();
+                                        });
 
   // Toggling the layout mode re-lays-out the score; every cached x is stale,
   // which is exactly what updateNotation() resets (follower, stats, marks).

@@ -432,23 +432,14 @@ private:
   getRelevantItems(TrackIndex track,
                    const mu::engraving::Segment *segment) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
-  //! Per rendered frame: advance the scroll and the estimate, sample the
-  //! debug tempo strip, and fire the Follow staves' due events.
+  //! Per rendered frame: advance the scroll and the estimate, and sample the
+  //! debug tempo strip.
   void onFrameTick();
-  //! Refresh the tempo-following auto-play targets (each Follow staff's next
-  //! due release/strike, in playback-unrolled ticks) from a transitions
-  //! batch. Batches only carry the *changed* tracks, so a per-voice ledger
-  //! (m_autoTrackTargets) persists the Follow staves' state between batches.
-  void updateAutoTargets(const std::map<TrackIndex, ChordTransition> &batch);
-  /** Whether the machine plays the staff (0 = right hand, 1 = left). */
-  bool isFollowStaff(int staff) const;
-  /** Whether the performer plays the staff: what is followed and judged. */
-  bool isPerformedStaff(int staff) const;
   /**
-   * Fire the Follow staves' due strikes and releases once the performed
-   * staves' estimate has reached them.
+   * Whether the performer plays the staff (0 = right hand, 1 = left): what
+   * is judged.
    */
-  void fireDueAutoEvents(double nowMs);
+  bool isPerformedStaff(int staff) const;
   //! Measure this batch's played velocities against each hand's smoothed
   //! loudness curve — the dynamics counterpart of the timing judgments.
   //! \p resumingHands are the hands whose estimate just restarted after a
@@ -524,23 +515,6 @@ private:
   // velocity-less devices), from HandNoteEvents — which fires just before the
   // transitions batch the gesture causes; consumed by that batch's onsets.
   std::optional<float> m_pendingHandVelocity[2] = {}; // [0]=right, [1]=left
-  // Per-voice ledger backing updateAutoTargets(), and each Follow staff's
-  // next due release/strike aggregated from it.
-  struct AutoTargets
-  {
-    std::optional<double> offTick;
-    std::optional<double> onTick;
-  };
-  std::map<int /*track value*/, AutoTargets> m_autoTrackTargets;
-  std::map<int /*staff*/, AutoTargets> m_autoStaffTargets;
-  // There was no estimate of the performed staves to follow last time the
-  // targets were polled: the Follow staves have yet to join (see
-  // fireDueAutoEvents).
-  bool m_followAwaitsTempo = true;
-  // Polls those targets against the manual hands' estimate. A driver of its
-  // own, not the frame hook: between page turns nothing is animating, so no
-  // frames are rendered — and the Follow staves must play on regardless.
-  QTimer m_autoPlayTimer;
 
   // The take's onsets, for baking the performance's tempo warp into the
   // layout: identity (staff, tMs) to look up the final revised error in the
