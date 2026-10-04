@@ -85,6 +85,7 @@ public:
   muse::async::Channel<EventVariant> OutputEvent() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
+  std::optional<PerformedTempo> PerformedTempoNow() override;
   void SkipHandTo(bool isLeftHand, int tickWithRepeats) override;
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
@@ -95,12 +96,6 @@ private:
   {
     HandVoices voices;
     std::optional<int> pressedKey;
-    /**
-     * The hand's tempo, estimated from the onsets it plays (ticks with
-     * repeats against the steady clock), for timing the ornaments it
-     * strikes. Reset on a jump, and started over after a pause.
-     */
-    PositionTracker tempo{};
   };
 
   /**
@@ -184,6 +179,11 @@ private:
                  std::optional<float> velocity, bool byPerformer);
   StaffMode Mode(bool isLeftHand) const;
   /**
+   * Whether the hand's staff is one the performer plays — or the automatic
+   * player, in their stead.
+   */
+  bool IsPerformed(bool isLeftHand) const;
+  /**
    * The hand a key the performer strikes is for (see OnInputEvent), if any.
    */
   std::optional<bool> PerformerHand(int pitch) const;
@@ -219,17 +219,20 @@ private:
   void PostNoteEvents(NoteEvents events, bool strum = true);
 
   /**
-   * Feeds the hand's tempo estimate the onset of the chords struck in this
-   * batch of transitions, if any.
+   * Feeds the performance's tempo estimate (m_tempo) the onset of the chords
+   * the hand struck in this batch of transitions, if any — unless the hand is
+   * a Follow one, which plays to that estimate rather than tells it anything.
    */
-  void ObserveOnset(Hand &, const std::map<TrackIndex, ChordTransition> &);
+  void ObserveOnset(bool isLeftHand,
+                    const std::map<TrackIndex, ChordTransition> &);
   /**
    * The tempo to time the chord's ornament with, in ticks per millisecond:
-   * the hand's estimate once it has one, the score's tempo until then.
+   * the performance's estimate once there is one, the score's tempo until
+   * then.
    */
-  double TicksPerMs(const Hand &, const IChord &) const;
-  /** How the chord is to sound, struck now at the hand's tempo. */
-  OrnamentSchedule ScheduleChord(const IChord &, const Hand &) const;
+  double TicksPerMs(const IChord &) const;
+  /** How the chord is to sound, struck now at the performance's tempo. */
+  OrnamentSchedule ScheduleChord(const IChord &) const;
   /**
    * How far ahead of `strike` the hand is to come down on the chords due
    * there, in ticks, for the grace notes before them to be over by then: the
@@ -312,6 +315,16 @@ private:
   std::thread m_ornamentThread;
   const std::chrono::steady_clock::time_point m_epoch =
       std::chrono::steady_clock::now();
+
+  /**
+   * Where the performance is and how fast it goes: one estimate for the
+   * staves the performer plays (ticks with repeats against the steady clock),
+   * fed their onsets (see ObserveOnset). Reset on a jump, and started over
+   * after a pause. The tick it was last fed: an onset struck by both hands,
+   * not quite together, is one onset.
+   */
+  PositionTracker m_tempo{};
+  std::optional<int> m_tempoTick;
 
   bool m_pedalDown = false;
   /**
