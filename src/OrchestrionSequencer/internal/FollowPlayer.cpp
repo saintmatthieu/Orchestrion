@@ -36,24 +36,16 @@ FollowPlayer::FollowPlayer(IOrchestrionSequencer &sequencer,
   m_sequencer.ChordTransitions().onReceive(
       this, [this](const std::map<TrackIndex, ChordTransition> &transitions)
       { OnTransitions(transitions); });
-  // The jump's transitions batch repopulates the ledger.
+  // The jump's transitions batch repopulates the ledger — also after a staff
+  // changes modes, for which the sequencer jumps to where it was.
   m_sequencer.AboutToJumpPosition().onReceive(this, [this](int, JumpReason)
                                               { m_trackTargets.clear(); });
-  staffModes()->modesChanged().onNotify(this, [this] { Reconfigure(); });
-  Reconfigure();
+  OnTransitions(m_sequencer.GetCurrentTransitions());
 }
 
 bool FollowPlayer::IsFollowStaff(int staff) const
 {
   return staffModes()->mode(staff) == StaffMode::follow;
-}
-
-void FollowPlayer::Reconfigure()
-{
-  m_trackTargets.clear();
-  m_staffTargets.clear();
-  m_timer.stop();
-  OnTransitions(m_sequencer.GetCurrentTransitions());
 }
 
 void FollowPlayer::OnTransitions(

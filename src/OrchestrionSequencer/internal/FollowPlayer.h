@@ -58,13 +58,6 @@ private:
 
   bool IsFollowStaff(int staff) const;
   /**
-   * Rebuilds the ledger from scratch — another score, a staff changing modes
-   * — seeded from whatever the current batch holds: after loading it covers
-   * every voice; mid-piece it may not, and the jump a mode change causes
-   * repopulates it in full.
-   */
-  void Reconfigure();
-  /**
    * Refreshes the targets of the Follow staves' voices this batch brings.
    * Batches only carry the tracks that changed: the per-voice ledger keeps
    * the others'.
