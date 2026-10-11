@@ -6,6 +6,8 @@ set(MODULE_SRC
     internal/OrchestrionPlayerStub.h
     internal/ChordTransitionUtil.cpp
     internal/ChordTransitionUtil.h
+    internal/FollowerThread.cpp
+    internal/FollowerThread.h
     internal/FollowPlayer.cpp
     internal/FollowPlayer.h
     internal/GestureInputConnector.cpp
