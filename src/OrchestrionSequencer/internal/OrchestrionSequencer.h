@@ -91,6 +91,7 @@ public:
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
+  muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
@@ -218,6 +219,10 @@ private:
   void ResetFollower();
   /** Releases the keys the performer holds on the Notes staves. */
   void ReleasePlayedPitches();
+  /** What the follower found of a note (see FollowerThread). */
+  void OnFollowed(const FollowerThread::Followed &);
+  /** Sends WrongNotes, from m_wrongNotes. */
+  void PublishWrongNotes();
   /** Feeds the performance's tempo estimate an onset at the tick and time. */
   void ObserveTick(int tickWithRepeats, double ms);
   /**
@@ -416,6 +421,11 @@ private:
   const double m_nominalTicksPerMs;
   /** Follows the Notes staves; nothing while no staff is in that mode. */
   FollowerThread m_follower;
+  /** Where the Notes staves were last moved to by the follower. */
+  std::optional<int> m_followedTick;
+  /** The wrong keys held, and the chords each is wrong against. */
+  std::map<int /*pitch*/, std::vector<const IChord *>> m_wrongNotes;
+  muse::async::Channel<std::vector<const IChord *>> m_wrongNotesChannel;
   /** The keys held on the Notes staves, and the track each sounds on. */
   std::map<int /*pitch*/, TrackIndex> m_playedPitches;
 

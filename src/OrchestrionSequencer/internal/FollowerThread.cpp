@@ -18,17 +18,19 @@
  */
 #include "FollowerThread.h"
 
+#include <algorithm>
+
 namespace dgk
 {
-FollowerThread::FollowerThread(std::function<void(int tick, double ms)> onMoved)
-    : m_onMoved{std::move(onMoved)}
+FollowerThread::FollowerThread(std::function<void(const Followed &)> onFollowed)
+    : m_onFollowed{std::move(onFollowed)}
 {
-  m_moved.onReceive(this,
-                    [this](const Moved &moved)
-                    {
-                      if (moved.generation == m_generation)
-                        m_onMoved(moved.tick, moved.ms);
-                    });
+  m_results.onReceive(this,
+                      [this](const Result &result)
+                      {
+                        if (result.generation == m_generation)
+                          m_onFollowed(result.followed);
+                      });
   m_thread = std::thread{[this] { Run(); }};
 }
 
@@ -94,8 +96,6 @@ void FollowerThread::Post(Task task)
 void FollowerThread::Run()
 {
   std::shared_ptr<PerformanceFollower> follower;
-  // The event last told of, so that only moves are.
-  std::optional<size_t> told;
   while (true)
   {
     Task task;
@@ -111,12 +111,10 @@ void FollowerThread::Run()
     {
     case Task::Kind::follow:
       follower = std::move(task.follower);
-      told.reset();
       break;
     case Task::Kind::reset:
       if (follower)
         follower->Reset(task.event);
-      told.reset();
       break;
     case Task::Kind::note:
     {
@@ -125,12 +123,11 @@ void FollowerThread::Run()
       if (task.ticksPerMs)
         follower->SetTicksPerMs(*task.ticksPerMs);
       follower->OnNoteOn(task.pitch, task.ms);
-      const size_t followed = follower->FollowedEvent();
-      if (told == followed)
-        break;
-      told = followed;
-      m_moved.send(
-          Moved{task.generation, follower->Events()[followed].tick, task.ms});
+      const ScoreEvent &event = follower->Events()[follower->FollowedEvent()];
+      const bool matched = std::find(event.pitches.begin(), event.pitches.end(),
+                                     task.pitch) != event.pitches.end();
+      m_results.send(Result{
+          task.generation, Followed{event.tick, task.ms, task.pitch, matched}});
       break;
     }
     }

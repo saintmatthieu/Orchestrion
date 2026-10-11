@@ -255,6 +255,8 @@ private:
   //! marks, timing gauges — in one call, so that it can be rendered either
   //! straight onto the item or into the roll buffer.
   void paintContents(QPainter *painter);
+  /** The notes of the chords a wrong key is held against, in red. */
+  void paintWrongNotes(QPainter *painter);
   /**
    * Zooming is bounded by the machine the score sits on: wound right out, the
    * parchment has to fit between the two cylinders — nothing left on either
@@ -501,6 +503,9 @@ private:
   bool moveCanvasBy(qreal physicalDx);
   float hitWidth() const;
 
+  // The chords a wrong key is held against (see
+  // IOrchestrionSequencer::WrongNotes).
+  std::vector<const IChord *> m_wrongChords;
   // Live highlight per track (ringing or upcoming note).
   std::unordered_map<int, Highlight> m_boxes;
   // Highlights of just-ended notes, fading out (owns its own timer/clock).
