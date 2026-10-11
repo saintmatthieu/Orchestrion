@@ -182,7 +182,12 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_notation{globalContext()->currentMasterNotation().get()},
       m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
-      m_nominalTicksPerMs{nominalTicksPerMs}
+      m_nominalTicksPerMs{nominalTicksPerMs},
+      m_follower{[this](int tick, double ms)
+                 {
+                   FollowTo(tick);
+                   ObserveTick(tick, ms);
+                 }}
 {
 #ifdef OS_IS_WIN
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -583,19 +588,11 @@ void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
   m_playedPitches.insert_or_assign(pitch, track);
   PostNoteEvents(std::move(events), /*strum=*/false);
 
-  if (!m_follower)
-    return;
   // The tempo is the performance's, which the Rhythm staves tell too.
-  if (m_tempo.ready() && m_tempo.speed() > 0.0)
-    m_follower->SetTicksPerMs(m_tempo.speed());
-  m_follower->OnNoteOn(pitch, nowMs);
-  const size_t followed = m_follower->FollowedEvent();
-  if (m_shownEvent == followed)
-    return;
-  m_shownEvent = followed;
-  const int tick = m_follower->Events()[followed].tick;
-  FollowTo(tick);
-  ObserveTick(tick);
+  m_follower.OnNoteOn(pitch, nowMs,
+                      m_tempo.ready() && m_tempo.speed() > 0.0
+                          ? std::make_optional(m_tempo.speed())
+                          : std::nullopt);
 }
 
 TrackIndex OrchestrionSequencer::NotesTrack() const
@@ -623,17 +620,14 @@ void OrchestrionSequencer::RebuildFollower()
   for (const bool left : {false, true})
     if (HandIn(left, StaffMode::notes))
       staves.push_back(&m_staffEvents[left ? 1 : 0]);
-  auto events = Merge(staves);
-  m_follower = events.empty() ? nullptr
-                              : std::make_unique<PerformanceFollower>(
-                                    std::move(events), m_nominalTicksPerMs);
+  m_follower.Follow(Merge(staves), m_nominalTicksPerMs);
   ResetFollower();
 }
 
 void OrchestrionSequencer::ResetFollower()
 {
-  m_shownEvent.reset();
-  if (!m_follower)
+  const std::vector<ScoreEvent> *const events = m_follower.Events();
+  if (!events)
     return;
   // Where the next note is due: the earliest of the Notes staves' future
   // chords.
@@ -644,12 +638,11 @@ void OrchestrionSequencer::ResetFollower()
         if (const auto chord = voice->GetFutureChord();
             chord && (!next || chord->GetBeginTick() < *next))
           next = chord->GetBeginTick();
-  const auto &events = m_follower->Events();
   const auto tick = next ? next->withRepeats : 0;
   const auto it =
-      std::lower_bound(events.begin(), events.end(), tick,
+      std::lower_bound(events->begin(), events->end(), tick,
                        [](const ScoreEvent &e, int t) { return e.tick < t; });
-  m_follower->Reset(static_cast<size_t>(it - events.begin()));
+  m_follower.Reset(static_cast<size_t>(it - events->begin()));
 }
 
 void OrchestrionSequencer::ReleasePlayedPitches()
@@ -1246,12 +1239,11 @@ void OrchestrionSequencer::ObserveOnset(
       tick = tick ? std::max(*tick, begin) : begin;
     }
   if (tick)
-    ObserveTick(*tick);
+    ObserveTick(*tick, NowMs());
 }
 
-void OrchestrionSequencer::ObserveTick(int tick)
+void OrchestrionSequencer::ObserveTick(int tick, double nowMs)
 {
-  const double nowMs = NowMs();
   // After a pause — the next note long overdue — the wound-down estimate says
   // nothing about the tempo playing resumes at: start over.
   m_tempo.heartbeat(nowMs);

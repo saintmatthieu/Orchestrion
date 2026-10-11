@@ -25,7 +25,7 @@
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/OrnamentSchedule.h"
-#include "internal/PerformanceFollower.h"
+#include "internal/FollowerThread.h"
 #include "internal/VoiceSequencer.h"
 
 #include <actions/actionable.h>
@@ -218,8 +218,8 @@ private:
   void ResetFollower();
   /** Releases the keys the performer holds on the Notes staves. */
   void ReleasePlayedPitches();
-  /** Feeds the performance's tempo estimate an onset at the tick. */
-  void ObserveTick(int tickWithRepeats);
+  /** Feeds the performance's tempo estimate an onset at the tick and time. */
+  void ObserveTick(int tickWithRepeats, double ms);
   /**
    * Makes the transitions the current ones and tells the subscribers, with
    * nothing sounded.
@@ -414,10 +414,8 @@ private:
   /** Each staff's lowest and highest pitch. */
   const std::array<std::pair<int, int>, 2> m_staffRanges;
   const double m_nominalTicksPerMs;
-  /** Follows the Notes staves; none while no staff is in that mode. */
-  std::unique_ptr<PerformanceFollower> m_follower;
-  /** The follower's event the Notes staves were last moved to. */
-  std::optional<size_t> m_shownEvent;
+  /** Follows the Notes staves; nothing while no staff is in that mode. */
+  FollowerThread m_follower;
   /** The keys held on the Notes staves, and the track each sounds on. */
   std::map<int /*pitch*/, TrackIndex> m_playedPitches;
 
