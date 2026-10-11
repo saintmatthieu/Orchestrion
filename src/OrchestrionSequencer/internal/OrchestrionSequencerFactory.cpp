@@ -82,7 +82,9 @@ std::optional<int> GetRightHandStaffIndex(
           if (const auto chord = dynamic_cast<const mu::engraving::Chord *>(
                   segment.element(TrackIndex{staff, 0}.value)))
             if (chord->part()->staves().size() == 2)
-              return staff;
+              // The part's first staff, the one under it being its second:
+              // the two staves played are always one instrument's.
+              return static_cast<int>(chord->part()->staves().front()->idx());
   return std::nullopt;
 }
 

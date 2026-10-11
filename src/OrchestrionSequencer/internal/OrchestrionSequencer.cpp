@@ -570,15 +570,8 @@ void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
   }
 
   ++m_inputSerial;
-  // Followed first, so that the key sounds on the staff found to be played.
-  if (m_follower)
-  {
-    // The tempo is the performance's, which the Rhythm staves tell too.
-    if (m_tempo.ready() && m_tempo.speed() > 0.0)
-      m_follower->SetTicksPerMs(m_tempo.speed());
-    m_follower->OnNoteOn(pitch, NowMs());
-  }
-  const TrackIndex track = PitchTrack(pitch);
+  const double nowMs = NowMs();
+  const TrackIndex track = NotesTrack();
   NoteEvents events;
   if (const auto it = m_playedPitches.find(pitch); it != m_playedPitches.end())
     // Struck again without a release in between: restrike.
@@ -592,6 +585,10 @@ void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
 
   if (!m_follower)
     return;
+  // The tempo is the performance's, which the Rhythm staves tell too.
+  if (m_tempo.ready() && m_tempo.speed() > 0.0)
+    m_follower->SetTicksPerMs(m_tempo.speed());
+  m_follower->OnNoteOn(pitch, nowMs);
   const size_t followed = m_follower->FollowedEvent();
   if (m_shownEvent == followed)
     return;
@@ -601,41 +598,10 @@ void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
   ObserveTick(tick);
 }
 
-TrackIndex OrchestrionSequencer::PitchTrack(int pitch) const
+TrackIndex OrchestrionSequencer::NotesTrack() const
 {
-  std::optional<int> tick;
-  if (m_follower)
-    tick = m_follower->Events()[m_follower->FollowedEvent()].tick;
-  // The Notes staff with a note the closest to the key where the performer
-  // is followed at; failing any there, the one whose range it is closest to.
-  std::optional<bool> closest;
-  int distance = std::numeric_limits<int>::max();
-  for (const bool left : {false, true})
-  {
-    if (!HandIn(left, StaffMode::notes))
-      continue;
-    const auto &events = m_staffEvents[left ? 1 : 0];
-    int d = std::numeric_limits<int>::max() / 2;
-    if (const auto it = std::find_if(events.begin(), events.end(),
-                                     [&](const ScoreEvent &event)
-                                     { return tick && event.tick == *tick; });
-        it != events.end())
-      for (const int p : it->pitches)
-        d = std::min(d, std::abs(p - pitch));
-    else
-    {
-      const auto [lowest, highest] = m_staffRanges[left ? 1 : 0];
-      d = pitch < lowest    ? lowest - pitch + 128
-          : pitch > highest ? pitch - highest + 128
-                            : 128;
-    }
-    if (d < distance)
-    {
-      distance = d;
-      closest = left;
-    }
-  }
-  const auto &hand = closest.value_or(false) ? m_leftHand : m_rightHand;
+  // The staves are one instrument's: any of their tracks sounds the same.
+  const auto &hand = HandIn(false, StaffMode::notes) ? m_rightHand : m_leftHand;
   return hand.voices.empty() ? TrackIndex{} : hand.voices.front()->track;
 }
 

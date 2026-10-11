@@ -40,8 +40,8 @@
 #include <map>
 #include <memory>
 #include <modularity/ioc.h>
-#include <notation/imasternotation.h>
 #include <mutex>
+#include <notation/imasternotation.h>
 #include <random>
 #include <thread>
 #include <vector>
@@ -205,11 +205,8 @@ private:
    * followed in the score from it (see PerformanceFollower).
    */
   void OnPitchInput(NoteEventType, int pitch, std::optional<float> velocity);
-  /**
-   * The track a key of the Notes staves sounds on: that of the staff whose
-   * notes, where the performer is followed at, it is — or is closest to.
-   */
-  TrackIndex PitchTrack(int pitch) const;
+  /** The track the keys of the Notes staves sound on. */
+  TrackIndex NotesTrack() const;
   /**
    * Moves the Notes staves' voices, silently, to where the performer is
    * followed at.
