@@ -36,16 +36,25 @@ namespace dgk
  * A PerformanceFollower on a thread of its own: following a note costs time
  * in proportion to the score's length, which the thread playing the notes
  * shouldn't wait for. Used from one thread, the one that creates it, which is
- * also the one `onMoved` is called on.
+ * also the one `onFollowed` is called on.
  */
 class FollowerThread : public muse::async::Asyncable
 {
 public:
   /**
-   * `onMoved` is told the tick the performer is found to have moved to, and
-   * when the note that showed it arrived.
+   * What following a note found: where the performer is, when the note
+   * arrived, and whether its pitch is one of the notes there.
    */
-  explicit FollowerThread(std::function<void(int tick, double ms)> onMoved);
+  struct Followed
+  {
+    int tick = 0;
+    double ms = 0.0;
+    int pitch = 0;
+    bool matched = false;
+  };
+
+  /** `onFollowed` is told of every note followed. */
+  explicit FollowerThread(std::function<void(const Followed &)> onFollowed);
   ~FollowerThread();
 
   /**
@@ -88,17 +97,16 @@ private:
   };
 
   /** What the follower thread tells: copied through a channel. */
-  struct Moved
+  struct Result
   {
     unsigned generation = 0;
-    int tick = 0;
-    double ms = 0.0;
+    Followed followed;
   };
 
   void Post(Task);
   void Run();
 
-  const std::function<void(int, double)> m_onMoved;
+  const std::function<void(const Followed &)> m_onFollowed;
   /**
    * The follower's events are read here, which never change; the rest of it
    * is the follower thread's.
@@ -109,7 +117,7 @@ private:
    * found before the last one is dropped.
    */
   unsigned m_generation = 0;
-  muse::async::Channel<Moved> m_moved;
+  muse::async::Channel<Result> m_results;
 
   std::mutex m_mutex;
   std::condition_variable m_cv;

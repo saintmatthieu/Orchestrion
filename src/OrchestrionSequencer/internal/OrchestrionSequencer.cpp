@@ -183,11 +183,8 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
       m_nominalTicksPerMs{nominalTicksPerMs},
-      m_follower{[this](int tick, double ms)
-                 {
-                   FollowTo(tick);
-                   ObserveTick(tick, ms);
-                 }}
+      m_follower{[this](const FollowerThread::Followed &followed)
+                 { OnFollowed(followed); }}
 {
 #ifdef OS_IS_WIN
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -571,6 +568,8 @@ void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
     PostNoteEvents({NoteEvent{NoteEventType::noteOff, it->second, pitch, 0.f}},
                    /*strum=*/false);
     m_playedPitches.erase(it);
+    if (m_wrongNotes.erase(pitch))
+      PublishWrongNotes();
     return;
   }
 
@@ -614,6 +613,44 @@ void OrchestrionSequencer::FollowTo(int tickWithRepeats)
     PublishTransitions(transitions);
 }
 
+void OrchestrionSequencer::OnFollowed(const FollowerThread::Followed &followed)
+{
+  if (m_followedTick != followed.tick)
+  {
+    m_followedTick = followed.tick;
+    FollowTo(followed.tick);
+    ObserveTick(followed.tick, followed.ms);
+  }
+  if (followed.matched || !m_playedPitches.count(followed.pitch))
+    // Right, or already released.
+    return;
+  // Against the chords where the performer is: those the Notes staves sound.
+  std::vector<const IChord *> chords;
+  for (const bool left : {false, true})
+    if (HandIn(left, StaffMode::notes))
+      for (const auto &voice : (left ? m_leftHand : m_rightHand).voices)
+        if (const IChord *chord = voice->GetSoundingChord())
+          chords.push_back(chord);
+  m_wrongNotes[followed.pitch] = std::move(chords);
+  PublishWrongNotes();
+}
+
+void OrchestrionSequencer::PublishWrongNotes()
+{
+  std::vector<const IChord *> chords;
+  for (const auto &[pitch, against] : m_wrongNotes)
+    for (const IChord *chord : against)
+      if (std::find(chords.begin(), chords.end(), chord) == chords.end())
+        chords.push_back(chord);
+  m_wrongNotesChannel.send(chords);
+}
+
+muse::async::Channel<std::vector<const IChord *>>
+OrchestrionSequencer::WrongNotes() const
+{
+  return m_wrongNotesChannel;
+}
+
 void OrchestrionSequencer::RebuildFollower()
 {
   std::vector<const std::vector<ScoreEvent> *> staves;
@@ -626,6 +663,13 @@ void OrchestrionSequencer::RebuildFollower()
 
 void OrchestrionSequencer::ResetFollower()
 {
+  m_followedTick.reset();
+  // The performer is somewhere else now.
+  if (!m_wrongNotes.empty())
+  {
+    m_wrongNotes.clear();
+    PublishWrongNotes();
+  }
   const std::vector<ScoreEvent> *const events = m_follower.Events();
   if (!events)
     return;
@@ -653,6 +697,11 @@ void OrchestrionSequencer::ReleasePlayedPitches()
   m_playedPitches.clear();
   if (!events.empty())
     PostNoteEvents(std::move(events), /*strum=*/false);
+  if (!m_wrongNotes.empty())
+  {
+    m_wrongNotes.clear();
+    PublishWrongNotes();
+  }
 }
 
 void OrchestrionSequencer::OnSustainPedal(bool down)

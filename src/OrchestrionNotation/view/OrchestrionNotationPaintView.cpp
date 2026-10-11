@@ -38,6 +38,8 @@
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/measure.h>
 #include <engraving/dom/note.h>
+#include <engraving/rendering/iscorerenderer.h>
+#include <engraving/rendering/paintoptions.h>
 #include <engraving/dom/repeatlist.h>
 #include <engraving/dom/segment.h>
 #include <engraving/dom/staff.h>
@@ -76,6 +78,9 @@ constexpr std::size_t dynamicsMinKnots = 4;
 constexpr double staffSelectorLead = 2.3;
 constexpr double staffSelectorSize = 0.8;
 constexpr double staffSelectorInset = 0.8;
+
+// The colour a chord's notes are drawn in while a wrong key is held against it.
+const QColor wrongNoteColor{200, 40, 40};
 
 // The warp-bake animation: the score morphs from ideal to performed spacing
 // (each step is a full horizontal relayout — cheap in linear view mode).
@@ -188,6 +193,15 @@ void OrchestrionNotationPaintView::subscribe(
 
   registry.ModifiedChanged().onNotify(
       this, [this] { update(); }, muse::async::Asyncable::Mode::SetReplace);
+
+  sequencer.WrongNotes().onReceive(
+      this,
+      [this](const std::vector<const IChord *> &chords)
+      {
+        m_wrongChords = chords;
+        m_stripsDirty = true;
+        update();
+      });
 
   // The raw controller velocity of each gesture, for the dynamics scoring:
   // the event precedes the transitions batch the gesture causes.
@@ -1654,6 +1668,8 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
       this,
       [this]
       {
+        // The chords were the previous sequencer's.
+        m_wrongChords.clear();
         const auto sequencer = orchestrion()->sequencer();
         const auto registry = orchestrion()->modifiableItemRegistry();
         if (!sequencer || !registry)
@@ -2188,10 +2204,38 @@ void OrchestrionNotationPaintView::paintContents(QPainter *painter)
 
   const auto view = viewport();
 
+  paintWrongNotes(painter);
+
   // Timing-judgment overlay (gauges next to the notes + box-plot HUD), on top
   // of the notation.
   if (sequencerConfiguration()->gradingEnabled())
     m_timingOverlay.paint(*painter, view.toQRectF(), currentScaling());
+}
+
+void OrchestrionNotationPaintView::paintWrongNotes(QPainter *painter)
+{
+  if (m_wrongChords.empty())
+    return;
+  // Drawn over in red, the score's own colours left as they are.
+  const muse::draw::Color red = muse::draw::Color::fromQColor(wrongNoteColor);
+  muse::draw::Painter musePainter(painter, "wrong-notes");
+  for (const IChord *chord : m_wrongChords)
+  {
+    const mu::engraving::Chord *engraving = chord->GetEngravingChord();
+    if (!engraving)
+      continue;
+    for (mu::engraving::Note *note : engraving->notes())
+    {
+      const muse::PointF position = note->pagePos();
+      const muse::draw::Color saved = note->color();
+      note->setColor(red);
+      musePainter.translate(position);
+      note->renderer()->drawItem(note, &musePainter,
+                                 mu::engraving::rendering::PaintOptions{});
+      musePainter.translate(-position);
+      note->setColor(saved);
+    }
+  }
 }
 
 void OrchestrionNotationPaintView::paint(QPainter *painter)

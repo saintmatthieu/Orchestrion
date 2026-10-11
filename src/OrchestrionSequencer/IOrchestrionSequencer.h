@@ -141,6 +141,13 @@ public:
   virtual const IChord *GetNextChord(TrackIndex) const = 0;
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
   /**
+   * The chords the performer is playing a wrong note against: those of the
+   * keys held that aren't one of the notes where the performer is. Sent
+   * whenever that changes; empty when no wrong key is held.
+   */
+  virtual muse::async::Channel<std::vector<const IChord *>>
+  WrongNotes() const = 0;
+  /**
    * Sent before the position jumps to the given tick, and before the
    * transitions batch the jump causes, with the reason for it.
    */
