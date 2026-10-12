@@ -212,7 +212,7 @@ private:
   const std::vector<ScoreEvent> m_events;
   const PerformanceFollowerParameters m_p;
   /** Where a jump anywhere lands, normalized. */
-  std::vector<double> m_jumpWeights;
+  const std::vector<double> m_jumpWeights;
   std::vector<double> m_nearJumpWeights;
   /** The posterior over events after the last note. */
   std::vector<double> m_posterior;

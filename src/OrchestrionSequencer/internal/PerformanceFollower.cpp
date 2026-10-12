@@ -37,12 +37,26 @@ constexpr double maxTempoRatio = 4.0;
 constexpr double maxTempoStep = 2.0;
 /** States this much less likely than the likeliest aren't propagated. */
 constexpr double pruning = 1e-12;
+
+std::vector<double> JumpWeights(const std::vector<ScoreEvent> &events,
+                                double barStartWeight)
+{
+  std::vector<double> weights;
+  weights.reserve(events.size());
+  for (const auto &event : events)
+    weights.push_back(event.startsBar ? barStartWeight : 1.0);
+  const auto sum = std::accumulate(weights.begin(), weights.end(), 0.0);
+  for (auto &w : weights)
+    w /= sum;
+  return weights;
+}
 } // namespace
 
 PerformanceFollower::PerformanceFollower(
     std::vector<ScoreEvent> events, double nominalTicksPerMs,
     PerformanceFollowerParameters parameters)
     : m_events{std::move(events)}, m_p{parameters},
+      m_jumpWeights{JumpWeights(m_events, m_p.barStartJumpWeight)},
       m_ticksPerMs{nominalTicksPerMs}, m_nominalTicksPerMs{nominalTicksPerMs}
 {
   assert(!m_events.empty());
@@ -50,14 +64,6 @@ PerformanceFollower::PerformanceFollower(
   assert(std::adjacent_find(m_events.begin(), m_events.end(),
                             [](const ScoreEvent &a, const ScoreEvent &b)
                             { return a.tick >= b.tick; }) == m_events.end());
-
-  m_jumpWeights.reserve(m_events.size());
-  for (const auto &event : m_events)
-    m_jumpWeights.push_back(event.startsBar ? m_p.barStartJumpWeight : 1.0);
-  const auto sum =
-      std::accumulate(m_jumpWeights.begin(), m_jumpWeights.end(), 0.0);
-  for (auto &w : m_jumpWeights)
-    w /= sum;
 
   m_nearJumpWeights.assign(m_events.size(), 0.0);
   m_posterior.assign(m_events.size(), 0.0);
