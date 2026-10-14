@@ -22,6 +22,7 @@
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
 #include "internal/StaffModes.h"
+#include "internal/VisibleScore.h"
 #include "view/NumberKeysHelpModel.h"
 
 #include <QQmlEngine>
@@ -33,7 +34,8 @@ OrchestrionModule::OrchestrionModule()
       m_gestureInputConnector(std::make_shared<GestureInputConnector>()),
       m_sequencerConfiguration(
           std::make_shared<OrchestrionSequencerConfiguration>()),
-      m_staffModes(std::make_shared<StaffModes>())
+      m_staffModes(std::make_shared<StaffModes>()),
+      m_visibleScore(std::make_shared<VisibleScore>())
 {
 }
 
@@ -45,6 +47,7 @@ void OrchestrionModule::registerExports()
   globalIoc()->registerExport<IOrchestrionSequencerConfiguration>(
       moduleName(), m_sequencerConfiguration);
   globalIoc()->registerExport<IStaffModes>(moduleName(), m_staffModes);
+  globalIoc()->registerExport<IVisibleScore>(moduleName(), m_visibleScore);
 }
 
 void OrchestrionModule::registerUiTypes()

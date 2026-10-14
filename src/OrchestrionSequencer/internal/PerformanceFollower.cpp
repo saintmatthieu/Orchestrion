@@ -22,6 +22,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 
 namespace dgk
 {
@@ -67,6 +68,22 @@ void PerformanceFollower::Reset(size_t event)
   m_followed = m_start;
   m_lastBest = m_start;
   m_hasAnchor = false;
+}
+
+void PerformanceFollower::SetVisibleTicks(int begin, int end)
+{
+  std::vector<std::pair<size_t, size_t>> runs;
+  for (size_t j = 0; j < m_events.size(); ++j)
+  {
+    const auto tick = m_events[j].writtenTick;
+    if (tick < begin || tick >= end)
+      continue;
+    if (!runs.empty() && runs.back().second == j)
+      ++runs.back().second;
+    else
+      runs.emplace_back(j, j + 1);
+  }
+  m_visibleRuns = std::move(runs);
 }
 
 PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
@@ -227,6 +244,22 @@ void PerformanceFollower::PredictFrom(size_t start, double ms)
 
 std::pair<size_t, size_t> PerformanceFollower::JumpSpan() const
 {
+  if (m_visibleRuns)
+  {
+    const auto &runs = *m_visibleRuns;
+    if (runs.empty())
+      return {m_followed, m_followed + 1};
+    // The first run that doesn't end before the followed event, or the one
+    // before it if that is nearer.
+    auto run = std::partition_point(runs.begin(), runs.end(),
+                                    [this](const std::pair<size_t, size_t> &r)
+                                    { return r.second <= m_followed; });
+    if (run == runs.end() ||
+        (run->first > m_followed && run != runs.begin() &&
+         m_followed - (run - 1)->second < run->first - m_followed))
+      --run;
+    return *run;
+  }
   const double from = m_events[m_followed].tick;
   const auto reach = m_p.jumpCutoff * ticksPerQuarter;
   const auto begin = std::lower_bound(
@@ -246,13 +279,21 @@ void PerformanceFollower::AddJumps(double mass)
   // span jumps reach.
   const auto from = m_events[m_followed].tick;
   const auto [begin, end] = JumpSpan();
-  auto sum = 0.0;
+  // Log weights first, the largest taken out: the span may be far from the
+  // followed event, where the weights themselves would all be 0.
+  auto largest = -std::numeric_limits<double>::infinity();
   for (auto j = begin; j < end; ++j)
   {
     const auto quarters = (m_events[j].tick - from) / ticksPerQuarter;
     const auto scale =
         quarters < 0 ? m_p.backJumpScale : m_p.forwardJumpScale;
-    m_jumpWeights[j] = std::exp(-std::abs(quarters) / scale);
+    m_jumpWeights[j] = -std::abs(quarters) / scale;
+    largest = std::max(largest, m_jumpWeights[j]);
+  }
+  auto sum = 0.0;
+  for (auto j = begin; j < end; ++j)
+  {
+    m_jumpWeights[j] = std::exp(m_jumpWeights[j] - largest);
     sum += m_jumpWeights[j];
   }
   for (auto j = begin; j < end; ++j)

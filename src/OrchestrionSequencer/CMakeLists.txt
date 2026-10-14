@@ -41,6 +41,8 @@ set(MODULE_SRC
     internal/ScoreEvents.h
     internal/StaffModes.cpp
     internal/StaffModes.h
+    internal/VisibleScore.cpp
+    internal/VisibleScore.h
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp
@@ -59,6 +61,7 @@ set(MODULE_SRC
     IOrchestrionSequencer.h
     IRest.h
     IStaffModes.h
+    IVisibleScore.h
     OrchestrionModule.cpp
     OrchestrionModule.h
 )

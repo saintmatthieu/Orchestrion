@@ -26,6 +26,7 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/IStaffModes.h"
+#include "OrchestrionSequencer/IVisibleScore.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include "PositionEstimation/PositionEstimator.h"
 #include "ReadingFocus.h"
@@ -138,6 +139,7 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IStaffModes> staffModes{this};
+  dgk::Inject<IVisibleScore> visibleScore{this};
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
@@ -202,6 +204,8 @@ private:
   void subscribe(const IOrchestrionSequencer &sequencer,
                  const IModifiableItemRegistry &registry);
   void constrainScorePosition();
+  /** Publishes which bars are on screen (see IVisibleScore). */
+  void updateVisibleTicks();
   /**
    * The logical y that puts the parchment in the middle of the view — the
    * page's own margins are not symmetric about the music, so centring those
