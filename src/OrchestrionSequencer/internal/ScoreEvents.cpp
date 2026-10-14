@@ -32,13 +32,15 @@ struct Onset
 {
   std::set<int> pitches;
   bool trill = false;
+  int writtenTick = 0;
 };
 
 /** Adds the onsets of `chord`, written out, to `onsets`. */
 void AddOnsets(const IChord &chord, std::map<int, Onset> &onsets)
 {
   const std::vector<WrittenNote> notes = WriteOutOrnament(chord);
-  auto tick = chord.GetBeginTick().withRepeats;
+  const Tick begin = chord.GetBeginTick();
+  auto tick = begin.withRepeats;
   auto onset = tick;
   for (size_t i = 0; i < notes.size(); ++i)
   {
@@ -50,6 +52,7 @@ void AddOnsets(const IChord &chord, std::map<int, Onset> &onsets)
       auto &o = onsets[onset];
       o.pitches.insert(notes[i].pitches.begin(), notes[i].pitches.end());
       o.trill |= notes[i].trill;
+      o.writtenTick = begin.withoutRepeats + (onset - begin.withRepeats);
     }
     tick += notes[i].ticks;
   }
@@ -84,8 +87,10 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
   std::vector<ScoreEvent> events;
   events.reserve(onsets.size());
   for (const auto &[tick, onset] : onsets)
-    events.push_back(
-        {tick, {onset.pitches.begin(), onset.pitches.end()}, onset.trill});
+    events.push_back({tick,
+                      {onset.pitches.begin(), onset.pitches.end()},
+                      onset.trill,
+                      onset.writtenTick});
   return events;
 }
 } // namespace dgk

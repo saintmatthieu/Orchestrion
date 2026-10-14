@@ -1798,6 +1798,7 @@ void OrchestrionNotationPaintView::onMatrixChanged(
   }
 
   constrainScorePosition();
+  updateVisibleTicks();
 }
 
 void OrchestrionNotationPaintView::onViewSizeChanged()
@@ -1805,6 +1806,31 @@ void OrchestrionNotationPaintView::onViewSizeChanged()
   NotationPaintView::onViewSizeChanged();
   if (notation())
     constrainScorePosition();
+  updateVisibleTicks();
+}
+
+void OrchestrionNotationPaintView::updateVisibleTicks()
+{
+  const auto notation = this->notation();
+  if (!notation)
+    return;
+  const mu::engraving::Score *score = notation->elements()->msScore();
+  if (!score)
+    return;
+  const muse::RectF view = viewport();
+  std::optional<int> begin;
+  int end = 0;
+  for (const mu::engraving::Measure *measure = score->firstMeasure(); measure;
+       measure = measure->nextMeasure())
+  {
+    const muse::RectF rect = measure->pageBoundingRect();
+    if (rect.right() < view.left() || rect.left() > view.right())
+      continue;
+    if (!begin)
+      begin = measure->tick().ticks();
+    end = measure->endTick().ticks();
+  }
+  visibleScore()->setVisibleTicks(begin.value_or(0), begin ? end : 0);
 }
 
 void OrchestrionNotationPaintView::updateNotation()

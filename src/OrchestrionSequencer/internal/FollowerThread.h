@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include "IVisibleScore.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "PerformanceFollower.h"
 
 #include <async/asyncable.h>
@@ -29,6 +31,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <utility>
 
 namespace dgk
 {
@@ -38,8 +41,10 @@ namespace dgk
  * shouldn't wait for. Used from one thread, the one that creates it, which is
  * also the one `onFollowed` is called on.
  */
-class FollowerThread : public muse::async::Asyncable
+class FollowerThread : public muse::async::Asyncable, public dgk::Injectable
 {
+  dgk::Inject<IVisibleScore> visibleScore{this};
+
 public:
   /**
    * What following a note found: where the performer is, when the note
@@ -85,7 +90,8 @@ private:
     {
       follow,
       reset,
-      note
+      note,
+      visible
     };
     Kind kind = Kind::note;
     unsigned generation = 0;
@@ -94,6 +100,7 @@ private:
     int pitch = 0;
     double ms = 0.0;
     std::optional<double> ticksPerMs;
+    std::pair<int, int> visible;
   };
 
   /** What the follower thread tells: copied through a channel. */
@@ -103,6 +110,8 @@ private:
     Followed followed;
   };
 
+  /** Tells the follower thread what the performer sees. */
+  void PostVisibleTicks();
   void Post(Task);
   void Run();
 

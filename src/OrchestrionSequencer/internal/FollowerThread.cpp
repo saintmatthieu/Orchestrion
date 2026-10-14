@@ -31,6 +31,8 @@ FollowerThread::FollowerThread(std::function<void(const Followed &)> onFollowed)
                         if (result.generation == m_generation)
                           m_onFollowed(result.followed);
                       });
+  visibleScore()->visibleTicksChanged().onNotify(this,
+                                                 [this] { PostVisibleTicks(); });
   m_thread = std::thread{[this] { Run(); }};
 }
 
@@ -50,6 +52,9 @@ void FollowerThread::Follow(std::vector<ScoreEvent> events,
   m_follower = events.empty() ? nullptr
                               : std::make_shared<PerformanceFollower>(
                                     std::move(events), nominalTicksPerMs);
+  // Not the follower thread's yet.
+  if (const auto visible = visibleScore()->visibleTicks(); m_follower && visible)
+    m_follower->SetVisibleTicks(visible->first, visible->second);
   Task task;
   task.kind = Task::Kind::follow;
   task.generation = ++m_generation;
@@ -84,6 +89,17 @@ void FollowerThread::OnNoteOn(int pitch, double ms,
   Post(std::move(task));
 }
 
+void FollowerThread::PostVisibleTicks()
+{
+  const auto visible = visibleScore()->visibleTicks();
+  if (!m_follower || !visible)
+    return;
+  Task task;
+  task.kind = Task::Kind::visible;
+  task.visible = *visible;
+  Post(std::move(task));
+}
+
 void FollowerThread::Post(Task task)
 {
   {
@@ -115,6 +131,10 @@ void FollowerThread::Run()
     case Task::Kind::reset:
       if (follower)
         follower->Reset(task.event);
+      break;
+    case Task::Kind::visible:
+      if (follower)
+        follower->SetVisibleTicks(task.visible.first, task.visible.second);
       break;
     case Task::Kind::note:
     {

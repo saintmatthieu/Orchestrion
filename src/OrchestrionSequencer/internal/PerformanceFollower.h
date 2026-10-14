@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -37,6 +38,8 @@ struct ScoreEvent
    * event, as many times as the performer likes: a trill.
    */
   bool trill = false;
+  /** The tick without repeats: where the event is written in the score. */
+  int writtenTick = 0;
 };
 
 /**
@@ -104,7 +107,10 @@ struct PerformanceFollowerParameters
    */
   double backJumpScale = 4.0;
   double forwardJumpScale = 1.0;
-  /** Beyond this many scales, no jump lands. */
+  /**
+   * Beyond this many scales, no jump lands — unless what the performer sees
+   * is known (see PerformanceFollower::SetVisibleTicks).
+   */
   double jumpCutoff = 5.0;
 
   /** The posterior an event needs for FollowedEvent() to move to it. */
@@ -169,6 +175,13 @@ public:
    */
   void Reset(size_t event);
 
+  /**
+   * The part of the score the performer sees, in written ticks (see
+   * ScoreEvent::writtenTick) as [begin, end): jumps land there only, where it
+   * is played nearest to the followed event if the score repeats it.
+   */
+  void SetVisibleTicks(int begin, int end);
+
   /** A note-on of `pitch` at time `ms` (monotonic, any origin). */
   Estimate OnNoteOn(int pitch, double ms);
 
@@ -207,6 +220,11 @@ private:
   const std::vector<ScoreEvent> m_events;
   const PerformanceFollowerParameters m_p;
   std::vector<double> m_jumpWeights;
+  /**
+   * The runs of consecutive events the performer sees, as [begin, end), if
+   * that is known.
+   */
+  std::optional<std::vector<std::pair<size_t, size_t>>> m_visibleRuns;
   /** The events holding probability: it is zero outside. */
   size_t m_begin = 0;
   size_t m_end = 0;

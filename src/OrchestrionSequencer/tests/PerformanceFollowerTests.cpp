@@ -79,7 +79,7 @@ std::vector<ScoreEvent> ToEvents(const std::map<int, std::set<int>> &notes)
 {
   std::vector<ScoreEvent> events;
   for (const auto &[tick, pitches] : notes)
-    events.push_back({tick, {pitches.begin(), pitches.end()}});
+    events.push_back({tick, {pitches.begin(), pitches.end()}, false, tick});
   return events;
 }
 
@@ -338,6 +338,50 @@ TEST(PerformanceFollowerTests, RestartIsFound)
           << "restart " << restarts << ", note " << i - index;
   }
   EXPECT_EQ(restarts, 2);
+}
+
+/**
+ * Back from bar 23 to bar 16, both in B, further back than a jump goes
+ * unless the performer sees it; the notes after the restart, as the follower
+ * estimates them, when it sees bars [visibleBegin, visibleEnd).
+ */
+std::vector<std::pair<size_t, size_t>> FarRestart(int visibleBegin,
+                                                  int visibleEnd)
+{
+  const auto events = Piece();
+  PerformanceStyle style;
+  style.restarts = {{BarStart(events, 23), BarStart(events, 16)}};
+  const auto take = Perform(events, style, 1);
+  PerformanceFollower follower{events, nominalTicksPerMs};
+  follower.SetVisibleTicks(visibleBegin * bar, visibleEnd * bar);
+  std::vector<std::pair<size_t, size_t>> after;
+  for (size_t i = 0; i < take.size(); ++i)
+  {
+    const auto estimate = follower.OnNoteOn(take[i].pitch, take[i].ms);
+    if (i > 0 && take[i].ms - take[i - 1].ms > 0.9 * style.restartPauseMs)
+      after.emplace_back(estimate.event, take[i].truth);
+    else if (!after.empty() && after.size() < 40)
+      after.emplace_back(estimate.event, take[i].truth);
+  }
+  return after;
+}
+
+TEST(PerformanceFollowerTests, RestartFarBackIsFoundIfVisible)
+{
+  const auto after = FarRestart(16, 24);
+  ASSERT_EQ(after.size(), 40u);
+  for (auto i = 6u; i < after.size(); ++i)
+    EXPECT_EQ(after[i].first, after[i].second) << "note " << i;
+}
+
+TEST(PerformanceFollowerTests, RestartIsNotFoundIfNotVisible)
+{
+  const auto after = FarRestart(20, 24);
+  ASSERT_EQ(after.size(), 40u);
+  auto right = 0;
+  for (const auto &[estimated, truth] : after)
+    right += estimated == truth;
+  EXPECT_LT(right, 10);
 }
 
 TEST(PerformanceFollowerTests, RestartsInRepeatedPassagesAreFollowed)
