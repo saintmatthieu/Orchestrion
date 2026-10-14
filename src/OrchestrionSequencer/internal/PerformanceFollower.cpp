@@ -22,7 +22,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
-#include <numeric>
 
 namespace dgk
 {
@@ -37,26 +36,14 @@ constexpr double maxTempoRatio = 4.0;
 constexpr double maxTempoStep = 2.0;
 /** States this much less likely than the likeliest aren't propagated. */
 constexpr double pruning = 1e-12;
-
-std::vector<double> JumpWeights(const std::vector<ScoreEvent> &events,
-                                double barStartWeight)
-{
-  std::vector<double> weights;
-  weights.reserve(events.size());
-  for (const auto &event : events)
-    weights.push_back(event.startsBar ? barStartWeight : 1.0);
-  const auto sum = std::accumulate(weights.begin(), weights.end(), 0.0);
-  for (auto &w : weights)
-    w /= sum;
-  return weights;
-}
+/** MuseScore's. */
+constexpr double ticksPerQuarter = 480.0;
 } // namespace
 
 PerformanceFollower::PerformanceFollower(
     std::vector<ScoreEvent> events, double nominalTicksPerMs,
     PerformanceFollowerParameters parameters)
     : m_events{std::move(events)}, m_p{parameters},
-      m_jumpWeights{JumpWeights(m_events, m_p.barStartJumpWeight)},
       m_ticksPerMs{nominalTicksPerMs}, m_nominalTicksPerMs{nominalTicksPerMs}
 {
   assert(!m_events.empty());
@@ -65,7 +52,7 @@ PerformanceFollower::PerformanceFollower(
                             [](const ScoreEvent &a, const ScoreEvent &b)
                             { return a.tick >= b.tick; }) == m_events.end());
 
-  m_nearJumpWeights.assign(m_events.size(), 0.0);
+  m_jumpWeights.assign(m_events.size(), 0.0);
   m_posterior.assign(m_events.size(), 0.0);
   m_prediction.assign(m_events.size(), 0.0);
   m_stayed.assign(m_events.size(), 0.0);
@@ -91,18 +78,20 @@ PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
     Predict(ms);
 
   double sum = 0.0;
-  for (size_t j = 0; j < m_events.size(); ++j)
+  for (auto j = m_begin; j < m_end; ++j)
   {
     m_posterior[j] = m_prediction[j] * Emission(pitch, m_events[j]);
     sum += m_posterior[j];
   }
-  // Every event has some jump mass and every pitch some emission: never 0.
+  // The followed event has some jump mass and every pitch some emission:
+  // never 0.
   assert(sum > 0);
-  for (auto &p : m_posterior)
-    p /= sum;
+  for (auto j = m_begin; j < m_end; ++j)
+    m_posterior[j] /= sum;
 
   const auto best = static_cast<size_t>(
-      std::max_element(m_posterior.begin(), m_posterior.end()) -
+      std::max_element(m_posterior.begin() + m_begin,
+                       m_posterior.begin() + m_end) -
       m_posterior.begin());
   const Estimate estimate{best, m_posterior[best]};
 
@@ -164,16 +153,22 @@ void PerformanceFollower::Predict(double ms)
   const auto paused = ms - m_lastMs > m_p.pauseMs;
   const auto jump = paused ? m_p.jumpAfterPause : m_p.jump;
   const auto maxPosterior =
-      *std::max_element(m_posterior.begin(), m_posterior.end());
+      *std::max_element(m_posterior.begin() + m_begin,
+                        m_posterior.begin() + m_end);
 
-  std::fill(m_prediction.begin(), m_prediction.end(), 0.0);
-  std::fill(m_stayed.begin(), m_stayed.end(), 0.0);
+  std::fill(m_prediction.begin() + m_begin, m_prediction.begin() + m_end,
+            0.0);
+  std::fill(m_stayed.begin() + m_begin, m_stayed.begin() + m_end, 0.0);
+  auto first = m_end;
+  auto last = m_begin;
   std::vector<double> w(m_p.maxAdvance + 1);
-  for (size_t i = 0; i < n; ++i)
+  for (auto i = m_begin; i < m_end; ++i)
   {
     const auto a = m_posterior[i];
     if (a < pruning * maxPosterior)
       continue;
+    first = std::min(first, i);
+    last = i;
     // Timed from the event's onset rather than from the previous note, so
     // that an event of many notes (a trill) is left when its time is up.
     const auto sinceOnset = ms - m_onsetMs[i];
@@ -193,10 +188,14 @@ void PerformanceFollower::Predict(double ms)
     for (size_t l = 0; l < k; ++l)
       m_prediction[i + l] += local * w[l];
   }
+  std::fill(m_posterior.begin() + m_begin, m_posterior.begin() + m_end, 0.0);
+  const auto [jumpBegin, jumpEnd] = JumpSpan();
+  m_begin = std::min(first, jumpBegin);
+  m_end = std::max(std::min(n, last + m_p.maxAdvance + 1), jumpEnd);
   AddJumps(jump);
 
   // An event mostly arrived at, rather than stayed on, begins now.
-  for (size_t j = 0; j < n; ++j)
+  for (auto j = m_begin; j < m_end; ++j)
     if (m_stayed[j] < 0.5 * m_prediction[j])
       m_onsetMs[j] = ms;
 }
@@ -204,40 +203,60 @@ void PerformanceFollower::Predict(double ms)
 void PerformanceFollower::PredictFrom(size_t start, double ms)
 {
   const auto n = m_events.size();
-  std::fill(m_prediction.begin(), m_prediction.end(), 0.0);
+  std::fill(m_prediction.begin() + m_begin, m_prediction.begin() + m_end,
+            0.0);
+  std::fill(m_stayed.begin() + m_begin, m_stayed.begin() + m_end, 0.0);
+  std::fill(m_posterior.begin() + m_begin, m_posterior.begin() + m_end, 0.0);
+  const auto end = std::min(n, start + m_p.maxAdvance + 1);
   auto w = 1.0;
   auto sum = 0.0;
-  for (auto j = start; j < n && j <= start + m_p.maxAdvance; ++j)
+  for (auto j = start; j < end; ++j)
   {
     m_prediction[j] = w;
     sum += w;
     w *= m_p.skip;
   }
-  for (auto &p : m_prediction)
-    p *= (1.0 - m_p.jumpAfterPause) / sum;
+  for (auto j = start; j < end; ++j)
+    m_prediction[j] *= (1.0 - m_p.jumpAfterPause) / sum;
+  const auto [jumpBegin, jumpEnd] = JumpSpan();
+  m_begin = std::min(start, jumpBegin);
+  m_end = std::max(end, jumpEnd);
   AddJumps(m_p.jumpAfterPause);
-  std::fill(m_onsetMs.begin(), m_onsetMs.end(), ms);
+  std::fill(m_onsetMs.begin() + m_begin, m_onsetMs.begin() + m_end, ms);
+}
+
+std::pair<size_t, size_t> PerformanceFollower::JumpSpan() const
+{
+  const double from = m_events[m_followed].tick;
+  const auto reach = m_p.jumpCutoff * ticksPerQuarter;
+  const auto begin = std::lower_bound(
+      m_events.begin(), m_events.end(), from - reach * m_p.backJumpScale,
+      [](const ScoreEvent &event, double tick) { return event.tick < tick; });
+  const auto end = std::upper_bound(
+      m_events.begin(), m_events.end(), from + reach * m_p.forwardJumpScale,
+      [](double tick, const ScoreEvent &event) { return tick < event.tick; });
+  return {static_cast<size_t>(begin - m_events.begin()),
+          static_cast<size_t>(end - m_events.begin())};
 }
 
 void PerformanceFollower::AddJumps(double mass)
 {
-  // Near jumps are from the followed event rather than from each event: an
-  // approximation, the posterior being mostly concentrated, that keeps a
-  // note O(events).
+  // From the followed event rather than from each event: an approximation,
+  // the posterior being mostly concentrated, that keeps a note's cost to the
+  // span jumps reach.
   const auto from = m_events[m_followed].tick;
+  const auto [begin, end] = JumpSpan();
   auto sum = 0.0;
-  for (size_t j = 0; j < m_events.size(); ++j)
+  for (auto j = begin; j < end; ++j)
   {
-    const auto ms = (m_events[j].tick - from) / m_ticksPerMs;
-    const auto scale = ms < 0 ? m_p.backJumpScaleMs : m_p.forwardJumpScaleMs;
-    m_nearJumpWeights[j] = m_jumpWeights[j] * std::exp(-std::abs(ms) / scale);
-    sum += m_nearJumpWeights[j];
+    const auto quarters = (m_events[j].tick - from) / ticksPerQuarter;
+    const auto scale =
+        quarters < 0 ? m_p.backJumpScale : m_p.forwardJumpScale;
+    m_jumpWeights[j] = std::exp(-std::abs(quarters) / scale);
+    sum += m_jumpWeights[j];
   }
-  const auto near = mass * m_p.nearJumpShare / sum;
-  const auto anywhere = mass * (1.0 - m_p.nearJumpShare);
-  for (size_t j = 0; j < m_events.size(); ++j)
-    m_prediction[j] +=
-        near * m_nearJumpWeights[j] + anywhere * m_jumpWeights[j];
+  for (auto j = begin; j < end; ++j)
+    m_prediction[j] += mass * m_jumpWeights[j] / sum;
 }
 
 void PerformanceFollower::UpdateTempo(size_t event, double ms)

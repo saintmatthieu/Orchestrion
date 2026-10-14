@@ -147,7 +147,6 @@ Merge(const std::vector<const std::vector<ScoreEvent> *> &staves)
       std::sort(into.pitches.begin(), into.pitches.end());
       into.pitches.erase(std::unique(into.pitches.begin(), into.pitches.end()),
                          into.pitches.end());
-      into.startsBar |= event.startsBar;
       into.trill |= event.trill;
     }
   std::vector<ScoreEvent> events;

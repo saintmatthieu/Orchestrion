@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace dgk
@@ -31,11 +32,6 @@ struct ScoreEvent
 {
   int tick = 0;
   std::vector<int> pitches;
-  /**
-   * Whether a bar begins here: where a performer who restarts most likely
-   * restarts from.
-   */
-  bool startsBar = false;
   /**
    * Whether the event's pitches are struck over and over until the next
    * event, as many times as the performer likes: a trill.
@@ -94,25 +90,22 @@ struct PerformanceFollowerParameters
    */
   double pauseMs = 1500.0;
 
-  /** Jumping anywhere in the score, per note. */
+  /**
+   * Jumping, per note: performers go back a little to try again, or skip a
+   * little ahead. Farther, they click in the score.
+   */
   double jump = 1e-4;
   /** The same, after a pause. */
   double jumpAfterPause = 0.05;
-  /** How much likelier a jump lands on a bar start than elsewhere. */
-  double barStartJumpWeight = 20.0;
   /**
-   * The share of jumps landing near where the performer was followed, rather
-   * than anywhere: performers mostly go back a little to try again, or skip
-   * a little ahead. Resolves restarts in repeated passages.
+   * The likelihood of a jump decays as exp(-distance / scale) with how far
+   * it goes from where the performer was followed, in quarter notes:
+   * slowly backward, fast forward.
    */
-  double nearJumpShare = 0.9;
-  /**
-   * The likelihood of a near jump decays exponentially with how far it
-   * goes, in milliseconds at the current tempo: slowly backward, fast
-   * forward.
-   */
-  double backJumpScaleMs = 10000.0;
-  double forwardJumpScaleMs = 2000.0;
+  double backJumpScale = 4.0;
+  double forwardJumpScale = 1.0;
+  /** Beyond this many scales, no jump lands. */
+  double jumpCutoff = 5.0;
 
   /** The posterior an event needs for FollowedEvent() to move to it. */
   double followThreshold = 0.5;
@@ -128,16 +121,16 @@ struct PerformanceFollowerParameters
 /**
  * Follows a performance of a score in real time: from the pitches and times
  * of the note-ons played, estimates where in the score the performer is,
- * tolerating wrong, missed and extra notes, tempo changes, and restarts from
- * anywhere.
+ * tolerating wrong, missed and extra notes, tempo changes, and restarts
+ * nearby.
  *
  * A hidden Markov model whose states are the score's events, filtered with
  * the forward algorithm. Each note-on either belongs to the current event (a
  * chord's notes come in close together) or moves on, preferably to the next
- * event, at a time consistent with the current tempo. Jumps anywhere are
- * spread independently of where they come from (weighted toward bar starts
- * and toward the followed position) so that a note costs O(events) whatever
- * the score's length.
+ * event, at a time consistent with the current tempo. Jumps are spread
+ * around the followed position, independently of where they come from, and
+ * only the events near it hold any probability, so that a note's cost
+ * doesn't grow with the score's length.
  *
  * The approach follows:
  * - E. Nakamura, T. Nakamura, Y. Saito, N. Ono, S. Sagayama, "Outer-Product
@@ -206,14 +199,17 @@ private:
   double Stay(size_t event, double sinceOnsetMs) const;
   void Predict(double ms);
   void PredictFrom(size_t start, double ms);
+  /** The events a jump can land on, as [begin, end). */
+  std::pair<size_t, size_t> JumpSpan() const;
   void AddJumps(double mass);
   void UpdateTempo(size_t event, double ms);
 
   const std::vector<ScoreEvent> m_events;
   const PerformanceFollowerParameters m_p;
-  /** Where a jump anywhere lands, normalized. */
-  const std::vector<double> m_jumpWeights;
-  std::vector<double> m_nearJumpWeights;
+  std::vector<double> m_jumpWeights;
+  /** The events holding probability: it is zero outside. */
+  size_t m_begin = 0;
+  size_t m_end = 0;
   /** The posterior over events after the last note. */
   std::vector<double> m_posterior;
   std::vector<double> m_prediction;

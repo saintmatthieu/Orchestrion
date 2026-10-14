@@ -79,7 +79,7 @@ std::vector<ScoreEvent> ToEvents(const std::map<int, std::set<int>> &notes)
 {
   std::vector<ScoreEvent> events;
   for (const auto &[tick, pitches] : notes)
-    events.push_back({tick, {pitches.begin(), pitches.end()}, tick % bar == 0});
+    events.push_back({tick, {pitches.begin(), pitches.end()}});
   return events;
 }
 
@@ -377,10 +377,10 @@ TEST(PerformanceFollowerTests, TrillIsPlayedAsLongAsTheNote)
 {
   // C, a whole-note trill on D (one event of its two notes, see
   // GetScoreEvents), then E: however many trill notes, and however fast.
-  const std::vector<ScoreEvent> events{{0, {72}, true},
-                                       {quarter, {74, 76}, false, true},
-                                       {5 * quarter, {76}, true},
-                                       {6 * quarter, {77}, false}};
+  const std::vector<ScoreEvent> events{{0, {72}},
+                                       {quarter, {74, 76}, true},
+                                       {5 * quarter, {76}},
+                                       {6 * quarter, {77}}};
   for (const auto noteMs : {50.0, 70.0, 110.0})
   {
     PerformanceFollower follower{events, nominalTicksPerMs};

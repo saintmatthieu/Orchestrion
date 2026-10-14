@@ -22,6 +22,7 @@
 #include "OrnamentSchedule.h"
 
 #include <map>
+#include <set>
 
 namespace dgk
 {
@@ -55,8 +56,7 @@ void AddOnsets(const IChord &chord, std::map<int, Onset> &onsets)
 }
 } // namespace
 
-std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves,
-                                       const std::set<int> &barTicks)
+std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
 {
   std::map<int, Onset> onsets;
   for (const Staff *staff : staves)
@@ -84,10 +84,8 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves,
   std::vector<ScoreEvent> events;
   events.reserve(onsets.size());
   for (const auto &[tick, onset] : onsets)
-    events.push_back({tick,
-                      {onset.pitches.begin(), onset.pitches.end()},
-                      barTicks.count(tick) > 0,
-                      onset.trill});
+    events.push_back(
+        {tick, {onset.pitches.begin(), onset.pitches.end()}, onset.trill});
   return events;
 }
 } // namespace dgk
