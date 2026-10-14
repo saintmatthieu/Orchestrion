@@ -21,7 +21,6 @@
 #include "OrchestrionTypes.h"
 #include "PerformanceFollower.h"
 
-#include <set>
 #include <vector>
 
 namespace dgk
@@ -32,8 +31,6 @@ namespace dgk
  * ticks with repeats, and their ornaments written out as the performer is
  * expected to play them — by the rules the automatic player plays them by,
  * but a trill as one event of its notes, however many of them are played.
- * `barTicks` are the ticks (with repeats) bars start at.
  */
-std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves,
-                                       const std::set<int> &barTicks);
+std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves);
 } // namespace dgk

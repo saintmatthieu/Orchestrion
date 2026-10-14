@@ -132,15 +132,13 @@ TEST(ScoreEventsTests, VoicesAndStavesAreMergedIntoOnsets)
         std::make_shared<FakeChord>(bar + half, 2 * bar,
                                     std::vector<int>{48})}}};
 
-  const auto events = GetScoreEvents({&rightHand, &leftHand}, {0, bar});
+  const auto events = GetScoreEvents({&rightHand, &leftHand});
 
   ASSERT_EQ(events.size(), 3u);
   EXPECT_EQ(events[0].tick, 0);
   EXPECT_EQ(events[0].pitches, (std::vector<int>{48, 55, 72, 76}));
-  EXPECT_TRUE(events[0].startsBar);
   EXPECT_EQ(events[1].tick, half);
   EXPECT_EQ(events[1].pitches, (std::vector<int>{50, 79}));
-  EXPECT_FALSE(events[1].startsBar);
   EXPECT_EQ(events[2].tick, bar + half);
   EXPECT_EQ(events[2].pitches, (std::vector<int>{48}));
 }
@@ -152,7 +150,7 @@ TEST(ScoreEventsTests, FigureIsWrittenOut)
        {std::make_shared<FakeChord>(0, half, std::vector<int>{72}, Turn()),
         std::make_shared<FakeChord>(half, bar, std::vector<int>{76})}}};
 
-  const auto events = GetScoreEvents({&staff}, {});
+  const auto events = GetScoreEvents({&staff});
 
   ASSERT_EQ(events.size(), 6u);
   const std::vector<std::vector<int>> pitches{{72}, {74}, {72},
@@ -170,7 +168,7 @@ TEST(ScoreEventsTests, TrillIsOneEvent)
        {std::make_shared<FakeChord>(0, half, std::vector<int>{72}, Trill()),
         std::make_shared<FakeChord>(half, bar, std::vector<int>{76})}}};
 
-  const auto events = GetScoreEvents({&staff}, {});
+  const auto events = GetScoreEvents({&staff});
 
   ASSERT_EQ(events.size(), 2u);
   EXPECT_EQ(events[0].tick, 0);
@@ -205,8 +203,8 @@ TEST(ScoreEventsTests, OrnamentsWrittenOutForTheManualModeGiveTheSameEvents)
   }
   const Staff writtenOut{{0, gestures}};
 
-  const auto expected = GetScoreEvents({&chords}, {});
-  const auto actual = GetScoreEvents({&writtenOut}, {});
+  const auto expected = GetScoreEvents({&chords});
+  const auto actual = GetScoreEvents({&writtenOut});
   EXPECT_EQ(Ticks(actual), Ticks(expected));
   ASSERT_EQ(actual.size(), expected.size());
   for (size_t i = 0; i < actual.size(); ++i)

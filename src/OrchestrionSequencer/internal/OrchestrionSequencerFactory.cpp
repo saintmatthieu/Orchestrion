@@ -432,12 +432,8 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
 
   // What the Notes mode follows the performer along, staff by staff: the
   // sequencer follows the staves in that mode, whichever they are.
-  std::set<int> barTicks;
-  ForAllMeasures(score, [&](const mu::engraving::Measure &, int measureTick)
-                 { barTicks.insert(measureTick); });
   std::array<std::vector<ScoreEvent>, 2> staffEvents{
-      GetScoreEvents({&rightHand}, barTicks),
-      GetScoreEvents({&leftHand}, barTicks)};
+      GetScoreEvents({&rightHand}), GetScoreEvents({&leftHand})};
   const double nominalTicksPerMs = NominalTicksPerMs({&rightHand, &leftHand});
 
   // Copy the staffs before MakeHand moves them.
