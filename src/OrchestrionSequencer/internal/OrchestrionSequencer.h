@@ -26,6 +26,7 @@
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/OrnamentSchedule.h"
 #include "internal/FollowerThread.h"
+#include "internal/ScoreEvents.h"
 #include "internal/VoiceSequencer.h"
 
 #include <actions/actionable.h>
@@ -72,6 +73,7 @@ public:
   OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
                        HandVoices leftHand, PedalSequence,
                        std::array<std::vector<ScoreEvent>, 2> staffEvents,
+                       std::array<std::vector<ScoreNote>, 2> staffNotes,
                        double nominalTicksPerMs);
   ~OrchestrionSequencer();
 
@@ -215,6 +217,8 @@ private:
   void FollowTo(int tickWithRepeats);
   /** Follows the Notes staves, any there are, from scratch. */
   void RebuildFollower();
+  /** Lists the notes the automatic player plays the Notes staves with. */
+  void RebuildAutoPlayNotes();
   /** Has the follower expect the next note where the Notes staves are. */
   void ResetFollower();
   /** Releases the keys the performer holds on the Notes staves. */
@@ -416,6 +420,18 @@ private:
 
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
   const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;
+  /** Each staff's notes, for the automatic player ([0]=right, [1]=left). */
+  const std::array<std::vector<ScoreNote>, 2> m_staffNotes;
+  struct AutoPlayNote
+  {
+    int tick = 0;
+    NoteEventType type = NoteEventType::noteOn;
+    int pitch = 0;
+  };
+  /** The Notes staves' notes struck and released, in order. */
+  std::vector<AutoPlayNote> m_autoPlayNotes;
+  /** The next of them to play. */
+  size_t m_nextAutoPlayNote = 0;
   /** Each staff's lowest and highest pitch. */
   const std::array<std::pair<int, int>, 2> m_staffRanges;
   const double m_nominalTicksPerMs;

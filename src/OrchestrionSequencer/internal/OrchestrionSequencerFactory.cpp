@@ -443,7 +443,10 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   auto sequencer = std::make_shared<OrchestrionSequencer>(
       mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
       MakeHand(staff + 1, leftHand), std::move(pedalSequence),
-      std::move(staffEvents), nominalTicksPerMs);
+      std::move(staffEvents),
+      std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
+                                            GetScoreNotes({&leftHandCopy})},
+      nominalTicksPerMs);
 
   return {sequencer, modifiableItems, std::move(rightHandCopy),
           std::move(leftHandCopy)};

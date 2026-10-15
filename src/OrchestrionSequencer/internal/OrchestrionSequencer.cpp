@@ -161,6 +161,7 @@ OrchestrionSequencer::OrchestrionSequencer(
     InstrumentIndex instrument, HandVoices rightHand, HandVoices leftHand,
     PedalSequence pedalSequence,
     std::array<std::vector<ScoreEvent>, 2> staffEvents,
+    std::array<std::vector<ScoreNote>, 2> staffNotes,
     double nominalTicksPerMs)
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
@@ -180,6 +181,7 @@ OrchestrionSequencer::OrchestrionSequencer(
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
       m_notation{globalContext()->currentMasterNotation().get()},
       m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
+      m_staffNotes{std::move(staffNotes)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
       m_nominalTicksPerMs{nominalTicksPerMs},
       m_follower{[this](const FollowerThread::Followed &followed)
@@ -657,7 +659,32 @@ void OrchestrionSequencer::RebuildFollower()
     if (HandIn(left, StaffMode::notes))
       staves.push_back(&m_staffEvents[left ? 1 : 0]);
   m_follower.Follow(Merge(staves), m_nominalTicksPerMs);
+  RebuildAutoPlayNotes();
   ResetFollower();
+}
+
+void OrchestrionSequencer::RebuildAutoPlayNotes()
+{
+  m_autoPlayNotes.clear();
+  for (const bool left : {false, true})
+    if (HandIn(left, StaffMode::notes))
+      for (const ScoreNote &note : m_staffNotes[left ? 1 : 0])
+      {
+        m_autoPlayNotes.push_back(
+            {note.onTick, NoteEventType::noteOn, note.pitch});
+        m_autoPlayNotes.push_back(
+            {note.offTick, NoteEventType::noteOff, note.pitch});
+      }
+  // Releases first: a note struck again where it ends is released first.
+  std::stable_sort(m_autoPlayNotes.begin(), m_autoPlayNotes.end(),
+                   [](const AutoPlayNote &a, const AutoPlayNote &b)
+                   {
+                     return a.tick != b.tick
+                                ? a.tick < b.tick
+                                : a.type == NoteEventType::noteOff &&
+                                      b.type == NoteEventType::noteOn;
+                   });
+  m_nextAutoPlayNote = 0;
 }
 
 void OrchestrionSequencer::ResetFollower()
@@ -686,6 +713,11 @@ void OrchestrionSequencer::ResetFollower()
       std::lower_bound(events->begin(), events->end(), tick,
                        [](const ScoreEvent &e, int t) { return e.tick < t; });
   m_follower.Reset(static_cast<size_t>(it - events->begin()));
+  // The automatic player plays on from there too.
+  m_nextAutoPlayNote = static_cast<size_t>(
+      std::lower_bound(m_autoPlayNotes.begin(), m_autoPlayNotes.end(), tick,
+                       [](const AutoPlayNote &n, int t) { return n.tick < t; }) -
+      m_autoPlayNotes.begin());
 }
 
 void OrchestrionSequencer::ReleasePlayedPitches()
@@ -1005,8 +1037,9 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
   for (bool isLeftHand : {false, true})
   {
     // What the performer would play, the player plays in their stead: not a
-    // Follow staff, which follows the player as it would the performer.
-    if (!IsPerformed(isLeftHand))
+    // Follow staff, which follows the player as it would the performer — nor
+    // a Notes staff, whose notes it plays as keys, below.
+    if (!IsPerformed(isLeftHand) || Mode(isLeftHand) == StaffMode::notes)
       continue;
     auto &hand = isLeftHand ? m_leftHand : m_rightHand;
     for (auto eventType : {NoteEventType::noteOff, NoteEventType::noteOn})
@@ -1021,14 +1054,15 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
     }
   }
 
-  if (candidates.empty())
+  const bool notesLeft = m_nextAutoPlayNote < m_autoPlayNotes.size();
+  if (candidates.empty() && !notesLeft)
     return std::nullopt;
 
-  const int minTick =
-      std::min_element(candidates.begin(), candidates.end(),
-                       [](const Candidate &a, const Candidate &b)
-                       { return a.tick < b.tick; })
-          ->tick;
+  int minTick = std::numeric_limits<int>::max();
+  for (const auto &c : candidates)
+    minTick = std::min(minTick, c.tick);
+  if (notesLeft)
+    minTick = std::min(minTick, m_autoPlayNotes[m_nextAutoPlayNote].tick);
 
   NextAutoPlayEvents result;
   result.deltaTicks = minTick - m_autoPlayTick;
@@ -1038,6 +1072,11 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
     for (const auto &c : candidates)
       if (c.tick == minTick && c.type == type)
         (c.isLeftHand ? result.leftHandEvent : result.rightHandEvent) = c.type;
+  for (; m_nextAutoPlayNote < m_autoPlayNotes.size() &&
+         m_autoPlayNotes[m_nextAutoPlayNote].tick == minTick;
+       ++m_nextAutoPlayNote)
+    result.notes.emplace_back(m_autoPlayNotes[m_nextAutoPlayNote].type,
+                              m_autoPlayNotes[m_nextAutoPlayNote].pitch);
 
   m_autoPlayTick = minTick;
   return result;

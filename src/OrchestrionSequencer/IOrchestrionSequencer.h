@@ -43,6 +43,11 @@ struct NextAutoPlayEvents
   int deltaTicks = 0;
   std::optional<NoteEventType> leftHandEvent;
   std::optional<NoteEventType> rightHandEvent;
+  /**
+   * The notes of the staves in the Notes mode, played as keys are (see
+   * IOrchestrionSequencer::OnInputEvent): followed, as the performer is.
+   */
+  std::vector<std::pair<NoteEventType, int /*pitch*/>> notes;
 };
 
 //! One raw input event of a recorded take, for replaying the performance:

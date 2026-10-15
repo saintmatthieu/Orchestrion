@@ -211,6 +211,8 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
   if (events.rightHandEvent)
     m_sequencer.OnHandInputEvent(*events.rightHandEvent, false,
                                  std::nullopt);
+  for (const auto &[type, pitch] : events.notes)
+    m_sequencer.OnInputEvent(type, pitch, std::nullopt);
   m_firingInputEvents = false;
   ScheduleNext();
 }
