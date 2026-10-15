@@ -121,20 +121,25 @@ def lead_in():
 
 
 class Score:
-    def __init__(self, title, key_fifths=0, first_tempo=60):
+    def __init__(self, title, key_fifths=0, first_tempo=60, staff_modes=None):
         self.title = title
         self.key = key_fifths
         self.first_tempo = first_tempo
+        self.staff_modes = staff_modes  # e.g. "notes,notes": Orchestrion's staff modes
         self.bars = []  # (label, rh_xml, lh_xml, extra_directions)
 
-    def bar(self, label, rh, lh=None, tempo_bpm=None):
+    def bar(self, label, rh, lh=None, tempo_bpm=None, rh2=None):
         """Appends a case: its lead-in bar (carrying the tempo change, if any),
         then the case bar. rh: xml of the right hand (may be shorter than the
-        bar: rests fill). lh: xml of the left hand, default a whole note C3."""
+        bar: rests fill). lh: xml of the left hand, default a whole note C3.
+        rh2: xml of a second right-hand voice (voice 2), a whole bar of it."""
         lead_rh, lead_lh = lead_in()
         self.bars.append((None, lead_rh, lead_lh, tempo(tempo_bpm) if tempo_bpm else ""))
         used = duration_of(rh)
         rh = rh + rests_to_fill(used)
+        if rh2:
+            assert duration_of(rh2) == 32
+            rh += "<backup><duration>32</duration></backup>" + rh2
         if lh is None:
             lh = note("C3", 32, staff=2)
         else:
@@ -146,7 +151,10 @@ class Score:
                '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">',
                '<score-partwise version="4.0">',
                f"<work><work-title>{self.title}</work-title></work>",
-               "<identification><creator type=\"composer\">Orchestrion test</creator></identification>",
+               "<identification><creator type=\"composer\">Orchestrion test</creator>"
+               + (f'<miscellaneous><miscellaneous-field name="orchestrion-staff-modes">{self.staff_modes}'
+                  "</miscellaneous-field></miscellaneous>" if self.staff_modes else "")
+               + "</identification>",
                '<part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>',
                '<part id="P1">']
         case = 0
@@ -267,3 +275,30 @@ s.bar("play these bars faster or slower than written: the ornaments should follo
 s.bar("same again", note("C5", 8, ornaments=TR) + note("D5", 8, ornaments=TURN) + note("E5", 8, ornaments=MORDENT) + note("F5", 8, ornaments=SHORT_TRILL))
 s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
 s.write(os.path.join(outdir, "ornaments-4-tempo.musicxml"))
+
+# ------------------------------------------------- 5. trills, followed
+# Both staves in the Notes mode, the follower following them merged: what
+# matters is what else is struck while the right hand trills.
+def triad(root, third, fifth, dur):
+    return (note(root, dur, staff=2) + note(third, dur, staff=2, chord=True)
+            + note(fifth, dur, staff=2, chord=True))
+
+
+s = Score("Ornaments 5 - Trills, followed", staff_modes="notes,notes")
+s.bar("tr on a whole note over a whole-note chord: nothing struck meanwhile",
+      note("D5", 32, ornaments=TR), lh=triad("G2", "B2", "D3", 32))
+s.bar("tr on a whole note over a changing chord on each beat (G C D G)",
+      note("D5", 32, ornaments=TR),
+      lh=triad("G2", "B2", "D3", 8) + triad("C3", "E3", "G3", 8) + triad("D3", "F#3", "A3", 8)
+      + triad("G2", "B2", "D3", 8))
+s.bar("tr on a whole note over the same chord on each beat: only the timing tells them apart",
+      note("D5", 32, ornaments=TR),
+      lh="".join(triad("G2", "B2", "D3", 8) for _ in range(4)))
+s.bar("tr on a half, then D, over 8th-note chords",
+      note("D5", 16, ornaments=TR) + note("C5", 16),
+      lh="".join(triad("G2", "B2", "D3", 4) for _ in range(8)))
+s.bar("tr in the upper voice while the lower voice of the same hand moves in quarters",
+      note("D5", 32, ornaments=TR),
+      rh2="".join(note(p, 8, voice=2) for p in ("B4", "A4", "G4", "A4")))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "ornaments-5-trills-followed.musicxml"))

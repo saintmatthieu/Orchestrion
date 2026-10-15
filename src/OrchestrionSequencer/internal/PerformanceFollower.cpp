@@ -62,6 +62,12 @@ constexpr double kChordSpreadMs = 40.0;
 /**
  * Staying on a trill for another of its notes, until its written length is
  * up: then decaying as 1 / (1 + (elapsed / length)^kTrillEndSharpness).
+ *
+ * A smooth step: close to 1 while the trill has time left, 1/2 when its time
+ * is up, and falling fast after — 0.86 at 0.8 of its length, 0.19 at 1.2,
+ * 0.04 at 1.5. A hard cut would make a trill held a little too long a string
+ * of extra notes at once; an exponential decay would penalize it from its
+ * first note. The exponent sets how sharp the step is.
  */
 constexpr double kTrillNote = 1.0;
 constexpr double kTrillEndSharpness = 8.0;
@@ -181,7 +187,9 @@ PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
   double sum = 0.0;
   for (auto j = m_begin; j < m_end; ++j)
   {
-    m_posterior[j] = m_prediction[j] * Emission(pitch, m_events[j]);
+    const auto arrived = m_prediction[j] - m_stayed[j];
+    m_posterior[j] = m_stayed[j] * Emission(pitch, m_events[j], true) +
+                     arrived * Emission(pitch, m_events[j], false);
     sum += m_posterior[j];
   }
   // The followed event has some jump mass and every pitch some emission:
@@ -215,19 +223,26 @@ PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
   return estimate;
 }
 
-double PerformanceFollower::Emission(int pitch, const ScoreEvent &event) const
+double PerformanceFollower::Emission(int pitch, const ScoreEvent &event,
+                                     bool staying) const
 {
   auto e = kNoise;
-  for (const auto p : event.pitches)
+  const auto against = [&](const std::vector<int> &pitches)
   {
-    const auto distance = std::abs(pitch - p);
-    if (distance == 0)
-      return kMatch;
-    if (distance <= 2)
-      e = std::max(e, kNearMiss);
-    else if (distance == 12)
-      e = std::max(e, kOctave);
-  }
+    for (const auto p : pitches)
+    {
+      const auto distance = std::abs(pitch - p);
+      if (distance == 0)
+        e = kMatch;
+      else if (distance <= 2)
+        e = std::max(e, kNearMiss);
+      else if (distance == 12)
+        e = std::max(e, kOctave);
+    }
+  };
+  against(event.pitches);
+  if (staying)
+    against(event.trillPitches);
   return e;
 }
 
@@ -254,11 +269,12 @@ double PerformanceFollower::Stay(size_t event, double sinceOnsetMs) const
   const auto chord =
       remaining ? kChordMember * std::exp(-sinceOnsetMs / kChordSpreadMs)
                 : 0.0;
-  if (!m_events[event].trill)
+  const ScoreEvent &e = m_events[event];
+  if (e.trillPitches.empty())
     return chord;
-  if (event + 1 == m_events.size())
+  const auto length = e.trillEnd - e.tick;
+  if (length <= 0)
     return std::max(chord, kTrillNote);
-  const auto length = m_events[event + 1].tick - m_events[event].tick;
   const auto elapsed = sinceOnsetMs * m_ticksPerMs / length;
   return std::max(chord,
                   kTrillNote / (1.0 + std::pow(elapsed, kTrillEndSharpness)));

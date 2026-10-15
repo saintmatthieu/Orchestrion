@@ -144,8 +144,12 @@ void FollowerThread::Run()
         follower->SetTicksPerMs(*task.ticksPerMs);
       follower->OnNoteOn(task.pitch, task.ms);
       const ScoreEvent &event = follower->Events()[follower->FollowedEvent()];
-      const bool matched = std::find(event.pitches.begin(), event.pitches.end(),
-                                     task.pitch) != event.pitches.end();
+      const auto has = [&](const std::vector<int> &pitches)
+      {
+        return std::find(pitches.begin(), pitches.end(), task.pitch) !=
+               pitches.end();
+      };
+      const bool matched = has(event.pitches) || has(event.trillPitches);
       m_results.send(Result{
           task.generation, Followed{event.tick, task.ms, task.pitch, matched}});
       break;

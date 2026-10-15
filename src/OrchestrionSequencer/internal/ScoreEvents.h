@@ -47,4 +47,10 @@ struct ScoreNote
  * a trill as many notes as the automatic player plays.
  */
 std::vector<ScoreNote> GetScoreNotes(const std::vector<const Staff *> &staves);
+
+/**
+ * Carries each trill over the events of other voices within it, sorted by
+ * tick: it goes on there, until its end.
+ */
+void SpreadTrills(std::vector<ScoreEvent> &events);
 } // namespace dgk

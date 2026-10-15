@@ -32,14 +32,18 @@ namespace dgk
 struct ScoreEvent
 {
   int tick = 0;
+  /** The pitches struck here, those of a trill beginning here included. */
   std::vector<int> pitches;
-  /**
-   * Whether the event's pitches are struck over and over until the next
-   * event, as many times as the performer likes: a trill.
-   */
-  bool trill = false;
   /** The tick without repeats: where the event is written in the score. */
   int writtenTick = 0;
+  /**
+   * The pitches of a trill sounding here, if any: struck over and over, as
+   * many times as the performer likes, until `trillEnd`. A trill begun at an
+   * earlier event is still sounding at the events of other voices within it.
+   */
+  std::vector<int> trillPitches;
+  /** Where the trill ends, in ticks with repeats. */
+  int trillEnd = 0;
 };
 
 /**
@@ -129,7 +133,11 @@ public:
   const std::vector<ScoreEvent> &Events() const { return m_events; }
 
 private:
-  double Emission(int pitch, const ScoreEvent &) const;
+  /**
+   * Of `pitch` at `event`, arrived at or `staying` on it: a trill under way
+   * goes on at an event, but isn't how it begins.
+   */
+  double Emission(int pitch, const ScoreEvent &, bool staying) const;
   double Timing(int ticks, double dtMs) const;
   /**
    * The weight of staying on `event` for another note, `sinceOnsetMs` after

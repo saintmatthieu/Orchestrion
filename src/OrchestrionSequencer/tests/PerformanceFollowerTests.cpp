@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "internal/PerformanceFollower.h"
+#include "internal/ScoreEvents.h"
 
 #include <algorithm>
 #include <cmath>
@@ -79,7 +80,7 @@ std::vector<ScoreEvent> ToEvents(const std::map<int, std::set<int>> &notes)
 {
   std::vector<ScoreEvent> events;
   for (const auto &[tick, pitches] : notes)
-    events.push_back({tick, {pitches.begin(), pitches.end()}, false, tick});
+    events.push_back({tick, {pitches.begin(), pitches.end()}, tick});
   return events;
 }
 
@@ -350,12 +351,12 @@ TEST(PerformanceFollowerTests, PlayingOnAfterAStruggleIsFollowed)
   constexpr int thirtySecond = quarter / 8;
   std::vector<ScoreEvent> events;
   for (auto i = 0; i < 16; ++i)
-    events.push_back({i * thirtySecond, {CMajor(i % 8)}, false, i * thirtySecond});
+    events.push_back({i * thirtySecond, {CMajor(i % 8)}, i * thirtySecond});
   const auto quarters = 16 * thirtySecond;
   const int pitches[] = {75, 74, 72, 70, 72};
   for (auto i = 0; i < 5; ++i)
-    events.push_back({quarters + i * quarter, {pitches[i]}, false,
-                      quarters + i * quarter});
+    events.push_back(
+        {quarters + i * quarter, {pitches[i]}, quarters + i * quarter});
 
   // The tempo the sequencer gives the follower, learnt from the run and not
   // caught up yet.
@@ -380,7 +381,7 @@ TEST(PerformanceFollowerTests, RushedSingleNotesAreNotTakenForChords)
   constexpr int sixteenthTicks = quarter / 4;
   std::vector<ScoreEvent> events;
   for (auto i = 0; i < 16; ++i)
-    events.push_back({i * sixteenthTicks, {CMajor(i)}, false, i * sixteenthTicks});
+    events.push_back({i * sixteenthTicks, {CMajor(i)}, i * sixteenthTicks});
   PerformanceFollower follower{events, nominalTicksPerMs};
   const auto pairMs = 2 * sixteenthTicks / nominalTicksPerMs;
   for (size_t e = 0; e < events.size(); ++e)
@@ -397,7 +398,7 @@ TEST(PerformanceFollowerTests, CorrectedNotesAreFollowed)
   // corrected 80 ms later.
   std::vector<ScoreEvent> events;
   for (auto i = 0; i < 16; ++i)
-    events.push_back({i * quarter, {CMajor(i)}, false, i * quarter});
+    events.push_back({i * quarter, {CMajor(i)}, i * quarter});
   PerformanceFollower follower{events, nominalTicksPerMs};
   const auto quarterMs = quarter / nominalTicksPerMs;
   for (size_t e = 0; e < events.size(); ++e)
@@ -408,6 +409,43 @@ TEST(PerformanceFollowerTests, CorrectedNotesAreFollowed)
       follower.OnNoteOn(pitch + 1, ms);
     follower.OnNoteOn(pitch, ms + (e % 2 ? 80.0 : 0.0));
     EXPECT_EQ(follower.FollowedEvent(), e) << "event " << e;
+  }
+}
+
+TEST(PerformanceFollowerTests, TrillOverChordsIsFollowed)
+{
+  // A whole-note trill on D in the right hand over a chord on each beat in
+  // the left (G, C, D, G), then a C: the trill goes on through the chords.
+  const std::vector<std::vector<int>> chords{
+      {43, 47, 50}, {48, 52, 55}, {50, 54, 57}, {43, 47, 50}};
+  std::vector<ScoreEvent> events;
+  for (auto beat = 0; beat < 4; ++beat)
+    events.push_back({beat * quarter, chords[beat], beat * quarter});
+  events[0].pitches.insert(events[0].pitches.end(), {74, 76});
+  events[0].trillPitches = {74, 76};
+  events[0].trillEnd = bar;
+  events.push_back({bar, {72}, bar});
+  SpreadTrills(events);
+
+  // The trill at 32nds, the chords' notes 10 ms apart.
+  const auto quarterMs = quarter / nominalTicksPerMs;
+  std::vector<std::pair<double, int>> take;
+  for (auto i = 0; i < 32; ++i)
+    take.emplace_back(i * quarterMs / 8, i % 2 ? 76 : 74);
+  for (auto beat = 0; beat < 4; ++beat)
+    for (size_t n = 0; n < chords[beat].size(); ++n)
+      take.emplace_back(beat * quarterMs + 5.0 + 10.0 * n, chords[beat][n]);
+  take.emplace_back(4 * quarterMs, 72);
+  std::sort(take.begin(), take.end());
+
+  PerformanceFollower follower{events, nominalTicksPerMs};
+  for (const auto &[ms, pitch] : take)
+  {
+    follower.OnNoteOn(pitch, ms);
+    const auto beat = std::min(static_cast<size_t>(ms / quarterMs), size_t{4});
+    if (ms - beat * quarterMs >= 30.0 || beat == 4)
+      // Past the chord's notes: where it is.
+      EXPECT_EQ(follower.FollowedEvent(), beat) << pitch << " at " << ms;
   }
 }
 
@@ -534,10 +572,11 @@ TEST(PerformanceFollowerTests, TrillIsPlayedAsLongAsTheNote)
 {
   // C, a whole-note trill on D (one event of its two notes, see
   // GetScoreEvents), then E: however many trill notes, and however fast.
-  const std::vector<ScoreEvent> events{{0, {72}},
-                                       {quarter, {74, 76}, true},
-                                       {5 * quarter, {76}},
-                                       {6 * quarter, {77}}};
+  const std::vector<ScoreEvent> events{
+      {0, {72}},
+      {quarter, {74, 76}, quarter, {74, 76}, 5 * quarter},
+      {5 * quarter, {76}},
+      {6 * quarter, {77}}};
   for (const auto noteMs : {50.0, 70.0, 110.0})
   {
     PerformanceFollower follower{events, nominalTicksPerMs};
