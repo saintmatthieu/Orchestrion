@@ -104,4 +104,22 @@ TEST(PositionTrackerTests, TimingJitterShowsInTempo)
 
   EXPECT_GT(*hi - *lo, 0.5) << "jittered input should perturb the tempo curve";
 }
+
+// Two notes written a 16th apart but struck together, 1 ms apart: the tempo
+// isn't made from next to no time.
+TEST(PositionTrackerTests, OnsetsStruckTogetherDontMakeTheTempo)
+{
+  PositionTracker tracker;
+  constexpr double quarterMs = 500.0; // 120 BPM
+  double ms = 0.0;
+  for (int i = 0; i < 12; ++i, ms += quarterMs)
+    tracker.addObservation(ms, i * ticksPerQuarter);
+  const double before = tracker.speed();
+  const double tick = 12 * ticksPerQuarter;
+  tracker.addObservation(ms, tick);
+  tracker.addObservation(ms + 1.0, tick + ticksPerQuarter / 4);
+  EXPECT_NEAR(tracker.speed(), before, 0.05 * before);
+  EXPECT_NEAR(tracker.positionAt(ms + 100.0),
+              tick + ticksPerQuarter / 4 + 100.0 * before, ticksPerQuarter / 4);
+}
 } // namespace dgk

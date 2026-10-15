@@ -37,6 +37,12 @@ constexpr double coastFactor = 0.9;
 // correction would otherwise make (e.g. centring a long-overdue note): the view
 // slides to the corrected position over a few of these, gradually.
 constexpr double offsetDecayMs = 1000.0;
+/**
+ * Onsets closer than this to the one before are the same gesture, as far as
+ * the tempo goes — a chord's notes, both hands, two notes struck together:
+ * their distance over next to no time would make any tempo.
+ */
+constexpr double minTempoGapMs = 40.0;
 } // namespace
 
 PositionTracker::PositionTracker(double memory)
@@ -75,6 +81,15 @@ void PositionTracker::addObservation(double realTime, double musicalPos)
   advanceTo(realTime);
   const double gap = realTime - _lastObsTime;
   const double y = musicalPos - _p; // innovation (the timing error)
+
+  if (gap < minTempoGapMs)
+  {
+    // Where the playing is, it tells; not how fast it goes.
+    _p = _nObs == 1 ? musicalPos : _p + _alpha * y;
+    _displayOffset0 = wasReady ? prev - _p : 0.0;
+    _offsetT0 = realTime;
+    return;
+  }
 
   if (_nObs == 1)
   {
