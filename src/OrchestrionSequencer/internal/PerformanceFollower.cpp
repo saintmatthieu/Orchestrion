@@ -53,8 +53,9 @@ constexpr double kOctave = 0.03;
 constexpr double kNoise = 0.005;
 
 /**
- * Staying on the event for another of its pitches, decaying with the time
- * since the previous note as exp(-dt / kChordSpreadMs).
+ * Staying on the event for another of its pitches, while it has some not
+ * played yet, decaying with the time since the event began as
+ * exp(-dt / kChordSpreadMs).
  */
 constexpr double kChordMember = 1.0;
 constexpr double kChordSpreadMs = 40.0;
@@ -140,6 +141,7 @@ PerformanceFollower::PerformanceFollower(std::vector<ScoreEvent> events,
   m_prediction.assign(m_events.size(), 0.0);
   m_stayed.assign(m_events.size(), 0.0);
   m_onsetMs.assign(m_events.size(), 0.0);
+  m_notesPlayed.assign(m_events.size(), 0);
   Reset(0);
 }
 
@@ -186,7 +188,14 @@ PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
   // never 0.
   assert(sum > 0);
   for (auto j = m_begin; j < m_end; ++j)
+  {
     m_posterior[j] /= sum;
+    // Wherever the performer is, this note was played there — but a wrong
+    // one leaves the right one still to play.
+    const auto &pitches = m_events[j].pitches;
+    if (std::find(pitches.begin(), pitches.end(), pitch) != pitches.end())
+      ++m_notesPlayed[j];
+  }
 
   const auto best =
       static_cast<size_t>(std::max_element(m_posterior.begin() + m_begin,
@@ -238,7 +247,13 @@ double PerformanceFollower::Timing(int ticks, double dtMs) const
 
 double PerformanceFollower::Stay(size_t event, double sinceOnsetMs) const
 {
-  const auto chord = kChordMember * std::exp(-sinceOnsetMs / kChordSpreadMs);
+  // Whichever of them: the emission doesn't share its weight among the notes
+  // remaining, so neither does staying.
+  const bool remaining = m_notesPlayed[event] <
+                         static_cast<int>(m_events[event].pitches.size());
+  const auto chord =
+      remaining ? kChordMember * std::exp(-sinceOnsetMs / kChordSpreadMs)
+                : 0.0;
   if (!m_events[event].trill)
     return chord;
   if (event + 1 == m_events.size())
@@ -295,7 +310,10 @@ void PerformanceFollower::Predict(double ms)
   // An event mostly arrived at, rather than stayed on, begins now.
   for (auto j = m_begin; j < m_end; ++j)
     if (m_stayed[j] < 0.5 * m_prediction[j])
+    {
       m_onsetMs[j] = ms;
+      m_notesPlayed[j] = 0;
+    }
 }
 
 void PerformanceFollower::PredictFrom(size_t start, double ms)
@@ -320,6 +338,7 @@ void PerformanceFollower::PredictFrom(size_t start, double ms)
   m_end = std::max(end, jumpEnd);
   AddJumps(kJumpAtReset);
   std::fill(m_onsetMs.begin() + m_begin, m_onsetMs.begin() + m_end, ms);
+  std::fill(m_notesPlayed.begin() + m_begin, m_notesPlayed.begin() + m_end, 0);
 }
 
 std::pair<size_t, size_t> PerformanceFollower::JumpSpan() const

@@ -372,6 +372,45 @@ TEST(PerformanceFollowerTests, PlayingOnAfterAStruggleIsFollowed)
   }
 }
 
+TEST(PerformanceFollowerTests, RushedSingleNotesAreNotTakenForChords)
+{
+  // Single notes a 16th apart, stepwise, the learner playing them in rushed
+  // pairs: the second of each pair 10 ms after the first. A single note has
+  // no other note to wait for.
+  constexpr int sixteenthTicks = quarter / 4;
+  std::vector<ScoreEvent> events;
+  for (auto i = 0; i < 16; ++i)
+    events.push_back({i * sixteenthTicks, {CMajor(i)}, false, i * sixteenthTicks});
+  PerformanceFollower follower{events, nominalTicksPerMs};
+  const auto pairMs = 2 * sixteenthTicks / nominalTicksPerMs;
+  for (size_t e = 0; e < events.size(); ++e)
+  {
+    const auto ms = e / 2 * pairMs + (e % 2 ? 10.0 : 0.0);
+    follower.OnNoteOn(events[e].pitches.front(), ms);
+    EXPECT_EQ(follower.FollowedEvent(), e) << "event " << e;
+  }
+}
+
+TEST(PerformanceFollowerTests, CorrectedNotesAreFollowed)
+{
+  // Single notes, stepwise, every other one first struck a semitone off and
+  // corrected 80 ms later.
+  std::vector<ScoreEvent> events;
+  for (auto i = 0; i < 16; ++i)
+    events.push_back({i * quarter, {CMajor(i)}, false, i * quarter});
+  PerformanceFollower follower{events, nominalTicksPerMs};
+  const auto quarterMs = quarter / nominalTicksPerMs;
+  for (size_t e = 0; e < events.size(); ++e)
+  {
+    const auto ms = e * quarterMs;
+    const auto pitch = events[e].pitches.front();
+    if (e % 2)
+      follower.OnNoteOn(pitch + 1, ms);
+    follower.OnNoteOn(pitch, ms + (e % 2 ? 80.0 : 0.0));
+    EXPECT_EQ(follower.FollowedEvent(), e) << "event " << e;
+  }
+}
+
 TEST(PerformanceFollowerTests, MistakesDontDerail)
 {
   PerformanceStyle style;
