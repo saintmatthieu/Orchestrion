@@ -137,6 +137,10 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  sequencerConfiguration()->takeRecordingEnabledChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   uiConfiguration()->currentThemeChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
@@ -699,9 +703,20 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
   gradingItem->setCheckable(true);
   gradingItem->setChecked(sequencerConfiguration()->gradingExposed());
 
+  MenuItem *const takeRecordingItem = makeMenuItem(
+      actionIds::toggleTakeRecording,
+      muse::TranslatableString("appshell/menu/development", "Record &takes"));
+  takeRecordingItem->setCheckable(true);
+  takeRecordingItem->setChecked(
+      sequencerConfiguration()->takeRecordingEnabled());
+
   return makeMenu(
       muse::TranslatableString("appshell/menu/development", "&Development"),
-      QList<MenuItem *>{gradingItem},
+      QList<MenuItem *>{
+          gradingItem, makeSeparator(), takeRecordingItem,
+          makeMenuItem(actionIds::replayTake,
+                       muse::TranslatableString("appshell/menu/development",
+                                                "&Replay a take…"))},
       "menu-orchestrion-development");
 }
 #endif

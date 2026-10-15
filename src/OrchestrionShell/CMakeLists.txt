@@ -22,6 +22,12 @@ set(MODULE_SRC
   internal/SleepInhibitor.h
   internal/SynthesizerMenuManager.cpp
   internal/SynthesizerMenuManager.h
+  internal/Take.cpp
+  internal/Take.h
+  internal/TakeRecorder.cpp
+  internal/TakeRecorder.h
+  internal/TakeReplayer.cpp
+  internal/TakeReplayer.h
   view/NotationPaintViewLoaderModel.cpp
   view/NotationPaintViewLoaderModel.h
   view/OrchestrionTheme.cpp

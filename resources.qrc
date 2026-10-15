@@ -19,6 +19,7 @@
     <file>src/qml/OrchestrionSystemButtons.qml</file>
     <file>src/qml/TitleBarButtonBackground.qml</file>
     <file>src/qml/OrchestrionStandardDialog.qml</file>
+    <file>src/qml/TakesDialog.qml</file>
     <file>src/qml/BackdropFrame.qml</file>
     <file>src/qml/MetalGlyph.qml</file>
     <file>src/qml/TransportButton.qml</file>
