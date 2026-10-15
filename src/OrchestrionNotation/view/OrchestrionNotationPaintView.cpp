@@ -328,9 +328,16 @@ void OrchestrionNotationPaintView::OnTransitions(
                                  el->pageBoundingRect().center().x()};
     };
     // Fed for every track in the batch, gap rests included: the sequencer has
-    // moved the hand there, visible or not.
+    // moved the hand there, visible or not. A voice struck — or moved on, in
+    // the Notes mode, which never releases it — says nothing of its next
+    // chord, which the sequencer knows: without it, the focus would fall on
+    // another voice's next, however far ahead.
+    const IChord *next = future;
+    if (!next && present)
+      if (const auto sequencer = orchestrion()->sequencer())
+        next = sequencer->GetNextChord(track);
     m_readingFocus.onTransition(track.staffIndex(), track.value,
-                                onsetOf(present), onsetOf(future));
+                                onsetOf(present), onsetOf(next));
 
     const auto thing = present ? present : future;
     if (!thing)

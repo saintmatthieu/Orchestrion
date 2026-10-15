@@ -52,8 +52,8 @@ public:
   };
 
   //! One voice's transition: the chord (or rest) it just moved onto, if any,
-  //! and the chord pre-lit as its next, if any. A strike carries only the
-  //! former, a release only the latter (or neither, when the voice is
+  //! and its next chord, if any. A strike carries the former and, if known,
+  //! the latter; a release only the latter (or neither, when the voice is
   //! through); the ledger fills in what a batch leaves unsaid.
   void onTransition(int staff, int track, std::optional<Onset> present,
                     std::optional<Onset> future);
@@ -76,8 +76,8 @@ private:
   {
     int staff = 0;
     std::optional<Onset> last; // last struck; survives the release
-    //! The chord pre-lit as next. Unset from a strike to its release, and for
-    //! good once the voice is through.
+    //! The chord to strike next. Unset from a strike that doesn't say it to
+    //! its release, and for good once the voice is through.
     std::optional<Onset> next;
   };
   std::map<int /*track*/, Voice> _voices;
