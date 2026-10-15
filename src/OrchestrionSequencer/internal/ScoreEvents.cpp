@@ -33,8 +33,9 @@ namespace
 struct Onset
 {
   std::set<int> pitches;
-  bool trill = false;
   int writtenTick = 0;
+  std::set<int> trillPitches;
+  int trillEnd = 0;
 };
 
 /** Adds the onsets of `chord`, written out, to `onsets`. */
@@ -53,10 +54,15 @@ void AddOnsets(const IChord &chord, std::map<int, Onset> &onsets)
     {
       auto &o = onsets[onset];
       o.pitches.insert(notes[i].pitches.begin(), notes[i].pitches.end());
-      o.trill |= notes[i].trill;
       o.writtenTick = begin.withoutRepeats + (onset - begin.withRepeats);
     }
     tick += notes[i].ticks;
+    if (notes[i].trill)
+    {
+      auto &o = onsets[onset];
+      o.trillPitches.insert(notes[i].pitches.begin(), notes[i].pitches.end());
+      o.trillEnd = std::max(o.trillEnd, tick);
+    }
   }
 }
 
@@ -101,8 +107,10 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
   for (const auto &[tick, onset] : onsets)
     events.push_back({tick,
                       {onset.pitches.begin(), onset.pitches.end()},
-                      onset.trill,
-                      onset.writtenTick});
+                      onset.writtenTick,
+                      {onset.trillPitches.begin(), onset.trillPitches.end()},
+                      onset.trillEnd});
+  SpreadTrills(events);
   return events;
 }
 
@@ -124,5 +132,26 @@ std::vector<ScoreNote> GetScoreNotes(const std::vector<const Staff *> &staves)
             [](const ScoreNote &a, const ScoreNote &b)
             { return a.onTick < b.onTick; });
   return notes;
+}
+
+void SpreadTrills(std::vector<ScoreEvent> &events)
+{
+  const auto add = [](std::vector<int> &into, const std::vector<int> &pitches)
+  {
+    into.insert(into.end(), pitches.begin(), pitches.end());
+    std::sort(into.begin(), into.end());
+    into.erase(std::unique(into.begin(), into.end()), into.end());
+  };
+  for (size_t i = 0; i < events.size(); ++i)
+  {
+    // Copied: the events within it may be the trill's, and are changed.
+    const std::vector<int> trillPitches = events[i].trillPitches;
+    const int trillEnd = events[i].trillEnd;
+    for (auto j = i + 1; j < events.size() && events[j].tick < trillEnd; ++j)
+    {
+      add(events[j].trillPitches, trillPitches);
+      events[j].trillEnd = std::max(events[j].trillEnd, trillEnd);
+    }
+  }
 }
 } // namespace dgk

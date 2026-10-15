@@ -173,9 +173,33 @@ TEST(ScoreEventsTests, TrillIsOneEvent)
   ASSERT_EQ(events.size(), 2u);
   EXPECT_EQ(events[0].tick, 0);
   EXPECT_EQ(events[0].pitches, (std::vector<int>{72, 74}));
-  EXPECT_TRUE(events[0].trill);
+  EXPECT_EQ(events[0].trillPitches, (std::vector<int>{72, 74}));
+  EXPECT_EQ(events[0].trillEnd, half);
   EXPECT_EQ(events[1].tick, half);
-  EXPECT_FALSE(events[1].trill);
+  EXPECT_TRUE(events[1].trillPitches.empty());
+}
+
+TEST(ScoreEventsTests, TrillIsCarriedOverTheOtherVoicesOnsets)
+{
+  // A whole-note trill on C, while the other voice moves in quarters.
+  const Staff staff{
+      {0, {std::make_shared<FakeChord>(0, bar, std::vector<int>{72}, Trill())}},
+      {1,
+       {std::make_shared<FakeChord>(0, quarter, std::vector<int>{67}),
+        std::make_shared<FakeChord>(quarter, half, std::vector<int>{65}),
+        std::make_shared<FakeChord>(half, half + quarter, std::vector<int>{64}),
+        std::make_shared<FakeChord>(half + quarter, bar,
+                                    std::vector<int>{65})}}};
+
+  const auto events = GetScoreEvents({&staff});
+
+  ASSERT_EQ(events.size(), 4u);
+  for (const auto &event : events)
+  {
+    EXPECT_EQ(event.trillPitches, (std::vector<int>{72, 74})) << event.tick;
+    EXPECT_EQ(event.trillEnd, bar) << event.tick;
+  }
+  EXPECT_EQ(events[1].pitches, (std::vector<int>{65}));
 }
 
 TEST(ScoreEventsTests, OrnamentsWrittenOutForTheManualModeGiveTheSameEvents)

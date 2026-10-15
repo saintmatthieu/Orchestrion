@@ -18,6 +18,7 @@
  */
 #include "OrchestrionSequencer.h"
 #include "IChord.h"
+#include "ScoreEvents.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -142,17 +143,22 @@ Merge(const std::vector<const std::vector<ScoreEvent> *> &staves)
       if (inserted)
         continue;
       ScoreEvent &into = it->second;
-      into.pitches.insert(into.pitches.end(), event.pitches.begin(),
-                          event.pitches.end());
-      std::sort(into.pitches.begin(), into.pitches.end());
-      into.pitches.erase(std::unique(into.pitches.begin(), into.pitches.end()),
-                         into.pitches.end());
-      into.trill |= event.trill;
+      const auto add = [](std::vector<int> &into, const std::vector<int> &from)
+      {
+        into.insert(into.end(), from.begin(), from.end());
+        std::sort(into.begin(), into.end());
+        into.erase(std::unique(into.begin(), into.end()), into.end());
+      };
+      add(into.pitches, event.pitches);
+      add(into.trillPitches, event.trillPitches);
+      into.trillEnd = std::max(into.trillEnd, event.trillEnd);
     }
   std::vector<ScoreEvent> events;
   events.reserve(merged.size());
   for (auto &[tick, event] : merged)
     events.push_back(std::move(event));
+  // A staff's trill over the other's onsets.
+  SpreadTrills(events);
   return events;
 }
 } // namespace
