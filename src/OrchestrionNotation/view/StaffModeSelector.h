@@ -97,13 +97,6 @@ public:
 private:
   static QPointF ArrowCentre(const Layout &, const Staff &, Part);
   static bool IsOver(const Layout &, const Staff &, Part, QPointF pos);
-  /**
-   * A stroke of a soft, fat pencil along the path: two passes, each
-   * wandering a little off the line, the same way every time for the same
-   * `seed`.
-   */
-  static void Pencil(QPainter &, const QPainterPath &, const QColor &ink,
-                     double width, unsigned seed);
   static void Sketch(QPainter &, StaffMode, QPointF centre, double size,
                      const QColor &ink);
   static void Arrow(QPainter &, Part, QPointF centre, double size,
