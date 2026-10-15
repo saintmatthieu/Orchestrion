@@ -341,6 +341,37 @@ TEST(PerformanceFollowerTests, SlowLongNotesAreFollowed)
   EXPECT_GE(right, 0.98);
 }
 
+TEST(PerformanceFollowerTests, PlayingOnAfterAStruggleIsFollowed)
+{
+  // A run of 32nds the learner can only manage slowly, then quarters played
+  // at the score's tempo: the tempo learnt from the run makes them sound
+  // early. The second quarter is a semitone below the first, like a wrong
+  // note for it would be.
+  constexpr int thirtySecond = quarter / 8;
+  std::vector<ScoreEvent> events;
+  for (auto i = 0; i < 16; ++i)
+    events.push_back({i * thirtySecond, {CMajor(i % 8)}, false, i * thirtySecond});
+  const auto quarters = 16 * thirtySecond;
+  const int pitches[] = {75, 74, 72, 70, 72};
+  for (auto i = 0; i < 5; ++i)
+    events.push_back({quarters + i * quarter, {pitches[i]}, false,
+                      quarters + i * quarter});
+
+  // The tempo the sequencer gives the follower, learnt from the run and not
+  // caught up yet.
+  constexpr double runMs = 400.0;
+  PerformanceFollower follower{events, nominalTicksPerMs};
+  auto ms = 0.0;
+  for (size_t e = 0; e < events.size(); ++e)
+  {
+    if (e > 0)
+      follower.SetTicksPerMs(thirtySecond / runMs);
+    follower.OnNoteOn(events[e].pitches.front(), ms);
+    EXPECT_EQ(follower.FollowedEvent(), e) << "event " << e;
+    ms += e < 16 ? runMs : quarter / nominalTicksPerMs;
+  }
+}
+
 TEST(PerformanceFollowerTests, MistakesDontDerail)
 {
   PerformanceStyle style;

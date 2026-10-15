@@ -83,6 +83,12 @@ constexpr double kTimingSigma = 0.45;
  * tempo, so that near-simultaneous events don't give extreme ratios.
  */
 constexpr double kTimingFloorMs = 30.0;
+/**
+ * The least an early move weighs, however early: the tempo may be off — learnt
+ * from a passage played slowly for its difficulty, say — and timing then only
+ * chooses between moves the pitch can't tell apart.
+ */
+constexpr double kEarlyFloor = 0.03;
 
 /**
  * Jumping, per note: performers go back a little to try again, or skip a
@@ -227,7 +233,7 @@ double PerformanceFollower::Timing(int ticks, double dtMs) const
     // one who skipped.
     return 1.0;
   const auto r = std::log((played + floor) / (ticks + floor)) / kTimingSigma;
-  return std::exp(-0.5 * r * r);
+  return std::max(std::exp(-0.5 * r * r), kEarlyFloor);
 }
 
 double PerformanceFollower::Stay(size_t event, double sinceOnsetMs) const
