@@ -160,6 +160,8 @@ private:
   std::vector<double> m_stayed;
   /** When each event, if the performer is at it, began. */
   std::vector<double> m_onsetMs;
+  /** How many of its notes the performer, if at the event, has played. */
+  std::vector<int> m_notesPlayed;
   /** Whether no note was played since the last reset. */
   bool m_fresh = true;
   size_t m_start = 0;
