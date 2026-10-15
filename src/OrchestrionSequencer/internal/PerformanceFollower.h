@@ -63,10 +63,19 @@ struct ScoreEvent
  *   efficient computation, performance errors);
  * - E. Nakamura, P. Cuvillier, A. Cont, N. Ono, S. Sagayama, "Autoregressive
  *   Hidden Semi-Markov Model of Symbolic Music Performance for Score
- *   Following", ISMIR 2015 (the timing of chords and of moves between
- *   events);
+ *   Following", ISMIR 2015 (timing in the transitions rather than in the
+ *   emissions);
  * - R. B. Dannenberg, "An On-Line Algorithm for Real-Time Accompaniment",
  *   ICMC 1984, which started the field.
+ *
+ * The timing model itself is ours, not the papers': a Gaussian on the log of
+ * the ratio of the score distance covered at the current tempo to the score
+ * distance of the move, with a floor against near-simultaneous events, and a
+ * hand-picked spread. The papers model time between notes linearly instead,
+ * with a mixture of noises for motor noise and timing errors (see also
+ * E. Nakamura, N. Ono, S. Sagayama, K. Watanabe, "A Stochastic Temporal
+ * Model of Polyphonic MIDI Performance with Ornaments", Journal of New Music
+ * Research 44(4), 2015, §3.3-3.4).
  */
 class PerformanceFollower
 {
@@ -154,7 +163,6 @@ private:
   /** Whether no note was played since the last reset. */
   bool m_fresh = true;
   size_t m_start = 0;
-  double m_lastMs = 0.0;
   size_t m_followed = 0;
   double m_ticksPerMs;
   const double m_nominalTicksPerMs;

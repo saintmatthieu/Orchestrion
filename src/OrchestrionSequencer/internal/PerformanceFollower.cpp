@@ -73,8 +73,9 @@ constexpr double kSkip = 0.1;
 /** Farthest local move, in events; beyond that is a jump. */
 constexpr int kMaxAdvance = 6;
 /**
- * Spread of the tempo deviation the timing of an advance tolerates: the
- * standard deviation of log(score time / expected score time).
+ * Spread of how early a move can come: the standard deviation of
+ * log(score distance covered / score distance of the move). Lateness is
+ * tolerated whatever it is: learners stop to think.
  */
 constexpr double kTimingSigma = 0.45;
 /**
@@ -82,19 +83,17 @@ constexpr double kTimingSigma = 0.45;
  * tempo, so that near-simultaneous events don't give extreme ratios.
  */
 constexpr double kTimingFloorMs = 30.0;
-/**
- * A gap after which the performer is considered to have paused: timing
- * tells nothing about the next move, and jumps are likelier.
- */
-constexpr double kPauseMs = 1500.0;
 
 /**
  * Jumping, per note: performers go back a little to try again, or skip a
  * little ahead. Farther, they click in the score.
  */
 constexpr double kJump = 1e-4;
-/** The same, after a pause. */
-constexpr double kJumpAfterPause = 0.05;
+/**
+ * The same for the first note after a reset — a click where the performer is
+ * about to start —, spread around where they clicked.
+ */
+constexpr double kJumpAtReset = 0.05;
 /**
  * The likelihood of a jump decays as exp(-distance / scale) with how far
  * it goes from where the performer was followed, in quarter notes:
@@ -119,10 +118,10 @@ constexpr double kMinTempoSpanMs = 250.0;
 constexpr double kTempoSmoothing = 0.3;
 } // namespace
 
-PerformanceFollower::PerformanceFollower(
-    std::vector<ScoreEvent> events, double nominalTicksPerMs)
-    : m_events{std::move(events)},
-      m_ticksPerMs{nominalTicksPerMs}, m_nominalTicksPerMs{nominalTicksPerMs}
+PerformanceFollower::PerformanceFollower(std::vector<ScoreEvent> events,
+                                         double nominalTicksPerMs)
+    : m_events{std::move(events)}, m_ticksPerMs{nominalTicksPerMs},
+      m_nominalTicksPerMs{nominalTicksPerMs}
 {
   assert(!m_events.empty());
   assert(nominalTicksPerMs > 0);
@@ -198,7 +197,6 @@ PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
   }
 
   m_fresh = false;
-  m_lastMs = ms;
   return estimate;
 }
 
@@ -222,31 +220,32 @@ double PerformanceFollower::Timing(int ticks, double dtMs) const
 {
   const auto floor = kTimingFloorMs * m_ticksPerMs;
   // How far the performer went at the current tempo, against how far the
-  // score says: positive when late, negative when early.
+  // score says.
   const auto played = std::max(dtMs, 0.0) * m_ticksPerMs;
+  if (played >= ticks)
+    // Late: a learner thinking, most likely, whom the pitch tells apart from
+    // one who skipped.
+    return 1.0;
   const auto r = std::log((played + floor) / (ticks + floor)) / kTimingSigma;
   return std::exp(-0.5 * r * r);
 }
 
 double PerformanceFollower::Stay(size_t event, double sinceOnsetMs) const
 {
-  const auto chord =
-      kChordMember * std::exp(-sinceOnsetMs / kChordSpreadMs);
+  const auto chord = kChordMember * std::exp(-sinceOnsetMs / kChordSpreadMs);
   if (!m_events[event].trill)
     return chord;
   if (event + 1 == m_events.size())
     return std::max(chord, kTrillNote);
   const auto length = m_events[event + 1].tick - m_events[event].tick;
   const auto elapsed = sinceOnsetMs * m_ticksPerMs / length;
-  return std::max(chord, kTrillNote /
-                             (1.0 + std::pow(elapsed, kTrillEndSharpness)));
+  return std::max(chord,
+                  kTrillNote / (1.0 + std::pow(elapsed, kTrillEndSharpness)));
 }
 
 void PerformanceFollower::Predict(double ms)
 {
   const auto n = m_events.size();
-  const auto paused = ms - m_lastMs > kPauseMs;
-  const auto jump = paused ? kJumpAfterPause : kJump;
   const auto maxPosterior = *std::max_element(m_posterior.begin() + m_begin,
                                               m_posterior.begin() + m_end);
 
@@ -265,18 +264,18 @@ void PerformanceFollower::Predict(double ms)
     // Timed from the event's onset rather than from the previous note, so
     // that an event of many notes (a trill) is left when its time is up.
     const auto sinceOnset = ms - m_onsetMs[i];
-    w[0] = kInsertion + (paused ? 0.0 : Stay(i, sinceOnset));
+    w[0] = kInsertion + Stay(i, sinceOnset);
     auto sum = w[0];
     auto advance = kAdvance;
     size_t k = 1;
     for (; k < w.size() && i + k < n; ++k)
     {
       const auto ticks = m_events[i + k].tick - m_events[i].tick;
-      w[k] = advance * (paused ? 1.0 : Timing(ticks, sinceOnset));
+      w[k] = advance * Timing(ticks, sinceOnset);
       sum += w[k];
       advance *= kSkip;
     }
-    const auto local = a * (1.0 - jump) / sum;
+    const auto local = a * (1.0 - kJump) / sum;
     m_stayed[i] = local * w[0];
     for (size_t l = 0; l < k; ++l)
       m_prediction[i + l] += local * w[l];
@@ -285,7 +284,7 @@ void PerformanceFollower::Predict(double ms)
   const auto [jumpBegin, jumpEnd] = JumpSpan();
   m_begin = std::min(first, jumpBegin);
   m_end = std::max(std::min(n, last + kMaxAdvance + 1), jumpEnd);
-  AddJumps(jump);
+  AddJumps(kJump);
 
   // An event mostly arrived at, rather than stayed on, begins now.
   for (auto j = m_begin; j < m_end; ++j)
@@ -309,11 +308,11 @@ void PerformanceFollower::PredictFrom(size_t start, double ms)
     w *= kSkip;
   }
   for (auto j = start; j < end; ++j)
-    m_prediction[j] *= (1.0 - kJumpAfterPause) / sum;
+    m_prediction[j] *= (1.0 - kJumpAtReset) / sum;
   const auto [jumpBegin, jumpEnd] = JumpSpan();
   m_begin = std::min(start, jumpBegin);
   m_end = std::max(end, jumpEnd);
-  AddJumps(kJumpAfterPause);
+  AddJumps(kJumpAtReset);
   std::fill(m_onsetMs.begin() + m_begin, m_onsetMs.begin() + m_end, ms);
 }
 
@@ -392,8 +391,9 @@ void PerformanceFollower::UpdateTempo(size_t event, double ms)
   if (ratio > 1.0 / kMaxTempoStep && ratio < kMaxTempoStep)
   {
     m_ticksPerMs *= std::pow(ratio, kTempoSmoothing);
-    m_ticksPerMs = std::clamp(m_ticksPerMs, m_nominalTicksPerMs * kMinTempoRatio,
-                              m_nominalTicksPerMs * kMaxTempoRatio);
+    m_ticksPerMs =
+        std::clamp(m_ticksPerMs, m_nominalTicksPerMs * kMinTempoRatio,
+                   m_nominalTicksPerMs * kMaxTempoRatio);
   }
   m_anchorEvent = event;
   m_anchorMs = ms;
