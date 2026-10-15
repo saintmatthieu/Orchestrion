@@ -70,14 +70,23 @@ void FollowPlayer::OnTransitions(
         present ? std::make_optional<double>(present->GetEndTick().withRepeats)
                 : std::nullopt;
     const IChord *future = GetFutureChord(transition);
-    if (!future && GetPresentThing(transition) && !present)
-      // Released onto a rest, which the transition says nothing after: the
-      // chord after it is what the staff strikes next.
+    if (!future)
+      // Struck, or released onto a rest: the transition says nothing of
+      // what comes next, which the staff must strike on time all the same —
+      // another voice may be what releases it.
       future = m_sequencer.GetNextChord(track);
     targets.onTick =
         future ? std::make_optional<double>(future->GetBeginTick().withRepeats)
                : std::nullopt;
   }
+  // A voice the batches haven't brought yet, not having started (the second
+  // voice of a staff, entering later on): its first chord is the sequencer's
+  // to tell.
+  for (const TrackIndex &track : m_sequencer.GetAllVoices())
+    if (IsFollowStaff(track.staffIndex()) &&
+        !m_trackTargets.count(track.value))
+      if (const IChord *next = m_sequencer.GetNextChord(track))
+        m_trackTargets[track.value].onTick = next->GetBeginTick().withRepeats;
   Aggregate();
 }
 
