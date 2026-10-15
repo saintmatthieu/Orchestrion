@@ -37,10 +37,15 @@
 #include <ui/iuiconfiguration.h>
 
 #include <QObject>
+#include <QString>
+#include <memory>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
+class TakeRecorder;
+class TakeReplayer;
+
 class OrchestrionActionController : public muse::actions::Actionable,
                                     public dgk::Injectable,
                                     public muse::async::Asyncable,
@@ -53,7 +58,8 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<mu::context::IGlobalContext> globalContext{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IProjectConfiguration> projectConfiguration{this};
-  dgk::Inject<mu::project::IProjectFilesController> projectFilesController{this};
+  dgk::Inject<mu::project::IProjectFilesController> projectFilesController{
+      this};
   dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
@@ -61,6 +67,8 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
 
 public:
+  OrchestrionActionController();
+  ~OrchestrionActionController();
   void preInit();
   void init();
 
@@ -87,6 +95,11 @@ private:
   void openFromDir(const muse::io::path_t &dir) const;
   void openProject(const mu::project::ProjectFile &) const;
   void toggleRecording() const;
+  /** Asks which of the session's takes to keep, and saves them. */
+  void offerTakes() const;
+  void replayTake() const;
+  /** Where the takes are saved. */
+  QString takesDirectory() const;
   muse::io::path_t fallbackPath() const;
   //! Grading needs the score's repeats unrolled and plain playing needs them
   //! intact; unrolling rewrites the loaded score in place, so switching
@@ -96,5 +109,8 @@ private:
   //! Whether grading was on when the current score was loaded — i.e. whether
   //! its repeats were unrolled.
   bool m_scoreLoadedWithGrading = false;
+
+  const std::unique_ptr<TakeRecorder> m_takeRecorder;
+  const std::unique_ptr<TakeReplayer> m_takeReplayer;
 };
 } // namespace dgk

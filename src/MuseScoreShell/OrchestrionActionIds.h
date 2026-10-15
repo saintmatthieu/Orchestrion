@@ -50,8 +50,7 @@ static constexpr const char *togglePedalIndicator =
 //! silver on slate. They live in MuseScore's "light" and "dark" theme
 //! slots — see src/OrchestrionCommon/OrchestrionPalette.h.
 static constexpr const char *setGoldTheme = "orchestrion-view-theme-gold";
-static constexpr const char *setSilverTheme =
-    "orchestrion-view-theme-silver";
+static constexpr const char *setSilverTheme = "orchestrion-view-theme-silver";
 
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
@@ -68,6 +67,10 @@ static constexpr const char *gradingSettings = "orchestrion-grading-settings";
 //! Development menu: whether grading is offered at all.
 static constexpr const char *toggleGradingExposure =
     "orchestrion-dev-toggle-grading-exposure";
+//! Development menu: whether the takes are recorded, and replaying one.
+static constexpr const char *toggleTakeRecording =
+    "orchestrion-dev-toggle-take-recording";
+static constexpr const char *replayTake = "orchestrion-dev-replay-take";
 
 static constexpr const char *playModePerformance =
     "orchestrion-advanced-play-mode-performance";

@@ -34,6 +34,8 @@ const muse::Settings::Key
 const muse::Settings::Key
     JUMP_ANTICIPATION_ENABLED(module_name, "JUMP_ANTICIPATION_ENABLED");
 const muse::Settings::Key GRADING_EXPOSED(module_name, "GRADING_EXPOSED");
+const muse::Settings::Key TAKE_RECORDING_ENABLED(module_name,
+                                                 "TAKE_RECORDING_ENABLED");
 const muse::Settings::Key GRADING_ENABLED(module_name, "GRADING_ENABLED");
 const muse::Settings::Key
     PERSISTENT_TIMING_MARKS_ENABLED(module_name,
@@ -97,6 +99,12 @@ void OrchestrionSequencerConfiguration::init()
                    m_gradingExposedChanged.notify();
                    m_gradingEnabledChanged.notify();
                  });
+
+  muse::settings()->setDefaultValue(TAKE_RECORDING_ENABLED, muse::Val{false});
+  muse::settings()
+      ->valueChanged(TAKE_RECORDING_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_takeRecordingEnabledChanged.notify(); });
 
   muse::settings()->setDefaultValue(GRADING_ENABLED, muse::Val{true});
   muse::settings()
@@ -233,6 +241,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::jumpAnticipationEnabledChanged() const
 {
   return m_jumpAnticipationEnabledChanged;
+}
+
+bool OrchestrionSequencerConfiguration::takeRecordingEnabled() const
+{
+  return muse::settings()->value(TAKE_RECORDING_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setTakeRecordingEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(TAKE_RECORDING_ENABLED, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::takeRecordingEnabledChanged() const
+{
+  return m_takeRecordingEnabledChanged;
 }
 
 bool OrchestrionSequencerConfiguration::gradingExposed() const

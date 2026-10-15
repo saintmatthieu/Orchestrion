@@ -118,6 +118,9 @@ void OrchestrionShellModule::resolveImports()
     const muse::Uri uri("muse://interactive/standard");
     ir->unregisterUri(uri);
     ir->registerQmlUri(uri, "Orchestrion", "OrchestrionStandardDialog");
+    // Which of the session's takes to keep (see TakeRecorder).
+    ir->registerQmlUri(muse::Uri("orchestrion://takes/keep"), "Orchestrion",
+                       "TakesDialog");
   }
 }
 

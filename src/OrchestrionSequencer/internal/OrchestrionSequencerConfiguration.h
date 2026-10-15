@@ -54,6 +54,9 @@ private:
   bool gradingExposed() const override;
   void setGradingExposed(bool) override;
   muse::async::Notification gradingExposedChanged() const override;
+  bool takeRecordingEnabled() const override;
+  void setTakeRecordingEnabled(bool) override;
+  muse::async::Notification takeRecordingEnabledChanged() const override;
 
   bool gradingEnabled() const override;
   void setGradingEnabled(bool) override;
@@ -105,6 +108,7 @@ private:
   muse::async::Notification m_tempoVisualizationEnabledChanged;
   muse::async::Notification m_jumpAnticipationEnabledChanged;
   muse::async::Notification m_gradingExposedChanged;
+  muse::async::Notification m_takeRecordingEnabledChanged;
   muse::async::Notification m_gradingEnabledChanged;
   muse::async::Notification m_persistentTimingMarksEnabledChanged;
   muse::async::Notification m_handSyncScoreEnabledChanged;

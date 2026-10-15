@@ -80,6 +80,14 @@ public:
   virtual void setGradingExposed(bool) = 0;
   virtual muse::async::Notification gradingExposedChanged() const = 0;
 
+  /**
+   * Whether every session's takes are recorded, to be kept on closing the
+   * score and replayed (Development menu).
+   */
+  virtual bool takeRecordingEnabled() const = 0;
+  virtual void setTakeRecordingEnabled(bool) = 0;
+  virtual muse::async::Notification takeRecordingEnabledChanged() const = 0;
+
   //! The master switch of the grading apparatus: the per-note
   //! timing marks and deviation ribbon, the box-plot HUD and scores, the
   //! final-score banner, the time-proportional layout and its tempo warp,
