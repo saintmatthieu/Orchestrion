@@ -290,7 +290,7 @@ int TiedDurationTicks(const me::Chord &first)
 {
   int ticks = 0;
   for (const me::Chord *chord = &first; chord; chord = GetNextTiedChord(*chord))
-    ticks += chord->ticks().ticks();
+    ticks += chord->actualTicks().ticks();
   return ticks;
 }
 
