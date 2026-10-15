@@ -43,88 +43,6 @@ struct ScoreEvent
 };
 
 /**
- * The tuning of the PerformanceFollower's model. Probabilities need not be
- * normalized: only their ratios matter.
- */
-struct PerformanceFollowerParameters
-{
-  /** Emission of a pitch of the event. */
-  double match = 1.0;
-  /** Emission of a pitch a tone or less away from one of the event's. */
-  double nearMiss = 0.05;
-  /** Emission of a pitch an octave away from one of the event's. */
-  double octave = 0.03;
-  /** Emission of any other pitch. */
-  double noise = 0.005;
-
-  /**
-   * Staying on the event for another of its pitches, decaying with the time
-   * since the previous note as exp(-dt / chordSpreadMs).
-   */
-  double chordMember = 1.0;
-  double chordSpreadMs = 40.0;
-  /**
-   * Staying on a trill for another of its notes, until its written length is
-   * up: then decaying as 1 / (1 + (elapsed / length)^trillEndSharpness).
-   */
-  double trillNote = 1.0;
-  double trillEndSharpness = 8.0;
-  /** Staying on the event for an extra note, whenever. */
-  double insertion = 0.05;
-  /** Moving on to the next event. */
-  double advance = 1.0;
-  /** Each event skipped (missed) multiplies the advance by this. */
-  double skip = 0.1;
-  /** Farthest local move, in events; beyond that is a jump. */
-  int maxAdvance = 6;
-  /**
-   * Spread of the tempo deviation the timing of an advance tolerates: the
-   * standard deviation of log(score time / expected score time).
-   */
-  double timingSigma = 0.45;
-  /**
-   * Added to both sides of the timing ratio, in milliseconds at the current
-   * tempo, so that near-simultaneous events don't give extreme ratios.
-   */
-  double timingFloorMs = 30.0;
-  /**
-   * A gap after which the performer is considered to have paused: timing
-   * tells nothing about the next move, and jumps are likelier.
-   */
-  double pauseMs = 1500.0;
-
-  /**
-   * Jumping, per note: performers go back a little to try again, or skip a
-   * little ahead. Farther, they click in the score.
-   */
-  double jump = 1e-4;
-  /** The same, after a pause. */
-  double jumpAfterPause = 0.05;
-  /**
-   * The likelihood of a jump decays as exp(-distance / scale) with how far
-   * it goes from where the performer was followed, in quarter notes:
-   * slowly backward, fast forward.
-   */
-  double backJumpScale = 4.0;
-  double forwardJumpScale = 1.0;
-  /**
-   * Beyond this many scales, no jump lands — unless what the performer sees
-   * is known (see PerformanceFollower::SetVisibleTicks).
-   */
-  double jumpCutoff = 5.0;
-
-  /** The posterior an event needs for FollowedEvent() to move to it. */
-  double followThreshold = 0.5;
-  /**
-   * The tempo is measured over spans of at least this long, so that fast
-   * notes (ornaments, which are played at their own speed) don't skew it.
-   */
-  double minTempoSpanMs = 250.0;
-  /** How much of each tempo measurement goes into the estimate. */
-  double tempoSmoothing = 0.3;
-};
-
-/**
  * Follows a performance of a score in real time: from the pitches and times
  * of the note-ons played, estimates where in the score the performer is,
  * tolerating wrong, missed and extra notes, tempo changes, and restarts
@@ -166,8 +84,7 @@ public:
    * `nominalTicksPerMs` is the score's tempo, the initial estimate of the
    * performer's.
    */
-  PerformanceFollower(std::vector<ScoreEvent> events, double nominalTicksPerMs,
-                      PerformanceFollowerParameters parameters = {});
+  PerformanceFollower(std::vector<ScoreEvent> events, double nominalTicksPerMs);
 
   /**
    * Expect the next note at `event` (the performer is about to start there,
@@ -218,7 +135,6 @@ private:
   void UpdateTempo(size_t event, double ms);
 
   const std::vector<ScoreEvent> m_events;
-  const PerformanceFollowerParameters m_p;
   std::vector<double> m_jumpWeights;
   /**
    * The runs of consecutive events the performer sees, as [begin, end), if
