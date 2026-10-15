@@ -164,6 +164,12 @@ struct PerformanceStyle
   double chordSpreadMs = 0.0;
   /** How long the performer pauses before restarting. */
   double restartPauseMs = 1000.0;
+  /**
+   * Chance, per event, that the performer stops to think before it: the time
+   * to it is then 2 to `hesitationMaxFactor` times as long.
+   */
+  double hesitate = 0.0;
+  double hesitationMaxFactor = 10.0;
   std::vector<Restart> restarts;
 };
 
@@ -184,7 +190,13 @@ std::vector<PlayedNote> Perform(const std::vector<ScoreEvent> &events,
       ms += style.restartPauseMs;
     }
     else if (e > 0)
-      ms += (events[e].tick - events[e - 1].tick) / ticksPerMs;
+    {
+      auto dt = (events[e].tick - events[e - 1].tick) / ticksPerMs;
+      // Drawn only when hesitating at all: the other takes stay the same.
+      if (style.hesitate > 0 && random.Chance(style.hesitate))
+        dt *= 2.0 + random.Uniform() * (style.hesitationMaxFactor - 2.0);
+      ms += dt;
+    }
     ticksPerMs *= std::exp(style.drift * random.Normal());
 
     for (const auto pitch : events[e].pitches)
@@ -296,6 +308,37 @@ TEST(PerformanceFollowerTests, DriftingTempoIsFollowed)
   style.drift = 0.03;
   style.chordSpreadMs = 20.0;
   EXPECT_GE(FollowTakes(style).accuracy, 0.97);
+}
+
+TEST(PerformanceFollowerTests, HesitationsAreFollowed)
+{
+  PerformanceStyle style;
+  style.chordSpreadMs = 20.0;
+  style.hesitate = 0.1;
+  const auto r = FollowTakes(style);
+  EXPECT_GE(r.accuracy, 0.98);
+  EXPECT_GE(r.followedAccuracy, 0.98);
+}
+
+TEST(PerformanceFollowerTests, SlowLongNotesAreFollowed)
+{
+  // Whole notes, played at 0.6 of the score's tempo: 3.3 s apart. (At half
+  // of it, the follower's own estimate would never catch up: the app gives it
+  // the sequencer's.)
+  std::map<int, std::set<int>> notes;
+  Random random{7};
+  for (auto b = 0; b < 32; ++b)
+    notes[b * bar].insert(CMajor(random.Int(0, 7)));
+  const auto events = ToEvents(notes);
+  PerformanceStyle style;
+  style.tempo = 0.6;
+  style.wrong = 0.1;
+  auto right = 0.0;
+  for (auto seed = 1; seed <= 10; ++seed)
+    right += Follow(events, Perform(events, style, 100 + seed))
+                 .followedAccuracy /
+             10;
+  EXPECT_GE(right, 0.98);
 }
 
 TEST(PerformanceFollowerTests, MistakesDontDerail)
