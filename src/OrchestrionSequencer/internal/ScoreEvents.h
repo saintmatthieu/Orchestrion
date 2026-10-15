@@ -33,4 +33,18 @@ namespace dgk
  * but a trill as one event of its notes, however many of them are played.
  */
 std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves);
+
+/** A note of the staves: when it is struck and released, ticks with repeats. */
+struct ScoreNote
+{
+  int onTick = 0;
+  int offTick = 0;
+  int pitch = 0;
+};
+
+/**
+ * The notes of the staves, their ornaments written out as for GetScoreEvents,
+ * a trill as many notes as the automatic player plays.
+ */
+std::vector<ScoreNote> GetScoreNotes(const std::vector<const Staff *> &staves);
 } // namespace dgk

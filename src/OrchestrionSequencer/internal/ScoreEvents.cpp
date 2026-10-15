@@ -21,6 +21,8 @@
 #include "OrnamentGesture.h"
 #include "OrnamentSchedule.h"
 
+#include <algorithm>
+#include <functional>
 #include <map>
 #include <set>
 
@@ -57,16 +59,18 @@ void AddOnsets(const IChord &chord, std::map<int, Onset> &onsets)
     tick += notes[i].ticks;
   }
 }
-} // namespace
 
-std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
+/**
+ * Calls `f` on each chord of the staves, an ornamented one once: ornaments
+ * already written out for the manual mode are written out again from their
+ * chord.
+ */
+void ForEachChord(const std::vector<const Staff *> &staves,
+                  const std::function<void(const IChord &)> &f)
 {
-  std::map<int, Onset> onsets;
   for (const Staff *staff : staves)
     for (const auto &[voice, sequence] : *staff)
     {
-      // Ornaments already written out for the manual mode are written out
-      // again from their chord, once, for the trills to be told.
       const IChord *lastOrnamented = nullptr;
       for (const ChordRestPtr &segment : sequence)
       {
@@ -80,9 +84,17 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
             continue;
           lastOrnamented = chord;
         }
-        AddOnsets(*chord, onsets);
+        f(*chord);
       }
     }
+}
+} // namespace
+
+std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
+{
+  std::map<int, Onset> onsets;
+  ForEachChord(staves,
+               [&](const IChord &chord) { AddOnsets(chord, onsets); });
 
   std::vector<ScoreEvent> events;
   events.reserve(onsets.size());
@@ -92,5 +104,25 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
                       onset.trill,
                       onset.writtenTick});
   return events;
+}
+
+std::vector<ScoreNote> GetScoreNotes(const std::vector<const Staff *> &staves)
+{
+  std::vector<ScoreNote> notes;
+  ForEachChord(staves,
+               [&](const IChord &chord)
+               {
+                 auto tick = chord.GetBeginTick().withRepeats;
+                 for (const WrittenNote &note : WriteOutOrnament(chord))
+                 {
+                   for (const int pitch : note.pitches)
+                     notes.push_back({tick, tick + note.ticks, pitch});
+                   tick += note.ticks;
+                 }
+               });
+  std::sort(notes.begin(), notes.end(),
+            [](const ScoreNote &a, const ScoreNote &b)
+            { return a.onTick < b.onTick; });
+  return notes;
 }
 } // namespace dgk
