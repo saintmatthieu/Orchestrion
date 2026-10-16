@@ -64,6 +64,8 @@ public:
     return m_ornament ? &*m_ornament : nullptr;
   }
   double GetNominalBpm() const override { return 60.0; }
+  std::optional<RollDirection> GetRoll() const override { return roll; }
+  std::optional<RollDirection> roll;
   const mu::engraving::Chord *GetEngravingChord() const override
   {
     return nullptr;
@@ -200,6 +202,25 @@ TEST(ScoreEventsTests, TrillIsCarriedOverTheOtherVoicesOnsets)
     EXPECT_EQ(event.trillEnd, bar) << event.tick;
   }
   EXPECT_EQ(events[1].pitches, (std::vector<int>{65}));
+}
+
+TEST(ScoreEventsTests, RolledChordsNotesComeOneAfterTheOther)
+{
+  const auto chord =
+      std::make_shared<FakeChord>(0, half, std::vector<int>{67, 60, 64});
+  chord->roll = RollDirection::up;
+  const Staff staff{{0, {chord}}};
+
+  const auto notes = GetScoreNotes({&staff});
+
+  ASSERT_EQ(notes.size(), 3u);
+  for (size_t i = 0; i < notes.size(); ++i)
+  {
+    EXPECT_EQ(notes[i].pitch, (std::vector<int>{60, 64, 67})[i]);
+    EXPECT_EQ(notes[i].onTick, static_cast<int>(i) * arpeggioNoteTicks);
+    EXPECT_EQ(notes[i].offTick, half);
+  }
+  EXPECT_TRUE(GetScoreEvents({&staff}).front().rolled);
 }
 
 TEST(ScoreEventsTests, OrnamentsWrittenOutForTheManualModeGiveTheSameEvents)

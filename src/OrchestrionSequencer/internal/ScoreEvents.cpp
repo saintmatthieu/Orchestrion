@@ -36,6 +36,7 @@ struct Onset
   int writtenTick = 0;
   std::set<int> trillPitches;
   int trillEnd = 0;
+  bool rolled = false;
 };
 
 /** Adds the onsets of `chord`, written out, to `onsets`. */
@@ -55,6 +56,7 @@ void AddOnsets(const IChord &chord, std::map<int, Onset> &onsets)
       auto &o = onsets[onset];
       o.pitches.insert(notes[i].pitches.begin(), notes[i].pitches.end());
       o.writtenTick = begin.withoutRepeats + (onset - begin.withRepeats);
+      o.rolled |= chord.GetRoll().has_value();
     }
     tick += notes[i].ticks;
     if (notes[i].trill)
@@ -109,7 +111,8 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
                       {onset.pitches.begin(), onset.pitches.end()},
                       onset.writtenTick,
                       {onset.trillPitches.begin(), onset.trillPitches.end()},
-                      onset.trillEnd});
+                      onset.trillEnd,
+                      onset.rolled});
   SpreadTrills(events);
   return events;
 }
@@ -121,10 +124,23 @@ std::vector<ScoreNote> GetScoreNotes(const std::vector<const Staff *> &staves)
                [&](const IChord &chord)
                {
                  auto tick = chord.GetBeginTick().withRepeats;
+                 const auto roll = chord.GetRoll();
                  for (const WrittenNote &note : WriteOutOrnament(chord))
                  {
-                   for (const int pitch : note.pitches)
-                     notes.push_back({tick, tick + note.ticks, pitch});
+                   std::vector<int> pitches = note.pitches;
+                   if (roll)
+                     // Rolled, in its order, each note a little after the
+                     // one before; all released together.
+                     std::sort(pitches.begin(), pitches.end(),
+                               [up = *roll == RollDirection::up](int a, int b)
+                               { return up ? a < b : a > b; });
+                   for (size_t i = 0; i < pitches.size(); ++i)
+                   {
+                     const int delay =
+                         roll ? static_cast<int>(i) * arpeggioNoteTicks : 0;
+                     notes.push_back({tick + std::min(delay, note.ticks - 1),
+                                      tick + note.ticks, pitches[i]});
+                   }
                    tick += note.ticks;
                  }
                });

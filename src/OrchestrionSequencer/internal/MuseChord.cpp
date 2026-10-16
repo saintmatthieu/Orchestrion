@@ -335,7 +335,12 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                    const me::Chord *chord = EngravingChord(segment, track);
                    return chord ? CrossStaffArpeggioOf(*chord).gathers
                                 : std::vector<const me::Chord *>{};
-                 }()}
+                 }()},
+      m_roll{[&]
+             {
+               const me::Chord *chord = EngravingChord(segment, track);
+               return chord ? ArpeggioOf(*chord) : std::nullopt;
+             }()}
 {
 }
 
@@ -343,6 +348,8 @@ std::vector<const me::Chord *> MuseChord::GetGatheredChords() const
 {
   return m_gathered;
 }
+
+std::optional<RollDirection> MuseChord::GetRoll() const { return m_roll; }
 
 dgk::Tick MuseChord::GetEndTick() const
 {

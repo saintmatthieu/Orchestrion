@@ -44,6 +44,8 @@ struct ScoreEvent
   std::vector<int> trillPitches;
   /** Where the trill ends, in ticks with repeats. */
   int trillEnd = 0;
+  /** Whether the pitches are rolled (an arpeggio) rather than struck together. */
+  bool rolled = false;
 };
 
 /**
@@ -145,9 +147,10 @@ private:
   double Timing(int ticks, double dtMs, bool next) const;
   /**
    * The weight of staying on `event` for another note, `sinceOnsetMs` after
-   * it began (the extra-note weight aside).
+   * it began and `sincePreviousMs` after the note before (the extra-note
+   * weight aside).
    */
-  double Stay(size_t event, double sinceOnsetMs) const;
+  double Stay(size_t event, double sinceOnsetMs, double sincePreviousMs) const;
   void Predict(double ms);
   void PredictFrom(size_t start, double ms);
   /** The events a jump can land on, as [begin, end). */
@@ -176,6 +179,8 @@ private:
   std::vector<int> m_notesPlayed;
   /** Whether no note was played since the last reset. */
   bool m_fresh = true;
+  /** When the note before was played. */
+  double m_previousMs = 0.0;
   size_t m_start = 0;
   size_t m_followed = 0;
   double m_ticksPerMs;

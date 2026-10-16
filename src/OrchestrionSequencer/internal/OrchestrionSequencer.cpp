@@ -18,7 +18,6 @@
  */
 #include "OrchestrionSequencer.h"
 #include "IChord.h"
-#include "MuseOrnament.h"
 #include "OrnamentSchedule.h"
 #include "ScoreEvents.h"
 #include <algorithm>
@@ -154,6 +153,7 @@ Merge(const std::vector<const std::vector<ScoreEvent> *> &staves)
       add(into.pitches, event.pitches);
       add(into.trillPitches, event.trillPitches);
       into.trillEnd = std::max(into.trillEnd, event.trillEnd);
+      into.rolled |= event.rolled;
     }
   std::vector<ScoreEvent> events;
   events.reserve(merged.size());
@@ -350,8 +350,7 @@ void OrchestrionSequencer::SendTransitions(
         strike && (strike->steps.size() > 1 || !strike->closing.empty());
     std::optional<RollDirection> arpeggio;
     if (present && !ornamented)
-      if (const mu::engraving::Chord *chord = present->GetEngravingChord())
-        arpeggio = ArpeggioOf(*chord);
+      arpeggio = present->GetRoll();
     NoteEvents voiceOutput =
         ProceedOnTrack(track, past, std::move(strike), velocity.value_or(0.f));
     if (voiceOutput.empty())
@@ -613,6 +612,7 @@ void OrchestrionSequencer::OnPitchInput(NoteEventType type, int pitch,
     m_playedPitches.erase(it);
     if (m_wrongNotes.erase(pitch))
       PublishWrongNotes();
+    ReleaseFollowedChords();
     return;
   }
 
@@ -644,6 +644,39 @@ TrackIndex OrchestrionSequencer::NotesTrack() const
   return hand.voices.empty() ? TrackIndex{} : hand.voices.front()->track;
 }
 
+void OrchestrionSequencer::ReleaseFollowedChords()
+{
+  // Not before the chord is nearly over: between the notes of a trill, or of
+  // a note struck again, no key is held either.
+  const auto now = PerformedTempoNow();
+  if (!now)
+    return;
+  std::map<TrackIndex, ChordTransition> transitions;
+  for (const bool left : {false, true})
+    if (HandIn(left, StaffMode::notes))
+      transitions.merge(PrepareStaffTransitions(
+          (left ? m_leftHand : m_rightHand).voices,
+          [&](VoiceSequencer &voice) -> std::optional<ChordTransition>
+          {
+            const IChord *chord = voice.GetSoundingChord();
+            if (!chord)
+              return std::nullopt;
+            const auto begin = chord->GetBeginTick().withRepeats;
+            const auto end = chord->GetEndTick().withRepeats;
+            if (now->tick < begin + 0.75 * (end - begin))
+              return std::nullopt;
+            const std::vector<int> pitches = chord->GetPitches();
+            if (std::any_of(pitches.begin(), pitches.end(),
+                            [this](int pitch)
+                            { return m_playedPitches.count(pitch) > 0; }))
+              return std::nullopt;
+            // Past its end: on to the rest before the next.
+            return voice.FollowTo(chord->GetEndTick().withRepeats);
+          }));
+  if (!transitions.empty())
+    PublishTransitions(transitions);
+}
+
 void OrchestrionSequencer::FollowTo(int tickWithRepeats)
 {
   std::map<TrackIndex, ChordTransition> transitions;
@@ -664,6 +697,10 @@ void OrchestrionSequencer::OnFollowed(const FollowerThread::Followed &followed)
     FollowTo(followed.tick);
     ObserveTick(followed.tick, followed.ms);
   }
+  else
+    // Struck again where the performer is: the voices released meanwhile
+    // (see ReleaseFollowedChords) are back on it.
+    FollowTo(followed.tick);
   if (followed.matched || !m_playedPitches.count(followed.pitch))
     // Right, or already released.
     return;

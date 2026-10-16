@@ -60,6 +60,11 @@ constexpr double kNoise = 0.005;
 constexpr double kChordMember = 1.0;
 constexpr double kChordSpreadMs = 40.0;
 /**
+ * For a rolled chord (an arpeggio), the same from the note before rather than
+ * from the chord's first: a learner rolls slowly.
+ */
+constexpr double kRolledNoteSpreadMs = 150.0;
+/**
  * Staying on a trill for another of its notes, until its written length is
  * up: then decaying as 1 / (1 + (elapsed / length)^kTrillEndSharpness).
  *
@@ -220,6 +225,7 @@ PerformanceFollower::Estimate PerformanceFollower::OnNoteOn(int pitch,
   }
 
   m_fresh = false;
+  m_previousMs = ms;
   return estimate;
 }
 
@@ -262,16 +268,17 @@ double PerformanceFollower::Timing(int ticks, double dtMs, bool next) const
   return next ? std::max(gaussian, kEarlyFloor) : gaussian;
 }
 
-double PerformanceFollower::Stay(size_t event, double sinceOnsetMs) const
+double PerformanceFollower::Stay(size_t event, double sinceOnsetMs,
+                                 double sincePreviousMs) const
 {
   // Whichever of them: the emission doesn't share its weight among the notes
   // remaining, so neither does staying.
   const bool remaining = m_notesPlayed[event] <
                          static_cast<int>(m_events[event].pitches.size());
-  const auto chord =
-      remaining ? kChordMember * std::exp(-sinceOnsetMs / kChordSpreadMs)
-                : 0.0;
   const ScoreEvent &e = m_events[event];
+  const auto spread = e.rolled ? sincePreviousMs / kRolledNoteSpreadMs
+                               : sinceOnsetMs / kChordSpreadMs;
+  const auto chord = remaining ? kChordMember * std::exp(-spread) : 0.0;
   if (e.trillPitches.empty())
     return chord;
   const auto length = e.trillEnd - e.tick;
@@ -303,7 +310,7 @@ void PerformanceFollower::Predict(double ms)
     // Timed from the event's onset rather than from the previous note, so
     // that an event of many notes (a trill) is left when its time is up.
     const auto sinceOnset = ms - m_onsetMs[i];
-    w[0] = kInsertion + Stay(i, sinceOnset);
+    w[0] = kInsertion + Stay(i, sinceOnset, ms - m_previousMs);
     // The moves' chances are shared out before the timing weighs them, not
     // after: when the note fits none of them in time, the event loses,
     // rather than making the best of a bad lot.
