@@ -26,6 +26,8 @@
 #include "engraving/dom/segment.h"
 #include "engraving/dom/spanner.h"
 #include "engraving/dom/spannermap.h"
+#include "engraving/dom/tremolosinglechord.h"
+#include "engraving/dom/tremolotwochord.h"
 #include "engraving/dom/trill.h"
 #include "engraving/dom/utils.h"
 #include "engraving/types/constants.h"
@@ -279,6 +281,27 @@ bool IsAppoggiatura(const std::vector<me::Chord *> &graces,
 }
 
 /**
+ * The alternation a tremolo on the chord spells out, as a trill's: the chord
+ * with itself for a single-chord tremolo, the two chords for a two-chord one
+ * — on its first chord, which stands for both (see TakeIt). How many notes is
+ * the performer's choice, as for a trill.
+ */
+std::optional<std::vector<std::vector<int>>>
+TremoloFigure(const me::Chord &chord, const std::vector<const me::Note *> &notes)
+{
+  std::vector<int> pitches;
+  for (const me::Note *note : notes)
+    pitches.push_back(note->pitch());
+  if (chord.tremoloSingleChord())
+    return std::vector<std::vector<int>>{pitches, pitches};
+  if (const me::TremoloTwoChord *tremolo = chord.tremoloTwoChord();
+      tremolo && tremolo->chord1() == &chord && tremolo->chord2())
+    return std::vector<std::vector<int>>{pitches,
+                                         PlayedPitches(*tremolo->chord2())};
+  return std::nullopt;
+}
+
+/**
  * Whether the chord resolves a trill: the chord struck before it in its
  * voice, with no rest between, is trilled.
  */
@@ -314,6 +337,11 @@ std::optional<Ornament> BuildOrnament(const me::Chord &chord)
     result.sign = sign->pattern.sign;
     for (const int offset : sign->pattern.offsets)
       result.figure.push_back(FigureNote(notes, sign->ornament, offset));
+  }
+  else if (auto tremolo = TremoloFigure(chord, notes))
+  {
+    result.sign = OrnamentSign::trill;
+    result.figure = std::move(*tremolo);
   }
 
   // Graces resolving a trill inherit its 32nds; a lone unslashed one leaning

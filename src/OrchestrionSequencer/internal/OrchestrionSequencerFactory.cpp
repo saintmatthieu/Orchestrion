@@ -38,6 +38,7 @@
 #include "engraving/dom/spanner.h"
 #include "engraving/dom/staff.h"
 #include "engraving/dom/textbase.h"
+#include "engraving/dom/tremolotwochord.h"
 #include "notation/imasternotation.h"
 #include <algorithm>
 #include <cassert>
@@ -67,6 +68,11 @@ bool TakeIt(const mu::engraving::Segment &segment, TrackIndex track,
   Finally finally{[&] { prevWasRest = chord == nullptr; }};
   if (!chord)
     return !prevWasRest;
+  // The second chord of a two-chord tremolo: the first stands for both,
+  // alternating them as a trill does.
+  if (const auto tremolo = chord->tremoloTwoChord();
+      tremolo && tremolo->chord2() == chord)
+    return false;
   return HasUntiedNotes(*chord);
 }
 

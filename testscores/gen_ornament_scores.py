@@ -302,3 +302,53 @@ s.bar("tr in the upper voice while the lower voice of the same hand moves in qua
       rh2="".join(note(p, 8, voice=2) for p in ("B4", "A4", "G4", "A4")))
 s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
 s.write(os.path.join(outdir, "ornaments-5-trills-followed.musicxml"))
+
+# ------------------------------------------------------------- 6. tremolos
+def tremolo(marks=3, unmeasured=False):
+    """A single-note tremolo: `marks` slashes (3 = 32nds), or unmeasured (a
+    buzz roll to MuseScore, which takes it only without a count)."""
+    if unmeasured:
+        return '<tremolo type="unmeasured">0</tremolo>'
+    return f'<tremolo type="single">{marks}</tremolo>'
+
+
+def tremolo_pair(first, second, dur, marks=3, staff=1):
+    """A two-note tremolo alternating `first` and `second` (pitches, or lists
+    of them for chords) for `dur`: both written at that value, each lasting
+    half of it."""
+    voice = 1 if staff == 1 else 5
+    out = []
+    for pitches, kind in ((first, "start"), (second, "stop")):
+        pitches = pitches if isinstance(pitches, list) else [pitches]
+        for i, p in enumerate(pitches):
+            s = "<note>" + ("<chord/>" if i else "") + pitch_xml(p)
+            s += f"<duration>{dur // 2}</duration><voice>{voice}</voice><type>{TYPES[dur]}</type>"
+            s += "<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes></time-modification>"
+            s += f"<staff>{staff}</staff>"
+            if i == 0:
+                s += f'<notations><ornaments><tremolo type="{kind}">{marks}</tremolo></ornaments></notations>'
+            s += "</note>"
+            out.append(s)
+    return "".join(out)
+
+
+s = Score("Ornaments 6 - Tremolos")
+s.bar("single-note tremolo on a half (C repeated as 32nds), then D",
+      note("C5", 16, ornaments=tremolo()) + note("D5", 16))
+s.bar("single-note tremolo on a chord (C E G repeated as 32nds), then D",
+      note("C5", 16, ornaments=tremolo()) + note("E5", 16, chord=True) + note("G5", 16, chord=True)
+      + note("D5", 16))
+s.bar("two-note tremolo C-E over a half (alternating as 32nds), then D",
+      tremolo_pair("C5", "E5", 16) + note("D5", 16))
+s.bar("two-note tremolo between octaves C4 and C5 over a whole note (broken octaves, 16ths)",
+      tremolo_pair("C4", "C5", 32, marks=2))
+s.bar("two-note tremolo between chords C-E and G-C over a half, then D",
+      tremolo_pair(["C5", "E5"], ["G5", "C6"], 16) + note("D5", 16))
+s.bar("unmeasured tremolo on a half: as many as the player likes, then D",
+      note("C5", 16, ornaments=tremolo(unmeasured=True)) + note("D5", 16))
+s.bar("two-note tremolo in the left hand (C3-G3 over a whole note) under right-hand quarters",
+      "".join(note(p, 8) for p in ("E5", "D5", "C5", "D5")),
+      lh=tremolo_pair("C3", "G3", 32, staff=2))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "ornaments-6-tremolos.musicxml"))
+
