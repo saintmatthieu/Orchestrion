@@ -19,6 +19,7 @@
 #include "MuseChord.h"
 #include "MuseOrnament.h"
 #include "engraving/dom/chord.h"
+#include "engraving/dom/tremolotwochord.h"
 #include "engraving/dom/dynamic.h"
 #include "engraving/dom/hairpin.h"
 #include "engraving/dom/mscore.h"
@@ -291,6 +292,10 @@ int TiedDurationTicks(const me::Chord &first)
   int ticks = 0;
   for (const me::Chord *chord = &first; chord; chord = GetNextTiedChord(*chord))
     ticks += chord->actualTicks().ticks();
+  // The first chord of a two-chord tremolo stands for both (see TakeIt).
+  if (const me::TremoloTwoChord *tremolo = first.tremoloTwoChord();
+      tremolo && tremolo->chord1() == &first && tremolo->chord2())
+    ticks += tremolo->chord2()->actualTicks().ticks();
   return ticks;
 }
 
