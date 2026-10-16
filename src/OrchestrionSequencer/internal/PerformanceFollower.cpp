@@ -304,14 +304,21 @@ void PerformanceFollower::Predict(double ms)
     // that an event of many notes (a trill) is left when its time is up.
     const auto sinceOnset = ms - m_onsetMs[i];
     w[0] = kInsertion + Stay(i, sinceOnset);
-    auto sum = w[0];
+    // The moves' chances are shared out before the timing weighs them, not
+    // after: when the note fits none of them in time, the event loses,
+    // rather than making the best of a bad lot.
+    const ScoreEvent &e = m_events[i];
+    const bool remaining =
+        m_notesPlayed[i] < static_cast<int>(e.pitches.size());
+    auto sum = kInsertion + std::max(remaining ? kChordMember : 0.0,
+                                     e.trillPitches.empty() ? 0.0 : kTrillNote);
     auto advance = kAdvance;
     size_t k = 1;
     for (; k < w.size() && i + k < n; ++k)
     {
       const auto ticks = m_events[i + k].tick - m_events[i].tick;
       w[k] = advance * Timing(ticks, sinceOnset, k == 1);
-      sum += w[k];
+      sum += advance;
       advance *= kSkip;
     }
     const auto local = a * (1.0 - kJump) / sum;
