@@ -18,6 +18,7 @@
  */
 #include "MuseOrnament.h"
 
+#include "engraving/dom/arpeggio.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/interval.h"
 #include "engraving/dom/note.h"
@@ -26,6 +27,8 @@
 #include "engraving/dom/segment.h"
 #include "engraving/dom/spanner.h"
 #include "engraving/dom/spannermap.h"
+#include "engraving/dom/tremolosinglechord.h"
+#include "engraving/dom/tremolotwochord.h"
 #include "engraving/dom/trill.h"
 #include "engraving/dom/utils.h"
 #include "engraving/types/constants.h"
@@ -279,6 +282,27 @@ bool IsAppoggiatura(const std::vector<me::Chord *> &graces,
 }
 
 /**
+ * The alternation a tremolo on the chord spells out, as a trill's: the chord
+ * with itself for a single-chord tremolo, the two chords for a two-chord one
+ * — on its first chord, which stands for both (see TakeIt). How many notes is
+ * the performer's choice, as for a trill.
+ */
+std::optional<std::vector<std::vector<int>>>
+TremoloFigure(const me::Chord &chord, const std::vector<const me::Note *> &notes)
+{
+  std::vector<int> pitches;
+  for (const me::Note *note : notes)
+    pitches.push_back(note->pitch());
+  if (chord.tremoloSingleChord())
+    return std::vector<std::vector<int>>{pitches, pitches};
+  if (const me::TremoloTwoChord *tremolo = chord.tremoloTwoChord();
+      tremolo && tremolo->chord1() == &chord && tremolo->chord2())
+    return std::vector<std::vector<int>>{pitches,
+                                         PlayedPitches(*tremolo->chord2())};
+  return std::nullopt;
+}
+
+/**
  * Whether the chord resolves a trill: the chord struck before it in its
  * voice, with no rest between, is trilled.
  */
@@ -315,6 +339,11 @@ std::optional<Ornament> BuildOrnament(const me::Chord &chord)
     for (const int offset : sign->pattern.offsets)
       result.figure.push_back(FigureNote(notes, sign->ornament, offset));
   }
+  else if (auto tremolo = TremoloFigure(chord, notes))
+  {
+    result.sign = OrnamentSign::trill;
+    result.figure = std::move(*tremolo);
+  }
 
   // Graces resolving a trill inherit its 32nds; a lone unslashed one leaning
   // on the chord by step is an appoggiatura and keeps its written value; any
@@ -338,6 +367,75 @@ std::optional<Ornament> BuildOrnament(const me::Chord &chord)
   if (result.gracesBefore.empty() && result.gracesAfter.empty() &&
       result.sign == OrnamentSign::none)
     return std::nullopt; // a plain chord
+  return result;
+}
+
+namespace
+{
+/**
+ * The arpeggio the chord takes part in: its own, or one starting on a chord
+ * of another voice or staff above it and reaching down to it.
+ */
+const me::Arpeggio *ArpeggioOver(const me::Chord &chord)
+{
+  if (chord.arpeggio())
+    return chord.arpeggio();
+  if (chord.spanArpeggio())
+    return chord.spanArpeggio();
+  const me::Segment *segment = chord.segment();
+  if (!segment)
+    return nullptr;
+  for (me::track_idx_t track = 0; track < chord.track(); ++track)
+    if (const me::EngravingItem *item = segment->element(track);
+        item && item->isChord())
+      if (const me::Arpeggio *arpeggio = me::toChord(item)->arpeggio();
+          arpeggio && arpeggio->endTrack() >= chord.track())
+        return arpeggio;
+  return nullptr;
+}
+} // namespace
+
+std::optional<RollDirection> ArpeggioOf(const me::Chord &chord)
+{
+  const me::Arpeggio *arpeggio = ArpeggioOver(chord);
+  if (!arpeggio || arpeggio->arpeggioType() == me::ArpeggioType::BRACKET)
+    return std::nullopt;
+  return arpeggio->arpeggioType() == me::ArpeggioType::DOWN ||
+                 arpeggio->arpeggioType() == me::ArpeggioType::DOWN_STRAIGHT
+             ? RollDirection::down
+             : RollDirection::up;
+}
+
+CrossStaffArpeggio CrossStaffArpeggioOf(const me::Chord &chord)
+{
+  CrossStaffArpeggio result;
+  const auto direction = ArpeggioOf(chord);
+  const me::Arpeggio *arpeggio = ArpeggioOver(chord);
+  const me::Segment *segment = chord.segment();
+  if (!direction || !segment)
+    return result;
+  std::vector<const me::Chord *> chords; // by track: staff by staff, down
+  for (auto track = arpeggio->track(); track <= arpeggio->endTrack(); ++track)
+    if (const me::EngravingItem *item = segment->element(track);
+        item && item->isChord())
+      chords.push_back(me::toChord(item));
+  if (chords.empty() ||
+      chords.front()->staffIdx() == chords.back()->staffIdx())
+    return result; // one staff: one hand plays it anyway
+  const auto startStaff = *direction == RollDirection::down
+                              ? chords.front()->staffIdx()
+                              : chords.back()->staffIdx();
+  const auto gatherer = std::find_if(chords.begin(), chords.end(),
+                                     [&](const me::Chord *c)
+                                     { return c->staffIdx() == startStaff; });
+  if (*gatherer == &chord)
+  {
+    for (const me::Chord *c : chords)
+      if (c->staffIdx() != startStaff)
+        result.gathers.push_back(c);
+  }
+  else
+    result.gathered = chord.staffIdx() != startStaff;
   return result;
 }
 } // namespace dgk

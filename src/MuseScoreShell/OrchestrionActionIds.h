@@ -50,8 +50,7 @@ static constexpr const char *togglePedalIndicator =
 //! silver on slate. They live in MuseScore's "light" and "dark" theme
 //! slots — see src/OrchestrionCommon/OrchestrionPalette.h.
 static constexpr const char *setGoldTheme = "orchestrion-view-theme-gold";
-static constexpr const char *setSilverTheme =
-    "orchestrion-view-theme-silver";
+static constexpr const char *setSilverTheme = "orchestrion-view-theme-silver";
 
 //! Orchestrion's own transport actions. Deliberately NOT MuseScore's
 //! "play"/"stop": those ids are also handled — and sometimes dispatched —
@@ -65,17 +64,13 @@ static constexpr const char *playbackStop = "orchestrion-stop";
 //! settings button opens it directly).
 static constexpr const char *gradingSettings = "orchestrion-grading-settings";
 
-//! Auto-play: which hand the machine plays, and the action that opens the
-//! choice popup (the top-row button opens it directly).
-static constexpr const char *autoPlaySettings = "orchestrion-autoplay-choose";
-//! Development menu: whether auto-play / grading are offered at all.
-static constexpr const char *toggleAutoPlayExposure =
-    "orchestrion-dev-toggle-autoplay-exposure";
+//! Development menu: whether grading is offered at all.
 static constexpr const char *toggleGradingExposure =
     "orchestrion-dev-toggle-grading-exposure";
-static constexpr const char *autoPlayNone = "orchestrion-autoplay-none";
-static constexpr const char *autoPlayLeftHand = "orchestrion-autoplay-left";
-static constexpr const char *autoPlayRightHand = "orchestrion-autoplay-right";
+//! Development menu: whether the takes are recorded, and replaying one.
+static constexpr const char *toggleTakeRecording =
+    "orchestrion-dev-toggle-take-recording";
+static constexpr const char *replayTake = "orchestrion-dev-replay-take";
 
 static constexpr const char *playModePerformance =
     "orchestrion-advanced-play-mode-performance";

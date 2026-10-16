@@ -18,19 +18,49 @@
  */
 #include "OrchestrionActionController.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
+#include "TakeRecorder.h"
+#include "TakeReplayer.h"
 #include <async/async.h>
+#include <engraving/dom/masterscore.h>
+#include <engraving/editing/transaction/undostack.h>
+#include <global/log.h>
+#include <global/translation.h>
 #include <notation/imasternotation.h>
+#include <notation/inotation.h>
+#include <notation/inotationundostack.h>
 #include <project/inotationproject.h>
 
 #include <QApplication>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QWindow>
 
 namespace dgk
 {
 void OrchestrionActionController::preInit() { qApp->installEventFilter(this); }
 
+OrchestrionActionController::OrchestrionActionController()
+    : m_takeRecorder{std::make_unique<TakeRecorder>()},
+      m_takeReplayer{std::make_unique<TakeReplayer>(*m_takeRecorder)}
+{
+}
+
+OrchestrionActionController::~OrchestrionActionController() = default;
+
 void OrchestrionActionController::init()
 {
+  m_takeRecorder->init();
+  m_takeReplayer->init();
+  dispatcher()->reg(this, actionIds::toggleTakeRecording,
+                    [this]
+                    {
+                      sequencerConfig()->setTakeRecordingEnabled(
+                          !sequencerConfig()->takeRecordingEnabled());
+                    });
+  dispatcher()->reg(this, actionIds::replayTake, [this] { replayTake(); });
+
   dispatcher()->reg(this, "orchestrion-file-open",
                     [this](const muse::actions::ActionData &args)
                     { onFileOpen(args); });
@@ -107,21 +137,6 @@ void OrchestrionActionController::init()
                       sequencerConfig()->setGradingExposed(
                           !sequencerConfig()->gradingExposed());
                     });
-  dispatcher()->reg(this, actionIds::toggleAutoPlayExposure,
-                    [this]
-                    {
-                      sequencerConfig()->setAutoPlayExposed(
-                          !sequencerConfig()->autoPlayExposed());
-                    });
-  // Tempo-following auto-play: at most one hand at a time (the other one is
-  // yours — for full playback there is the playback button). A one-of-three
-  // choice, so each action sets its value outright.
-  dispatcher()->reg(this, actionIds::autoPlayNone,
-                    [this] { sequencerConfig()->setAutoPlayedStaff(-1); });
-  dispatcher()->reg(this, actionIds::autoPlayLeftHand,
-                    [this] { sequencerConfig()->setAutoPlayedStaff(1); });
-  dispatcher()->reg(this, actionIds::autoPlayRightHand,
-                    [this] { sequencerConfig()->setAutoPlayedStaff(0); });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-proportional-spacing",
                     [this]
                     {
@@ -176,16 +191,12 @@ void OrchestrionActionController::init()
   // View ▸ Theme. The framework persists the choice and hot-reloads the
   // palette, so switching is the one call; everything that paints from
   // the palette follows its currentThemeChanged().
-  dispatcher()->reg(this, actionIds::setGoldTheme,
-                    [this] {
-                      uiConfiguration()->setCurrentTheme(
-                          muse::ui::LIGHT_THEME_CODE);
-                    });
-  dispatcher()->reg(this, actionIds::setSilverTheme,
-                    [this] {
-                      uiConfiguration()->setCurrentTheme(
-                          muse::ui::DARK_THEME_CODE);
-                    });
+  dispatcher()->reg(
+      this, actionIds::setGoldTheme, [this]
+      { uiConfiguration()->setCurrentTheme(muse::ui::LIGHT_THEME_CODE); });
+  dispatcher()->reg(
+      this, actionIds::setSilverTheme, [this]
+      { uiConfiguration()->setCurrentTheme(muse::ui::DARK_THEME_CODE); });
 
   dispatcher()->reg(this, "view-toggle-fullscreen",
                     [this]
@@ -275,12 +286,8 @@ bool OrchestrionActionController::closeCurrentProject() const
   if (!globalContext()->currentProject())
     return true;
 
-  const IModifiableItemRegistryPtr registry =
-      orchestrion()->modifiableItemRegistry();
-  if (registry && registry->Modified())
+  if (scoreModified())
   {
-    // Orchestrion's own modifications (recorded velocities, ...) are not
-    // in the score's undo stack, so MuseScore wouldn't ask about them.
     using muse::IInteractive;
     const IInteractive::Result result = interactive()->questionSync(
         muse::trc("project", "Save changes to the score before closing?"),
@@ -305,9 +312,89 @@ bool OrchestrionActionController::closeCurrentProject() const
   // the playback controller was still being notified of the change.)
   if (orchestrion()->player()->IsPlaying())
     dispatcher()->dispatch(actionIds::playbackStop);
+  m_takeReplayer->Stop();
+  offerTakes();
   interactive()->closeAllDialogsSync();
   globalContext()->setCurrentProject(nullptr);
   return true;
+}
+
+QString OrchestrionActionController::takesDirectory() const
+{
+  return globalConfiguration()->userAppDataPath().toQString() + "/takes";
+}
+
+void OrchestrionActionController::offerTakes() const
+{
+  const std::vector<Take> takes = m_takeRecorder->Takes();
+  m_takeRecorder->Clear();
+  if (takes.empty())
+    return;
+
+  QVariantList labels;
+  for (size_t i = 0; i < takes.size(); ++i)
+  {
+    const Take &take = takes[i];
+    const int seconds = static_cast<int>(take.DurationMs() / 1000.0 + 0.5);
+    labels << muse::qtrc("orchestrion/takes",
+                         "Take %1: from bar %2, %3 notes, %4:%5")
+                  .arg(i + 1)
+                  .arg(take.startBar)
+                  .arg(take.NoteCount())
+                  .arg(seconds / 60)
+                  .arg(seconds % 60, 2, 10, QChar('0'));
+  }
+  muse::UriQuery query("orchestrion://takes/keep");
+  query.addParam("takes", muse::Val::fromQVariant(labels));
+  const muse::RetVal<muse::Val> kept = interactive()->openSync(query);
+  if (!kept.ret)
+    return;
+
+  const QString directory = takesDirectory();
+  QDir{}.mkpath(directory);
+  const QString stem =
+      QFileInfo{takes.front().scorePath}.completeBaseName() + " " +
+      QDateTime::currentDateTime().toString("yyyy-MM-dd hh.mm.ss");
+  for (const QVariant &index : kept.val.toQVariant().toList())
+  {
+    const auto i = index.toInt();
+    if (i < 0 || i >= static_cast<int>(takes.size()))
+      continue;
+    QFile file{directory + "/" + stem + QString(" take %1.json").arg(i + 1)};
+    if (file.open(QIODevice::WriteOnly))
+      file.write(ToJson(takes[static_cast<size_t>(i)]));
+    else
+      LOGE() << "Could not save a take to " << file.fileName();
+  }
+}
+
+void OrchestrionActionController::replayTake() const
+{
+  const muse::io::path_t path = interactive()->selectOpeningFileSync(
+      muse::trc("orchestrion/takes", "Replay a take"),
+      muse::io::path_t{takesDirectory()},
+      {muse::trc("orchestrion/takes", "Takes") + " (*.json)"});
+  if (path.empty())
+    return;
+  QFile file{path.toQString()};
+  std::optional<Take> take;
+  if (file.open(QIODevice::ReadOnly))
+    take = TakeFromJson(file.readAll());
+  if (!take)
+  {
+    LOGE() << "Not a take: " << path;
+    return;
+  }
+  const auto project = globalContext()->currentProject();
+  if (!project || project->path().toQString() != take->scorePath)
+  {
+    // The take's score opens first; the replay starts once it is ready.
+    if (!closeCurrentProject())
+      return;
+    projectFilesController()->openProject(
+        mu::project::ProjectFile{muse::io::path_t{take->scorePath}});
+  }
+  m_takeReplayer->Replay(std::move(*take));
 }
 
 muse::io::path_t OrchestrionActionController::fallbackPath() const
@@ -342,12 +429,43 @@ void OrchestrionActionController::onFileOpen(
 
 void OrchestrionActionController::onFileSave() const
 {
-  if (const auto registry = orchestrion()->modifiableItemRegistry())
-    registry->Save();
+  prepareSave();
 
   if (const mu::project::INotationProjectPtr notationProject =
           globalContext()->currentProject())
-    notationProject->save();
+    if (notationProject->save())
+      markScoreSaved();
+}
+
+void OrchestrionActionController::prepareSave() const
+{
+  if (const auto registry = orchestrion()->modifiableItemRegistry())
+    registry->Save();
+  // A MusicXML score that gives no MIDI channels is imported without any,
+  // which its export (saving it in place) needs.
+  if (const auto master = globalContext()->currentMasterNotation())
+    master->masterScore()->rebuildMidiMapping();
+}
+
+bool OrchestrionActionController::scoreModified() const
+{
+  // Orchestrion's own modifications (recorded velocities, ...) are not in the
+  // score's undo stack. Its edits of the score (the staff modes, ...) are.
+  // Not MuseScore's isNeedSave(), which any imported score starts with.
+  const IModifiableItemRegistryPtr registry =
+      orchestrion()->modifiableItemRegistry();
+  if (registry && registry->Modified())
+    return true;
+  const auto master = globalContext()->currentMasterNotation();
+  return master && !master->notation()->undoStack()->isStackClean();
+}
+
+void OrchestrionActionController::markScoreSaved() const
+{
+  // MuseScore doesn't move the clean state of the undo stack when it saves
+  // (it keeps its own isNeedSave() flag): the stack is clean from here on.
+  if (const auto master = globalContext()->currentMasterNotation())
+    master->masterScore()->undoStack()->markClean();
 }
 
 namespace
@@ -361,8 +479,7 @@ static const std::vector<std::string> filter{
 
 void OrchestrionActionController::onFileSaveAs() const
 {
-  if (const auto registry = orchestrion()->modifiableItemRegistry())
-    registry->Save();
+  prepareSave();
 
   muse::io::path_t defaultDir =
       muse::io::dirpath(projectConfiguration()->lastSavedProjectsPath());
@@ -370,8 +487,9 @@ void OrchestrionActionController::onFileSaveAs() const
     defaultDir = fallbackPath();
   const muse::io::path_t filePath = interactive()->selectSavingFileSync(
       muse::trc("project", "Save as"), defaultDir, filter);
-  projectFilesController()->saveProjectLocally(filePath,
-                                               mu::project::SaveMode::SaveAs);
+  if (projectFilesController()->saveProjectLocally(
+          filePath, mu::project::SaveMode::SaveAs))
+    markScoreSaved();
 }
 
 void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const

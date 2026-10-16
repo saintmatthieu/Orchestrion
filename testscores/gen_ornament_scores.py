@@ -32,7 +32,7 @@ def pitch_xml(p):
 
 
 def note(p, dur, staff=1, voice=None, ornaments="", tie=None, chord=False, accidental=None,
-         dots=0):
+         dots=0, arpeggiate=None):
     voice = voice or (1 if staff == 1 else 5)
     typ = TYPES[dur if not dots else dur * 2 // 3]
     s = "<note>"
@@ -57,6 +57,8 @@ def note(p, dur, staff=1, voice=None, ornaments="", tie=None, chord=False, accid
         notations += '<tied type="stop"/>'
     if ornaments:
         notations += f"<ornaments>{ornaments}</ornaments>"
+    if arpeggiate:
+        notations += arpeggiate
     if notations:
         s += f"<notations>{notations}</notations>"
     s += "</note>"
@@ -121,20 +123,25 @@ def lead_in():
 
 
 class Score:
-    def __init__(self, title, key_fifths=0, first_tempo=60):
+    def __init__(self, title, key_fifths=0, first_tempo=60, staff_modes=None):
         self.title = title
         self.key = key_fifths
         self.first_tempo = first_tempo
+        self.staff_modes = staff_modes  # e.g. "notes,notes": Orchestrion's staff modes
         self.bars = []  # (label, rh_xml, lh_xml, extra_directions)
 
-    def bar(self, label, rh, lh=None, tempo_bpm=None):
+    def bar(self, label, rh, lh=None, tempo_bpm=None, rh2=None):
         """Appends a case: its lead-in bar (carrying the tempo change, if any),
         then the case bar. rh: xml of the right hand (may be shorter than the
-        bar: rests fill). lh: xml of the left hand, default a whole note C3."""
+        bar: rests fill). lh: xml of the left hand, default a whole note C3.
+        rh2: xml of a second right-hand voice (voice 2), a whole bar of it."""
         lead_rh, lead_lh = lead_in()
         self.bars.append((None, lead_rh, lead_lh, tempo(tempo_bpm) if tempo_bpm else ""))
         used = duration_of(rh)
         rh = rh + rests_to_fill(used)
+        if rh2:
+            assert duration_of(rh2) == 32
+            rh += "<backup><duration>32</duration></backup>" + rh2
         if lh is None:
             lh = note("C3", 32, staff=2)
         else:
@@ -146,7 +153,10 @@ class Score:
                '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">',
                '<score-partwise version="4.0">',
                f"<work><work-title>{self.title}</work-title></work>",
-               "<identification><creator type=\"composer\">Orchestrion test</creator></identification>",
+               "<identification><creator type=\"composer\">Orchestrion test</creator>"
+               + (f'<miscellaneous><miscellaneous-field name="orchestrion-staff-modes">{self.staff_modes}'
+                  "</miscellaneous-field></miscellaneous>" if self.staff_modes else "")
+               + "</identification>",
                '<part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>',
                '<part id="P1">']
         case = 0
@@ -267,3 +277,117 @@ s.bar("play these bars faster or slower than written: the ornaments should follo
 s.bar("same again", note("C5", 8, ornaments=TR) + note("D5", 8, ornaments=TURN) + note("E5", 8, ornaments=MORDENT) + note("F5", 8, ornaments=SHORT_TRILL))
 s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
 s.write(os.path.join(outdir, "ornaments-4-tempo.musicxml"))
+
+# ------------------------------------------------- 5. trills, followed
+# Both staves in the Notes mode, the follower following them merged: what
+# matters is what else is struck while the right hand trills.
+def triad(root, third, fifth, dur):
+    return (note(root, dur, staff=2) + note(third, dur, staff=2, chord=True)
+            + note(fifth, dur, staff=2, chord=True))
+
+
+s = Score("Ornaments 5 - Trills, followed", staff_modes="notes,notes")
+s.bar("tr on a whole note over a whole-note chord: nothing struck meanwhile",
+      note("D5", 32, ornaments=TR), lh=triad("G2", "B2", "D3", 32))
+s.bar("tr on a whole note over a changing chord on each beat (G C D G)",
+      note("D5", 32, ornaments=TR),
+      lh=triad("G2", "B2", "D3", 8) + triad("C3", "E3", "G3", 8) + triad("D3", "F#3", "A3", 8)
+      + triad("G2", "B2", "D3", 8))
+s.bar("tr on a whole note over the same chord on each beat: only the timing tells them apart",
+      note("D5", 32, ornaments=TR),
+      lh="".join(triad("G2", "B2", "D3", 8) for _ in range(4)))
+s.bar("tr on a half, then D, over 8th-note chords",
+      note("D5", 16, ornaments=TR) + note("C5", 16),
+      lh="".join(triad("G2", "B2", "D3", 4) for _ in range(8)))
+s.bar("tr in the upper voice while the lower voice of the same hand moves in quarters",
+      note("D5", 32, ornaments=TR),
+      rh2="".join(note(p, 8, voice=2) for p in ("B4", "A4", "G4", "A4")))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "ornaments-5-trills-followed.musicxml"))
+
+# ------------------------------------------------------------- 6. tremolos
+def tremolo(marks=3, unmeasured=False):
+    """A single-note tremolo: `marks` slashes (3 = 32nds), or unmeasured (a
+    buzz roll to MuseScore, which takes it only without a count)."""
+    if unmeasured:
+        return '<tremolo type="unmeasured">0</tremolo>'
+    return f'<tremolo type="single">{marks}</tremolo>'
+
+
+def tremolo_pair(first, second, dur, marks=3, staff=1):
+    """A two-note tremolo alternating `first` and `second` (pitches, or lists
+    of them for chords) for `dur`: both written at that value, each lasting
+    half of it."""
+    voice = 1 if staff == 1 else 5
+    out = []
+    for pitches, kind in ((first, "start"), (second, "stop")):
+        pitches = pitches if isinstance(pitches, list) else [pitches]
+        for i, p in enumerate(pitches):
+            s = "<note>" + ("<chord/>" if i else "") + pitch_xml(p)
+            s += f"<duration>{dur // 2}</duration><voice>{voice}</voice><type>{TYPES[dur]}</type>"
+            s += "<time-modification><actual-notes>2</actual-notes><normal-notes>1</normal-notes></time-modification>"
+            s += f"<staff>{staff}</staff>"
+            if i == 0:
+                s += f'<notations><ornaments><tremolo type="{kind}">{marks}</tremolo></ornaments></notations>'
+            s += "</note>"
+            out.append(s)
+    return "".join(out)
+
+
+s = Score("Ornaments 6 - Tremolos")
+s.bar("single-note tremolo on a half (C repeated as 32nds), then D",
+      note("C5", 16, ornaments=tremolo()) + note("D5", 16))
+s.bar("single-note tremolo on a chord (C E G repeated as 32nds), then D",
+      note("C5", 16, ornaments=tremolo()) + note("E5", 16, chord=True) + note("G5", 16, chord=True)
+      + note("D5", 16))
+s.bar("two-note tremolo C-E over a half (alternating as 32nds), then D",
+      tremolo_pair("C5", "E5", 16) + note("D5", 16))
+s.bar("two-note tremolo between octaves C4 and C5 over a whole note (broken octaves, 16ths)",
+      tremolo_pair("C4", "C5", 32, marks=2))
+s.bar("two-note tremolo between chords C-E and G-C over a half, then D",
+      tremolo_pair(["C5", "E5"], ["G5", "C6"], 16) + note("D5", 16))
+s.bar("unmeasured tremolo on a half: as many as the player likes, then D",
+      note("C5", 16, ornaments=tremolo(unmeasured=True)) + note("D5", 16))
+s.bar("two-note tremolo in the left hand (C3-G3 over a whole note) under right-hand quarters",
+      "".join(note(p, 8) for p in ("E5", "D5", "C5", "D5")),
+      lh=tremolo_pair("C3", "G3", 32, staff=2))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "ornaments-6-tremolos.musicxml"))
+
+# ------------------------------------------------------------ 7. arpeggios
+def arpeggiate(direction=None, number=1):
+    """The arpeggio mark of a note of an arpeggiated chord: `direction` up,
+    down or None (a plain wavy line), or "bracket" for a non-arpeggio."""
+    if direction == "bracket":
+        return f'<non-arpeggiate type="bottom" number="{number}"/>'
+    d = f' direction="{direction}"' if direction else ""
+    return f'<arpeggiate number="{number}"{d}/>'
+
+
+def chord(pitches, dur, staff=1, mark=None):
+    """A chord of `pitches`, every note carrying `mark` (see arpeggiate)."""
+    return "".join(note(p, dur, staff=staff, chord=i > 0, arpeggiate=mark)
+                   for i, p in enumerate(pitches))
+
+
+C_MAJOR = ["C4", "E4", "G4", "C5"]
+s = Score("Ornaments 7 - Arpeggios")
+s.bar("arpeggio upwards on a chord (C E G C, 64ths at your tempo), then D",
+      chord(C_MAJOR, 16, mark=arpeggiate("up")) + note("D5", 16))
+s.bar("arpeggio downwards, then D",
+      chord(C_MAJOR, 16, mark=arpeggiate("down")) + note("D5", 16))
+s.bar("plain arpeggio (a wavy line): upwards, then D",
+      chord(C_MAJOR, 16, mark=arpeggiate()) + note("D5", 16))
+s.bar("arpeggio across both staves (C3 G3 + E4 G4 C5): the left hand plays it all, then D",
+      chord(["E4", "G4", "C5"], 16, mark=arpeggiate("up")) + note("D5", 16),
+      lh=chord(["C3", "G3"], 16, staff=2, mark=arpeggiate("up")) + note("C3", 16, staff=2))
+s.bar("non-arpeggio bracket: the notes together, then D",
+      chord(C_MAJOR, 16, mark=arpeggiate("bracket")) + note("D5", 16))
+s.bar("arpeggiated quarter-note chords in a row (C, F, G, C): release early to cut the roll",
+      chord(["C4", "E4", "G4", "C5"], 8, mark=arpeggiate("up"))
+      + chord(["C4", "F4", "A4", "C5"], 8, mark=arpeggiate("up"))
+      + chord(["B3", "D4", "G4", "B4"], 8, mark=arpeggiate("up"))
+      + chord(["C4", "E4", "G4", "C5"], 8, mark=arpeggiate("up")))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "ornaments-7-arpeggios.musicxml"))
+

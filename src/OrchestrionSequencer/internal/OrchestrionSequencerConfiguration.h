@@ -54,6 +54,9 @@ private:
   bool gradingExposed() const override;
   void setGradingExposed(bool) override;
   muse::async::Notification gradingExposedChanged() const override;
+  bool takeRecordingEnabled() const override;
+  void setTakeRecordingEnabled(bool) override;
+  muse::async::Notification takeRecordingEnabledChanged() const override;
 
   bool gradingEnabled() const override;
   void setGradingEnabled(bool) override;
@@ -72,12 +75,6 @@ private:
   void setDynamicsScoreEnabled(bool) override;
   muse::async::Notification dynamicsScoreEnabledChanged() const override;
 
-  bool autoPlayExposed() const override;
-  void setAutoPlayExposed(bool) override;
-  muse::async::Notification autoPlayExposedChanged() const override;
-  int autoPlayedStaff() const override;
-  void setAutoPlayedStaff(int) override;
-  muse::async::Notification autoPlayedStaffChanged() const override;
   bool timeProportionalSpacingEnabled() const override;
   void setTimeProportionalSpacingEnabled(bool) override;
   muse::async::Notification
@@ -111,12 +108,11 @@ private:
   muse::async::Notification m_tempoVisualizationEnabledChanged;
   muse::async::Notification m_jumpAnticipationEnabledChanged;
   muse::async::Notification m_gradingExposedChanged;
+  muse::async::Notification m_takeRecordingEnabledChanged;
   muse::async::Notification m_gradingEnabledChanged;
   muse::async::Notification m_persistentTimingMarksEnabledChanged;
   muse::async::Notification m_handSyncScoreEnabledChanged;
   muse::async::Notification m_dynamicsScoreEnabledChanged;
-  muse::async::Notification m_autoPlayExposedChanged;
-  muse::async::Notification m_autoPlayedStaffChanged;
   muse::async::Notification m_timeProportionalSpacingEnabledChanged;
   muse::async::Notification m_tempoSmoothingMemoryChanged;
   muse::async::Notification m_unrollRepeatsEnabledChanged;

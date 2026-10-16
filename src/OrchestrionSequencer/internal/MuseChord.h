@@ -25,9 +25,11 @@
 #include "engraving/types/types.h"
 
 #include <optional>
+#include <vector>
 
 namespace mu::engraving
 {
+class Chord;
 class Note;
 class Segment;
 } // namespace mu::engraving
@@ -65,6 +67,8 @@ private:
   const Ornament *GetOrnament() const override;
   double GetNominalBpm() const override;
   const mu::engraving::Chord *GetEngravingChord() const override;
+  std::vector<const mu::engraving::Chord *> GetGatheredChords() const override;
+  std::optional<RollDirection> GetRoll() const override;
 
   // IModifiableItem
 private:
@@ -81,6 +85,10 @@ private:
   const std::optional<Ornament> m_ornament;
   // The score's tempo at the chord, in quarter notes per minute.
   const double m_nominalBpm;
+  // The other staff's chords of an arpeggio this chord plays for both hands
+  // (see CrossStaffArpeggio): their notes are this chord's too.
+  const std::vector<const mu::engraving::Chord *> m_gathered;
+  const std::optional<RollDirection> m_roll;
   std::optional<float> m_unsavedVelocity;
   muse::async::Notification m_modifiedChanged;
 };

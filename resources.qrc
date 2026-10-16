@@ -4,13 +4,11 @@
     <file>src/qml/FullscreenButton.qml</file>
     <file>src/qml/PlaybackButton.qml</file>
     <file>src/qml/GradingButton.qml</file>
-    <file>src/qml/AutoPlayButton.qml</file>
     <file>src/qml/PedalIndicator.qml</file>
     <file>src/qml/BuiltInEffectDialog.qml</file>
     <file>src/qml/EffectHeader.qml</file>
     <file>src/qml/OrchestrionVstEditorDialog.qml</file>
     <file>src/qml/GradingSettingsPopup.qml</file>
-    <file>src/qml/AutoPlaySettingsPopup.qml</file>
     <file>src/qml/AttributionToast.qml</file>
     <file>src/qml/MidiKeyboardIcon.qml</file>
     <file>src/qml/BackdropOrnament.qml</file>
@@ -21,6 +19,7 @@
     <file>src/qml/OrchestrionSystemButtons.qml</file>
     <file>src/qml/TitleBarButtonBackground.qml</file>
     <file>src/qml/OrchestrionStandardDialog.qml</file>
+    <file>src/qml/TakesDialog.qml</file>
     <file>src/qml/BackdropFrame.qml</file>
     <file>src/qml/MetalGlyph.qml</file>
     <file>src/qml/TransportButton.qml</file>
@@ -36,7 +35,6 @@
     <file>icons/player/loop.svg</file>
     <file>icons/player/fullscreen.svg</file>
     <file>icons/player/grading.svg</file>
-    <file>icons/player/autoplay.svg</file>
     <file>icons/player/pedals_gold.svg</file>
     <file>icons/player/pedal-sustain_gold.svg</file>
     <file>icons/player/pedals_silver.svg</file>

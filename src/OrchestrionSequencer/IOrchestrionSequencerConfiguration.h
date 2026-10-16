@@ -80,6 +80,14 @@ public:
   virtual void setGradingExposed(bool) = 0;
   virtual muse::async::Notification gradingExposedChanged() const = 0;
 
+  /**
+   * Whether every session's takes are recorded, to be kept on closing the
+   * score and replayed (Development menu).
+   */
+  virtual bool takeRecordingEnabled() const = 0;
+  virtual void setTakeRecordingEnabled(bool) = 0;
+  virtual muse::async::Notification takeRecordingEnabledChanged() const = 0;
+
   //! The master switch of the grading apparatus: the per-note
   //! timing marks and deviation ribbon, the box-plot HUD and scores, the
   //! final-score banner, the time-proportional layout and its tempo warp,
@@ -113,21 +121,6 @@ public:
   virtual bool dynamicsScoreEnabled() const = 0;
   virtual void setDynamicsScoreEnabled(bool) = 0;
   virtual muse::async::Notification dynamicsScoreEnabledChanged() const = 0;
-
-  //! Whether auto-play is offered at all (its top-row button and its menu).
-  //! Off by default and toggled from the Development menu: the feature is
-  //! still being worked on, and while it is hidden it also stays inactive,
-  //! whatever autoPlayedStaff() happens to hold.
-  virtual bool autoPlayExposed() const = 0;
-  virtual void setAutoPlayExposed(bool) = 0;
-  virtual muse::async::Notification autoPlayExposedChanged() const = 0;
-
-  //! Which hand the machine plays, following the performer's tempo: −1 =
-  //! none, 0 = the right hand (staff 0), 1 = the left. The auto-played hand
-  //! is exempt from timing judgments and scoring.
-  virtual int autoPlayedStaff() const = 0;
-  virtual void setAutoPlayedStaff(int) = 0;
-  virtual muse::async::Notification autoPlayedStaffChanged() const = 0;
 
   //! When enabled, the score is laid out time-proportionally: horizontal
   //! note spacing is determined by durations alone, so equal distance =

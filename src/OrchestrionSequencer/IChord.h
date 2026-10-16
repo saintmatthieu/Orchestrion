@@ -19,6 +19,7 @@
 #pragma once
 
 #include "IMelodySegment.h"
+#include "OrchestrionTypes.h"
 
 #include <optional>
 
@@ -59,5 +60,17 @@ public:
   //! on-screen element back to its chord), or nullptr if it no longer
   //! resolves.
   virtual const mu::engraving::Chord *GetEngravingChord() const = 0;
+
+  /**
+   * The other staves' engraved chords this chord plays too — an arpeggio
+   * across both hands' staves, played by one: shown with it.
+   */
+  virtual std::vector<const mu::engraving::Chord *> GetGatheredChords() const
+  {
+    return {};
+  }
+
+  /** How the chord is rolled, if it is arpeggiated. */
+  virtual std::optional<RollDirection> GetRoll() const { return std::nullopt; }
 };
 } // namespace dgk

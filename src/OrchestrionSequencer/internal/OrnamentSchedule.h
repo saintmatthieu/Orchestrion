@@ -93,6 +93,11 @@ struct WrittenNote
 {
   std::vector<int> pitches;
   int ticks = 0;
+  /**
+   * Whether the note is one of a trill's: how many of those a performer
+   * plays is theirs to choose.
+   */
+  bool trill = false;
 };
 
 /**
@@ -106,4 +111,19 @@ struct WrittenNote
 std::vector<WrittenNote> WriteOutOrnament(const Ornament &ornament,
                                           const std::vector<int> &mainPitches,
                                           int nominalTicks, double ticksPerMs);
+
+/**
+ * The ornament of `chord`, if any, written out at the score's tempo (see
+ * above); a chord with nothing to write out is one note.
+ */
+std::vector<WrittenNote> WriteOutOrnament(const IChord &chord);
+
+/**
+ * The time between the notes of a rolled chord (an arpeggio), in ticks: a
+ * 64th, as quick grace notes.
+ */
+constexpr int arpeggioNoteTicks = 30;
+
+/** The same at the performer's tempo, in milliseconds, never too quick. */
+double ArpeggioNoteMs(double ticksPerMs);
 } // namespace dgk

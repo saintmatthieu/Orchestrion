@@ -34,6 +34,8 @@ const muse::Settings::Key
 const muse::Settings::Key
     JUMP_ANTICIPATION_ENABLED(module_name, "JUMP_ANTICIPATION_ENABLED");
 const muse::Settings::Key GRADING_EXPOSED(module_name, "GRADING_EXPOSED");
+const muse::Settings::Key TAKE_RECORDING_ENABLED(module_name,
+                                                 "TAKE_RECORDING_ENABLED");
 const muse::Settings::Key GRADING_ENABLED(module_name, "GRADING_ENABLED");
 const muse::Settings::Key
     PERSISTENT_TIMING_MARKS_ENABLED(module_name,
@@ -42,8 +44,6 @@ const muse::Settings::Key HAND_SYNC_SCORE_ENABLED(module_name,
                                                   "HAND_SYNC_SCORE_ENABLED");
 const muse::Settings::Key DYNAMICS_SCORE_ENABLED(module_name,
                                                  "DYNAMICS_SCORE_ENABLED");
-const muse::Settings::Key AUTO_PLAY_EXPOSED(module_name, "AUTO_PLAY_EXPOSED");
-const muse::Settings::Key AUTO_PLAYED_STAFF(module_name, "AUTO_PLAYED_STAFF");
 const muse::Settings::Key
     TIME_PROPORTIONAL_SPACING_ENABLED(module_name,
                                       "TIME_PROPORTIONAL_SPACING_ENABLED");
@@ -100,6 +100,12 @@ void OrchestrionSequencerConfiguration::init()
                    m_gradingEnabledChanged.notify();
                  });
 
+  muse::settings()->setDefaultValue(TAKE_RECORDING_ENABLED, muse::Val{false});
+  muse::settings()
+      ->valueChanged(TAKE_RECORDING_ENABLED)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_takeRecordingEnabledChanged.notify(); });
+
   muse::settings()->setDefaultValue(GRADING_ENABLED, muse::Val{true});
   muse::settings()
       ->valueChanged(GRADING_ENABLED)
@@ -124,18 +130,6 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(DYNAMICS_SCORE_ENABLED)
       .onReceive(this, [this](const muse::Val &)
                  { m_dynamicsScoreEnabledChanged.notify(); });
-
-  muse::settings()->setDefaultValue(AUTO_PLAY_EXPOSED, muse::Val{false});
-  muse::settings()
-      ->valueChanged(AUTO_PLAY_EXPOSED)
-      .onReceive(this, [this](const muse::Val &)
-                 { m_autoPlayExposedChanged.notify(); });
-
-  muse::settings()->setDefaultValue(AUTO_PLAYED_STAFF, muse::Val{-1});
-  muse::settings()
-      ->valueChanged(AUTO_PLAYED_STAFF)
-      .onReceive(this, [this](const muse::Val &)
-                 { m_autoPlayedStaffChanged.notify(); });
 
   muse::settings()->setDefaultValue(TIME_PROPORTIONAL_SPACING_ENABLED,
                                     muse::Val{false});
@@ -249,6 +243,22 @@ OrchestrionSequencerConfiguration::jumpAnticipationEnabledChanged() const
   return m_jumpAnticipationEnabledChanged;
 }
 
+bool OrchestrionSequencerConfiguration::takeRecordingEnabled() const
+{
+  return muse::settings()->value(TAKE_RECORDING_ENABLED).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setTakeRecordingEnabled(bool enabled)
+{
+  muse::settings()->setSharedValue(TAKE_RECORDING_ENABLED, muse::Val{enabled});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::takeRecordingEnabledChanged() const
+{
+  return m_takeRecordingEnabledChanged;
+}
+
 bool OrchestrionSequencerConfiguration::gradingExposed() const
 {
   return muse::settings()->value(GRADING_EXPOSED).toBool();
@@ -331,37 +341,6 @@ OrchestrionSequencerConfiguration::dynamicsScoreEnabledChanged() const
   return m_dynamicsScoreEnabledChanged;
 }
 
-bool OrchestrionSequencerConfiguration::autoPlayExposed() const
-{
-  return muse::settings()->value(AUTO_PLAY_EXPOSED).toBool();
-}
-
-void OrchestrionSequencerConfiguration::setAutoPlayExposed(bool exposed)
-{
-  muse::settings()->setSharedValue(AUTO_PLAY_EXPOSED, muse::Val{exposed});
-}
-
-muse::async::Notification
-OrchestrionSequencerConfiguration::autoPlayExposedChanged() const
-{
-  return m_autoPlayExposedChanged;
-}
-
-int OrchestrionSequencerConfiguration::autoPlayedStaff() const
-{
-  return muse::settings()->value(AUTO_PLAYED_STAFF).toInt();
-}
-
-void OrchestrionSequencerConfiguration::setAutoPlayedStaff(int staff)
-{
-  muse::settings()->setSharedValue(AUTO_PLAYED_STAFF, muse::Val{staff});
-}
-
-muse::async::Notification
-OrchestrionSequencerConfiguration::autoPlayedStaffChanged() const
-{
-  return m_autoPlayedStaffChanged;
-}
 
 bool OrchestrionSequencerConfiguration::timeProportionalSpacingEnabled() const
 {

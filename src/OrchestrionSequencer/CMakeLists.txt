@@ -6,6 +6,10 @@ set(MODULE_SRC
     internal/OrchestrionPlayerStub.h
     internal/ChordTransitionUtil.cpp
     internal/ChordTransitionUtil.h
+    internal/FollowerThread.cpp
+    internal/FollowerThread.h
+    internal/FollowPlayer.cpp
+    internal/FollowPlayer.h
     internal/GestureInputConnector.cpp
     internal/GestureInputConnector.h
     internal/ModifiableItemRegistry.cpp
@@ -31,6 +35,14 @@ set(MODULE_SRC
     internal/OrnamentGesture.h
     internal/OrnamentSchedule.cpp
     internal/OrnamentSchedule.h
+    internal/PerformanceFollower.cpp
+    internal/PerformanceFollower.h
+    internal/ScoreEvents.cpp
+    internal/ScoreEvents.h
+    internal/StaffModes.cpp
+    internal/StaffModes.h
+    internal/VisibleScore.cpp
+    internal/VisibleScore.h
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp
@@ -48,6 +60,8 @@ set(MODULE_SRC
     IOrchestrionPlayer.h
     IOrchestrionSequencer.h
     IRest.h
+    IStaffModes.h
+    IVisibleScore.h
     OrchestrionModule.cpp
     OrchestrionModule.h
 )

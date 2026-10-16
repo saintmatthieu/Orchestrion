@@ -82,8 +82,6 @@ void OrchestrionMenuModel::createMenus(bool velocityRecordingEnabled)
       makeAudioMidiMenu(), makeEffectsMenu(), makeOrnamentsMenu()};
   if (sequencerConfiguration()->gradingExposed())
     menus << makeGradingMenu();
-  if (sequencerConfiguration()->autoPlayExposed())
-    menus << makeAutoPlayMenu();
   menus << makeAdvancedMenu(velocityRecordingEnabled);
 #ifdef MUSE_APP_UNSTABLE
   menus << makeDevelopmentMenu();
@@ -135,15 +133,11 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
-  sequencerConfiguration()->autoPlayedStaffChanged().onNotify(
-      this, [this]
-      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
-
   sequencerConfiguration()->gradingExposedChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
-  sequencerConfiguration()->autoPlayExposedChanged().onNotify(
+  sequencerConfiguration()->takeRecordingEnabledChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
@@ -665,40 +659,6 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
       "menu-orchestrion-advanced");
 }
 
-muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAutoPlayMenu()
-{
-  using namespace muse::uicomponents;
-
-  // Which hand the machine plays for you: a one-of-three choice, mirrored by
-  // the top-row button's popup.
-  const int autoPlayedStaff = sequencerConfiguration()->autoPlayedStaff();
-  const auto choice = [this](const char *actionCode,
-                             const muse::TranslatableString &title,
-                             bool selected)
-  {
-    MenuItem *const item = makeMenuItem(actionCode, title);
-    item->setCheckable(true);
-    item->setChecked(selected);
-    return item;
-  };
-
-  return makeMenu(
-      muse::TranslatableString("appshell/menu/autoplay", "&Auto-play"),
-      QList<MenuItem *>{
-          choice(actionIds::autoPlayNone,
-                 muse::TranslatableString("appshell/menu/autoplay", "&Off"),
-                 autoPlayedStaff < 0),
-          choice(
-              actionIds::autoPlayLeftHand,
-              muse::TranslatableString("appshell/menu/autoplay", "&Left hand"),
-              autoPlayedStaff == 1),
-          choice(
-              actionIds::autoPlayRightHand,
-              muse::TranslatableString("appshell/menu/autoplay", "&Right hand"),
-              autoPlayedStaff == 0)},
-      "menu-orchestrion-autoplay");
-}
-
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeOrnamentsMenu()
 {
   using namespace muse::uicomponents;
@@ -737,24 +697,26 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
 {
   using namespace muse::uicomponents;
 
-  // Auto-play is still being worked on: hidden — and inert — unless a
-  // developer asks for it here.
-  MenuItem *const autoPlayItem =
-      makeMenuItem(actionIds::toggleAutoPlayExposure,
-                   muse::TranslatableString("appshell/menu/development",
-                                            "Expose &auto-play"));
-  autoPlayItem->setCheckable(true);
-  autoPlayItem->setChecked(sequencerConfiguration()->autoPlayExposed());
-
   MenuItem *const gradingItem = makeMenuItem(
       actionIds::toggleGradingExposure,
       muse::TranslatableString("appshell/menu/development", "Expose &grading"));
   gradingItem->setCheckable(true);
   gradingItem->setChecked(sequencerConfiguration()->gradingExposed());
 
+  MenuItem *const takeRecordingItem = makeMenuItem(
+      actionIds::toggleTakeRecording,
+      muse::TranslatableString("appshell/menu/development", "Record &takes"));
+  takeRecordingItem->setCheckable(true);
+  takeRecordingItem->setChecked(
+      sequencerConfiguration()->takeRecordingEnabled());
+
   return makeMenu(
       muse::TranslatableString("appshell/menu/development", "&Development"),
-      QList<MenuItem *>{gradingItem, autoPlayItem},
+      QList<MenuItem *>{
+          gradingItem, makeSeparator(), takeRecordingItem,
+          makeMenuItem(actionIds::replayTake,
+                       muse::TranslatableString("appshell/menu/development",
+                                                "&Replay a take…"))},
       "menu-orchestrion-development");
 }
 #endif

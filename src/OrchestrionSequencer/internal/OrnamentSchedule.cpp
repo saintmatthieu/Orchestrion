@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrnamentSchedule.h"
+#include "IChord.h"
 
 #include <algorithm>
 #include <cassert>
@@ -216,13 +217,33 @@ std::vector<WrittenNote> WriteOutOrnament(const Ornament &ornament,
     for (int i = 0; i < count; ++i)
     {
       const int ticks = std::max(1, left / (count - i));
-      notes.push_back(
-          {schedule.steps[schedule.cycleBegin + i % length].pitches, ticks});
+      notes.push_back({schedule.steps[schedule.cycleBegin + i % length].pitches,
+                       ticks, true});
       left -= ticks;
     }
   }
   for (size_t i = 0; i < schedule.closing.size(); ++i)
     notes.push_back({schedule.closing[i].pitches, closingTicks[i]});
   return notes;
+}
+
+std::vector<WrittenNote> WriteOutOrnament(const IChord &chord)
+{
+  const int nominalTicks =
+      chord.GetEndTick().withRepeats - chord.GetBeginTick().withRepeats;
+  const Ornament *ornament = chord.GetOrnament();
+  if (!ornament)
+    return {{chord.GetPitches(), nominalTicks}};
+  constexpr double ticksPerQuarter = 480.0;
+  const double bpm =
+      chord.GetNominalBpm() > 0.0 ? chord.GetNominalBpm() : 120.0;
+  return WriteOutOrnament(*ornament, chord.GetPitches(), nominalTicks,
+                          bpm * ticksPerQuarter / 60000.0);
+}
+
+double ArpeggioNoteMs(double ticksPerMs)
+{
+  constexpr double minArpeggioNoteMs = 25.0;
+  return std::max(arpeggioNoteTicks / ticksPerMs, minArpeggioNoteMs);
 }
 } // namespace dgk

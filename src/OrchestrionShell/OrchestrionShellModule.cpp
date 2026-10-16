@@ -29,7 +29,6 @@
 #include "internal/SynthesizerMenuManager.h"
 #include "modularity/ioc.h"
 #include "ui/iuiactionsregister.h"
-#include "view/AutoPlayModel.h"
 #include "view/GradingModel.h"
 #ifdef Q_OS_MAC
 #include "view/MacOSWindowChrome.h"
@@ -89,8 +88,6 @@ void OrchestrionShellModule::registerUiTypes()
                                 "GradingModel");
   qmlRegisterType<MidiKeyboardIconModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "MidiKeyboardIconModel");
-  qmlRegisterType<AutoPlayModel>("Orchestrion.OrchestrionShell", 1, 0,
-                                 "AutoPlayModel");
   qmlRegisterType<PedalIndicatorModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "PedalIndicatorModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,
@@ -121,6 +118,9 @@ void OrchestrionShellModule::resolveImports()
     const muse::Uri uri("muse://interactive/standard");
     ir->unregisterUri(uri);
     ir->registerQmlUri(uri, "Orchestrion", "OrchestrionStandardDialog");
+    // Which of the session's takes to keep (see TakeRecorder).
+    ir->registerQmlUri(muse::Uri("orchestrion://takes/keep"), "Orchestrion",
+                       "TakesDialog");
   }
 }
 

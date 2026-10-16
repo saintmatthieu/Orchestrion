@@ -245,6 +245,13 @@ struct GraceNote
 /**
  * What an ornament sign asks for.
  */
+/** Which way an arpeggiated chord is rolled. */
+enum class RollDirection
+{
+  up,
+  down,
+};
+
 enum class OrnamentSign
 {
   none,

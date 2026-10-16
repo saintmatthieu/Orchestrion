@@ -26,6 +26,8 @@ namespace dgk
 class Orchestrion;
 class OrchestrionSequencerConfiguration;
 class GestureInputConnector;
+class StaffModes;
+class VisibleScore;
 
 class OrchestrionModule : public muse::modularity::IModuleSetup
 {
@@ -45,5 +47,7 @@ private:
   const std::shared_ptr<GestureInputConnector> m_gestureInputConnector;
   const std::shared_ptr<OrchestrionSequencerConfiguration>
       m_sequencerConfiguration;
+  const std::shared_ptr<StaffModes> m_staffModes;
+  const std::shared_ptr<VisibleScore> m_visibleScore;
 };
 } // namespace dgk

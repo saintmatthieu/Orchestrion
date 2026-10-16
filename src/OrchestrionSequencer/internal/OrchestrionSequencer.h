@@ -20,10 +20,13 @@
 
 #include "IOrchestrionSequencer.h"
 #include "IOrchestrionSequencerConfiguration.h"
+#include "IStaffModes.h"
 #include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/OrnamentSchedule.h"
+#include "internal/FollowerThread.h"
+#include "internal/ScoreEvents.h"
 #include "internal/VoiceSequencer.h"
 
 #include <actions/actionable.h>
@@ -39,6 +42,7 @@
 #include <memory>
 #include <modularity/ioc.h>
 #include <mutex>
+#include <notation/imasternotation.h>
 #include <random>
 #include <thread>
 #include <vector>
@@ -56,16 +60,27 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
   dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
       this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
+  dgk::Inject<IStaffModes> staffModes{this};
 
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
+  /**
+   * `staffEvents` are what the Notes mode follows the performer along, staff
+   * by staff — right hand first — (see GetScoreEvents), at first at
+   * `nominalTicksPerMs`.
+   */
   OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
-                       HandVoices leftHand, PedalSequence);
+                       HandVoices leftHand, PedalSequence,
+                       std::array<std::vector<ScoreEvent>, 2> staffEvents,
+                       std::array<std::vector<ScoreNote>, 2> staffNotes,
+                       double nominalTicksPerMs);
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch,
                     std::optional<float> velocity) override;
+  void OnHandInputEvent(NoteEventType, bool isLeftHand,
+                        std::optional<float> velocity) override;
   void OnSustainPedal(bool down) override;
   void SetFootPedalling(bool) override;
   void AllNotesOff() override;
@@ -78,8 +93,11 @@ public:
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
+  muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
+  std::optional<PerformedTempo> PerformedTempoNow() override;
+  void SkipHandTo(bool isLeftHand, int tickWithRepeats) override;
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
@@ -89,12 +107,6 @@ private:
   {
     HandVoices voices;
     std::optional<int> pressedKey;
-    /**
-     * The hand's tempo, estimated from the onsets it plays (ticks with
-     * repeats against the steady clock), for timing the ornaments it
-     * strikes. Reset on a jump, and started over after a pause.
-     */
-    PositionTracker tempo{};
   };
 
   /**
@@ -161,8 +173,91 @@ private:
                                 ThreadMembers<EventType> &members,
                                 std::function<void(EventType)> cb);
 
-  void OnInputEventRecursive(NoteEventType, int pitch,
-                             std::optional<float> velocity, bool loop);
+  /**
+   * The gesture of `key` on the hand: a press, or the release of the key the
+   * hand holds (a release of another is ignored). One of the performer's
+   * that finds nothing left to play starts the score over; the machine's
+   * never do.
+   */
+  void OnInputEventRecursive(NoteEventType, bool isLeftHand, int key,
+                             std::optional<float> velocity, bool loop,
+                             bool byPerformer);
+  /**
+   * A gesture on the hand, `key` telling a release from that of another key:
+   * see OnInputEventRecursive.
+   */
+  void OnGesture(NoteEventType, bool isLeftHand, int key,
+                 std::optional<float> velocity, bool byPerformer);
+  StaffMode Mode(bool isLeftHand) const;
+  /**
+   * Whether the hand's staff is one the performer plays — or the automatic
+   * player, in their stead.
+   */
+  bool IsPerformed(bool isLeftHand) const;
+  /** Whether the hand has voices and is in the mode. */
+  bool HandIn(bool isLeftHand, StaffMode) const;
+  /**
+   * Whether a key the performer strikes is a note of the Notes staves
+   * rather than a gesture on a Rhythm one. With one staff of each, the
+   * Rhythm one gets the keys past the other's range, a minor third clear of
+   * it, so that no key it might be played with strikes a chord instead.
+   */
+  bool IsNotesKey(int pitch) const;
+  /**
+   * A key of the Notes staves: it sounds as it is, and the performer is
+   * followed in the score from it (see PerformanceFollower).
+   */
+  void OnPitchInput(NoteEventType, int pitch, std::optional<float> velocity);
+  /** The track the keys of the Notes staves sound on. */
+  TrackIndex NotesTrack() const;
+  /**
+   * Moves the Notes staves' voices, silently, to where the performer is
+   * followed at.
+   */
+  void FollowTo(int tickWithRepeats);
+  /**
+   * Releases the Notes staves' chords none of whose keys is held any more,
+   * as a release does in the Rhythm mode — once they are nearly over.
+   */
+  void ReleaseFollowedChords();
+  /** Follows the Notes staves, any there are, from scratch. */
+  void RebuildFollower();
+  /** Lists the notes the automatic player plays the Notes staves with. */
+  void RebuildAutoPlayNotes();
+  /** Has the follower expect the next note where the Notes staves are. */
+  void ResetFollower();
+  /** Releases the keys the performer holds on the Notes staves. */
+  void ReleasePlayedPitches();
+  /** What the follower found of a note (see FollowerThread). */
+  void OnFollowed(const FollowerThread::Followed &);
+  /** Sends WrongNotes, from m_wrongNotes. */
+  void PublishWrongNotes();
+  /** Feeds the performance's tempo estimate an onset at the tick and time. */
+  void ObserveTick(int tickWithRepeats, double ms);
+  /**
+   * Makes the transitions the current ones and tells the subscribers, with
+   * nothing sounded.
+   */
+  void PublishTransitions(const std::map<TrackIndex, ChordTransition> &);
+  /**
+   * The hand a key the performer strikes is for (see OnInputEvent), if any.
+   */
+  std::optional<bool> PerformerHand(int pitch) const;
+  /**
+   * A staff changed modes: let go of what the hands hold, and have those that
+   * play from now on start where the others were.
+   */
+  void OnStaffModesChanged();
+  /**
+   * Back to the loop's start from its end: a jump, but one the performance
+   * carries on through, its tempo estimate moved back with the position
+   * rather than started over. `before` is where the staves playing were next
+   * due before the wrap, and `next` tells where they are after it.
+   */
+  void WrapLoop(int loopInTick, const Tick &before,
+                const std::function<std::optional<Tick>()> &next);
+  /** The voices of the staves not muted. */
+  std::vector<const VoiceSequencer *> PlayingVoices() const;
   /**
    * Puts the pedal where the hands want it: down when the hands that are down
    * all stand within one and the same pedal span, up when they stand in
@@ -185,20 +280,28 @@ private:
    * Sends the events, several simultaneous strikes slightly spread and
    * shaded like a human's unless `strum` is false.
    */
-  void PostNoteEvents(NoteEvents events, bool strum = true);
+  /**
+   * `strum`: spreads the note-ons a little, at random. `rollMs`: strikes
+   * them in the order given, this far apart instead (an arpeggio).
+   */
+  void PostNoteEvents(NoteEvents events, bool strum = true,
+                      std::optional<double> rollMs = std::nullopt);
 
   /**
-   * Feeds the hand's tempo estimate the onset of the chords struck in this
-   * batch of transitions, if any.
+   * Feeds the performance's tempo estimate (m_tempo) the onset of the chords
+   * the hand struck in this batch of transitions, if any — unless the hand is
+   * a Follow one, which plays to that estimate rather than tells it anything.
    */
-  void ObserveOnset(Hand &, const std::map<TrackIndex, ChordTransition> &);
+  void ObserveOnset(bool isLeftHand,
+                    const std::map<TrackIndex, ChordTransition> &);
   /**
    * The tempo to time the chord's ornament with, in ticks per millisecond:
-   * the hand's estimate once it has one, the score's tempo until then.
+   * the performance's estimate once there is one, the score's tempo until
+   * then.
    */
-  double TicksPerMs(const Hand &, const IChord &) const;
-  /** How the chord is to sound, struck now at the hand's tempo. */
-  OrnamentSchedule ScheduleChord(const IChord &, const Hand &) const;
+  double TicksPerMs(const IChord &) const;
+  /** How the chord is to sound, struck now at the performance's tempo. */
+  OrnamentSchedule ScheduleChord(const IChord &) const;
   /**
    * How far ahead of `strike` the hand is to come down on the chords due
    * there, in ticks, for the grace notes before them to be over by then: the
@@ -282,6 +385,16 @@ private:
   const std::chrono::steady_clock::time_point m_epoch =
       std::chrono::steady_clock::now();
 
+  /**
+   * Where the performance is and how fast it goes: one estimate for the
+   * staves the performer plays (ticks with repeats against the steady clock),
+   * fed their onsets (see ObserveOnset). Reset on a jump, and started over
+   * after a pause. The tick it was last fed: an onset struck by both hands,
+   * not quite together, is one onset.
+   */
+  PositionTracker m_tempo{};
+  std::optional<int> m_tempoTick;
+
   bool m_pedalDown = false;
   /**
    * Whether the pedal follows the foot (see SetFootPedalling), and where the
@@ -307,6 +420,40 @@ private:
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
   int m_autoPlayTick = 0;
+
+  /**
+   * The notation the sequencer plays, and the modes its hands were last
+   * found in: the staff modes notify of another score's, too.
+   */
+  const mu::notation::IMasterNotation *const m_notation;
+  std::array<StaffMode, 2> m_modes; // [0]=right, [1]=left
+
+  /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
+  const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;
+  /** Each staff's notes, for the automatic player ([0]=right, [1]=left). */
+  const std::array<std::vector<ScoreNote>, 2> m_staffNotes;
+  struct AutoPlayNote
+  {
+    int tick = 0;
+    NoteEventType type = NoteEventType::noteOn;
+    int pitch = 0;
+  };
+  /** The Notes staves' notes struck and released, in order. */
+  std::vector<AutoPlayNote> m_autoPlayNotes;
+  /** The next of them to play. */
+  size_t m_nextAutoPlayNote = 0;
+  /** Each staff's lowest and highest pitch. */
+  const std::array<std::pair<int, int>, 2> m_staffRanges;
+  const double m_nominalTicksPerMs;
+  /** Follows the Notes staves; nothing while no staff is in that mode. */
+  FollowerThread m_follower;
+  /** Where the Notes staves were last moved to by the follower. */
+  std::optional<int> m_followedTick;
+  /** The wrong keys held, and the chords each is wrong against. */
+  std::map<int /*pitch*/, std::vector<const IChord *>> m_wrongNotes;
+  muse::async::Channel<std::vector<const IChord *>> m_wrongNotesChannel;
+  /** The keys held on the Notes staves, and the track each sounds on. */
+  std::map<int /*pitch*/, TrackIndex> m_playedPitches;
 
   bool m_velocityRecordingEnabled = false;
   //! Whether the score's ornaments are played by the app (the automatic

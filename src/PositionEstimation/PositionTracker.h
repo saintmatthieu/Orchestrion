@@ -86,6 +86,12 @@ public:
   //! Forget all history (e.g. a position jump or a new piece).
   void reset();
 
+  /**
+   * Moves the estimate by `delta` musical units, its tempo kept: a jump the
+   * performance carries on through, such as a loop taken back to its start.
+   */
+  void shift(double delta) { _p += delta; }
+
 private:
   //! Constant-velocity prediction of the state up to \p realTime (no damping).
   void advanceTo(double realTime);
