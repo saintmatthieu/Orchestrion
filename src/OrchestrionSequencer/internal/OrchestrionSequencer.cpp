@@ -18,6 +18,8 @@
  */
 #include "OrchestrionSequencer.h"
 #include "IChord.h"
+#include "MuseOrnament.h"
+#include "OrnamentSchedule.h"
 #include "ScoreEvents.h"
 #include <algorithm>
 #include <cassert>
@@ -301,6 +303,12 @@ void OrchestrionSequencer::SendTransitions(
   if (transitions.empty())
     return;
 
+  // The arpeggiated chords' notes, of every voice struck, are rolled
+  // together: an arpeggio may span voices and staves.
+  NoteEvents rolled;
+  std::optional<RollDirection> roll;
+  double rollTicksPerMs = 0.0;
+
   for (auto &[track, transition] : transitions)
   {
     const auto past = GetPastChord(transition);
@@ -340,12 +348,40 @@ void OrchestrionSequencer::SendTransitions(
 
     const bool ornamented =
         strike && (strike->steps.size() > 1 || !strike->closing.empty());
+    std::optional<RollDirection> arpeggio;
+    if (present && !ornamented)
+      if (const mu::engraving::Chord *chord = present->GetEngravingChord())
+        arpeggio = ArpeggioOf(*chord);
     NoteEvents voiceOutput =
         ProceedOnTrack(track, past, std::move(strike), velocity.value_or(0.f));
-    if (!voiceOutput.empty())
-      // An ornament's first note goes out unspread: the next follows closely
-      // and must find it sounding.
-      PostNoteEvents(std::move(voiceOutput), /*strum=*/!ornamented);
+    if (voiceOutput.empty())
+      continue;
+    if (arpeggio)
+    {
+      roll = arpeggio;
+      rollTicksPerMs = TicksPerMs(*present);
+      NoteEvents releases;
+      for (NoteEvent &event : voiceOutput)
+        (event.type == NoteEventType::noteOn ? rolled : releases)
+            .push_back(std::move(event));
+      if (!releases.empty())
+        PostNoteEvents(std::move(releases), /*strum=*/false);
+      continue;
+    }
+    // An ornament's first note goes out unspread: the next follows closely
+    // and must find it sounding.
+    PostNoteEvents(std::move(voiceOutput), /*strum=*/!ornamented);
+  }
+
+  if (!rolled.empty())
+  {
+    std::stable_sort(
+        rolled.begin(), rolled.end(),
+        [up = *roll == RollDirection::up](const NoteEvent &a,
+                                          const NoteEvent &b)
+        { return up ? a.pitch < b.pitch : a.pitch > b.pitch; });
+    PostNoteEvents(std::move(rolled), /*strum=*/false,
+                   ArpeggioNoteMs(rollTicksPerMs));
   }
 
   PublishTransitions(transitions);
@@ -1221,9 +1257,38 @@ void OrchestrionSequencer::PostPedalEvent(PedalEvent event, bool byFoot)
   m_pedalDown = event.on;
 }
 
-void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum)
+void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum,
+                                          std::optional<double> rollMs)
 {
   using namespace std::chrono;
+
+  // A release withdraws its note's strike still to come, of a roll or a
+  // strum: sounding after the release, the note would hang.
+  {
+    auto &m = m_noteThreadMembers;
+    std::unique_lock lock{m.mutex};
+    const auto size = m.queue.size();
+    m.queue.erase(
+        std::remove_if(m.queue.begin(), m.queue.end(),
+                       [&](const QueueEntry<NoteEvent> &entry)
+                       {
+                         return entry.event.type == NoteEventType::noteOn &&
+                                std::any_of(events.begin(), events.end(),
+                                            [&](const NoteEvent &e)
+                                            {
+                                              return e.type ==
+                                                         NoteEventType::noteOff &&
+                                                     e.track == entry.event.track &&
+                                                     e.pitch == entry.event.pitch;
+                                            });
+                       }),
+        m.queue.end());
+    if (m.queue.size() != size)
+    {
+      lock.unlock();
+      m.cv.notify_one();
+    }
+  }
 
   // The releases of notes struck since the pedal was last lifted are held back
   // while a press is pending: the pedal is to catch them, and it must stay up
@@ -1266,6 +1331,29 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum)
       m_strikeSerial.erase({event.track.value, event.pitch});
   if (events.empty())
     return;
+
+  if (rollMs && events.size() > 1)
+  {
+    // In the order given, the first now.
+    std::vector<QueueEntry<NoteEvent>> entries;
+    const auto now = steady_clock::now();
+    auto delayUs = 0.0;
+    for (const NoteEvent &event : events)
+    {
+      entries.push_back(QueueEntry<NoteEvent>{
+          now + microseconds{static_cast<long long>(delayUs)}, event});
+      if (event.type == NoteEventType::noteOn)
+        delayUs += *rollMs * 1000.0;
+    }
+    auto &m = m_noteThreadMembers;
+    {
+      std::unique_lock lock{m.mutex};
+      for (auto &entry : entries)
+        m.queue.push_back(std::move(entry));
+    }
+    m.cv.notify_one();
+    return;
+  }
 
   const auto numNoteons =
       std::count_if(events.begin(), events.end(), [](const auto &event)

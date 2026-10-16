@@ -386,8 +386,18 @@ void OrchestrionNotationPaintView::OnTransitions(
     const auto huggingRect = huggingBox.toQRectF();
     const auto spatium = items.front()->spatium();
     const bool active = present != nullptr;
+    // The other staff's notes the chord plays (see GetGatheredChords) are in
+    // its box: one box across both staves, for the one gesture.
+    mu::engraving::RectF boxRect = huggingBox;
+    if (const IChord *chord = thing->AsChord())
+      for (const mu::engraving::Chord *gathered : chord->GetGatheredChords())
+        for (const auto item :
+             getRelevantItems(TrackIndex{static_cast<int>(gathered->track())},
+                              gathered->segment()))
+          boxRect = boxRect.united(item->pageBoundingRect());
     Highlight &box = m_boxes[track.value];
-    box.rect = huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
+    box.rect =
+        boxRect.toQRectF().adjusted(-spatium, -spatium, spatium, spatium);
     box.spatium = spatium;
     // A ringing note is highlighted at full strength, the next note sits
     // faintly pre-lit. (Decaying the intensity over the note's ring would
@@ -398,8 +408,11 @@ void OrchestrionNotationPaintView::OnTransitions(
 
     if (active)
     {
+      // The hand's own notes: the box may reach into the other staff.
+      const QRectF own =
+          huggingRect.adjusted(-spatium, -spatium, spatium, spatium);
       StaffHit &hit = staffHits[track.staffIndex()];
-      hit.rect = hit.rect.isNull() ? box.rect : hit.rect.united(box.rect);
+      hit.rect = hit.rect.isNull() ? own : hit.rect.united(own);
       hit.spatium = spatium;
       hit.items.insert(hit.items.end(), items.begin(), items.end());
       if (const mu::engraving::System *system = segment->measure()->system())

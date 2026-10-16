@@ -204,10 +204,13 @@ float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
 
 std::vector<me::Note *> MuseChord::GetNotes() const
 {
+  std::vector<me::Note *> notes;
   if (const auto museChord =
           dynamic_cast<const me::Chord *>(m_segment.element(m_track.value)))
-    return museChord->notes();
-  return {};
+    notes = museChord->notes();
+  for (const me::Chord *chord : m_gathered)
+    notes.insert(notes.end(), chord->notes().begin(), chord->notes().end());
+  return notes;
 }
 
 const IChord *MuseChord::AsChord() const { return this; }
@@ -326,8 +329,19 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
     : MuseMelodySegment{segment, track, measurePlaybackTick},
       m_dynamicVelocity{ComputeDynamicVelocity(segment, track)},
       m_ornament{ComputeOrnament(segment, track)},
-      m_nominalBpm{NominalBps(segment) * 60.0}
+      m_nominalBpm{NominalBps(segment) * 60.0},
+      m_gathered{[&]
+                 {
+                   const me::Chord *chord = EngravingChord(segment, track);
+                   return chord ? CrossStaffArpeggioOf(*chord).gathers
+                                : std::vector<const me::Chord *>{};
+                 }()}
 {
+}
+
+std::vector<const me::Chord *> MuseChord::GetGatheredChords() const
+{
+  return m_gathered;
 }
 
 dgk::Tick MuseChord::GetEndTick() const

@@ -275,7 +275,12 @@ private:
    * Sends the events, several simultaneous strikes slightly spread and
    * shaded like a human's unless `strum` is false.
    */
-  void PostNoteEvents(NoteEvents events, bool strum = true);
+  /**
+   * `strum`: spreads the note-ons a little, at random. `rollMs`: strikes
+   * them in the order given, this far apart instead (an arpeggio).
+   */
+  void PostNoteEvents(NoteEvents events, bool strum = true,
+                      std::optional<double> rollMs = std::nullopt);
 
   /**
    * Feeds the performance's tempo estimate (m_tempo) the onset of the chords
