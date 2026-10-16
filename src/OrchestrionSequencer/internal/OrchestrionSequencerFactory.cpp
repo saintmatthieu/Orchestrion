@@ -19,6 +19,7 @@
 #include "OrchestrionSequencerFactory.h"
 #include "ModifiableItemRegistry.h"
 #include "MuseChord.h"
+#include "MuseOrnament.h"
 #include "MuseRest.h"
 #include "OrchestrionSequencer.h"
 #include "OrnamentGesture.h"
@@ -72,6 +73,9 @@ bool TakeIt(const mu::engraving::Segment &segment, TrackIndex track,
   // alternating them as a trill does.
   if (const auto tremolo = chord->tremoloTwoChord();
       tremolo && tremolo->chord2() == chord)
+    return false;
+  // A chord of an arpeggio the other hand plays (see CrossStaffArpeggio).
+  if (CrossStaffArpeggioOf(*chord).gathered)
     return false;
   return HasUntiedNotes(*chord);
 }

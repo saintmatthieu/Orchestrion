@@ -32,7 +32,7 @@ def pitch_xml(p):
 
 
 def note(p, dur, staff=1, voice=None, ornaments="", tie=None, chord=False, accidental=None,
-         dots=0):
+         dots=0, arpeggiate=None):
     voice = voice or (1 if staff == 1 else 5)
     typ = TYPES[dur if not dots else dur * 2 // 3]
     s = "<note>"
@@ -57,6 +57,8 @@ def note(p, dur, staff=1, voice=None, ornaments="", tie=None, chord=False, accid
         notations += '<tied type="stop"/>'
     if ornaments:
         notations += f"<ornaments>{ornaments}</ornaments>"
+    if arpeggiate:
+        notations += arpeggiate
     if notations:
         s += f"<notations>{notations}</notations>"
     s += "</note>"
@@ -351,4 +353,41 @@ s.bar("two-note tremolo in the left hand (C3-G3 over a whole note) under right-h
       lh=tremolo_pair("C3", "G3", 32, staff=2))
 s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
 s.write(os.path.join(outdir, "ornaments-6-tremolos.musicxml"))
+
+# ------------------------------------------------------------ 7. arpeggios
+def arpeggiate(direction=None, number=1):
+    """The arpeggio mark of a note of an arpeggiated chord: `direction` up,
+    down or None (a plain wavy line), or "bracket" for a non-arpeggio."""
+    if direction == "bracket":
+        return f'<non-arpeggiate type="bottom" number="{number}"/>'
+    d = f' direction="{direction}"' if direction else ""
+    return f'<arpeggiate number="{number}"{d}/>'
+
+
+def chord(pitches, dur, staff=1, mark=None):
+    """A chord of `pitches`, every note carrying `mark` (see arpeggiate)."""
+    return "".join(note(p, dur, staff=staff, chord=i > 0, arpeggiate=mark)
+                   for i, p in enumerate(pitches))
+
+
+C_MAJOR = ["C4", "E4", "G4", "C5"]
+s = Score("Ornaments 7 - Arpeggios")
+s.bar("arpeggio upwards on a chord (C E G C, 64ths at your tempo), then D",
+      chord(C_MAJOR, 16, mark=arpeggiate("up")) + note("D5", 16))
+s.bar("arpeggio downwards, then D",
+      chord(C_MAJOR, 16, mark=arpeggiate("down")) + note("D5", 16))
+s.bar("plain arpeggio (a wavy line): upwards, then D",
+      chord(C_MAJOR, 16, mark=arpeggiate()) + note("D5", 16))
+s.bar("arpeggio across both staves (C3 G3 + E4 G4 C5): the left hand plays it all, then D",
+      chord(["E4", "G4", "C5"], 16, mark=arpeggiate("up")) + note("D5", 16),
+      lh=chord(["C3", "G3"], 16, staff=2, mark=arpeggiate("up")) + note("C3", 16, staff=2))
+s.bar("non-arpeggio bracket: the notes together, then D",
+      chord(C_MAJOR, 16, mark=arpeggiate("bracket")) + note("D5", 16))
+s.bar("arpeggiated quarter-note chords in a row (C, F, G, C): release early to cut the roll",
+      chord(["C4", "E4", "G4", "C5"], 8, mark=arpeggiate("up"))
+      + chord(["C4", "F4", "A4", "C5"], 8, mark=arpeggiate("up"))
+      + chord(["B3", "D4", "G4", "B4"], 8, mark=arpeggiate("up"))
+      + chord(["C4", "E4", "G4", "C5"], 8, mark=arpeggiate("up")))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "ornaments-7-arpeggios.musicxml"))
 

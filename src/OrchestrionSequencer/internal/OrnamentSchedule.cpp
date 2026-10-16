@@ -240,4 +240,10 @@ std::vector<WrittenNote> WriteOutOrnament(const IChord &chord)
   return WriteOutOrnament(*ornament, chord.GetPitches(), nominalTicks,
                           bpm * ticksPerQuarter / 60000.0);
 }
+
+double ArpeggioNoteMs(double ticksPerMs)
+{
+  constexpr double minArpeggioNoteMs = 25.0;
+  return std::max(arpeggioNoteTicks / ticksPerMs, minArpeggioNoteMs);
+}
 } // namespace dgk

@@ -117,4 +117,13 @@ std::vector<WrittenNote> WriteOutOrnament(const Ornament &ornament,
  * above); a chord with nothing to write out is one note.
  */
 std::vector<WrittenNote> WriteOutOrnament(const IChord &chord);
+
+/**
+ * The time between the notes of a rolled chord (an arpeggio), in ticks: a
+ * 64th, as quick grace notes.
+ */
+constexpr int arpeggioNoteTicks = 30;
+
+/** The same at the performer's tempo, in milliseconds, never too quick. */
+double ArpeggioNoteMs(double ticksPerMs);
 } // namespace dgk
