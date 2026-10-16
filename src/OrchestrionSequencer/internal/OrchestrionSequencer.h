@@ -215,6 +215,11 @@ private:
    * followed at.
    */
   void FollowTo(int tickWithRepeats);
+  /**
+   * Releases the Notes staves' chords none of whose keys is held any more,
+   * as a release does in the Rhythm mode — once they are nearly over.
+   */
+  void ReleaseFollowedChords();
   /** Follows the Notes staves, any there are, from scratch. */
   void RebuildFollower();
   /** Lists the notes the automatic player plays the Notes staves with. */

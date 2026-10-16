@@ -19,6 +19,7 @@
 #pragma once
 
 #include "IMelodySegment.h"
+#include "OrchestrionTypes.h"
 
 #include <optional>
 
@@ -68,5 +69,8 @@ public:
   {
     return {};
   }
+
+  /** How the chord is rolled, if it is arpeggiated. */
+  virtual std::optional<RollDirection> GetRoll() const { return std::nullopt; }
 };
 } // namespace dgk

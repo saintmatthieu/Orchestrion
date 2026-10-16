@@ -451,6 +451,26 @@ TEST(PerformanceFollowerTests, TrillOverChordsIsFollowed)
   }
 }
 
+TEST(PerformanceFollowerTests, SlowlyRolledChordIsNotLeftEarly)
+{
+  // A quarter-note C major chord rolled upwards, 120 ms a note — its G
+  // about when the next chord is due, which shares it: no note of the roll is
+  // the next chord's.
+  std::vector<ScoreEvent> events{{0, {60, 64, 67, 72}, 0},
+                                 {quarter, {55, 67, 71}, quarter}};
+  events[0].rolled = true;
+  PerformanceFollower follower{events, nominalTicksPerMs};
+  for (size_t i = 0; i < events[0].pitches.size(); ++i)
+  {
+    follower.OnNoteOn(events[0].pitches[i], 120.0 * i);
+    EXPECT_EQ(follower.FollowedEvent(), 0u) << "note " << i;
+  }
+  const auto quarterMs = quarter / nominalTicksPerMs;
+  for (const int pitch : events[1].pitches)
+    follower.OnNoteOn(pitch, quarterMs);
+  EXPECT_EQ(follower.FollowedEvent(), 1u);
+}
+
 TEST(PerformanceFollowerTests, MistakesDontDerail)
 {
   PerformanceStyle style;

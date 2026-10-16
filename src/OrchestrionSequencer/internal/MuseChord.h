@@ -68,6 +68,7 @@ private:
   double GetNominalBpm() const override;
   const mu::engraving::Chord *GetEngravingChord() const override;
   std::vector<const mu::engraving::Chord *> GetGatheredChords() const override;
+  std::optional<RollDirection> GetRoll() const override;
 
   // IModifiableItem
 private:
@@ -87,6 +88,7 @@ private:
   // The other staff's chords of an arpeggio this chord plays for both hands
   // (see CrossStaffArpeggio): their notes are this chord's too.
   const std::vector<const mu::engraving::Chord *> m_gathered;
+  const std::optional<RollDirection> m_roll;
   std::optional<float> m_unsavedVelocity;
   muse::async::Notification m_modifiedChanged;
 };
