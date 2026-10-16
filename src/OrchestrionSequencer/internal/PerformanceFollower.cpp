@@ -91,9 +91,9 @@ constexpr double kTimingSigma = 0.45;
  */
 constexpr double kTimingFloorMs = 30.0;
 /**
- * The least an early move weighs, however early: the tempo may be off — learnt
- * from a passage played slowly for its difficulty, say — and timing then only
- * chooses between moves the pitch can't tell apart.
+ * The least an early move to the next event weighs, however early: the tempo
+ * may be off — learnt from a passage played slowly for its difficulty, say —
+ * and timing then only chooses between moves the pitch can't tell apart.
  */
 constexpr double kEarlyFloor = 0.03;
 
@@ -246,7 +246,7 @@ double PerformanceFollower::Emission(int pitch, const ScoreEvent &event,
   return e;
 }
 
-double PerformanceFollower::Timing(int ticks, double dtMs) const
+double PerformanceFollower::Timing(int ticks, double dtMs, bool next) const
 {
   const auto floor = kTimingFloorMs * m_ticksPerMs;
   // How far the performer went at the current tempo, against how far the
@@ -257,7 +257,9 @@ double PerformanceFollower::Timing(int ticks, double dtMs) const
     // one who skipped.
     return 1.0;
   const auto r = std::log((played + floor) / (ticks + floor)) / kTimingSigma;
-  return std::max(std::exp(-0.5 * r * r), kEarlyFloor);
+  const auto gaussian = std::exp(-0.5 * r * r);
+  // Early and skipping notes besides: no reason to doubt the timing.
+  return next ? std::max(gaussian, kEarlyFloor) : gaussian;
 }
 
 double PerformanceFollower::Stay(size_t event, double sinceOnsetMs) const
@@ -308,7 +310,7 @@ void PerformanceFollower::Predict(double ms)
     for (; k < w.size() && i + k < n; ++k)
     {
       const auto ticks = m_events[i + k].tick - m_events[i].tick;
-      w[k] = advance * Timing(ticks, sinceOnset);
+      w[k] = advance * Timing(ticks, sinceOnset, k == 1);
       sum += w[k];
       advance *= kSkip;
     }

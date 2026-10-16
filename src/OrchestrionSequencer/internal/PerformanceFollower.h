@@ -138,7 +138,11 @@ private:
    * goes on at an event, but isn't how it begins.
    */
   double Emission(int pitch, const ScoreEvent &, bool staying) const;
-  double Timing(int ticks, double dtMs) const;
+  /**
+   * The weight of moving on `ticks` after `dtMs`; `next`: to the next event,
+   * skipping none.
+   */
+  double Timing(int ticks, double dtMs, bool next) const;
   /**
    * The weight of staying on `event` for another note, `sinceOnsetMs` after
    * it began (the extra-note weight aside).
