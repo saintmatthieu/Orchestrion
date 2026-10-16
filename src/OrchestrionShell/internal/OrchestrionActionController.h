@@ -90,6 +90,8 @@ private:
    * or edits in the score's undo stack.
    */
   bool scoreModified() const;
+  /** Gets Orchestrion's modifications and the score ready to be written. */
+  void prepareSave() const;
   /** The score was just saved: its undo stack is clean from here on. */
   void markScoreSaved() const;
   void openFromDir(const muse::io::path_t &dir) const;

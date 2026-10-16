@@ -429,13 +429,22 @@ void OrchestrionActionController::onFileOpen(
 
 void OrchestrionActionController::onFileSave() const
 {
-  if (const auto registry = orchestrion()->modifiableItemRegistry())
-    registry->Save();
+  prepareSave();
 
   if (const mu::project::INotationProjectPtr notationProject =
           globalContext()->currentProject())
     if (notationProject->save())
       markScoreSaved();
+}
+
+void OrchestrionActionController::prepareSave() const
+{
+  if (const auto registry = orchestrion()->modifiableItemRegistry())
+    registry->Save();
+  // A MusicXML score that gives no MIDI channels is imported without any,
+  // which its export (saving it in place) needs.
+  if (const auto master = globalContext()->currentMasterNotation())
+    master->masterScore()->rebuildMidiMapping();
 }
 
 bool OrchestrionActionController::scoreModified() const
@@ -470,8 +479,7 @@ static const std::vector<std::string> filter{
 
 void OrchestrionActionController::onFileSaveAs() const
 {
-  if (const auto registry = orchestrion()->modifiableItemRegistry())
-    registry->Save();
+  prepareSave();
 
   muse::io::path_t defaultDir =
       muse::io::dirpath(projectConfiguration()->lastSavedProjectsPath());
