@@ -20,7 +20,9 @@
 
 #include <QGuiApplication>
 
-#ifdef Q_OS_LINUX
+#ifdef Q_OS_WIN
+#include <windows.h>
+#elif defined(Q_OS_LINUX)
 #include <QDBusInterface>
 #include <QDBusReply>
 #endif

@@ -21,9 +21,7 @@
 #include <QObject>
 #include <optional>
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-#elif defined(Q_OS_MAC)
+#ifdef Q_OS_MAC
 #include <IOKit/pwr_mgt/IOPMLib.h>
 #endif
 
