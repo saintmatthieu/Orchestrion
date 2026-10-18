@@ -64,7 +64,7 @@ void FollowPlayer::OnTransitions(
   {
     if (!IsFollowStaff(track.staffIndex()))
       continue;
-    Targets &targets = m_trackTargets[track.value];
+    Targets &targets = m_trackTargets[track];
     const IChord *present = GetPresentChord(transition);
     targets.offTick =
         present ? std::make_optional<double>(present->GetEndTick().withRepeats)
@@ -83,10 +83,9 @@ void FollowPlayer::OnTransitions(
   // voice of a staff, entering later on): its first chord is the sequencer's
   // to tell.
   for (const TrackIndex &track : m_sequencer.GetAllVoices())
-    if (IsFollowStaff(track.staffIndex()) &&
-        !m_trackTargets.count(track.value))
+    if (IsFollowStaff(track.staffIndex()) && !m_trackTargets.count(track))
       if (const IChord *next = m_sequencer.GetNextChord(track))
-        m_trackTargets[track.value].onTick = next->GetBeginTick().withRepeats;
+        m_trackTargets[track].onTick = next->GetBeginTick().withRepeats;
   Aggregate();
 }
 
@@ -95,7 +94,7 @@ void FollowPlayer::Aggregate()
   m_staffTargets.clear();
   for (const auto &[track, targets] : m_trackTargets)
   {
-    Targets &staff = m_staffTargets[TrackIndex{track}.staffIndex()];
+    Targets &staff = m_staffTargets[track.staffIndex()];
     if (targets.offTick)
       staff.offTick = staff.offTick ? std::min(*staff.offTick, *targets.offTick)
                                     : targets.offTick;
@@ -141,7 +140,7 @@ void FollowPlayer::Poll()
         tick.reset();
     };
     for (auto &[track, targets] : m_trackTargets)
-      if (TrackIndex{track}.staffIndex() == staff)
+      if (track.staffIndex() == staff)
       {
         if (onTick)
           due(targets.onTick);

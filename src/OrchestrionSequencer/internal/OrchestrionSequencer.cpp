@@ -641,7 +641,8 @@ TrackIndex OrchestrionSequencer::NotesTrack() const
 {
   // The staves are one instrument's: any of their tracks sounds the same.
   const auto &hand = HandIn(false, StaffMode::notes) ? m_rightHand : m_leftHand;
-  return hand.voices.empty() ? TrackIndex{} : hand.voices.front()->track;
+  return hand.voices.empty() ? TrackIndex{}
+                             : hand.voices.front()->track.track();
 }
 
 void OrchestrionSequencer::ReleaseFollowedChords()
@@ -1192,7 +1193,7 @@ int OrchestrionSequencer::AutoPlayStrikeTick(const Hand &hand,
     if (!chord || chord->GetBeginTick().withRepeats != strike.withRepeats)
       continue;
     std::unique_lock lock{m_ornamentThreadMembers.mutex};
-    const auto it = m_tracks.find(voice->track.value);
+    const auto it = m_tracks.find(voice->track);
     if (it == m_tracks.end() || !it->second.stepEnd ||
         it->second.schedule.cycleBegin >= it->second.schedule.cycleEnd)
       continue;
@@ -1566,7 +1567,7 @@ OrchestrionSequencer::ProceedOnTrack(TrackIndex track, const IChord *past,
     std::vector<int> noteoffs;
     std::vector<int> noteons;
     float noteonVelocity = velocity;
-    const auto it = m_tracks.find(track.value);
+    const auto it = m_tracks.find(track);
     if (it != m_tracks.end() && it->second.stepEnd)
     {
       // Mid-way through a timed step: the move waits for it to end.
@@ -1597,7 +1598,7 @@ OrchestrionSequencer::ProceedOnTrack(TrackIndex track, const IChord *past,
 
       if (strike && ornamented)
       {
-        TrackSchedule &entry = m_tracks[track.value];
+        TrackSchedule &entry = m_tracks[track];
         entry.generation = ++m_ornamentGeneration;
         noteons = Begin(track, entry, std::move(*strike), velocity, now);
         queued = entry.stepEnd.has_value();
@@ -1606,9 +1607,10 @@ OrchestrionSequencer::ProceedOnTrack(TrackIndex track, const IChord *past,
         // A plain chord, struck plainly: nothing to keep track of.
         noteons = strike->steps.front().pitches;
     }
-    AppendNoteoffs(events, noteoffs, track, noteons);
+    // A lane split off a track sounds on the track (see TrackIndex).
+    AppendNoteoffs(events, noteoffs, track.track(), noteons);
     if (!noteons.empty())
-      AppendNoteons(events, noteons, track, noteonVelocity);
+      AppendNoteons(events, noteons, track.track(), noteonVelocity);
   }
   if (queued)
     m.cv.notify_one();
@@ -1619,7 +1621,7 @@ void OrchestrionSequencer::OnOrnamentStepDue(OrnamentStepDue due)
 {
   auto &m = m_ornamentThreadMembers;
   std::unique_lock lock{m.mutex};
-  const auto it = m_tracks.find(due.track.value);
+  const auto it = m_tracks.find(due.track);
   if (it == m_tracks.end() || it->second.generation != due.generation)
     return; // cancelled, or struck anew, in the meantime
   TrackSchedule &entry = it->second;
@@ -1632,12 +1634,14 @@ void OrchestrionSequencer::OnOrnamentStepDue(OrnamentStepDue due)
   const auto silence = [&](const std::vector<int> &pitches)
   {
     for (const int pitch : pitches)
-      events.emplace_back(NoteEventType::noteOff, due.track, pitch, 0.f);
+      events.emplace_back(NoteEventType::noteOff, due.track.track(), pitch,
+                          0.f);
   };
   const auto sound = [&](const std::vector<int> &pitches, float velocity)
   {
     for (const int pitch : pitches)
-      events.emplace_back(NoteEventType::noteOn, due.track, pitch, velocity);
+      events.emplace_back(NoteEventType::noteOn, due.track.track(), pitch,
+                          velocity);
   };
 
   if (entry.move && (!entry.move->afterClosing || exhausted))
@@ -1686,7 +1690,7 @@ void OrchestrionSequencer::CancelOrnaments()
     std::unique_lock lock{m.mutex};
     for (const auto &[track, entry] : m_tracks)
       for (const int pitch : entry.sounding)
-        noteoffs.emplace_back(NoteEventType::noteOff, TrackIndex{track}, pitch,
+        noteoffs.emplace_back(NoteEventType::noteOff, track.track(), pitch,
                               0.f);
     m_tracks.clear();
     m.queue.clear();

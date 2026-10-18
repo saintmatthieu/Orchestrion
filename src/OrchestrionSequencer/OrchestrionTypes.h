@@ -50,6 +50,10 @@ class IRest;
 class IMelodySegment;
 
 using ChordRestPtr = std::shared_ptr<IMelodySegment>;
+/**
+ * A staff's voices, by voice index; a lane split off a voice (see TrackIndex)
+ * is keyed `voice + numVoices * lane`.
+ */
 using Staff = std::map<int /*voice*/, std::vector<ChordRestPtr>>;
 
 struct PastChord
@@ -137,11 +141,18 @@ template <typename T> const T *Get(const ChordTransition &transition)
   return std::get_if<T>(&transition);
 }
 
+/**
+ * A voice the sequencer plays: an engraved track, or one of the lanes split
+ * off it where its notes outlast one another (see SplitTiedVoices). A lane
+ * sounds and is engraved on its track: `value` is the track's, whatever the
+ * lane.
+ */
 struct TrackIndex
 {
   explicit TrackIndex(int value) : value{value} {}
 
-  TrackIndex(int staff, int voice) : value{staff * numVoices + voice}
+  TrackIndex(int staff, int voice, int lane = 0)
+      : value{staff * numVoices + voice}, lane{lane}
   {
     assert(value >= 0);
   }
@@ -149,12 +160,24 @@ struct TrackIndex
   TrackIndex() : value{-1} {}
 
   int value;
+  /** 0 for the track itself, from 1 for the lanes split off it. */
+  int lane = 0;
   int voiceIndex() const { return value % numVoices; }
   int staffIndex() const { return value / numVoices; }
+  /** The track, without the lane: what sounds and is engraved. */
+  TrackIndex track() const { return TrackIndex{value}; }
+  /** A number unique to the voice, lanes included. */
+  int id() const { return value + (lane << 16); }
 
-  bool operator==(const TrackIndex &rhs) const { return value == rhs.value; }
+  bool operator==(const TrackIndex &rhs) const
+  {
+    return value == rhs.value && lane == rhs.lane;
+  }
   bool operator!=(const TrackIndex &rhs) const { return !(*this == rhs); }
-  bool operator<(const TrackIndex &rhs) const { return value < rhs.value; }
+  bool operator<(const TrackIndex &rhs) const
+  {
+    return value != rhs.value ? value < rhs.value : lane < rhs.lane;
+  }
 };
 
 enum class NoteEventType

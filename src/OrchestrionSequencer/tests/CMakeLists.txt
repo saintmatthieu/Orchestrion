@@ -11,6 +11,10 @@ set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/ScoreEventsTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/ScoreEvents.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentGesture.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/TiedVoicesTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/TiedVoices.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/SplitChord.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/VoiceBlank.cpp
 )
 
 set(MODULE_TEST_LINK

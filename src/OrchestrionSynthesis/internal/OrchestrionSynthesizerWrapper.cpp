@@ -99,13 +99,12 @@ void OrchestrionSynthesizerWrapper::sendNoteoffs(const NoteEvent *noteoffs,
 {
   if (numNoteoffs == 0)
     return;
-  static_assert(sizeof(TrackIndex) == sizeof(int)); // FYI
   TrackIndex *const channels =
       (TrackIndex *)alloca(numNoteoffs * sizeof(TrackIndex));
   int *const pitches = (int *)alloca(numNoteoffs * sizeof(int));
   for (auto i = 0u; i < numNoteoffs; ++i)
   {
-    channels[i].value = noteoffs[i].track.value;
+    channels[i] = noteoffs[i].track.track();
     pitches[i] = noteoffs[i].pitch;
   }
   m_synthesizer->onNoteOffs(numNoteoffs, channels, pitches);
@@ -122,7 +121,7 @@ void OrchestrionSynthesizerWrapper::sendNoteons(const NoteEvent *noteons,
   float *const velocities = (float *)alloca(numNoteons * sizeof(float));
   for (auto i = 0u; i < numNoteons; ++i)
   {
-    channels[i].value = noteons[i].track.value;
+    channels[i] = noteons[i].track.track();
     pitches[i] = noteons[i].pitch;
     velocities[i] = noteons[i].velocity;
   }

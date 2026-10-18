@@ -25,6 +25,7 @@
 #include "OrnamentGesture.h"
 #include "OrnamentSchedule.h"
 #include "ScoreEvents.h"
+#include "TiedVoices.h"
 #include "VoiceBlank.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/masterscore.h"
@@ -39,6 +40,7 @@
 #include "engraving/dom/spanner.h"
 #include "engraving/dom/staff.h"
 #include "engraving/dom/textbase.h"
+#include "engraving/dom/tie.h"
 #include "engraving/dom/tremolotwochord.h"
 #include "notation/imasternotation.h"
 #include <algorithm>
@@ -397,12 +399,64 @@ double NominalTicksPerMs(const std::vector<const Staff *> &staves)
   return bpm * ticksPerQuarter / 60000.0;
 }
 
+/**
+ * The notes the chord strikes and where their ties end, following them into
+ * whichever voice; none for a chord SplitTiedVoices is to leave alone: an
+ * ornament's, or one an arpeggio spreads across the staves.
+ */
+std::vector<TiedNote> TiedNotes(const IChord &chord)
+{
+  namespace me = mu::engraving;
+  const me::Chord *engraved = chord.GetEngravingChord();
+  if (!dynamic_cast<const MuseChord *>(&chord) || !engraved ||
+      chord.GetOrnament() || !chord.GetGatheredChords().empty())
+    return {};
+  std::vector<TiedNote> notes;
+  for (me::Note *note : engraved->notes())
+  {
+    if (note->tieBack())
+      continue;
+    const me::Note *last = note;
+    while (const me::Tie *tie = last->tieFor())
+    {
+      const me::Note *next = tie->endNote();
+      if (!next)
+        break;
+      last = next;
+    }
+    Tick end = chord.GetBeginTick();
+    end += (last->chord()->tick() + last->chord()->actualTicks() -
+            engraved->tick())
+               .ticks();
+    notes.push_back({note->pitch(), note, end});
+  }
+  return notes;
+}
+
+/**
+ * Splits the staff's voices where their notes outlast one another (see
+ * SplitTiedVoices), keeping the segment registry up to date.
+ */
+void SplitVoices(Staff &staff, ISegmentRegistry &segmentRegistry)
+{
+  dgk::SplitTiedVoices(
+      staff, TiedNotes,
+      [&](const ChordRestPtr &part, const IMelodySegment &whole) {
+        segmentRegistry.RegisterSegment(part,
+                                        segmentRegistry.GetSegment(&whole));
+      },
+      [&](const IMelodySegment &dropped)
+      { segmentRegistry.UnregisterSegment(&dropped); });
+}
+
 auto MakeHand(size_t staffIdx, const Staff &staff)
 {
   OrchestrionSequencer::HandVoices hand;
   for (auto &[voice, sequence] : staff)
     hand.emplace_back(std::make_unique<VoiceSequencer>(
-        TrackIndex{static_cast<int>(staffIdx), voice}, std::move(sequence)));
+        TrackIndex{static_cast<int>(staffIdx), voice % numVoices,
+                   voice / numVoices},
+        std::move(sequence)));
   return hand;
 }
 } // namespace
@@ -438,6 +492,8 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
         !sequence.empty())
       leftHand.emplace(v, std::move(sequence));
   }
+  SplitVoices(rightHand, *segmentRegistry());
+  SplitVoices(leftHand, *segmentRegistry());
   auto pedalSequence = GetPedalSequence(score, staff, staff + 2);
 
   // What the Notes mode follows the performer along, staff by staff: the

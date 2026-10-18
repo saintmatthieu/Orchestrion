@@ -321,7 +321,7 @@ void OrchestrionNotationPaintView::OnTransitions(
       // The note on this track just ended. Instead of dropping its highlight
       // instantly, hand it to the fader so it fades out (while any new note
       // below lights up at full strength).
-      if (const auto it = m_boxes.find(track.value); it != m_boxes.end())
+      if (const auto it = m_boxes.find(track.id()); it != m_boxes.end())
       {
         m_fader.add(it->second);
         m_boxes.erase(it);
@@ -356,7 +356,7 @@ void OrchestrionNotationPaintView::OnTransitions(
     if (!next && present)
       if (const auto sequencer = orchestrion()->sequencer())
         next = sequencer->GetNextChord(track);
-    m_readingFocus.onTransition(track.staffIndex(), track.value,
+    m_readingFocus.onTransition(track.staffIndex(), track.id(),
                                 onsetOf(present), onsetOf(next));
 
     const auto thing = present ? present : future;
@@ -368,7 +368,7 @@ void OrchestrionNotationPaintView::OnTransitions(
       // Could be a voice blank, which isn't represented by an engraving segment
       continue;
     const std::vector<mu::engraving::EngravingItem *> items =
-        getRelevantItems(track, segment);
+        getRelevantItems(track, segment, thing->AsChord());
     const auto invisible = std::all_of(
         items.begin(), items.end(),
         [](const auto item)
@@ -395,7 +395,7 @@ void OrchestrionNotationPaintView::OnTransitions(
              getRelevantItems(TrackIndex{static_cast<int>(gathered->track())},
                               gathered->segment()))
           boxRect = boxRect.united(item->pageBoundingRect());
-    Highlight &box = m_boxes[track.value];
+    Highlight &box = m_boxes[track.id()];
     box.rect =
         boxRect.toQRectF().adjusted(-spatium, -spatium, spatium, spatium);
     box.spatium = spatium;
@@ -1030,12 +1030,17 @@ void OrchestrionNotationPaintView::centerOn(double logicalX)
 
 std::vector<mu::engraving::EngravingItem *>
 OrchestrionNotationPaintView::getRelevantItems(
-    TrackIndex track, const mu::engraving::Segment *segment) const
+    TrackIndex track, const mu::engraving::Segment *segment,
+    const IChord *played) const
 {
   const auto chord =
       dynamic_cast<const mu::engraving::Chord *>(segment->element(track.value));
   using NoteVector = std::vector<mu::engraving::Note *>;
-  const NoteVector notes = chord ? chord->notes() : NoteVector{};
+  NoteVector notes = chord ? chord->notes() : NoteVector{};
+  // A chord played in part (see SplitChord) shows its part only.
+  if (played)
+    if (auto own = played->GetEngravingNotes(); !own.empty())
+      notes = std::move(own);
   std::vector<mu::engraving::EngravingItem *> items;
   std::for_each(notes.begin(), notes.end(),
                 [&](mu::engraving::Note *note)

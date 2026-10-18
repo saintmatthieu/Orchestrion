@@ -377,7 +377,7 @@ private:
   ThreadMembers<OrnamentStepDue> m_ornamentThreadMembers;
   //! The tracks with a struck chord on record: every ornamented one, and a
   //! plain one struck while an ornament was under way.
-  std::map<int /*track*/, TrackSchedule> m_tracks;
+  std::map<TrackIndex, TrackSchedule> m_tracks;
   unsigned m_ornamentGeneration = 0;
   std::thread m_pedalThread;
   std::thread m_noteThread;

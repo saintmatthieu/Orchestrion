@@ -26,6 +26,7 @@
 namespace mu::engraving
 {
 class Chord;
+class Note;
 } // namespace mu::engraving
 
 namespace dgk
@@ -60,6 +61,16 @@ public:
   //! on-screen element back to its chord), or nullptr if it no longer
   //! resolves.
   virtual const mu::engraving::Chord *GetEngravingChord() const = 0;
+
+  /**
+   * The engraved notes the chord strikes, for showing it: its engraving
+   * chord's, or the part of them it was split into (see SplitChord). Empty if
+   * it has no notes of its own to show.
+   */
+  virtual std::vector<mu::engraving::Note *> GetEngravingNotes() const
+  {
+    return {};
+  }
 
   /**
    * The other staves' engraved chords this chord plays too — an arpeggio

@@ -67,6 +67,7 @@ private:
   const Ornament *GetOrnament() const override;
   double GetNominalBpm() const override;
   const mu::engraving::Chord *GetEngravingChord() const override;
+  std::vector<mu::engraving::Note *> GetEngravingNotes() const override;
   std::vector<const mu::engraving::Chord *> GetGatheredChords() const override;
   std::optional<RollDirection> GetRoll() const override;
 

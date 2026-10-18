@@ -434,9 +434,14 @@ private:
   void dragLoopBoundaryTo(const muse::PointF &logicPos);
   void updateHoveredNoteInfo(const QPointF &itemPos);
   void setHoveredNoteInfo(const QString &info, const QPointF &itemPos);
+  /**
+   * What shows the thing at the segment on the track: its notes and their
+   * ties, or the rests it spans. `played` restricts a chord to the notes the
+   * sequencer plays it with (see IChord::GetEngravingNotes).
+   */
   std::vector<mu::engraving::EngravingItem *>
-  getRelevantItems(TrackIndex track,
-                   const mu::engraving::Segment *segment) const;
+  getRelevantItems(TrackIndex track, const mu::engraving::Segment *segment,
+                   const IChord *played = nullptr) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
   //! Per rendered frame: advance the scroll and the estimate, and sample the
   //! debug tempo strip.

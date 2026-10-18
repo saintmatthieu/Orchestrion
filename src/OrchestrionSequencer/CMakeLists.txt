@@ -39,10 +39,14 @@ set(MODULE_SRC
     internal/PerformanceFollower.h
     internal/ScoreEvents.cpp
     internal/ScoreEvents.h
+    internal/SplitChord.cpp
+    internal/SplitChord.h
     internal/StaffModes.cpp
     internal/StaffModes.h
     internal/VisibleScore.cpp
     internal/VisibleScore.h
+    internal/TiedVoices.cpp
+    internal/TiedVoices.h
     internal/VoiceBlank.cpp
     internal/VoiceBlank.h
     internal/VoiceSequencer.cpp

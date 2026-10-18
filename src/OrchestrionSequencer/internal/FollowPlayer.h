@@ -78,7 +78,7 @@ private:
 
   IOrchestrionSequencer &m_sequencer;
   const IOrchestrionPlayer &m_player;
-  std::map<int /*track value*/, Targets> m_trackTargets;
+  std::map<TrackIndex, Targets> m_trackTargets;
   std::map<int /*staff*/, Targets> m_staffTargets;
   /** There was no estimate to follow last time the targets were polled. */
   bool m_awaitsTempo = true;
