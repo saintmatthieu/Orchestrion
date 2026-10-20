@@ -22,6 +22,7 @@
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
 
 #include <global/modularity/ioc.h>
+#include <importexport/musicxml/imusicxmlconfiguration.h>
 #include <project/iprojectconfiguration.h>
 #include <ui/internal/guiapplication.h>
 
@@ -36,6 +37,8 @@ class OrchestrionApp : public muse::ui::GuiApplication
 {
   muse::GlobalInject<mu::project::IProjectConfiguration> projectConfiguration;
   muse::GlobalInject<IOrchestrionStartupScenario> startupScenario;
+  muse::GlobalInject<mu::iex::musicxml::IMusicXmlConfiguration>
+      musicXmlConfiguration;
 
 public:
   explicit OrchestrionApp(const std::shared_ptr<CommandOptions> &options);

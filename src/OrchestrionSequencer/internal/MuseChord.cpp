@@ -19,7 +19,6 @@
 #include "MuseChord.h"
 #include "MuseOrnament.h"
 #include "engraving/dom/chord.h"
-#include "engraving/dom/tremolotwochord.h"
 #include "engraving/dom/dynamic.h"
 #include "engraving/dom/hairpin.h"
 #include "engraving/dom/mscore.h"
@@ -32,6 +31,7 @@
 #include "engraving/dom/spannermap.h"
 #include "engraving/dom/staff.h"
 #include "engraving/dom/tie.h"
+#include "engraving/dom/tremolotwochord.h"
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -183,13 +183,17 @@ float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
     }
     else if (chordTick >= from)
     {
-      // Active over this chord: interpolate toward its terminal dynamic if it
-      // agrees with the hairpin's direction, else toward the open target.
-      const auto endLevel = EndDynamic(segment, staffIdx, part, to);
-      const int target =
-          endLevel && (crescendo ? *endLevel > level : *endLevel < level)
-              ? *endLevel
-              : openTarget;
+      // Active over this chord: interpolate toward its terminal dynamic, or
+      // toward the open target if it has none.
+      int target = openTarget;
+      if (const auto endLevel = EndDynamic(segment, staffIdx, part, to))
+      {
+        const bool agrees = crescendo ? *endLevel > level : *endLevel < level;
+        // A terminal dynamic contradicting the hairpin's direction (a
+        // crescendo from f to p) makes it meaningless: hold the level until
+        // that dynamic takes over.
+        target = agrees ? *endLevel : level;
+      }
       const float fraction =
           static_cast<float>(chordTick - from) / static_cast<float>(to - from);
       level = static_cast<int>(level + fraction * (target - level) + 0.5f);
@@ -201,6 +205,11 @@ float ComputeDynamicVelocity(const me::Segment &segment, TrackIndex track)
   return static_cast<float>(level) / 127.f;
 }
 } // namespace
+
+std::vector<me::Note *> MuseChord::GetEngravingNotes() const
+{
+  return GetNotes();
+}
 
 std::vector<me::Note *> MuseChord::GetNotes() const
 {

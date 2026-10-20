@@ -18,12 +18,12 @@
  */
 #include "OrchestrionApp.h"
 
+#include <QCoreApplication>
 #include <audioplugins/iregisteraudiopluginsscenario.h>
 #include <engraving/dom/mscore.h>
 #include <engraving/types/constants.h>
 #include <log.h>
 #include <project/types/migrationtypes.h>
-#include <QCoreApplication>
 
 namespace dgk
 {
@@ -70,6 +70,14 @@ void OrchestrionApp::applyCommandLineOptions(
   //! NOTE Don't write to settings, just on current session
   for (mu::project::MigrationType type : mu::project::allMigrationTypes())
     projectConfiguration()->setMigrationOptions(type, migration, false);
+
+  // Let the MusicXML import turn text into what it means: "cresc."/"dim."
+  // into crescendo/diminuendo lines reaching the next dynamic (which the
+  // sequencer's score dynamics follow), "p"/"f" into dynamics, tempo words into
+  // tempo markings. MuseScore leaves this off by default; Orchestrion has no
+  // UI for that setting, so it's set for the session only.
+  musicXmlConfiguration()->setInferTextTypeOverride(
+      options->importMusicXML.inferTextType.value_or(true));
 }
 
 QString OrchestrionApp::mainWindowQmlPath(const QString &) const
