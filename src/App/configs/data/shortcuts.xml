@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Shortcuts>
   <SC>
-    <key>orchestrion-file-open</key>
+    <key>orchestrion-browse-scores</key>
     <std>3</std>
     <autorepeat>0</autorepeat>
   </SC>

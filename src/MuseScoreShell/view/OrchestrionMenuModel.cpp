@@ -246,6 +246,9 @@ muse::uicomponents::MenuItem *
 OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
 {
   QList<muse::uicomponents::MenuItem *> menu{
+      makeMenuItem(
+          actionIds::browseScores,
+          muse::TranslatableString("appshell/menu/file", "&Browse scores…")),
       makeMenuItem("orchestrion-file-open",
                    muse::TranslatableString("appshell/menu/file",
                                             "Open from &computer…")),

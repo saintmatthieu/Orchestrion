@@ -112,6 +112,12 @@ ApplicationWindow {
         id: scoreHeading
     }
 
+    ScoreShelfModel {
+        id: scoreShelfModel
+        Component.onCompleted: load()
+        onOpenRequested: scoreShelf.open()
+    }
+
     MainWindowBridge {
         id: bridge
         window: root
@@ -280,6 +286,10 @@ ApplicationWindow {
                     viewHeight: parent.height
                     title: scoreHeading.scoreTitle
                     subtitle: scoreHeading.scoreComposer
+                    // The way to the other scores.
+                    titleClickable: true
+                    titleHintShown: notationPaintView.controlsVisible
+                    onTitleClicked: scoreShelf.open()
                 }
 
                 BackdropOrnament {
@@ -577,6 +587,14 @@ ApplicationWindow {
                         enabled: scoreBanner.visible
                         onActivated: notationPaintView.dismissFinalScore()
                     }
+                }
+
+                // Every score one can open, over everything else in the view.
+                ScoreShelf {
+                    id: scoreShelf
+                    anchors.fill: parent
+                    z: 150
+                    model: scoreShelfModel
                 }
 
                 // Post-take tuning panel: the tempo model's smoothing memory.

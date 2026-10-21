@@ -28,6 +28,10 @@ static const std::unordered_map<DeviceType, const char *> chooseDevicesSubmenu =
      {DeviceType::MidiSynthesizer, "chooseMidiSynthesizerSubmenu"},
      {DeviceType::PlaybackDevice, "choosePlaybackDeviceSubmenu"}};
 
+//! File menu: shows the score shelf, the overlay of the scores one can open
+//! (also opened by clicking the score's title).
+static constexpr const char *browseScores = "orchestrion-browse-scores";
+
 static constexpr const char *loopIn = "orchestrion-loop-in";
 static constexpr const char *loopOut = "orchestrion-loop-out";
 

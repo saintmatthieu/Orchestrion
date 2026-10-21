@@ -31,6 +31,8 @@ muse::ui::UiActionList makeActions(
         &managers)
 {
   muse::ui::UiActionList actions{
+      muse::ui::UiAction(actionIds::browseScores, mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-file-open", mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction("orchestrion-search-musescore", mu::context::UiCtxAny,

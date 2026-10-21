@@ -12,6 +12,7 @@
     <file>src/qml/AttributionToast.qml</file>
     <file>src/qml/MidiKeyboardIcon.qml</file>
     <file>src/qml/BackdropOrnament.qml</file>
+    <file>src/qml/ScoreShelf.qml</file>
     <file>src/qml/MacMenuBar.qml</file>
     <file>src/qml/MacWindowChrome.qml</file>
     <file>src/qml/OrchestrionTitleBar.qml</file>

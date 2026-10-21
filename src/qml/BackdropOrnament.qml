@@ -36,13 +36,24 @@ Item {
     property string title: ""
     // Shown centred under the title, smaller. Ignored without a title.
     property string subtitle: ""
+    // Whether the title (with its subtitle) is a button: it then lights up
+    // under the mouse and emits titleClicked().
+    property bool titleClickable: false
+    // Shows the chevron under the title that says it opens something, as the
+    // other controls do on mouse activity (it also shows on hover).
+    property bool titleHintShown: false
+
+    signal titleClicked()
+
+    readonly property bool titleHovered: titleMouse.containsMouse
 
     // The view the ornament decorates; the rules span a fixed fraction of its
     // width and the title scales with its height.
     property real viewWidth: parent ? parent.width : 800
     property real viewHeight: parent ? parent.height : 600
 
-    readonly property color metal: Theme.metal
+    readonly property color metal: root.titleHovered ? Theme.metalBright
+                                                     : Theme.metal
     readonly property real gap: 12
     readonly property real diamondHalf: 5
     // Each rule, so that the plain ornament spans 32 % of the view.
@@ -168,5 +179,34 @@ Item {
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
         renderType: Text.NativeRendering
+    }
+
+    // Under the title (or its subtitle): what clicking it does.
+    Text {
+        id: chevron
+        anchors.top: root.hasSubtitle ? subtitleText.bottom : row.bottom
+        anchors.topMargin: Math.round(root.titlePixelSize * 0.15)
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: opacity > 0
+        opacity: root.titleClickable && root.hasTitle
+                 && (root.titleHintShown || root.titleHovered) ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 250 } }
+        text: "\u25BE"
+        color: root.metal
+        font.pixelSize: Math.max(11, Math.round(root.titlePixelSize * 0.5))
+    }
+
+    // The title, its diamonds and the subtitle.
+    MouseArea {
+        id: titleMouse
+        enabled: root.titleClickable && root.hasTitle
+        x: row.x + titleText.x - root.gap - 2 * root.diamondHalf
+        y: row.y
+        width: titleText.width + 2 * (root.gap + 2 * root.diamondHalf)
+        height: (chevron.visible ? chevron.y + chevron.height : root.inkBottom)
+                - row.y
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.titleClicked()
     }
 }

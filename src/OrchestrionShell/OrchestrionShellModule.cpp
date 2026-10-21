@@ -40,6 +40,7 @@
 #include "view/PlaybackButtonModel.h"
 #include "view/ScoreAttributionModel.h"
 #include "view/ScoreHeadingModel.h"
+#include "view/ScoreShelfModel.h"
 
 #include <QQmlEngine>
 
@@ -92,6 +93,8 @@ void OrchestrionShellModule::registerUiTypes()
                                        "PedalIndicatorModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "ScoreAttributionModel");
+  qmlRegisterType<ScoreShelfModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                   "ScoreShelfModel");
   // The palette, which the `Theme` QML singleton forwards to. A singleton
   // rather than a type: every binding on it has to see the same instance so
   // that one theme switch re-evaluates them all.

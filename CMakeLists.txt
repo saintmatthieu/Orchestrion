@@ -226,6 +226,7 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/AttributionToast.qml"
     QML_FILES "src/qml/MidiKeyboardIcon.qml"
     QML_FILES "src/qml/BackdropOrnament.qml"
+    QML_FILES "src/qml/ScoreShelf.qml"
     QML_FILES "src/qml/MacMenuBar.qml"
     QML_FILES "src/qml/MacWindowChrome.qml"
     QML_FILES "src/qml/OrchestrionTitleBar.qml"

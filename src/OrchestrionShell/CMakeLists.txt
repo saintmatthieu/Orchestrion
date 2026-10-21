@@ -18,6 +18,10 @@ set(MODULE_SRC
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
   internal/MuseScorePlaceholderMetaTags.h
+  internal/FuzzySearch.cpp
+  internal/FuzzySearch.h
+  internal/ScoreIncipitCache.cpp
+  internal/ScoreIncipitCache.h
   internal/ScoreTitles.cpp
   internal/ScoreTitles.h
   internal/SleepInhibitor.cpp
@@ -46,6 +50,8 @@ set(MODULE_SRC
   view/PlaybackButtonModel.h
   view/ScoreAttributionModel.cpp
   view/ScoreAttributionModel.h
+  view/ScoreShelfModel.cpp
+  view/ScoreShelfModel.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   OrchestrionShellModule.cpp
