@@ -21,10 +21,32 @@
 #include <QInputMethod>
 #include <QKeyEvent>
 #include <QLocale>
+#include <QQuickItem>
 #include <global/settings.h>
 
 namespace dgk
 {
+namespace
+{
+/**
+ * Whether the keys are meant for something other than playing: a text field
+ * (such as the score shelf's search box), or a panel that says so with a
+ * `suppressesGestureKeys` property (such as the score shelf, whose keys
+ * choose a score).
+ */
+bool keysAreForSomethingElse()
+{
+  const auto item = qobject_cast<const QQuickItem *>(qApp->focusObject());
+  if (item && item->flags().testFlag(QQuickItem::ItemAcceptsInputMethod))
+    return true;
+  for (const QQuickItem *ancestor = item; ancestor;
+       ancestor = ancestor->parentItem())
+    if (ancestor->property("suppressesGestureKeys").toBool())
+      return true;
+  return false;
+}
+} // namespace
+
 ComputerKeyboardImpl::ComputerKeyboardImpl(ComputerKeyboard &owner)
     : QObject{nullptr}, m_owner(owner)
 {
@@ -41,7 +63,9 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
       modifiers & Qt::KeyboardModifier::ShiftModifier;
   if (!isKeyModifierPressed)
   {
-    if (event->type() == QEvent::KeyPress)
+    // Only the presses: a key held when the focus moved must still be
+    // released.
+    if (event->type() == QEvent::KeyPress && !keysAreForSomethingElse())
     {
       auto keyEvent = static_cast<const QKeyEvent *>(event);
       if (keyEvent->isAutoRepeat())
@@ -64,10 +88,7 @@ ComputerKeyboard::ComputerKeyboard()
 {
 }
 
-void ComputerKeyboard::preInit()
-{
-  m_impl->init();
-}
+void ComputerKeyboard::preInit() { m_impl->init(); }
 
 void ComputerKeyboard::onKeyPressed(char letter) { m_keyPressed.send(letter); }
 
