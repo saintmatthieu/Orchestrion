@@ -44,18 +44,16 @@ OrchestrionOnboardingModel::getFileOpenArgs(
 {
   if (projectFile.url.isEmpty())
   {
-    const muse::io::path_t path =
-        globalConfiguration()->appDataPath() + "scores/AVE_MARIA.mscz";
-    // "/scores/Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mscz";
+    const muse::io::path_t path = globalConfiguration()->appDataPath() +
+                                  "scores/Nocturne Op. 9 No. 2.mscz";
     IF_ASSERT_FAILED(fileExists(path.toStdString()))
     {
       LOGE() << "File not found: " << path;
       return std::nullopt;
     }
-    QUrl url{QString::fromStdString(path.toStdString())};
-    url.setScheme("file");
+    // No display name: the score's own title is the one shown.
     return muse::actions::ActionData::make_arg2<QUrl, QString>(
-        url, QString{"Chopin - Nocturne Op 9 No 2 E Flat Major"});
+        QUrl::fromLocalFile(path.toQString()), QString{});
   }
   else
     return muse::actions::ActionData::make_arg2<QUrl, QString>(

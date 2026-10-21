@@ -111,18 +111,20 @@ minuet = [
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "scores"
+    # The file names are what the File menu lists, and they sort the shelf.
+    k265 = f"{out}/Ah vous dirai-je, Maman"
     write_mxl(
-        f"{out}/mozart-12-variations-on-ah-vous-dirai-je-maman-k265.mxl",
+        f"{k265} - 12 Variations.mxl",
         score_xml('12 Variations on "Ah vous dirai-je, Maman", K. 265', "Wolfgang Amadeus Mozart", 0, "major", 2, kv265.measures(), rights="Public domain"),
     )
     write_mxl(
-        f"{out}/mozart-k265-variation-00.mxl",
+        f"{k265} - Theme.mxl",
         score_xml('Theme of "Ah vous dirai-je, Maman", K. 265', "Wolfgang Amadeus Mozart", 0, "major", 2, kv265.labelled_theme(), rights="Public domain"),
     )
     for n in range(1, 13):
         v = kv265.variation(n)
         write_mxl(
-            f"{out}/mozart-k265-variation-{n:02d}.mxl",
+            f"{k265} - Variation {n}.mxl",
             score_xml(
                 f'Variation {kv265.ROMAN[n - 1]} on "Ah vous dirai-je, Maman", K. 265',
                 "Wolfgang Amadeus Mozart",
@@ -133,6 +135,6 @@ if __name__ == "__main__":
                 beat_type=v.TIME[1],
             ),
         )
-    write_mxl(f"{out}/ode-to-joy.mxl", score_xml("Ode to Joy", "Ludwig van Beethoven", 2, "major", 4, ode))
-    write_mxl(f"{out}/minuet-in-g-major-bwv-anh-114.mxl", score_xml("Minuet in G major, BWV Anh. 114", "Christian Petzold", 1, "major", 3, minuet, rights="Public domain"))
-    write_mxl(f"{out}/greensleeves.mxl", score_xml("Greensleeves", "Traditional", 0, "minor", 3, greensleeves, implicit_pickup=True))
+    write_mxl(f"{out}/Ode to Joy.mxl", score_xml("Ode to Joy", "Ludwig van Beethoven", 2, "major", 4, ode))
+    write_mxl(f"{out}/Minuet in G major, BWV Anh. 114.mxl", score_xml("Minuet in G major, BWV Anh. 114", "Christian Petzold", 1, "major", 3, minuet, rights="Public domain"))
+    write_mxl(f"{out}/Greensleeves.mxl", score_xml("Greensleeves", "Traditional", 0, "minor", 3, greensleeves, implicit_pickup=True))

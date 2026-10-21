@@ -1,91 +1,85 @@
 {
   "_comment": "Maps a bundled score's file name to the attribution that must be shown when it is opened. To mark a score as needing attribution, add an entry keyed by its file name (as it appears in the scores/ directory). 'author' is required; 'license' and 'url' are optional.",
 
-  "comptine-dun-autre-ete-lapres-midi-yann-tiersen.mxl": {
-    "author": "Felix Rivera",
-    "license": "Creative Commons",
-    "url": "https://musescore.com/user/73423858"
-  },
-
-  "mozart-12-variations-on-ah-vous-dirai-je-maman-k265.mxl": {
+  "Ah vous dirai-je, Maman - 12 Variations.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-00.mxl": {
+  "Ah vous dirai-je, Maman - Theme.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-01.mxl": {
+  "Ah vous dirai-je, Maman - Variation 1.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-02.mxl": {
+  "Ah vous dirai-je, Maman - Variation 2.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-03.mxl": {
+  "Ah vous dirai-je, Maman - Variation 3.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-04.mxl": {
+  "Ah vous dirai-je, Maman - Variation 4.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-05.mxl": {
+  "Ah vous dirai-je, Maman - Variation 5.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-06.mxl": {
+  "Ah vous dirai-je, Maman - Variation 6.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-07.mxl": {
+  "Ah vous dirai-je, Maman - Variation 7.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-08.mxl": {
+  "Ah vous dirai-je, Maman - Variation 8.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-09.mxl": {
+  "Ah vous dirai-je, Maman - Variation 9.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-10.mxl": {
+  "Ah vous dirai-je, Maman - Variation 10.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-11.mxl": {
+  "Ah vous dirai-je, Maman - Variation 11.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"
   },
 
-  "mozart-k265-variation-12.mxl": {
+  "Ah vous dirai-je, Maman - Variation 12.mxl": {
     "author": "W. A. Mozart, after the Breitkopf & Härtel edition (1878)",
     "license": "Public Domain",
     "url": "https://imslp.org/wiki/12_Variations_on_'Ah,_vous_dirai-je_maman',_K.265/300e_(Mozart,_Wolfgang_Amadeus)"

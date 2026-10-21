@@ -18,6 +18,7 @@
  */
 #include "OrchestrionMenuModel.h"
 #include "OrchestrionActionIds.h"
+#include "OrchestrionCommon/BundledScores.h"
 #include "OrchestrionCommon/OrchestrionPalette.h"
 #include "log.h"
 #include "types/translatablestring.h"
@@ -359,10 +360,7 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeExampleScoresSubmenu()
 
   const auto scoreDir =
       globalConfiguration()->appDataPath().toQString() + "scores/";
-  const QDir dir(scoreDir);
-  const auto entries =
-      dir.entryInfoList({"*.mscz", "*.mscx", "*.mxl", "*.musicxml", "*.xml"},
-                        QDir::Files, QDir::Name);
+  const QFileInfoList entries = bundledScores(scoreDir);
 
   QList<MenuItem *> items;
   int index = 0;
