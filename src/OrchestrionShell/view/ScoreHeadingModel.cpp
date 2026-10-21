@@ -20,34 +20,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ScoreHeadingModel.h"
-#include "OrchestrionShell/internal/MuseScorePlaceholderMetaTags.h"
-#include "io/path.h"
+#include "OrchestrionShell/internal/ScoreTitles.h"
 #include <project/inotationproject.h>
 #include <project/types/projectmeta.h>
 
-#include <QStringList>
-#include <algorithm>
-#include <iterator>
-
 namespace dgk
 {
-namespace
-{
-//! Whether `text` is one of MuseScore's new-score placeholder texts (in any
-//! language), i.e. a meta tag the author never actually filled in.
-template <size_t N>
-bool isPlaceholder(const QString &text,
-                   const char16_t *const (&placeholders)[N])
-{
-  return std::any_of(std::begin(placeholders), std::end(placeholders),
-                     [&](const char16_t *placeholder)
-                     {
-                       return text.compare(QString::fromUtf16(placeholder),
-                                           Qt::CaseInsensitive) == 0;
-                     });
-}
-} // namespace
-
 ScoreHeadingModel::ScoreHeadingModel(QObject *parent) : QObject(parent) {}
 
 void ScoreHeadingModel::load()
@@ -102,30 +80,11 @@ void ScoreHeadingModel::update()
   }
 
   const mu::project::ProjectMeta meta = project->metaInfo();
-  QString scoreTitle = meta.title.simplified();
-  if (isPlaceholder(scoreTitle, musescore_placeholders::titles))
-    scoreTitle.clear();
-  if (scoreTitle.isEmpty())
-  {
-    // Untitled score: fall back to the file name, made presentable — no
-    // extension, and the underscores that stand for spaces in downloaded
-    // scores turned back into spaces.
-    scoreTitle = muse::io::completeBasename(project->path())
-                     .toQString()
-                     .replace('_', ' ')
-                     .simplified();
-  }
-  if (scoreTitle.isEmpty())
-    scoreTitle = project->displayName();
-  setScoreTitle(scoreTitle);
-  // Multi-line tags ("Music: X\nArrangement: Y") go on the one line the
-  // ornament offers, separated rather than run together.
-  QStringList composerLines;
-  for (const QString &line : meta.composer.split('\n'))
-    if (const QString simplified = line.simplified();
-        !simplified.isEmpty() &&
-        !isPlaceholder(simplified, musescore_placeholders::composers))
-      composerLines << simplified;
-  setScoreComposer(composerLines.join(QStringLiteral(" \u00B7 ")));
+  // Qualified: the members of the same names would hide them.
+  QString title = dgk::scoreTitle(meta, project->path());
+  if (title.isEmpty())
+    title = project->displayName();
+  setScoreTitle(title);
+  setScoreComposer(dgk::scoreComposer(meta));
 }
 } // namespace dgk

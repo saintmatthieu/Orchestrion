@@ -18,6 +18,8 @@ set(MODULE_SRC
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
   internal/MuseScorePlaceholderMetaTags.h
+  internal/ScoreTitles.cpp
+  internal/ScoreTitles.h
   internal/SleepInhibitor.cpp
   internal/SleepInhibitor.h
   internal/SynthesizerMenuManager.cpp
