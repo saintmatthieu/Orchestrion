@@ -199,6 +199,29 @@ Item {
         }
     }
 
+    // A page is what shows between the fades, so that the cards half hidden
+    // under one come out whole.
+    function scrollPage(direction) {
+        const page = flick.height - 2 * cardsArea.fadeHeight
+        const from = scrollAnimation.running ? scrollAnimation.to : flick.contentY
+        const target = Math.max(0, Math.min(from + direction * page,
+                                             flick.contentHeight - flick.height))
+        if (target !== flick.contentY) {
+            scrollAnimation.to = target
+            scrollAnimation.restart()
+        }
+    }
+    Shortcut {
+        sequences: [StandardKey.MoveToPreviousPage]
+        enabled: root.shown
+        onActivated: root.scrollPage(-1)
+    }
+    Shortcut {
+        sequences: [StandardKey.MoveToNextPage]
+        enabled: root.shown
+        onActivated: root.scrollPage(1)
+    }
+
     Shortcut {
         sequences: [StandardKey.Find]
         enabled: root.shown
