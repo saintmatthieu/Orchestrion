@@ -57,6 +57,8 @@ const muse::Settings::Key
     MIDI_KEYBOARD_ICON_VISIBLE(module_name, "MIDI_KEYBOARD_ICON_VISIBLE");
 const muse::Settings::Key PEDAL_INDICATOR_VISIBLE(module_name,
                                                   "PEDAL_INDICATOR_VISIBLE");
+const muse::Settings::Key BAR_NUMBERS_VISIBLE(module_name,
+                                              "BAR_NUMBERS_VISIBLE");
 const muse::Settings::Key ORNAMENT_MODE(module_name, "ORNAMENT_MODE");
 } // namespace
 
@@ -164,6 +166,12 @@ void OrchestrionSequencerConfiguration::init()
       ->valueChanged(PEDAL_INDICATOR_VISIBLE)
       .onReceive(this, [this](const muse::Val &)
                  { m_pedalIndicatorVisibleChanged.notify(); });
+
+  muse::settings()->setDefaultValue(BAR_NUMBERS_VISIBLE, muse::Val{true});
+  muse::settings()
+      ->valueChanged(BAR_NUMBERS_VISIBLE)
+      .onReceive(this, [this](const muse::Val &)
+                 { m_barNumbersVisibleChanged.notify(); });
 
   muse::settings()->setDefaultValue(
       ORNAMENT_MODE, muse::Val{static_cast<int>(OrnamentMode::automatic)});
@@ -341,7 +349,6 @@ OrchestrionSequencerConfiguration::dynamicsScoreEnabledChanged() const
   return m_dynamicsScoreEnabledChanged;
 }
 
-
 bool OrchestrionSequencerConfiguration::timeProportionalSpacingEnabled() const
 {
   return muse::settings()->value(TIME_PROPORTIONAL_SPACING_ENABLED).toBool();
@@ -434,6 +441,22 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::pedalIndicatorVisibleChanged() const
 {
   return m_pedalIndicatorVisibleChanged;
+}
+
+bool OrchestrionSequencerConfiguration::barNumbersVisible() const
+{
+  return muse::settings()->value(BAR_NUMBERS_VISIBLE).toBool();
+}
+
+void OrchestrionSequencerConfiguration::setBarNumbersVisible(bool visible)
+{
+  muse::settings()->setSharedValue(BAR_NUMBERS_VISIBLE, muse::Val{visible});
+}
+
+muse::async::Notification
+OrchestrionSequencerConfiguration::barNumbersVisibleChanged() const
+{
+  return m_barNumbersVisibleChanged;
 }
 
 OrnamentMode OrchestrionSequencerConfiguration::ornamentMode() const

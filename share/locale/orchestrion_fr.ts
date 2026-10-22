@@ -454,6 +454,11 @@
     </message>
     <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
+        <source>&amp;Bar numbers</source>
+        <translation>&amp;Numéros de mesure</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
         <source>&amp;Theme</source>
         <translation>&amp;Thème</translation>
     </message>

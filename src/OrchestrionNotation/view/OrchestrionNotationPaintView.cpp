@@ -38,13 +38,13 @@
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/measure.h>
 #include <engraving/dom/note.h>
-#include <engraving/rendering/iscorerenderer.h>
-#include <engraving/rendering/paintoptions.h>
 #include <engraving/dom/repeatlist.h>
 #include <engraving/dom/segment.h>
 #include <engraving/dom/staff.h>
 #include <engraving/dom/system.h>
 #include <engraving/dom/tie.h>
+#include <engraving/rendering/iscorerenderer.h>
+#include <engraving/rendering/paintoptions.h>
 #include <engraving/types/constants.h>
 #include <notation/imasternotation.h>
 #include <notation/inotation.h>
@@ -1787,6 +1787,14 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
       sequencerConfiguration()->timeProportionalSpacingEnabled());
   sequencerConfiguration()->timeProportionalSpacingEnabledChanged().onNotify(
       this, applyGradingMode);
+  sequencerConfiguration()->barNumbersVisibleChanged().onNotify(
+      this,
+      [this]
+      {
+        if (const auto notation = this->notation())
+          applyBarNumbers(*notation);
+        update();
+      });
   sequencerConfiguration()->gradingEnabledChanged().onNotify(this,
                                                              applyGradingMode);
 
@@ -1861,6 +1869,7 @@ void OrchestrionNotationPaintView::updateNotation()
   m_tempoVizModel.clear();
   if (const auto notation = globalContext()->currentNotation())
   {
+    applyBarNumbers(*notation);
     // Time-proportional spacing uses MuseScore's duration-proportional
     // layout (with the fork's global quantum), so equal horizontal distance
     // = equal musical time — the canvas for the tempo-warped note overlays.
@@ -1904,6 +1913,32 @@ void OrchestrionNotationPaintView::updateNotation()
   m_stripsDirty = true;
   emit smoothingTunerVisibleChanged();
   update();
+}
+
+void OrchestrionNotationPaintView::applyBarNumbers(
+    mu::notation::INotation &notation)
+{
+  // The score is one endless system, so the default "number the first bar
+  // of each system" would number none: when shown, every bar is numbered.
+  // Set on the style directly, not through the undo stack — a display
+  // choice, not a modification of the user's score.
+  mu::engraving::Score *const score = notation.elements()->msScore();
+  if (!score)
+    return;
+  using mu::engraving::Sid;
+  const bool visible = sequencerConfiguration()->barNumbersVisible();
+  mu::engraving::MStyle &style = score->style();
+  if (style.styleB(Sid::showMeasureNumber) == visible &&
+      !style.styleB(Sid::measureNumberSystem) &&
+      style.styleI(Sid::measureNumberInterval) == 1)
+    return;
+  style.set(Sid::showMeasureNumber, visible);
+  style.set(Sid::measureNumberSystem, false);
+  style.set(Sid::measureNumberInterval, 1);
+  score->doLayout();
+  // As NotationStyle::setStyleValue does after its undoable change: the
+  // notation then tells its observers it changed (repaint, re-centring).
+  notation.style()->styleChanged().notify();
 }
 
 void OrchestrionNotationPaintView::setViewMode(mu::notation::ViewMode mode)

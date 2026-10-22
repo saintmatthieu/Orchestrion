@@ -19,10 +19,10 @@
 #pragma once
 
 #include "HighlightFader.h"
-#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "ILoopBoundariesController.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
 #include "KineticScroller.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer/IStaffModes.h"
@@ -125,10 +125,12 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   Q_PROPERTY(double titleClearance READ titleClearance WRITE setTitleClearance
                  NOTIFY titleClearanceChanged)
 
-  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{this};
+  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
+      this};
   dgk::Inject<ILoopBoundariesController> loopBoundariesController{this};
   dgk::Inject<mu::notation::INotationConfiguration> configuration{this};
-  dgk::Inject<mu::notation::INotationContextConfiguration> contextConfiguration{this};
+  dgk::Inject<mu::notation::INotationContextConfiguration> contextConfiguration{
+      this};
   dgk::Inject<mu::context::IGlobalContext> globalContext{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
   //! For the Orchestrion palette (see OrchestrionPalette.h): what this view
@@ -238,6 +240,7 @@ private:
   };
   std::optional<BarrierAhead> nextBarrier(int utick) const;
   void setViewMode(mu::notation::ViewMode);
+  void applyBarNumbers(mu::notation::INotation &);
   bool eventFilter(QObject *watched, QEvent *event) override;
   void paint(QPainter *painter) override;
   void paintNotationUnderlay(QPainter *painter) override;
@@ -287,10 +290,10 @@ private:
   struct BeltGeometry
   {
     bool valid = false;
-    QRectF paper;        //!< the parchment, in logical (score) coordinates
-    double originX = 0;  //!< where logical 0 falls on the view's axes...
+    QRectF paper;       //!< the parchment, in logical (score) coordinates
+    double originX = 0; //!< where logical 0 falls on the view's axes...
     double originY = 0;
-    double scaling = 1;  //!< ...and the scale that goes with it
+    double scaling = 1; //!< ...and the scale that goes with it
     double viewWidth = 0;
     double viewHeight = 0;
     //! The rows the parchment occupies, clamped to the view. Only these have
@@ -300,8 +303,9 @@ private:
     double bandTop = 0;
     double bandBottom = 0;
     double margin = 0;
-    double core = 0;        //!< the bare cylinder
-    double radius[2] = {};  //!< what each end actually wraps around: [left, right]
+    double core = 0; //!< the bare cylinder
+    double radius[2] =
+        {}; //!< what each end actually wraps around: [left, right]
 
     double viewX(double logicalX) const { return originX + logicalX * scaling; }
     double viewY(double logicalY) const { return originY + logicalY * scaling; }

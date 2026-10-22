@@ -168,6 +168,14 @@ public:
   virtual muse::async::Notification pedalIndicatorVisibleChanged() const = 0;
 
   /**
+   * Whether every bar of the score shows its number. On by default; toggled
+   * from the View menu.
+   */
+  virtual bool barNumbersVisible() const = 0;
+  virtual void setBarNumbersVisible(bool) = 0;
+  virtual muse::async::Notification barNumbersVisibleChanged() const = 0;
+
+  /**
    * How ornaments are played (see OrnamentMode). Automatic by default;
    * chosen from the Ornaments menu.
    */

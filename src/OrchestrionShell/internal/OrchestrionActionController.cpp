@@ -188,6 +188,13 @@ void OrchestrionActionController::init()
                           !sequencerConfig()->pedalIndicatorVisible());
                     });
 
+  dispatcher()->reg(this, actionIds::toggleBarNumbers,
+                    [this]
+                    {
+                      sequencerConfig()->setBarNumbersVisible(
+                          !sequencerConfig()->barNumbersVisible());
+                    });
+
   // View ▸ Theme. The framework persists the choice and hot-reloads the
   // palette, so switching is the one call; everything that paints from
   // the palette follows its currentThemeChanged().

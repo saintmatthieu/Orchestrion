@@ -114,6 +114,10 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
+  sequencerConfiguration()->barNumbersVisibleChanged().onNotify(
+      this, [this]
+      { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
+
   sequencerConfiguration()->ornamentModeChanged().onNotify(
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
@@ -305,8 +309,18 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeViewMenu()
   pedalItem->setCheckable(true);
   pedalItem->setChecked(sequencerConfiguration()->pedalIndicatorVisible());
 
+  MenuItem *const barNumbersItem = makeMenuItem(
+      actionIds::toggleBarNumbers,
+      muse::TranslatableString("appshell/menu/view", "&Bar numbers"));
+  barNumbersItem->setCheckable(true);
+  barNumbersItem->setChecked(sequencerConfiguration()->barNumbersVisible());
+
   QList<muse::uicomponents::MenuItem *> menu{
-      jumpAnticipationItem, midiIconItem, pedalItem, makeThemeSubmenu(),
+      jumpAnticipationItem,
+      midiIconItem,
+      pedalItem,
+      barNumbersItem,
+      makeThemeSubmenu(),
       makeMenuItem(
           "view-toggle-fullscreen",
           muse::TranslatableString("appshell/menu/view", "&Fullscreen"))};

@@ -50,6 +50,10 @@ static constexpr const char *toggleMidiKeyboardIcon =
 static constexpr const char *togglePedalIndicator =
     "orchestrion-view-toggle-pedal-indicator";
 
+//! View menu: shows/hides the number above every bar of the score.
+static constexpr const char *toggleBarNumbers =
+    "orchestrion-view-toggle-bar-numbers";
+
 //! View ▸ Theme: the two looks Orchestrion ships, gold on mahogany and
 //! silver on slate. They live in MuseScore's "light" and "dark" theme
 //! slots — see src/OrchestrionCommon/OrchestrionPalette.h.

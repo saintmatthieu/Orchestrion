@@ -105,6 +105,8 @@ muse::ui::UiActionList makeActions(
                          mu::context::UiCtxAny, mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::togglePedalIndicator, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
+      muse::ui::UiAction(actionIds::toggleBarNumbers, mu::context::UiCtxAny,
+                         mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::setGoldTheme, mu::context::UiCtxAny,
                          mu::context::CTX_ANY),
       muse::ui::UiAction(actionIds::setSilverTheme, mu::context::UiCtxAny,
