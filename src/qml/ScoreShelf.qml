@@ -349,6 +349,7 @@ Item {
         required property string incipit
         required property bool ready
         required property string path
+        required property string nativePath
         required property string displayNameOverride
         required property bool current
         required property int index
@@ -495,6 +496,10 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: card.choose()
+        }
+        OrchestrionToolTip {
+            visible: cardMouse.containsMouse
+            text: card.nativePath
         }
     }
 

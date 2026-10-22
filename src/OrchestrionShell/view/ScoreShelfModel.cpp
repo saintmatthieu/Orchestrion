@@ -167,6 +167,8 @@ QVariant ScoreListModel::data(const QModelIndex &index, int role) const
     return item.ready;
   case PathRole:
     return item.path;
+  case NativePathRole:
+    return QDir::toNativeSeparators(item.path);
   case DisplayNameOverrideRole:
     return item.displayNameOverride;
   case CurrentRole:
@@ -184,6 +186,7 @@ QHash<int, QByteArray> ScoreListModel::roleNames() const
       {IncipitRole, "incipit"},
       {ReadyRole, "ready"},
       {PathRole, "path"},
+      {NativePathRole, "nativePath"},
       {DisplayNameOverrideRole, "displayNameOverride"},
       {CurrentRole, "current"},
   };

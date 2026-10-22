@@ -63,6 +63,8 @@ public:
     /** Whether title, composer and incipit are final. */
     ReadyRole,
     PathRole,
+    /** The path with the platform's separators, for display. */
+    NativePathRole,
     DisplayNameOverrideRole,
     /** Whether it is the score that is open. */
     CurrentRole,
