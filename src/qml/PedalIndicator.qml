@@ -89,8 +89,7 @@ Item {
         id: hover
     }
 
-    ToolTip {
-        delay: 500
+    OrchestrionToolTip {
         visible: hover.hovered
         text: root.pedalDown ? qsTr("Sustain pedal (down)")
                              : qsTr("Sustain pedal (up)")

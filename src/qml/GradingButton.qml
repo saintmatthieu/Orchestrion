@@ -61,8 +61,7 @@ Item {
         onClicked: root.model.gradingEnabled = !root.model.gradingEnabled
     }
 
-    ToolTip {
-        delay: 500
+    OrchestrionToolTip {
         visible: gradingMouseArea.containsMouse
         text: root.model && root.model.gradingEnabled ? qsTr("Grading (on)")
                                                       : qsTr("Grading (off)")

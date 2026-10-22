@@ -856,9 +856,10 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: root.model.removeFolder(shelfSection.path)
                                     }
-                                    ToolTip.visible: removeMouse.containsMouse
-                                    ToolTip.delay: 500
-                                    ToolTip.text: qsTr("Remove from the shelf (the folder stays on disk)")
+                                    OrchestrionToolTip {
+                                        visible: removeMouse.containsMouse
+                                        text: qsTr("Remove from the shelf (the folder stays on disk)")
+                                    }
                                 }
                             }
                         }

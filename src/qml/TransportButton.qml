@@ -56,8 +56,7 @@ Item {
         onClicked: root.clicked()
     }
 
-    ToolTip {
-        delay: 500
+    OrchestrionToolTip {
         visible: mouseArea.containsMouse && root.tooltip.length > 0
         text: root.tooltip
     }

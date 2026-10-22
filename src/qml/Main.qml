@@ -392,7 +392,7 @@ ApplicationWindow {
                 // Advanced menu ("Show note info on hover"). The paint view
                 // leaves hoveredNoteInfo empty unless the feature is enabled
                 // and a note is under the cursor.
-                ToolTip {
+                OrchestrionToolTip {
                     id: noteInfoToolTip
                     z: 102
                     delay: 0
@@ -402,14 +402,23 @@ ApplicationWindow {
                     // tip anchors beside the onset's noteheads instead —
                     // left of an early note's coloured copy, right of a late
                     // one's — so it covers neither the black nor the
-                    // coloured notes.
-                    x: notationPaintView.hoveredNoteInfoPlacement === 1
-                       ? notationPaintView.hoveredNoteInfoPos.x - width
-                       : notationPaintView.hoveredNoteInfoPos.x
-                         + (notationPaintView.hoveredNoteInfoPlacement === 2 ? 0 : 16)
-                    y: notationPaintView.hoveredNoteInfoPlacement === 0
-                       ? notationPaintView.hoveredNoteInfoPos.y + 16
-                       : notationPaintView.hoveredNoteInfoPos.y - height / 2
+                    // coloured notes. Kept where it was while it fades out:
+                    // the placement resets as the note is left.
+                    Binding on x {
+                        when: notationPaintView.hoveredNoteInfo.length > 0
+                        restoreMode: Binding.RestoreNone
+                        value: notationPaintView.hoveredNoteInfoPlacement === 1
+                               ? notationPaintView.hoveredNoteInfoPos.x - noteInfoToolTip.width
+                               : notationPaintView.hoveredNoteInfoPos.x
+                                 + (notationPaintView.hoveredNoteInfoPlacement === 2 ? 0 : 16)
+                    }
+                    Binding on y {
+                        when: notationPaintView.hoveredNoteInfo.length > 0
+                        restoreMode: Binding.RestoreNone
+                        value: notationPaintView.hoveredNoteInfoPlacement === 0
+                               ? notationPaintView.hoveredNoteInfoPos.y + 16
+                               : notationPaintView.hoveredNoteInfoPos.y - noteInfoToolTip.height / 2
+                    }
                 }
 
                 // The grading configuration dialog, opened from the Grading
