@@ -236,7 +236,7 @@ std::vector<int> MuseChord::GetPitches() const
   const auto notes = GetNotes();
   for (const auto note : notes)
     if (!note->tieBack())
-      chord.push_back(note->pitch());
+      chord.push_back(note->ppitch());
   return chord;
 }
 

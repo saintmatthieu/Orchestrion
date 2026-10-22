@@ -428,7 +428,7 @@ std::vector<TiedNote> TiedNotes(const IChord &chord)
     end += (last->chord()->tick() + last->chord()->actualTicks() -
             engraved->tick())
                .ticks();
-    notes.push_back({note->pitch(), note, end});
+    notes.push_back({note->ppitch(), note, end});
   }
   return notes;
 }

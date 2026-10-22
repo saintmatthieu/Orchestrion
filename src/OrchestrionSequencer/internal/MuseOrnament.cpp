@@ -119,11 +119,12 @@ int AuxiliaryPitch(const me::Note &note, const me::Ornament *ornament,
 {
   const bool above = steps > 0;
   // MuseScore resolves the top note's neighbours itself, with the accidentals
-  // of the key and of the bar so far.
+  // of the key and of the bar so far. They are written pitches, and not in a
+  // segment for ppitch() to find the ottava from: they take the note's.
   if (ornament && std::abs(steps) == 1 && &note == note.chord()->upNote())
     if (const me::Note *aux =
             above ? ornament->noteAbove() : ornament->noteBelow())
-      return aux->pitch();
+      return aux->pitch() + note.ppitch() - note.pitch();
   const me::OrnamentInterval interval = !ornament
                                             ? me::DEFAULT_ORNAMENT_INTERVAL
                                         : above ? ornament->intervalAbove()
@@ -135,7 +136,7 @@ int AuxiliaryPitch(const me::Note &note, const me::Ornament *ornament,
   else
     semitones = std::abs(steps) *
                 me::Interval::fromOrnamentInterval(interval).chromatic;
-  return note.pitch() + (above ? semitones : -semitones);
+  return note.ppitch() + (above ? semitones : -semitones);
 }
 
 std::vector<int> FigureNote(const std::vector<const me::Note *> &notes,
@@ -144,7 +145,7 @@ std::vector<int> FigureNote(const std::vector<const me::Note *> &notes,
   std::vector<int> pitches;
   pitches.reserve(notes.size());
   for (const me::Note *note : notes)
-    pitches.push_back(offset == 0 ? note->pitch()
+    pitches.push_back(offset == 0 ? note->ppitch()
                                   : AuxiliaryPitch(*note, ornament, offset));
   return pitches;
 }
@@ -167,7 +168,7 @@ std::vector<GraceNote> Graces(const std::vector<me::Chord *> &chords,
         valueTicks > 0 ? valueTicks : chord->durationTypeTicks().ticks();
     for (const me::Note *note : chord->notes())
       if (note->play())
-        grace.pitches.push_back(note->pitch());
+        grace.pitches.push_back(note->ppitch());
     if (!grace.pitches.empty())
       graces.push_back(std::move(grace));
   }
@@ -242,7 +243,7 @@ std::vector<int> PlayedPitches(const me::Chord &chord)
   std::vector<int> pitches;
   for (const me::Note *note : chord.notes())
     if (note->play())
-      pitches.push_back(note->pitch());
+      pitches.push_back(note->ppitch());
   std::sort(pitches.begin(), pitches.end());
   return pitches;
 }
@@ -275,7 +276,7 @@ bool IsAppoggiatura(const std::vector<me::Chord *> &graces,
                            [&](const me::Note *note)
                            {
                              const int distance =
-                                 std::abs(note->pitch() - pitch);
+                                 std::abs(note->ppitch() - pitch);
                              return distance >= 1 && distance <= 2;
                            });
                      });
@@ -292,7 +293,7 @@ TremoloFigure(const me::Chord &chord, const std::vector<const me::Note *> &notes
 {
   std::vector<int> pitches;
   for (const me::Note *note : notes)
-    pitches.push_back(note->pitch());
+    pitches.push_back(note->ppitch());
   if (chord.tremoloSingleChord())
     return std::vector<std::vector<int>>{pitches, pitches};
   if (const me::TremoloTwoChord *tremolo = chord.tremoloTwoChord();
