@@ -28,7 +28,6 @@
 #include <QWindow>
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
-#include <global/iglobalconfiguration.h>
 #include <project/irecentfilescontroller.h>
 #include <ui/iuiconfiguration.h>
 #include <uicomponents/qml/Muse/UiComponents/abstractmenumodel.h>
@@ -49,7 +48,6 @@ class OrchestrionMenuModel : public muse::uicomponents::AbstractMenuModel,
                  setOpenedMenuAreaRect NOTIFY openedMenuAreaRectChanged)
 
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
-  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
   dgk::Inject<IOrchestrionUiActions> orchestrionUiActions{this};
   dgk::Inject<IMidiDeviceService> midiDeviceService{this};
@@ -90,7 +88,6 @@ private:
   using muse::uicomponents::AbstractMenuModel::makeMenuItem;
 
   muse::uicomponents::MenuItem *makeFileMenu(bool velocityRecordingEnabled);
-  muse::uicomponents::MenuItem *makeExampleScoresSubmenu();
   muse::uicomponents::MenuItem *makeRecentScoresSubmenu();
   QList<muse::uicomponents::MenuItem *> makeRecentScoresItems();
   /**

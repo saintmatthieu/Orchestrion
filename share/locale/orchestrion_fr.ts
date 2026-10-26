@@ -342,6 +342,11 @@
 <context>
     <name>appshell/menu/file</name>
     <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="254"/>
+        <source>&amp;Browse scores…</source>
+        <translation>&amp;Parcourir les partitions…</translation>
+    </message>
+    <message>
         <source>&amp;From computer…</source>
         <translation type="vanished">D&amp;u PC…</translation>
     </message>
@@ -384,9 +389,8 @@
         <translation>&amp;Fichier</translation>
     </message>
     <message>
-        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="260"/>
         <source>&amp;Example scores</source>
-        <translation>&amp;Exemples</translation>
+        <translation type="vanished">&amp;Exemples</translation>
     </message>
     <message>
         <source>&amp;Open</source>
@@ -1572,6 +1576,157 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="0"/>
         <source>&amp;Automatic</source>
         <translation>&amp;Automatiques</translation>
+    </message>
+</context>
+<context>
+    <name>ScoreShelf</name>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="494"/>
+        <source>Downloading…</source>
+        <translation>Téléchargement…</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="496"/>
+        <source>Couldn&apos;t download it: are you online?</source>
+        <translation>Téléchargement impossible : êtes-vous en ligne ?</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="499"/>
+        <source>Now playing · %1</source>
+        <translation>Lecture en cours · %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="500"/>
+        <source>Now playing</source>
+        <translation>Lecture en cours</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="518"/>
+        <source>From Rolls: downloaded when you open it</source>
+        <translation>De Rolls : téléchargée à son ouverture</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="560"/>
+        <source>A newer version is available: open another score to update this one</source>
+        <translation>Une version plus récente est disponible : ouvrez une autre partition pour mettre celle-ci à jour</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="561"/>
+        <source>A newer version is available: click to update</source>
+        <translation>Une version plus récente est disponible : cliquez pour la mettre à jour</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="620"/>
+        <source>Add a folder of your own scores</source>
+        <translation>Ajouter un dossier de vos partitions</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="627"/>
+        <source>Its scores will be listed here, and searched</source>
+        <translation>Ses partitions s&apos;afficheront ici, et la recherche les trouvera</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="653"/>
+        <source>Choose a score</source>
+        <translation>Choisir une partition</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="673"/>
+        <source>Search scores</source>
+        <translation>Rechercher des partitions</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="760"/>
+        <source>Open from computer…</source>
+        <translation>Ouvrir depuis l&apos;ordinateur…</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="769"/>
+        <source>Add a folder…</source>
+        <translation>Ajouter un dossier…</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="775"/>
+        <source>Search on musescore.com</source>
+        <translation>Rechercher sur musescore.com</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="781"/>
+        <source>Help me find scores…</source>
+        <translation>Aide pour trouver des partitions…</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="928"/>
+        <source>Rolls: free scores, made for Orchestrion</source>
+        <translation>Rolls : des partitions libres, faites pour Orchestrion</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="949"/>
+        <source>Remove from the shelf (the folder stays on disk)</source>
+        <translation>Retirer de l&apos;étagère (le dossier reste sur le disque)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="958"/>
+        <source>Show in file manager</source>
+        <translation>Afficher dans le gestionnaire de fichiers</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="962"/>
+        <source>Remove from the shelf</source>
+        <translation>Retirer de l&apos;étagère</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="970"/>
+        <source>No scores in this folder yet</source>
+        <translation>Pas encore de partitions dans ce dossier</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="999"/>
+        <source>No score matches “%1”</source>
+        <translation>Aucune partition ne correspond à « %1 »</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="1065"/>
+        <source>Drop a folder to add it to the shelf, or a score to open it</source>
+        <translation>Déposez un dossier pour l&apos;ajouter à l&apos;étagère, ou une partition pour l&apos;ouvrir</translation>
+    </message>
+</context>
+<context>
+    <name>orchestrion/shelf</name>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="513"/>
+        <source>Update “%1”?</source>
+        <translation>Mettre à jour « %1 » ?</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="516"/>
+        <source>A newer version of this score is available. It replaces the one on this computer, with any changes you saved to it, and may differ from what you practised: the takes you recorded were played on the version you have.</source>
+        <translation>Une version plus récente de cette partition est disponible. Elle remplace celle de cet ordinateur, avec les modifications que vous y avez enregistrées, et peut différer de ce que vous avez travaillé : les prises que vous avez enregistrées ont été jouées sur votre version.</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="523"/>
+        <source>Not now</source>
+        <translation>Pas maintenant</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="525"/>
+        <source>Update</source>
+        <translation>Mettre à jour</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="581"/>
+        <source>Add a folder of scores</source>
+        <translation>Ajouter un dossier de partitions</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="761"/>
+        <source>Play again</source>
+        <translation>Rejouer</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="813"/>
+        <source>Library</source>
+        <translation>Bibliothèque</translation>
     </message>
 </context>
 </TS>

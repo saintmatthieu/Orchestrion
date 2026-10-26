@@ -76,10 +76,9 @@ void ScoreAttributionModel::loadManifest()
     const QString author = entry.value("author").toString();
     if (author.isEmpty())
       continue;
-    m_attributions.insert(
-        it.key(),
-        Attribution{author, entry.value("license").toString(),
-                    entry.value("url").toString()});
+    m_attributions.insert(it.key(),
+                          Attribution{author, entry.value("license").toString(),
+                                      entry.value("url").toString()});
   }
 }
 
@@ -89,10 +88,17 @@ void ScoreAttributionModel::onCurrentProjectChanged()
 
   if (const auto project = context()->currentProject())
   {
-    const QString fileName =
-        QFileInfo(project->path().toQString()).fileName();
-    const auto it = m_attributions.constFind(fileName);
-    if (it != m_attributions.constEnd())
+    const QString path = project->path().toQString();
+    if (const auto id = rollsLibrary()->idOf(path))
+    {
+      if (const RollsScore *const score = rollsLibrary()->score(*id);
+          score && !score->creditedNames.isEmpty())
+        m_current = Attribution{score->creditedNames, score->licenseName,
+                                score->sourceUrl};
+    }
+    else if (const auto it =
+                 m_attributions.constFind(QFileInfo(path).fileName());
+             it != m_attributions.constEnd())
       m_current = it.value();
   }
 

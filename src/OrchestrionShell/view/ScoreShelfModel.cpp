@@ -173,6 +173,14 @@ QVariant ScoreListModel::data(const QModelIndex &index, int role) const
     return item.displayNameOverride;
   case CurrentRole:
     return !m_currentPath.isEmpty() && item.path == m_currentPath;
+  case DownloadedRole:
+    return item.downloaded;
+  case DownloadingRole:
+    return item.downloading;
+  case DownloadFailedRole:
+    return item.downloadFailed;
+  case UpdateAvailableRole:
+    return item.updateAvailable;
   default:
     return {};
   }
@@ -189,6 +197,10 @@ QHash<int, QByteArray> ScoreListModel::roleNames() const
       {NativePathRole, "nativePath"},
       {DisplayNameOverrideRole, "displayNameOverride"},
       {CurrentRole, "current"},
+      {DownloadedRole, "downloaded"},
+      {DownloadingRole, "downloading"},
+      {DownloadFailedRole, "downloadFailed"},
+      {UpdateAvailableRole, "updateAvailable"},
   };
 }
 
@@ -213,8 +225,11 @@ void ScoreListModel::setEntry(const QString &path,
   {
     if (item.path != path)
       continue;
-    item.title = entry.title;
-    item.composer = entry.composer;
+    if (!item.titledByIndex)
+    {
+      item.title = entry.title;
+      item.composer = entry.composer;
+    }
     item.incipit = imageUrl(entry.imagePath);
     item.ready = true;
     item.searchText = searchText(item);
@@ -233,6 +248,21 @@ void ScoreListModel::setEntry(const QString &path,
     if (shownItem(row).path == path)
       emit dataChanged(index(row), index(row),
                        {TitleRole, ComposerRole, IncipitRole, ReadyRole});
+}
+
+void ScoreListModel::setDownloadState(const QString &rollsId, bool downloading,
+                                      bool failed)
+{
+  for (Item &item : m_items)
+    if (item.rollsId == rollsId)
+    {
+      item.downloading = downloading;
+      item.downloadFailed = failed;
+    }
+  for (int row = 0; row < count(); ++row)
+    if (shownItem(row).rollsId == rollsId)
+      emit dataChanged(index(row), index(row),
+                       {DownloadingRole, DownloadFailedRole});
 }
 
 void ScoreListModel::setCurrentPath(const QString &path)
@@ -305,14 +335,16 @@ QVariant ScoreSectionsModel::data(const QModelIndex &index, int role) const
       return QStringLiteral("recent");
     case Kind::Folder:
       return QStringLiteral("folder");
-    case Kind::Examples:
-      return QStringLiteral("examples");
+    case Kind::Library:
+      return QStringLiteral("library");
     }
     return {};
   case TitleRole:
     return section.title;
   case SubtitleRole:
   {
+    if (section.kind == Kind::Library)
+      return section.path;
     if (section.kind != Kind::Folder)
       return QString{};
     const QString home = QDir::homePath();
@@ -353,7 +385,7 @@ void ScoreSectionsModel::setSections(std::vector<Section> sections)
 
 ScoreShelfModel::ScoreShelfModel(QObject *parent)
     : QObject(parent), m_sections{new ScoreSectionsModel(this)},
-      m_recentScores{makeList()}, m_exampleScores{makeList()},
+      m_recentScores{makeList()}, m_libraryScores{makeList()},
       m_watcher{new QFileSystemWatcher(this)}, m_reloadTimer{new QTimer(this)}
 {
   m_reloadTimer->setSingleShot(true);
@@ -374,6 +406,9 @@ void ScoreShelfModel::load()
                                                              { reload(); });
   globalContext()->currentProjectChanged().onNotify(
       this, [this] { onCurrentProjectChanged(); });
+  rollsLibrary()->scoresChanged().onNotify(this, [this] { reload(); });
+  rollsLibrary()->downloadFinished().onReceive(
+      this, [this](const QString &id, bool ok) { onDownloadFinished(id, ok); });
 
   dispatcher()->reg(this, actionIds::browseScores,
                     [this] { emit openRequested(); });
@@ -400,7 +435,11 @@ void ScoreShelfModel::setActive(bool active)
   m_active = active;
   emit activeChanged();
   if (m_active)
+  {
+    // Not at startup: only someone looking for a score needs the library.
+    rollsLibrary()->refresh();
     scheduleRender();
+  }
 }
 
 QString ScoreShelfModel::query() const { return m_query; }
@@ -421,9 +460,20 @@ bool ScoreShelfModel::hasScore() const
   return globalContext()->currentProject() != nullptr;
 }
 
-void ScoreShelfModel::open(const QString &path,
+bool ScoreShelfModel::open(const QString &path,
                            const QString &displayNameOverride)
 {
+  if (const auto id = rollsLibrary()->idOf(path);
+      id && !rollsLibrary()->isDownloaded(*id))
+  {
+    m_pendingOpen = path;
+    m_pendingDisplayName = displayNameOverride;
+    rollsLibrary()->download(*id);
+    for (ScoreListModel *list : lists())
+      list->setDownloadState(*id, rollsLibrary()->isDownloading(*id), false);
+    return false;
+  }
+  m_pendingOpen.clear();
   // Deferred: the click comes from the shelf, which lies in the score view,
   // whose model opening a score tears down and rebuilds.
   muse::async::Async::call(
@@ -435,6 +485,7 @@ void ScoreShelfModel::open(const QString &path,
             muse::actions::ActionData::make_arg2<QUrl, QString>(
                 QUrl::fromLocalFile(path), displayNameOverride));
       });
+  return true;
 }
 
 bool ScoreShelfModel::openBestMatch()
@@ -447,8 +498,63 @@ bool ScoreShelfModel::openBestMatch()
       best = match;
   if (!best)
     return false;
-  open(best->second->path, best->second->displayNameOverride);
-  return true;
+  return open(best->second->path, best->second->displayNameOverride);
+}
+
+void ScoreShelfModel::update(const QString &path)
+{
+  const auto id = rollsLibrary()->idOf(path);
+  if (!id || !rollsLibrary()->hasUpdate(*id))
+    return;
+  const RollsScore *const score = rollsLibrary()->score(*id);
+  using muse::IInteractive;
+  constexpr int updateButton = int(IInteractive::Button::CustomButton) + 1;
+  const IInteractive::Result result = interactive()->questionSync(
+      muse::qtrc("orchestrion/shelf", "Update “%1”?")
+          .arg(score->title)
+          .toStdString(),
+      muse::trc("orchestrion/shelf",
+                "A newer version of this score is available. It replaces the "
+                "one on this computer, with any changes you saved to it, and "
+                "may differ from what you practised: the takes you recorded "
+                "were played on the version you have."),
+      IInteractive::ButtonDatas{
+          IInteractive::ButtonData{IInteractive::Button::Cancel,
+                                   muse::trc("orchestrion/shelf", "Not now")},
+          IInteractive::ButtonData{
+              updateButton, muse::trc("orchestrion/shelf", "Update"), true}},
+      int(IInteractive::Button::Cancel));
+  if (result.button() != updateButton)
+    return;
+  rollsLibrary()->download(*id);
+  for (ScoreListModel *list : lists())
+    list->setDownloadState(*id, rollsLibrary()->isDownloading(*id), false);
+}
+
+void ScoreShelfModel::openRollsSite()
+{
+  platformInteractive()->openUrl(rollsLibrary()->siteUrl());
+}
+
+void ScoreShelfModel::onDownloadFinished(const QString &id, bool ok)
+{
+  const QString path = rollsLibrary()->localPath(id);
+  if (!ok)
+  {
+    if (m_pendingOpen == path)
+      m_pendingOpen.clear();
+    for (ScoreListModel *list : lists())
+      list->setDownloadState(id, false, true);
+    return;
+  }
+  // The card now has its music to draw, or a new version of it.
+  reload();
+  if (m_pendingOpen == path)
+  {
+    m_pendingOpen.clear();
+    open(path, m_pendingDisplayName);
+    emit closeRequested();
+  }
 }
 
 void ScoreShelfModel::openFromComputer()
@@ -574,6 +680,22 @@ ScoreShelfModel::makeItem(const QString &path,
     item.incipit = imageUrl(entry->imagePath);
     item.ready = true;
   }
+  const auto id = rollsLibrary()->idOf(path);
+  if (!id)
+    return item;
+  item.rollsId = *id;
+  if (const RollsScore *const score = rollsLibrary()->score(*id))
+  {
+    item.title = score->title;
+    item.composer = score->composer;
+    item.titledByIndex = true;
+  }
+  item.downloaded = rollsLibrary()->isDownloaded(*id);
+  // Nothing to draw until it is downloaded.
+  if (!item.downloaded)
+    item.ready = true;
+  item.downloading = rollsLibrary()->isDownloading(*id);
+  item.updateAvailable = rollsLibrary()->hasUpdate(*id);
   return item;
 }
 
@@ -598,11 +720,20 @@ void ScoreShelfModel::watch(const QStringList &directories)
 void ScoreShelfModel::reload()
 {
   // By name and size rather than path: each build or install has its own
-  // copy of the examples, and an example played recently may be another's;
-  // a score copied into several folders is the same score.
+  // copy of the bundled scores, and one played recently may be another's;
+  // a score copied into several folders is the same score. A score of Rolls
+  // by its id: its file may not be there yet, or changed by a save.
   QSet<QString> seen;
-  const auto firstSeen = [&seen](const QFileInfo &file)
+  QSet<QString> seenRolls;
+  const auto firstSeen = [&](const QFileInfo &file)
   {
+    if (const auto id = rollsLibrary()->idOf(file.absoluteFilePath()))
+    {
+      if (seenRolls.contains(*id))
+        return false;
+      seenRolls.insert(*id);
+      return true;
+    }
     const QString identity =
         file.fileName() + '|' + QString::number(file.size());
     if (seen.contains(identity))
@@ -620,6 +751,8 @@ void ScoreShelfModel::reload()
     if (static_cast<int>(recent.size()) == maxRecentScores)
       break;
     const QFileInfo info{file.path.toQString()};
+    // A score of Rolls whose file went is back in the library: MuseScore
+    // drops missing files from its list.
     if (info.exists() && firstSeen(info))
       recent.push_back(makeItem(info.filePath(), file.displayNameOverride));
   }
@@ -662,15 +795,24 @@ void ScoreShelfModel::reload()
   m_folderScores = std::move(folderScores);
   watch(watched);
 
-  std::vector<ScoreListModel::Item> examples;
+  std::vector<ScoreListModel::Item> library;
   for (const QFileInfo &file : bundledScores(
            globalConfiguration()->appDataPath().toQString() + "scores/"))
     if (firstSeen(file))
-      examples.push_back(makeItem(file.absoluteFilePath(), QString{}));
-  m_exampleScores->setItems(std::move(examples));
-  sections.push_back({ScoreSectionsModel::Kind::Examples,
-                      muse::qtrc("orchestrion/shelf", "Examples"), QString{},
-                      m_exampleScores});
+      library.push_back(makeItem(file.absoluteFilePath(), QString{}));
+  for (const RollsScore &score : rollsLibrary()->scores())
+  {
+    const QFileInfo file{rollsLibrary()->localPath(score.id)};
+    if (firstSeen(file))
+      library.push_back(makeItem(file.absoluteFilePath(), QString{}));
+  }
+  m_libraryScores->setItems(std::move(library));
+  const QUrl site = rollsLibrary()->siteUrl();
+  sections.push_back(
+      {ScoreSectionsModel::Kind::Library,
+       muse::qtrc("orchestrion/shelf", "Library"),
+       site.host() + site.path().chopped(site.path().endsWith('/') ? 1 : 0),
+       m_libraryScores});
 
   for (const ScoreSectionsModel::Section &section : sections)
     section.scores->setCurrentPath(m_currentPath);

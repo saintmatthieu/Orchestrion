@@ -24,8 +24,9 @@ import Orchestrion.OrchestrionShell 1.0
 
 // The score shelf: every score one can open at a glance, as cards showing the
 // beginning of their music — the recently opened ones, those in the folders
-// the user added, then the bundled examples — with a fuzzy search over them
-// and the ways to find more. Covers the score view; opened by clicking the
+// the user added, then the library (the bundled scores and those of Rolls) —
+// with a fuzzy search over them and the ways to find more. A score of Rolls
+// not yet on this computer has no music on its card; opening it downloads it. Covers the score view; opened by clicking the
 // score's title, Ctrl+O or File ▸ Browse scores…, closed by picking a score,
 // Escape or the cross. Folders (or a score) can be dropped on it.
 //
@@ -352,17 +353,21 @@ Item {
         required property string nativePath
         required property string displayNameOverride
         required property bool current
+        required property bool downloaded
+        required property bool downloading
+        required property bool downloadFailed
+        required property bool updateAvailable
         required property int index
-        // 0: Play again, 1: Examples.
+        // The index of its section.
         property int section: 0
 
         readonly property bool lit: cardMouse.containsMouse || activeFocus
 
         function choose() {
-            // The score that is open: just back to it.
-            if (!card.current)
-                root.model.open(card.path, card.displayNameOverride)
-            root.shown = false
+            // The score that is open: just back to it. One still to be
+            // downloaded: the shelf closes once it is, and it opens.
+            if (card.current || root.model.open(card.path, card.displayNameOverride))
+                root.shown = false
         }
 
         width: root.cardWidth
@@ -412,13 +417,19 @@ Item {
             color: Theme.accent
             clip: true
 
-            // While the music is being drawn: a bare staff, breathing.
+            // A bare staff: breathing while the music is being drawn or
+            // downloaded, still while it isn't on this computer.
             Column {
-                visible: !card.ready
+                id: bareStaff
+                readonly property bool breathing: (!card.ready || card.downloading)
+                                                  && root.shown
+                property real breath: 0.12
+                visible: !card.ready || !card.downloaded
                 anchors.centerIn: parent
                 spacing: 6
-                SequentialAnimation on opacity {
-                    running: !card.ready && root.shown
+                opacity: breathing ? breath : 0.12
+                SequentialAnimation on breath {
+                    running: bareStaff.breathing
                     loops: Animation.Infinite
                     NumberAnimation { from: 0.12; to: 0.3; duration: 700 }
                     NumberAnimation { from: 0.3; to: 0.12; duration: 700 }
@@ -479,7 +490,11 @@ Item {
             Text {
                 width: parent.width
                 // Kept when empty, so that all cards are the same height.
-                text: card.current
+                text: card.downloading
+                      ? qsTr("Downloading…")
+                      : card.downloadFailed
+                      ? qsTr("Couldn't download it: are you online?")
+                      : card.current
                       ? (card.composer.length > 0
                          ? qsTr("Now playing · %1").arg(card.composer)
                          : qsTr("Now playing"))
@@ -498,12 +513,57 @@ Item {
             onClicked: card.choose()
         }
         OrchestrionToolTip {
-            visible: cardMouse.containsMouse
-            text: card.nativePath
+            visible: cardMouse.containsMouse && !updateMouse.containsMouse
+            text: card.downloaded ? card.nativePath
+                                  : qsTr("From Rolls: downloaded when you open it")
+        }
+
+        // Rolls has a newer version: replaced only if the user says so, as it
+        // may differ from what they practised.
+        Rectangle {
+            id: updateBadge
+            visible: card.updateAvailable && !card.downloading
+            anchors.top: slip.top
+            anchors.right: slip.right
+            anchors.margins: 6
+            width: 22
+            height: 22
+            radius: width / 2
+            color: updateMouse.containsMouse && !card.current ? Theme.metalBright
+                                                              : Theme.metal
+            border.color: Theme.accent
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "↑"
+                color: Theme.backdrop
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+
+            MouseArea {
+                id: updateMouse
+                anchors.fill: parent
+                anchors.margins: -4
+                hoverEnabled: true
+                // Not the score that is open: it would be saved over the update.
+                cursorShape: card.current ? Qt.ArrowCursor : Qt.PointingHandCursor
+                onClicked: {
+                    if (!card.current)
+                        root.model.update(card.path)
+                }
+            }
+            OrchestrionToolTip {
+                visible: updateMouse.containsMouse
+                text: card.current
+                      ? qsTr("A newer version is available: open another score to update this one")
+                      : qsTr("A newer version is available: click to update")
+            }
         }
     }
 
-    // The way to the user's own scores, at the end of the examples until a
+    // The way to the user's own scores, at the end of the library until a
     // folder has been added.
     component AddFolderCard: Item {
         id: addCard
@@ -806,7 +866,8 @@ Item {
                         readonly property alias label: labelRow
                         readonly property bool searching: root.model.query.length > 0
                         readonly property bool isFolder: kind === "folder"
-                        readonly property bool showsAddCard: kind === "examples"
+                        readonly property bool isLibrary: kind === "library"
+                        readonly property bool showsAddCard: isLibrary
                             && !root.model.hasFolders && !searching
 
                         // A folder keeps its section while not searching,
@@ -844,6 +905,28 @@ Item {
                                     text: shelfSection.subtitle
                                     color: Theme.inkFaint
                                     font.pixelSize: 12
+                                }
+                                // Where the library's scores come from.
+                                Text {
+                                    visible: shelfSection.isLibrary
+                                    anchors.baseline: sectionLabel.baseline
+                                    text: shelfSection.subtitle
+                                    color: siteMouse.containsMouse ? Theme.metalBright
+                                                                   : Theme.inkFaint
+                                    font.pixelSize: 12
+                                    font.underline: siteMouse.containsMouse
+
+                                    MouseArea {
+                                        id: siteMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.model.openRollsSite()
+                                    }
+                                    OrchestrionToolTip {
+                                        visible: siteMouse.containsMouse
+                                        text: qsTr("Rolls: free scores, made for Orchestrion")
+                                    }
                                 }
                                 Text {
                                     visible: shelfSection.isFolder

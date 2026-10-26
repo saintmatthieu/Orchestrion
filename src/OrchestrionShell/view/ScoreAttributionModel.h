@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IRollsLibrary.h"
 #include "async/asyncable.h"
 #include "context/iglobalcontext.h"
 #include "global/iglobalconfiguration.h"
@@ -36,9 +37,10 @@ namespace dgk
  * Shows the attribution that a score must be credited with (e.g. the author of
  * a Creative-Commons transcription) when that score is opened.
  *
- * Scores are marked as needing attribution in scores/attributions.json, keyed
- * by file name. When the current project changes, this model looks the opened
- * file up in that manifest and, if found, emits attributionRequired() so the
+ * Bundled scores are marked as needing attribution in
+ * scores/attributions.json, keyed by file name; the scores of Rolls are
+ * credited as its index says. When the current project changes, this model
+ * looks the opened file up and, if found, emits attributionRequired() so the
  * UI can show a transient toast.
  */
 class ScoreAttributionModel : public QObject,
@@ -51,6 +53,7 @@ class ScoreAttributionModel : public QObject,
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
+  dgk::Inject<IRollsLibrary> rollsLibrary{this};
 
   Q_PROPERTY(QString author READ author NOTIFY attributionChanged)
   Q_PROPERTY(QString license READ license NOTIFY attributionChanged)

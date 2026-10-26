@@ -26,6 +26,7 @@ namespace dgk
 class ControllerMenuManager;
 class OrchestrionUiActions;
 class PlaybackDeviceMenuManager;
+class RollsLibrary;
 class SleepInhibitor;
 class SynthesizerMenuManager;
 class OrchestrionEventProcessor;
@@ -59,5 +60,6 @@ private:
   const std::shared_ptr<OrchestrionStartupScenario>
       m_orchestrionStartupScenario;
   const std::shared_ptr<SleepInhibitor> m_sleepInhibitor;
+  const std::shared_ptr<RollsLibrary> m_rollsLibrary;
 };
 } // namespace dgk

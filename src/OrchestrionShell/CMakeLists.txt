@@ -17,6 +17,8 @@ set(MODULE_SRC
   internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
+  internal/RollsLibrary.cpp
+  internal/RollsLibrary.h
   internal/MuseScorePlaceholderMetaTags.h
   internal/FuzzySearch.cpp
   internal/FuzzySearch.h
@@ -54,6 +56,7 @@ set(MODULE_SRC
   view/ScoreShelfModel.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
+  IRollsLibrary.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
   OrchestrionShellTypes.h

@@ -25,6 +25,7 @@
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
+#include "internal/RollsLibrary.h"
 #include "internal/SleepInhibitor.h"
 #include "internal/SynthesizerMenuManager.h"
 #include "modularity/ioc.h"
@@ -60,7 +61,8 @@ OrchestrionShellModule::OrchestrionShellModule()
           std::make_shared<OrchestrionActionController>()},
       m_orchestrionStartupScenario{
           std::make_shared<OrchestrionStartupScenario>()},
-      m_sleepInhibitor{std::make_shared<SleepInhibitor>()}
+      m_sleepInhibitor{std::make_shared<SleepInhibitor>()},
+      m_rollsLibrary{std::make_shared<RollsLibrary>()}
 {
 }
 
@@ -75,6 +77,7 @@ void OrchestrionShellModule::registerExports()
                                                      m_orchestrionUiActions);
   globalIoc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), m_orchestrionStartupScenario);
+  globalIoc()->registerExport<IRollsLibrary>(moduleName(), m_rollsLibrary);
 }
 
 void OrchestrionShellModule::registerUiTypes()

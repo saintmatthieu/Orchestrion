@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IRollsLibrary.h"
 #include "OrchestrionShell/internal/ScoreIncipitCache.h"
 
 #include <actions/actionable.h>
@@ -68,6 +69,13 @@ public:
     DisplayNameOverrideRole,
     /** Whether it is the score that is open. */
     CurrentRole,
+    /** Whether the file is on this computer (a score of Rolls may not be). */
+    DownloadedRole,
+    DownloadingRole,
+    /** Whether its last download failed. */
+    DownloadFailedRole,
+    /** Whether Rolls has a newer version than the one downloaded. */
+    UpdateAvailableRole,
   };
 
   struct Item
@@ -80,6 +88,17 @@ public:
     bool ready = false;
     /** Title, composer and file name, folded for search. */
     QString searchText;
+    /** For a score of Rolls: its id. */
+    QString rollsId;
+    /**
+     * Whether title and composer come from the Rolls index, which the
+     * score's own may not replace.
+     */
+    bool titledByIndex = false;
+    bool downloaded = true;
+    bool downloading = false;
+    bool downloadFailed = false;
+    bool updateAvailable = false;
   };
 
   explicit ScoreListModel(QObject *parent = nullptr);
@@ -94,6 +113,8 @@ public:
   void setItems(std::vector<Item> items);
   /** Fills in every item of that path. */
   void setEntry(const QString &path, const ScoreIncipitCache::Entry &entry);
+  /** Sets the download state of every item of that score of Rolls. */
+  void setDownloadState(const QString &rollsId, bool downloading, bool failed);
   void setCurrentPath(const QString &path);
   /** Shows only the items that match: a query as foldForSearch() returns. */
   void setQuery(const QString &foldedQuery);
@@ -119,7 +140,8 @@ private:
 
 /**
  * The shelf's sections, in the order they are shown: the recently played
- * scores, then each folder the user added, then the bundled examples.
+ * scores, then each folder the user added, then the library: the scores
+ * bundled with the application and those of Rolls.
  */
 class ScoreSectionsModel : public QAbstractListModel
 {
@@ -130,7 +152,10 @@ public:
   {
     KindRole = Qt::UserRole + 1,
     TitleRole,
-    /** The folder, for a folder's section ("~" for the home directory). */
+    /**
+     * The folder, for a folder's section ("~" for the home directory); the
+     * address of Rolls, for the library's.
+     */
     SubtitleRole,
     PathRole,
     ScoresRole,
@@ -140,7 +165,7 @@ public:
   {
     Recent,
     Folder,
-    Examples,
+    Library,
   };
 
   struct Section
@@ -167,11 +192,16 @@ private:
 /**
  * Backs the score shelf, the overlay that shows the scores one can open as
  * cards: the recently opened ones, those in the folders the user added and
- * the bundled examples, each with its title, composer and the beginning of
- * its music. It opens over the score when the score's title is clicked or
- * from File ▸ Browse scores… (openRequested()).
+ * the library (the bundled scores and those of Rolls, IRollsLibrary), each
+ * with its title, composer and the beginning of its music. It opens over the
+ * score when the score's title is clicked or from File ▸ Browse scores…
+ * (openRequested()).
  *
  * A score is shown once, in the first section that has it.
+ *
+ * A score of Rolls is downloaded when it is first opened; until then its card
+ * has no music. A newer version is downloaded only when the user asks for it
+ * (update()), as it replaces the one they practised.
  *
  * The cards' music comes from a disk cache (ScoreIncipitCache). What is
  * missing from it is rendered while the shelf is shown, one score at a time
@@ -204,20 +234,33 @@ class ScoreShelfModel : public QObject,
   dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
+  dgk::Inject<IRollsLibrary> rollsLibrary{this};
 
 public:
   explicit ScoreShelfModel(QObject *parent = nullptr);
 
   Q_INVOKABLE void load();
 
-  /** Opens that score (in place of the current one). */
-  Q_INVOKABLE void open(const QString &path,
+  /**
+   * Opens that score (in place of the current one). Returns false if it must
+   * be downloaded first: it is then opened once it is, if it is still the one
+   * chosen last, and closeRequested() is emitted.
+   */
+  Q_INVOKABLE bool open(const QString &path,
                         const QString &displayNameOverride);
   /**
    * Opens the score that best matches the search, of any section (Return in
-   * the search box). Returns false if none does.
+   * the search box). Returns false if none does, or if it must be downloaded
+   * first (see open()).
    */
   Q_INVOKABLE bool openBestMatch();
+  /**
+   * Asks whether to replace that score of Rolls with its newer version, and
+   * downloads it if so.
+   */
+  Q_INVOKABLE void update(const QString &path);
+  /** Rolls' website. */
+  Q_INVOKABLE void openRollsSite();
   /** The shelf's links: the same as the File menu's. */
   Q_INVOKABLE void openFromComputer();
   Q_INVOKABLE void searchOnline();
@@ -270,6 +313,7 @@ private:
   void scheduleReload();
   void watch(const QStringList &directories);
   void onCurrentProjectChanged();
+  void onDownloadFinished(const QString &id, bool ok);
   ScoreListModel *makeList();
   ScoreListModel::Item makeItem(const QString &path,
                                 const QString &displayNameOverride) const;
@@ -282,7 +326,7 @@ private:
   ScoreIncipitCache m_cache;
   ScoreSectionsModel *const m_sections;
   ScoreListModel *const m_recentScores;
-  ScoreListModel *const m_exampleScores;
+  ScoreListModel *const m_libraryScores;
   /** The folders' lists, kept across reloads by folder path. */
   std::map<QString, ScoreListModel *> m_folderScores;
   QFileSystemWatcher *const m_watcher;
@@ -290,6 +334,9 @@ private:
   QStringList m_priority;
   QString m_query;
   QString m_currentPath;
+  /** The score of Rolls to open once downloaded. */
+  QString m_pendingOpen;
+  QString m_pendingDisplayName;
   bool m_active = false;
   bool m_renderScheduled = false;
 };

@@ -18,7 +18,6 @@
  */
 #include "OrchestrionMenuModel.h"
 #include "OrchestrionActionIds.h"
-#include "OrchestrionCommon/BundledScores.h"
 #include "OrchestrionCommon/OrchestrionPalette.h"
 #include "log.h"
 #include "types/translatablestring.h"
@@ -257,7 +256,6 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
                    muse::TranslatableString("appshell/menu/file",
                                             "Open from &computer…")),
       makeRecentScoresSubmenu(),
-      makeExampleScoresSubmenu(),
       makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
                    muse::TranslatableString("appshell/menu/file",
@@ -371,30 +369,6 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeHelpMenu()
                   "menu-orchestrion-help");
 }
 
-muse::uicomponents::MenuItem *OrchestrionMenuModel::makeExampleScoresSubmenu()
-{
-  using namespace muse::uicomponents;
-
-  const auto scoreDir =
-      globalConfiguration()->appDataPath().toQString() + "scores/";
-  const QFileInfoList entries = bundledScores(scoreDir);
-
-  QList<MenuItem *> items;
-  int index = 0;
-  for (const auto &entry : entries)
-  {
-    const QString displayName = entry.completeBaseName().replace('_', ' ');
-    items.append(
-        makeOpenScoreItem(QString("example-score-%1").arg(index++),
-                          QUrl::fromLocalFile(entry.absoluteFilePath()),
-                          displayName, displayName));
-  }
-
-  return makeMenu(
-      muse::TranslatableString("appshell/menu/file", "&Example scores"), items,
-      "menu-orchestrion-example-scores");
-}
-
 muse::uicomponents::MenuItem *OrchestrionMenuModel::makeRecentScoresSubmenu()
 {
   const QList<muse::uicomponents::MenuItem *> items = makeRecentScoresItems();
@@ -409,8 +383,8 @@ OrchestrionMenuModel::makeRecentScoresItems()
   using namespace muse::uicomponents;
 
   // MuseScore's project module maintains the list (on open and on save);
-  // this only reads it. Scores are named as in the "Example scores" submenu:
-  // file name without extension, underscores as spaces.
+  // this only reads it. Scores are named by their file name without
+  // extension, underscores as spaces.
   QList<MenuItem *> items;
   int index = 0;
   for (const mu::project::RecentFile &file :
@@ -511,7 +485,7 @@ OrchestrionMenuModel::makeEffectsMenuItems()
   using namespace muse::uicomponents;
   // The master effect chain: the effects in it, in processing order, each
   // with its editor and its removal, then what can be added. These aren't
-  // registered UI actions, one per effect: like the example scores, they are
+  // registered UI actions, one per effect: like the recent scores, they are
   // items of a shared action taking the effect's id as argument.
   const std::vector<EffectDesc> chain = effectChain()->chain();
   std::vector<EffectDesc> effects = effectChain()->availableEffects();
