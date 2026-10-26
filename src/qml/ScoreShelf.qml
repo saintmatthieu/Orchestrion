@@ -510,7 +510,23 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: card.choose()
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.RightButton) {
+                    // Only a file on this computer can be shown.
+                    if (card.downloaded)
+                        cardMenu.popup()
+                } else {
+                    card.choose()
+                }
+            }
+        }
+        Menu {
+            id: cardMenu
+            MenuItem {
+                text: qsTr("Show in folder")
+                onTriggered: root.model.revealScore(card.path)
+            }
         }
         OrchestrionToolTip {
             visible: cardMouse.containsMouse && !updateMouse.containsMouse

@@ -619,6 +619,11 @@ void ScoreShelfModel::revealFolder(const QString &path)
   platformInteractive()->openUrl(QUrl::fromLocalFile(path));
 }
 
+void ScoreShelfModel::revealScore(const QString &path)
+{
+  platformInteractive()->revealInFileBrowser(muse::io::path_t{path});
+}
+
 void ScoreShelfModel::prioritize(const QStringList &paths)
 {
   m_priority = paths;

@@ -1581,6 +1581,11 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
 <context>
     <name>ScoreShelf</name>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="527"/>
+        <source>Show in folder</source>
+        <translation>Afficher dans le dossier</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="494"/>
         <source>Downloading…</source>
         <translation>Téléchargement…</translation>

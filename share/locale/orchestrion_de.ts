@@ -1581,6 +1581,11 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
 <context>
     <name>ScoreShelf</name>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="527"/>
+        <source>Show in folder</source>
+        <translation>Im Ordner anzeigen</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="494"/>
         <source>Downloading…</source>
         <translation>Wird heruntergeladen…</translation>

@@ -276,6 +276,8 @@ public:
   /** Takes the folder off the shelf (not off the disk). */
   Q_INVOKABLE void removeFolder(const QString &path);
   Q_INVOKABLE void revealFolder(const QString &path);
+  /** Shows the score's file in the file manager. */
+  Q_INVOKABLE void revealScore(const QString &path);
   /**
    * The scores whose cards are in view, to be rendered before the others.
    */
