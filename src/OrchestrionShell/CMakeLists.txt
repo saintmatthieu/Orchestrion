@@ -66,7 +66,13 @@ set(MODULE_INCLUDE
   ${vst3sdk_SOURCE_DIR}
 )
 
-if (OS_IS_LIN)
+if (OS_IS_WIN)
+  # SleepInhibitor.cpp includes <windows.h>, whose macros (e.g. wingdi.h's ABSOLUTE) break
+  # engraving headers included later in the same unity source.
+  set_source_files_properties(internal/SleepInhibitor.cpp PROPERTIES
+    SKIP_UNITY_BUILD_INCLUSION ON
+  )
+elseif (OS_IS_LIN)
   find_package(Qt6 REQUIRED COMPONENTS DBus)
   set(MODULE_LINK Qt6::DBus)
 elseif (OS_IS_MAC)
