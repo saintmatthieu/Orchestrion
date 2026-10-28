@@ -1739,4 +1739,17 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
         <translation>Bibliothèque</translation>
     </message>
 </context>
+<context>
+    <name>Main</name>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="415"/>
+        <source>More scores to play: click the title %2, or press %1.</source>
+        <translation>Plus de partitions à jouer : clique sur le titre %2, ou appuie sur %1.</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="432"/>
+        <source>Show me</source>
+        <translation>Montre-moi</translation>
+    </message>
+</context>
 </TS>

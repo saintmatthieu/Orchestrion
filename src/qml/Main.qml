@@ -118,6 +118,11 @@ ApplicationWindow {
         onOpenRequested: scoreShelf.open()
     }
 
+    ScoreShelfHintModel {
+        id: scoreShelfHint
+        Component.onCompleted: load()
+    }
+
     MainWindowBridge {
         id: bridge
         window: root
@@ -289,6 +294,7 @@ ApplicationWindow {
                     // The way to the other scores.
                     titleClickable: true
                     titleHintShown: notationPaintView.controlsVisible
+                                    || scoreShelfHint.shown
                     onTitleClicked: scoreShelf.open()
                 }
 
@@ -379,6 +385,91 @@ ApplicationWindow {
                 NumberKeysHelp {
                     anchors.fill: parent
                     z: 100
+                }
+
+                // Once the performer has played a score to its end: there are
+                // others, and the title is the way to them. Hung under the
+                // title's chevron, which it shows.
+                Rectangle {
+                    id: shelfHintCard
+                    z: 100
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: topOrnament.y + topOrnament.chevronBottom + 8
+                    width: shelfHintRow.implicitWidth + 28
+                    height: shelfHintRow.implicitHeight + 20
+                    radius: 8
+                    // On the parchment: the backdrop's colour, framed in metal.
+                    color: Theme.backdrop
+                    border.color: Theme.metal
+                    border.width: 1
+                    visible: opacity > 0
+                    opacity: scoreShelfHint.shown && !scoreShelf.shown ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                    Row {
+                        id: shelfHintRow
+                        anchors.centerIn: parent
+                        spacing: 12
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            // The hand pointing up at the title is drawn
+                            // larger than the text: at its size it is a smudge.
+                            textFormat: Text.StyledText
+                            text: qsTr("More scores to play: click the title %2, or press %1.")
+                                  .arg(root.isMac ? "\u2318O" : "Ctrl+O")
+                                  .arg("<font size=\"5\">\u261D\uFE0E</font>")
+                            color: Theme.metalBright
+                            font.pixelSize: 14
+                        }
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: showShelfLabel.implicitWidth + 24
+                            height: showShelfLabel.implicitHeight + 10
+                            radius: height / 2
+                            color: "transparent"
+                            border.color: showShelfMouse.containsMouse ? Theme.metalBright
+                                                                       : Theme.metal
+                            Text {
+                                id: showShelfLabel
+                                anchors.centerIn: parent
+                                text: qsTr("Show me")
+                                color: showShelfMouse.containsMouse ? Theme.metalBright
+                                                                    : Theme.metal
+                                font.pixelSize: 13
+                            }
+                            MouseArea {
+                                id: showShelfMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: scoreShelf.open()
+                            }
+                        }
+
+                        // Dismiss
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 22
+                            height: 22
+                            radius: 11
+                            color: shelfHintCloseMouse.containsMouse ? Theme.overlay
+                                                                     : "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u00D7"
+                                color: Theme.inkMuted
+                                font.pixelSize: 16
+                            }
+                            MouseArea {
+                                id: shelfHintCloseMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: scoreShelfHint.dismiss()
+                            }
+                        }
+                    }
                 }
 
                 // Transient credit shown when a score that must be attributed
@@ -604,6 +695,8 @@ ApplicationWindow {
                     anchors.fill: parent
                     z: 150
                     model: scoreShelfModel
+                    // Found: no more need for the hint.
+                    onShownChanged: if (shown) scoreShelfHint.dismiss()
                 }
 
                 // Post-take tuning panel: the tempo model's smoothing memory.

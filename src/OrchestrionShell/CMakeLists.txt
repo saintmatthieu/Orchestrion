@@ -52,6 +52,8 @@ set(MODULE_SRC
   view/PlaybackButtonModel.h
   view/ScoreAttributionModel.cpp
   view/ScoreAttributionModel.h
+  view/ScoreShelfHintModel.cpp
+  view/ScoreShelfHintModel.h
   view/ScoreShelfModel.cpp
   view/ScoreShelfModel.h
   IOrchestrionStartupScenario.h

@@ -76,6 +76,8 @@ Item {
     readonly property real inkBottom: subtitleText.visible
         ? subtitleText.y + subtitleText.height
         : row.y + row.height
+    // Where the chevron under the title ends, shown or not.
+    readonly property real chevronBottom: chevron.y + chevron.height
     readonly property real titleGap: subtitleText.visible
         ? subtitleText.anchors.topMargin
         : 0

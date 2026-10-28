@@ -1739,4 +1739,17 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <translation>Bibliothek</translation>
     </message>
 </context>
+<context>
+    <name>Main</name>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="415"/>
+        <source>More scores to play: click the title %2, or press %1.</source>
+        <translation>Weitere Noten zum Spielen: auf den Titel %2 klicken oder %1 drücken.</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="432"/>
+        <source>Show me</source>
+        <translation>Zeig mir</translation>
+    </message>
+</context>
 </TS>
