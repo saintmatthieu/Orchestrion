@@ -258,6 +258,11 @@
 <context>
     <name>appshell/menu/advanced</name>
     <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="645"/>
+        <source>&amp;Revert to factory settings…</source>
+        <translation>&amp;Rétablir les paramètres d&apos;origine…</translation>
+    </message>
+    <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="301"/>
         <source>&amp;Toggle velocity recording</source>
         <translation>&amp;Enregistrement de vélocité</translation>
@@ -1750,6 +1755,28 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
         <location filename="../../src/qml/Main.qml" line="432"/>
         <source>Show me</source>
         <translation>Montre-moi</translation>
+    </message>
+</context>
+<context>
+    <name>orchestrion</name>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="531"/>
+        <source>Revert to factory settings?</source>
+        <translation>Rétablir les paramètres d&apos;origine ?</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="533"/>
+        <source>All of Orchestrion&apos;s settings go back to how they were when it was installed, the list of recent scores is cleared and the folders added to the score shelf are forgotten. Orchestrion then restarts.
+
+No score is deleted.</source>
+        <translation>Tous les paramètres d&apos;Orchestrion reviennent à ceux de son installation, la liste des partitions récentes est vidée et les dossiers ajoutés à l&apos;étagère sont oubliés. Orchestrion redémarre ensuite.
+
+Aucune partition n&apos;est supprimée.</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="540"/>
+        <source>Revert</source>
+        <translation>Rétablir</translation>
     </message>
 </context>
 </TS>

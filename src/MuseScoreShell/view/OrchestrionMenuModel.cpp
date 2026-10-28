@@ -642,7 +642,11 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
   tempoVizItem->setChecked(
       sequencerConfiguration()->tempoVisualizationEnabled());
 
-  const QList<MenuItem *> menu{item, noteInfoItem, tempoVizItem};
+  const QList<MenuItem *> menu{
+      item, noteInfoItem, tempoVizItem, makeSeparator(),
+      makeMenuItem(actionIds::revertToFactorySettings,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "&Revert to factory settings…"))};
   return makeMenu(
       muse::TranslatableString("appshell/menu/advanced", "A&dvanced"), menu,
       "menu-orchestrion-advanced");

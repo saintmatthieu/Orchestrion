@@ -24,6 +24,7 @@
 #include <engraving/dom/masterscore.h>
 #include <engraving/editing/transaction/undostack.h>
 #include <global/log.h>
+#include <global/settings.h>
 #include <global/translation.h>
 #include <notation/imasternotation.h>
 #include <notation/inotation.h>
@@ -70,6 +71,8 @@ void OrchestrionActionController::init()
                     [this] { onFileSaveAs(); });
   dispatcher()->reg(this, actionIds::clearRecentFiles,
                     [this] { recentFilesController()->clearRecentFiles(); });
+  dispatcher()->reg(this, actionIds::revertToFactorySettings,
+                    [this] { revertToFactorySettings(); });
 
   dispatcher()->reg(this, "orchestrion-search-musescore",
                     [this]
@@ -521,6 +524,44 @@ void OrchestrionActionController::openProject(
   projectConfiguration()->setLastOpenedProjectsPath(projectFile.path());
 
   projectFilesController()->openProject(projectFile);
+}
+
+void OrchestrionActionController::revertToFactorySettings() const
+{
+  using muse::IInteractive;
+  IInteractive::ButtonData cancelButton =
+      interactive()->buttonData(IInteractive::Button::Cancel);
+  cancelButton.accent = true;
+  const int revertButton = int(IInteractive::Button::Apply);
+  const IInteractive::Result result = interactive()->warningSync(
+      muse::trc("orchestrion", "Revert to factory settings?"),
+      muse::trc("orchestrion",
+                "All of Orchestrion's settings go back to how they were when "
+                "it was installed, the list of recent scores is cleared and "
+                "the folders added to the score shelf are forgotten. "
+                "Orchestrion then restarts.\n\nNo score is deleted."),
+      {cancelButton, IInteractive::ButtonData(
+                         revertButton, muse::trc("orchestrion", "Revert"))},
+      cancelButton.btn);
+  if (!result.isButton(revertButton))
+    return;
+
+  // Before the reset: closing may save the score, and nothing must write a
+  // setting back afterwards.
+  if (!closeCurrentProject())
+    return;
+  recentFilesController()->clearRecentFiles();
+  // Not MuseScore's full reset, which empties the user's app data folder:
+  // that is also where the scores of Rolls and the takes are kept. Only the
+  // files there that hold settings go.
+  muse::settings()->reset(/*keepDefaultSettings=*/true,
+                          /*notifyAboutChanges=*/false,
+                          /*notifyOtherInstances=*/false);
+  const QDir appData{globalConfiguration()->userAppDataPath().toQString()};
+  for (const char *const settingsFile :
+       {"effects.json", "dynamics.json", "shortcuts.xml"})
+    QFile::remove(appData.filePath(settingsFile));
+  application()->restart();
 }
 
 void OrchestrionActionController::toggleRecording() const

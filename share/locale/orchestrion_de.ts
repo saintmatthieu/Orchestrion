@@ -258,6 +258,11 @@
 <context>
     <name>appshell/menu/advanced</name>
     <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="645"/>
+        <source>&amp;Revert to factory settings…</source>
+        <translation>&amp;Auf Werkseinstellungen zurücksetzen…</translation>
+    </message>
+    <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="301"/>
         <source>&amp;Toggle velocity recording</source>
         <translation>&amp;Velocity-Aufnahme</translation>
@@ -1750,6 +1755,28 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <location filename="../../src/qml/Main.qml" line="432"/>
         <source>Show me</source>
         <translation>Zeig mir</translation>
+    </message>
+</context>
+<context>
+    <name>orchestrion</name>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="531"/>
+        <source>Revert to factory settings?</source>
+        <translation>Auf Werkseinstellungen zurücksetzen?</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="533"/>
+        <source>All of Orchestrion&apos;s settings go back to how they were when it was installed, the list of recent scores is cleared and the folders added to the score shelf are forgotten. Orchestrion then restarts.
+
+No score is deleted.</source>
+        <translation>Alle Einstellungen von Orchestrion werden auf den Stand der Installation zurückgesetzt, die Liste der zuletzt geöffneten Noten wird geleert und die zum Regal hinzugefügten Ordner werden vergessen. Danach startet Orchestrion neu.
+
+Es werden keine Noten gelöscht.</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="540"/>
+        <source>Revert</source>
+        <translation>Zurücksetzen</translation>
     </message>
 </context>
 </TS>

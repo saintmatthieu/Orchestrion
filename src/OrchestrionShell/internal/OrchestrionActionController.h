@@ -26,6 +26,7 @@
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
 #include <context/iglobalcontext.h>
+#include <global/iapplication.h>
 #include <global/iglobalconfiguration.h>
 #include <interactive/iinteractive.h>
 #include <interactive/iplatforminteractive.h>
@@ -56,6 +57,7 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<IEffectChain> effectChain{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<muse::IApplication> application{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IProjectConfiguration> projectConfiguration{this};
   dgk::Inject<mu::project::IProjectFilesController> projectFilesController{
@@ -100,6 +102,13 @@ private:
   /** Asks which of the session's takes to keep, and saves them. */
   void offerTakes() const;
   void replayTake() const;
+  /**
+   * After asking, forgets every setting (the effects' and the shortcuts'
+   * included), the recent scores and the folders added to the shelf, and
+   * restarts. The scores, those downloaded from Rolls included, and the takes
+   * are kept.
+   */
+  void revertToFactorySettings() const;
   /** Where the takes are saved. */
   QString takesDirectory() const;
   muse::io::path_t fallbackPath() const;

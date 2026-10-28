@@ -88,6 +88,13 @@ static constexpr const char *playModeMetronome =
     "orchestrion-advanced-play-mode-metronome";
 
 /**
+ * Advanced menu: back to the settings Orchestrion was installed with, then a
+ * restart.
+ */
+static constexpr const char *revertToFactorySettings =
+    "orchestrion-advanced-revert-factory-settings";
+
+/**
  * File menu: empties the "Open recent" submenu.
  */
 static constexpr const char *clearRecentFiles = "orchestrion-file-clear-recent";
