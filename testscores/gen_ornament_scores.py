@@ -1,4 +1,5 @@
-"""Generates the ornament test scores (MusicXML) next to this script.
+"""Generates the ornament and articulation test scores (MusicXML) next to
+this script.
 
 Run: python3 testscores/gen_ornament_scores.py
 
@@ -32,7 +33,7 @@ def pitch_xml(p):
 
 
 def note(p, dur, staff=1, voice=None, ornaments="", tie=None, chord=False, accidental=None,
-         dots=0, arpeggiate=None):
+         dots=0, arpeggiate=None, articulations=""):
     voice = voice or (1 if staff == 1 else 5)
     typ = TYPES[dur if not dots else dur * 2 // 3]
     s = "<note>"
@@ -59,6 +60,8 @@ def note(p, dur, staff=1, voice=None, ornaments="", tie=None, chord=False, accid
         notations += f"<ornaments>{ornaments}</ornaments>"
     if arpeggiate:
         notations += arpeggiate
+    if articulations:
+        notations += f"<articulations>{articulations}</articulations>"
     if notations:
         s += f"<notations>{notations}</notations>"
     s += "</note>"
@@ -391,3 +394,103 @@ s.bar("arpeggiated quarter-note chords in a row (C, F, G, C): release early to c
 s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
 s.write(os.path.join(outdir, "ornaments-7-arpeggios.musicxml"))
 
+# ======================================================== articulations
+# How long the machine (the automatic player, a Follow staff, the automatic
+# playing of a Notes staff) holds an articulated chord: a staccato half its
+# written value, a staccatissimo a quarter; with an accent, a marcato or a
+# tenuto, the average of the marks (counted as the whole note): an accented
+# staccato or a portato three quarters, an accented staccatissimo five eighths.
+# Never less than a 64th; a staccato on a note tied on is held. Each case plays
+# the articulated notes, then the same notes plain, to hear them against each
+# other.
+STACC = "<staccato/>"
+STACCISS = "<staccatissimo/>"   # MuseScore: staccatissimo
+SPICC = "<spiccato/>"           # MuseScore: staccatissimo stroke
+PORTATO = "<detached-legato/>"  # MuseScore: tenuto-staccato, one mark
+TENUTO = "<tenuto/>"
+ACCENT = "<accent/>"
+MARCATO = "<strong-accent/>"
+
+
+def run(pitches, dur, staff=1, voice=None, articulations=""):
+    return "".join(note(p, dur, staff=staff, voice=voice, articulations=articulations)
+                   for p in pitches)
+
+
+def then_plain(pitches, dur, articulations, staff=1):
+    """The notes articulated, then the same notes plain."""
+    return (run(pitches, dur, staff=staff, articulations=articulations)
+            + run(pitches, dur, staff=staff))
+
+
+def st_chord(pitches, dur, articulations="", staff=1):
+    return "".join(note(p, dur, staff=staff, chord=i > 0,
+                        articulations=articulations if i == 0 else "")
+                   for i, p in enumerate(pitches))
+
+
+# ------------------------------------------ 1. staccatos (Rhythm, automatic)
+s = Score("Articulations 1 - Staccatos")
+s.bar("staccato 8ths, then plain: half of each", then_plain(["C5", "D5", "E5", "F5"], 4, STACC))
+s.bar("staccato quarters, then plain", then_plain(["C5", "D5"], 8, STACC))
+s.bar("staccatissimo quarters, then plain: a quarter of each", then_plain(["C5", "D5"], 8, STACCISS))
+s.bar("staccatissimo stroke (spiccato) quarters, then plain", then_plain(["C5", "D5"], 8, SPICC))
+s.bar("portato (one mark) quarters, then plain: three quarters of each", then_plain(["C5", "D5"], 8, PORTATO))
+s.bar("portato (tenuto + staccato marks) quarters, then plain", then_plain(["C5", "D5"], 8, TENUTO + STACC))
+s.bar("accent + staccato, marcato + staccato, then plain: three quarters",
+      run(["C5"], 8, articulations=ACCENT + STACC) + run(["D5"], 8, articulations=MARCATO + STACC)
+      + run(["C5", "D5"], 8))
+s.bar("accent + staccatissimo quarters, then plain: five eighths", then_plain(["C5", "D5"], 8, ACCENT + STACCISS))
+s.bar("tenuto quarters, then plain: both held in full", then_plain(["C5", "D5"], 8, TENUTO))
+s.bar("staccato quarter tied to a quarter: held in full; then a staccato half: half",
+      note("C5", 8, tie="start", articulations=STACC) + note("C5", 8, tie="stop")
+      + run(["D5"], 16, articulations=STACC))
+s.bar("staccatissimo 32nds, then plain: floored at a 64th",
+      then_plain(["C5", "D5", "E5", "F5"], 1, STACCISS) + rest(8) + rest(16))
+s.bar("staccato chords (C E G), then plain",
+      st_chord(["C4", "E4", "G4"], 8, STACC) + st_chord(["D4", "F4", "A4"], 8, STACC)
+      + st_chord(["C4", "E4", "G4"], 8) + st_chord(["D4", "F4", "A4"], 8))
+s.bar("left-hand staccato 8ths under a whole note (as in the Rondo alla turca)",
+      note("E5", 32), lh=run(["A2", "C3", "E3", "C3"], 4, staff=2, articulations=STACC)
+      + run(["A2", "C3", "E3", "C3"], 4, staff=2))
+s.bar("graces A C E into an accented staccato 8th, then staccato 8ths (Rondo alla turca, "
+      "bar 25, left hand)",
+      note("E5", 32),
+      lh=grace("A2", staff=2, typ="32nd") + grace("C3", staff=2, typ="32nd") + grace("E3", staff=2, typ="32nd")
+      + run(["A3"], 4, staff=2, articulations=STACC + ACCENT)
+      + run(["A3", "A3", "A3"], 4, staff=2, articulations=STACC)
+      + run(["A3", "A3", "A3", "A3"], 4, staff=2))
+s.bar("mordent on a staccato quarter: the last of its notes let go early; then plain",
+      note("C5", 8, ornaments=MORDENT, articulations=STACC) + note("D5", 8, ornaments=MORDENT)
+      + run(["C5", "D5"], 8))
+s.bar("staccato quarters over a half note in another voice of the hand: the hand lets go "
+      "of both together, the half at the staccato's release",
+      run(["G4", "A4", "G4", "A4"], 8, articulations=STACC),
+      rh2=note("E4", 16, voice=2) + note("E4", 16, voice=2))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "articulations-1-staccatos.musicxml"))
+
+# ---------------------------------- 2. staccatos on a Follow staff (left)
+# Play the right hand: the left follows, letting go of its articulated
+# chords early.
+s = Score("Articulations 2 - Staccatos, followed", staff_modes="rhythm,follow")
+s.bar("left-hand staccato 8ths, then plain, under right-hand quarters",
+      run(["C5", "D5", "E5", "F5"], 8),
+      lh=then_plain(["C3", "E3", "G3", "E3"], 4, STACC, staff=2))
+s.bar("left-hand staccatissimo quarters, then plain",
+      run(["C5", "D5", "E5", "F5"], 8), lh=then_plain(["C3", "G3"], 8, STACCISS, staff=2))
+s.bar("left-hand portato quarters, then plain",
+      run(["C5", "D5", "E5", "F5"], 8), lh=then_plain(["C3", "G3"], 8, PORTATO, staff=2))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "articulations-2-staccatos-followed.musicxml"))
+
+# ------------------------------- 3. staccatos on Notes staves (automatic)
+# Press Space: the automatic player plays the Notes staves' notes as keys.
+s = Score("Articulations 3 - Staccatos, Notes mode", staff_modes="notes,notes")
+s.bar("staccato 8ths, then plain", then_plain(["C5", "D5", "E5", "F5"], 4, STACC))
+s.bar("staccatissimo quarters, then plain", then_plain(["C5", "D5"], 8, STACCISS))
+s.bar("portato quarters, then plain", then_plain(["C5", "D5"], 8, PORTATO))
+s.bar("left-hand staccato 8ths under a whole note",
+      note("E5", 32), lh=then_plain(["A2", "C3", "E3", "C3"], 4, STACC, staff=2))
+s.bar("plain quarter to end", note("C5", 8) + note("D5", 8))
+s.write(os.path.join(outdir, "articulations-3-staccatos-notes-mode.musicxml"))
