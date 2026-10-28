@@ -1591,6 +1591,11 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
         <translation>Téléchargement…</translation>
     </message>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="465"/>
+        <source>Downloaded when you open it</source>
+        <translation>Téléchargée à son ouverture</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="496"/>
         <source>Couldn&apos;t download it: are you online?</source>
         <translation>Téléchargement impossible : êtes-vous en ligne ?</translation>

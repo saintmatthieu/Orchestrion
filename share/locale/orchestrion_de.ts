@@ -1591,6 +1591,11 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <translation>Wird heruntergeladen…</translation>
     </message>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="465"/>
+        <source>Downloaded when you open it</source>
+        <translation>Wird beim Öffnen heruntergeladen</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="496"/>
         <source>Couldn&apos;t download it: are you online?</source>
         <translation>Herunterladen fehlgeschlagen: Sind Sie online?</translation>

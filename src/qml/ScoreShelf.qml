@@ -26,7 +26,8 @@ import Orchestrion.OrchestrionShell 1.0
 // beginning of their music — the recently opened ones, those in the folders
 // the user added, then the library (the bundled scores and those of Rolls) —
 // with a fuzzy search over them and the ways to find more. A score of Rolls
-// not yet on this computer has no music on its card; opening it downloads it. Covers the score view; opened by clicking the
+// not yet on this computer has no music on its card, only a note saying it is
+// downloaded when opened. Covers the score view; opened by clicking the
 // score's title, Ctrl+O or File ▸ Browse scores…, closed by picking a score,
 // Escape or the cross. Folders (or a score) can be dropped on it.
 //
@@ -417,14 +418,12 @@ Item {
             color: Theme.accent
             clip: true
 
-            // A bare staff: breathing while the music is being drawn or
-            // downloaded, still while it isn't on this computer.
+            // A bare staff, breathing while the music is being drawn.
             Column {
                 id: bareStaff
-                readonly property bool breathing: (!card.ready || card.downloading)
-                                                  && root.shown
+                readonly property bool breathing: !card.ready && root.shown
                 property real breath: 0.12
-                visible: !card.ready || !card.downloaded
+                visible: !card.ready && card.downloaded
                 anchors.centerIn: parent
                 spacing: 6
                 opacity: breathing ? breath : 0.12
@@ -441,6 +440,39 @@ Item {
                         height: 1
                         color: Theme.accentInk
                     }
+                }
+            }
+
+            // Not on this computer: no music to show, so say where it is
+            // rather than draw empty staves, which look broken. Breathes
+            // while it downloads.
+            Column {
+                id: remoteNote
+                property real breath: 0.55
+                visible: !card.downloaded
+                anchors.centerIn: parent
+                spacing: 4
+                opacity: card.downloading && root.shown ? breath : 0.55
+                SequentialAnimation on breath {
+                    running: card.downloading && root.shown
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 0.55; to: 0.25; duration: 700 }
+                    NumberAnimation { from: 0.25; to: 0.55; duration: 700 }
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Rolls"
+                    color: Theme.accentInk
+                    font.family: titleFont.name
+                    font.pixelSize: 20
+                    font.letterSpacing: 2
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: card.downloading ? qsTr("Downloading…")
+                                           : qsTr("Downloaded when you open it")
+                    color: Theme.accentInk
+                    font.pixelSize: 12
                 }
             }
 
@@ -490,9 +522,7 @@ Item {
             Text {
                 width: parent.width
                 // Kept when empty, so that all cards are the same height.
-                text: card.downloading
-                      ? qsTr("Downloading…")
-                      : card.downloadFailed
+                text: card.downloadFailed
                       ? qsTr("Couldn't download it: are you online?")
                       : card.current
                       ? (card.composer.length > 0
