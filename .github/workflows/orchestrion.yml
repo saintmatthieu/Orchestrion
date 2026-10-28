@@ -202,8 +202,10 @@ jobs:
         run: brew install create-dmg
 
       - name: Create DMG
-        # APFS, not the default HFS+: HFS+ rewrites non-ASCII file names (scores/Frère Jacques.mxl) in decomposed
-        # form, so they no longer match the names sealed by codesign and notarization rejects the bundle.
+        # APFS, not the default HFS+: HFS+ rewrites non-ASCII file names in decomposed form, so they no longer match
+        # the names sealed by codesign and notarization rejects the bundle. That alone isn't enough: copying the app
+        # out of the DMG into /Applications decomposes them too, and Gatekeeper then calls the app damaged. Files in
+        # the bundle must have ASCII names (hence scores/Frere Jacques.mxl).
         run: create-dmg --filesystem APFS --volname "Orchestrion" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon Orchestrion.app 200 190 --app-drop-link 600 185 "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-macOS.dmg" ${{env.BUILD_DIR}}/Orchestrion.app
 
       - name: Notarize
