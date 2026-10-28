@@ -67,7 +67,12 @@ private:
   ExternalDeviceId
   preferredDevice(const std::optional<ExternalDeviceId> &newcomer,
                   bool keepCurrent) const;
-  std::vector<ExternalDeviceId> availableDevicesWithoutNoDevice() const;
+  /**
+   * The available devices that may be a controller, for the automatic
+   * choice: neither "No device" nor ALSA's Midi Through loopback, which is
+   * there on most Linux systems whether a keyboard is plugged in or not.
+   */
+  std::vector<ExternalDeviceId> controllerCandidates() const;
   std::optional<ExternalDeviceId> selectedDeviceWithoutNoDevice() const;
 
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};

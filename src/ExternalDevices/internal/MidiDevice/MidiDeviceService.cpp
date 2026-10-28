@@ -75,7 +75,7 @@ void MidiDeviceService::onAllInited()
 {
   // MuseScore's midi module may already have connected the device it
   // remembers; that is not our choice, so it gets no precedence here.
-  m_knownDevices = availableDevicesWithoutNoDevice();
+  m_knownDevices = controllerCandidates();
   doSelectDevice(preferredDevice(std::nullopt, false));
 
   // We don't want this post-init, start-up selection to trigger configuration
@@ -88,7 +88,7 @@ void MidiDeviceService::onAvailableDevicesChanged()
 {
   // The in-port has already dropped the connection if the device in use went
   // away; here we pick whatever should be used now.
-  const auto available = availableDevicesWithoutNoDevice();
+  const auto available = controllerCandidates();
   std::optional<ExternalDeviceId> newcomer;
   for (const auto &id : available)
     if (std::none_of(m_knownDevices.begin(), m_knownDevices.end(),
@@ -119,11 +119,13 @@ ExternalDeviceId MidiDeviceService::preferredDevice(
   // use if it's still there, else the most recently enumerated one.
   if (newcomer)
     return *newcomer;
+  const auto candidates = controllerCandidates();
   if (const auto current = selectedDeviceWithoutNoDevice();
-      keepCurrent && current && isAvailable(*current))
+      keepCurrent && current &&
+      std::find(candidates.begin(), candidates.end(), *current) !=
+          candidates.end())
     return *current;
-  const auto available = availableDevicesWithoutNoDevice();
-  return available.empty() ? noDevice : available.back();
+  return candidates.empty() ? noDevice : candidates.back();
 }
 
 std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const
@@ -137,13 +139,13 @@ std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const
   return ids;
 }
 
-std::vector<ExternalDeviceId>
-MidiDeviceService::availableDevicesWithoutNoDevice() const
+std::vector<ExternalDeviceId> MidiDeviceService::controllerCandidates() const
 {
-  auto devices = availableDevices();
-  devices.erase(std::remove(devices.begin(), devices.end(), noDevice),
-                devices.end());
-  return devices;
+  std::vector<ExternalDeviceId> ids;
+  for (const auto &device : midiInPort()->availableDevices())
+    if (device.id != noDevice.value && device.name != "Midi Through")
+      ids.emplace_back(device.id);
+  return ids;
 }
 
 bool MidiDeviceService::isAvailable(const ExternalDeviceId &id) const
