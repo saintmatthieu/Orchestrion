@@ -70,6 +70,7 @@ private:
   std::vector<mu::engraving::Note *> GetEngravingNotes() const override;
   std::vector<const mu::engraving::Chord *> GetGatheredChords() const override;
   std::optional<RollDirection> GetRoll() const override;
+  double GetSoundingFraction() const override;
 
   // IModifiableItem
 private:
@@ -90,6 +91,8 @@ private:
   // (see CrossStaffArpeggio): their notes are this chord's too.
   const std::vector<const mu::engraving::Chord *> m_gathered;
   const std::optional<RollDirection> m_roll;
+  // How much of its written value the chord sounds for as articulated.
+  const double m_soundingFraction;
   std::optional<float> m_unsavedVelocity;
   muse::async::Notification m_modifiedChanged;
 };

@@ -335,6 +335,13 @@ std::optional<dgk::Tick> VoiceSequencer::GetNextMatchingTickForNoteoff() const
     return m_gestures[m_index]->AsChord()->GetEndTick();
 }
 
+std::optional<dgk::Tick> VoiceSequencer::GetNextReleaseTick() const
+{
+  if (!GetNextMatchingTickForNoteoff())
+    return std::nullopt;
+  return m_gestures[m_index]->AsChord()->GetReleaseTick();
+}
+
 const IChord *VoiceSequencer::GetSoundingChord() const
 {
   const auto present = GetPresentThing();

@@ -470,6 +470,20 @@ auto GetCursorTick(const OrchestrionSequencer::HandVoices &hand,
       result = result.has_value() ? std::min(*result, *tick) : *tick;
   return result;
 }
+
+/**
+ * When the machine lets go of the hand's chord: the earliest of its voices'
+ * release ticks (see VoiceSequencer::GetNextReleaseTick).
+ */
+std::optional<dgk::Tick>
+GetReleaseTick(const OrchestrionSequencer::HandVoices &hand)
+{
+  std::optional<dgk::Tick> result;
+  for (const auto &voice : hand)
+    if (const auto tick = voice->GetNextReleaseTick())
+      result = result ? std::min(*result, *tick) : *tick;
+  return result;
+}
 } // namespace
 
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
@@ -1124,7 +1138,10 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
     auto &hand = isLeftHand ? m_leftHand : m_rightHand;
     for (auto eventType : {NoteEventType::noteOff, NoteEventType::noteOn})
     {
-      const auto tick = GetCursorTick(hand.voices, eventType);
+      const auto tick = eventType == NoteEventType::noteOn
+                            ? GetCursorTick(hand.voices, eventType)
+                            // A staccato chord is let go of early.
+                            : GetReleaseTick(hand.voices);
       if (!tick)
         continue;
       const int due = eventType == NoteEventType::noteOn

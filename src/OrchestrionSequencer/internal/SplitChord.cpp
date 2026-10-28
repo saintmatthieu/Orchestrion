@@ -78,4 +78,9 @@ std::optional<RollDirection> SplitChord::GetRoll() const
 {
   return m_chord->GetRoll();
 }
+
+double SplitChord::GetSoundingFraction() const
+{
+  return m_chord->GetSoundingFraction();
+}
 } // namespace dgk

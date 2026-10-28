@@ -18,6 +18,7 @@
  */
 #include "MuseChord.h"
 #include "MuseOrnament.h"
+#include "engraving/dom/articulation.h"
 #include "engraving/dom/chord.h"
 #include "engraving/dom/dynamic.h"
 #include "engraving/dom/hairpin.h"
@@ -323,6 +324,59 @@ double NominalBps(const me::Segment &segment)
   return score ? score->tempo(segment.tick()).val : 2.0;
 }
 
+// How much of its written value the chord sounds for, by its articulation,
+// as MuseScore's playback has it: the average of what its marks ask for, a
+// staccato 1/2, a staccatissimo 1/4, a tenuto, an accent or a marcato the
+// whole note - so that an accent or a tenuto (the portato) tempers a
+// staccato. Only a staccato or a staccatissimo shortens the note; one on a
+// note tied on doesn't, as there.
+double SoundingFraction(const me::Chord &chord)
+{
+  for (const me::Note *note : chord.notes())
+    if (note->tieFor())
+      return 1.0;
+  std::vector<double> asked;
+  bool shortened = false;
+  for (const me::Articulation *articulation : chord.articulations())
+    switch (articulation->symId())
+    {
+    case me::SymId::articStaccatissimoAbove:
+    case me::SymId::articStaccatissimoBelow:
+    case me::SymId::articStaccatissimoStrokeAbove:
+    case me::SymId::articStaccatissimoStrokeBelow:
+    case me::SymId::articStaccatissimoWedgeAbove:
+    case me::SymId::articStaccatissimoWedgeBelow:
+      asked.push_back(0.25);
+      shortened = true;
+      break;
+    case me::SymId::articTenutoStaccatoAbove:
+    case me::SymId::articTenutoStaccatoBelow:
+      // One mark, but both a tenuto and a staccato.
+      asked.push_back(1.0);
+      asked.push_back(0.5);
+      shortened = true;
+      break;
+    default:
+      // A combined mark (an accent over a staccato, ...) is in both
+      // categories.
+      if (articulation->isStaccato())
+      {
+        asked.push_back(0.5);
+        shortened = true;
+      }
+      if (articulation->isTenuto() || articulation->isAccent() ||
+          articulation->isMarcato())
+        asked.push_back(1.0);
+      break;
+    }
+  if (!shortened)
+    return 1.0;
+  double sum = 0.0;
+  for (const double fraction : asked)
+    sum += fraction;
+  return sum / asked.size();
+}
+
 std::optional<Ornament> ComputeOrnament(const me::Segment &segment,
                                         TrackIndex track)
 {
@@ -349,7 +403,13 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
              {
                const me::Chord *chord = EngravingChord(segment, track);
                return chord ? ArpeggioOf(*chord) : std::nullopt;
-             }()}
+             }()},
+      m_soundingFraction{[&]
+                         {
+                           const me::Chord *chord =
+                               EngravingChord(segment, track);
+                           return chord ? SoundingFraction(*chord) : 1.0;
+                         }()}
 {
 }
 
@@ -359,6 +419,8 @@ std::vector<const me::Chord *> MuseChord::GetGatheredChords() const
 }
 
 std::optional<RollDirection> MuseChord::GetRoll() const { return m_roll; }
+
+double MuseChord::GetSoundingFraction() const { return m_soundingFraction; }
 
 dgk::Tick MuseChord::GetEndTick() const
 {

@@ -83,5 +83,20 @@ public:
 
   /** How the chord is rolled, if it is arpeggiated. */
   virtual std::optional<RollDirection> GetRoll() const { return std::nullopt; }
+
+  /**
+   * How much of its written value the chord sounds for when the machine plays
+   * it (the automatic player, a Follow staff): 1 but for a staccato (1/2) or a
+   * staccatissimo (1/4), which an accent, a marcato or a tenuto with it
+   * tempers (an accented staccato, a portato: 3/4).
+   */
+  virtual double GetSoundingFraction() const { return 1.0; }
+
+  /**
+   * When the machine lets go of the chord: its end, or before it as its
+   * articulation says (see GetSoundingFraction), though never before a 64th
+   * note has sounded. Where the chord ends in the score is still its end.
+   */
+  Tick GetReleaseTick() const;
 };
 } // namespace dgk

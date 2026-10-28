@@ -64,6 +64,13 @@ public:
   GetNextMatchingTick(NoteEventType,
                       const std::optional<dgk::Tick> &upperLimit) const;
 
+  /**
+   * When the machine should let go of the chord the next note-off releases
+   * (see IChord::GetReleaseTick): its end, or before it if it is staccato.
+   * Empty when GetNextMatchingTick(noteOff) is.
+   */
+  std::optional<dgk::Tick> GetNextReleaseTick() const;
+
   std::optional<dgk::Tick> GetNextNoteonTick() const;
   std::optional<dgk::Tick> GetPreviousNoteonTick() const;
 

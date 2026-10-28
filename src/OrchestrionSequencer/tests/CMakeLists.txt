@@ -10,6 +10,7 @@ set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceFollower.cpp
   ${CMAKE_CURRENT_LIST_DIR}/ScoreEventsTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/ScoreEvents.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/IChord.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentGesture.cpp
   ${CMAKE_CURRENT_LIST_DIR}/TiedVoicesTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/TiedVoices.cpp

@@ -101,8 +101,7 @@ void ForEachChord(const std::vector<const Staff *> &staves,
 std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
 {
   std::map<int, Onset> onsets;
-  ForEachChord(staves,
-               [&](const IChord &chord) { AddOnsets(chord, onsets); });
+  ForEachChord(staves, [&](const IChord &chord) { AddOnsets(chord, onsets); });
 
   std::vector<ScoreEvent> events;
   events.reserve(onsets.size());
@@ -120,30 +119,38 @@ std::vector<ScoreEvent> GetScoreEvents(const std::vector<const Staff *> &staves)
 std::vector<ScoreNote> GetScoreNotes(const std::vector<const Staff *> &staves)
 {
   std::vector<ScoreNote> notes;
-  ForEachChord(staves,
-               [&](const IChord &chord)
-               {
-                 auto tick = chord.GetBeginTick().withRepeats;
-                 const auto roll = chord.GetRoll();
-                 for (const WrittenNote &note : WriteOutOrnament(chord))
-                 {
-                   std::vector<int> pitches = note.pitches;
-                   if (roll)
-                     // Rolled, in its order, each note a little after the
-                     // one before; all released together.
-                     std::sort(pitches.begin(), pitches.end(),
-                               [up = *roll == RollDirection::up](int a, int b)
-                               { return up ? a < b : a > b; });
-                   for (size_t i = 0; i < pitches.size(); ++i)
-                   {
-                     const int delay =
-                         roll ? static_cast<int>(i) * arpeggioNoteTicks : 0;
-                     notes.push_back({tick + std::min(delay, note.ticks - 1),
-                                      tick + note.ticks, pitches[i]});
-                   }
-                   tick += note.ticks;
-                 }
-               });
+  ForEachChord(
+      staves,
+      [&](const IChord &chord)
+      {
+        auto tick = chord.GetBeginTick().withRepeats;
+        const auto roll = chord.GetRoll();
+        const std::vector<WrittenNote> written = WriteOutOrnament(chord);
+        // A staccato chord is let go of early (its last note, if it
+        // is ornamented).
+        const int release = chord.GetReleaseTick().withRepeats;
+        for (const WrittenNote &note : written)
+        {
+          const int end =
+              &note == &written.back()
+                  ? std::max(tick + 1, std::min(tick + note.ticks, release))
+                  : tick + note.ticks;
+          std::vector<int> pitches = note.pitches;
+          if (roll)
+            // Rolled, in its order, each note a little after the
+            // one before; all released together.
+            std::sort(pitches.begin(), pitches.end(),
+                      [up = *roll == RollDirection::up](int a, int b)
+                      { return up ? a < b : a > b; });
+          for (size_t i = 0; i < pitches.size(); ++i)
+          {
+            const int delay =
+                roll ? static_cast<int>(i) * arpeggioNoteTicks : 0;
+            notes.push_back({std::min(tick + delay, end - 1), end, pitches[i]});
+          }
+          tick += note.ticks;
+        }
+      });
   std::sort(notes.begin(), notes.end(),
             [](const ScoreNote &a, const ScoreNote &b)
             { return a.onTick < b.onTick; });

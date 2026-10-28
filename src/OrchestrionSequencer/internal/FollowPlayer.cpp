@@ -66,9 +66,12 @@ void FollowPlayer::OnTransitions(
       continue;
     Targets &targets = m_trackTargets[track];
     const IChord *present = GetPresentChord(transition);
+    // Let go of when the chord's articulation says (see
+    // IChord::GetReleaseTick).
     targets.offTick =
-        present ? std::make_optional<double>(present->GetEndTick().withRepeats)
-                : std::nullopt;
+        present
+            ? std::make_optional<double>(present->GetReleaseTick().withRepeats)
+            : std::nullopt;
     const IChord *future = GetFutureChord(transition);
     if (!future)
       // Struck, or released onto a rest: the transition says nothing of

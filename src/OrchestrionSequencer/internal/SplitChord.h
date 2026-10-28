@@ -53,6 +53,7 @@ public:
   std::vector<mu::engraving::Note *> GetEngravingNotes() const override;
   std::vector<const mu::engraving::Chord *> GetGatheredChords() const override;
   std::optional<RollDirection> GetRoll() const override;
+  double GetSoundingFraction() const override;
 
   /** The engraved chord this is part of. */
   const IChord &GetWholeChord() const { return *m_chord; }
