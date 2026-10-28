@@ -31,7 +31,10 @@
 #include <interactive/iinteractive.h>
 #include <interactive/iplatforminteractive.h>
 #include <modularity/ioc.h>
+#include <multiwindows/imultiwindowsprovider.h>
+#include <project/iprojectautosaver.h>
 #include <project/iprojectconfiguration.h>
+#include <project/iprojectcreator.h>
 #include <project/iprojectfilescontroller.h>
 #include <project/irecentfilescontroller.h>
 #include <ui/imainwindow.h>
@@ -63,6 +66,9 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<mu::project::IProjectFilesController> projectFilesController{
       this};
   dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
+  dgk::Inject<mu::project::IProjectCreator> projectCreator{this};
+  dgk::Inject<mu::project::IProjectAutoSaver> projectAutoSaver{this};
+  dgk::Inject<muse::mi::IMultiWindowsProvider> multiwindowsProvider{this};
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
@@ -98,6 +104,12 @@ private:
   void markScoreSaved() const;
   void openFromDir(const muse::io::path_t &dir) const;
   void openProject(const mu::project::ProjectFile &) const;
+  /**
+   * Opens a score on this computer without MuseScore's sanity check, which
+   * would otherwise ask whether to open a "corrupted" file. Returns false if
+   * it couldn't, for MuseScore's own opening to try (and explain why not).
+   */
+  bool openLocalProjectForced(const mu::project::ProjectFile &) const;
   void toggleRecording() const;
   /** Asks which of the session's takes to keep, and saves them. */
   void offerTakes() const;

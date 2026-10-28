@@ -40,6 +40,11 @@
 
 namespace dgk
 {
+namespace
+{
+const muse::Uri notationPageUri("musescore://notation");
+} // namespace
+
 void OrchestrionActionController::preInit() { qApp->installEventFilter(this); }
 
 OrchestrionActionController::OrchestrionActionController()
@@ -523,7 +528,53 @@ void OrchestrionActionController::openProject(
 
   projectConfiguration()->setLastOpenedProjectsPath(projectFile.path());
 
-  projectFilesController()->openProject(projectFile);
+  if (!openLocalProjectForced(projectFile))
+    // MuseScore's own way, with its dialogs for what can't be opened.
+    projectFilesController()->openProject(projectFile);
+}
+
+bool OrchestrionActionController::openLocalProjectForced(
+    const mu::project::ProjectFile &projectFile) const
+{
+  if (!projectFile.url.isLocalFile())
+    return false;
+  const muse::io::path_t path =
+      QFileInfo{projectFile.url.toLocalFile()}.absoluteFilePath();
+
+  if (multiwindowsProvider()->isProjectAlreadyOpened(path))
+  {
+    multiwindowsProvider()->activateWindowWithProject(path);
+    return true;
+  }
+
+  const mu::project::INotationProjectPtr project =
+      projectCreator()->newProject(dgk::iocContext());
+  if (!project)
+    return false;
+  const bool hasUnsavedChanges =
+      projectAutoSaver()->projectHasUnsavedChanges(path);
+  const muse::io::path_t loadPath =
+      hasUnsavedChanges ? projectAutoSaver()->projectAutoSavePath(path) : path;
+  mu::project::OpenParams params;
+  // Without the score's sanity check, which MuseScore runs to protect its
+  // editing: Orchestrion only plays a score, and the converted ones (a voice
+  // a little too long in a measure, ...) play fine.
+  params.forceMode = true;
+  if (!project->load(loadPath, params, muse::io::suffix(path)))
+    return false;
+  if (hasUnsavedChanges)
+  {
+    project->setPath(path);
+    project->markAsUnsaved();
+  }
+
+  mu::project::RecentFile recentFile;
+  recentFile.path = path;
+  recentFilesController()->prependRecentFile(recentFile);
+  globalContext()->setCurrentProject(project);
+  if (!interactive()->isOpened(notationPageUri).val)
+    interactive()->open(notationPageUri);
+  return true;
 }
 
 void OrchestrionActionController::revertToFactorySettings() const

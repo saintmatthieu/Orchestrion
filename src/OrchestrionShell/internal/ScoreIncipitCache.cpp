@@ -78,6 +78,9 @@ loadQuietly(const mu::project::IProjectCreator &creator, const QString &path)
   mu::project::OpenParams params;
   params.disablePlayback = true;
   params.forcePageMode = true;
+  // Past the sanity check, as the score is opened (see
+  // OrchestrionActionController::openLocalProjectForced).
+  params.forceMode = true;
   const bool wasNoGui = mu::engraving::MScore::noGui;
   mu::engraving::MScore::noGui = true;
   const muse::Ret ret = project->load(muse::io::path_t{path}, params);
