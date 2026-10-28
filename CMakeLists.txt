@@ -294,9 +294,14 @@ endif()
 
 ### TRANSLATIONS ### Copied and adapted from MuseScore/share/locale/CMakeLists.txt
 file(GLOB TS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/share/locale/*.ts)
+# Orchestrion's wording for MuseScore strings it can show ("... MuseScore Studio
+# ..."), in every language, English included. Edited by hand: the lupdate
+# target below doesn't scan MuseScore/src, so it would drop them. Every
+# language must have one (languages.cfg's resource_names).
+file(GLOB OVERRIDE_TS_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/share/locale/overrides/*.ts)
 
 add_custom_target(translations ALL COMMENT "Generating .qm files" VERBATIM)
-qt_add_lrelease(translations TS_FILES ${TS_FILES} NO_GLOBAL_TARGET QM_FILES_OUTPUT_VARIABLE QM_FILES)
+qt_add_lrelease(translations TS_FILES ${TS_FILES} ${OVERRIDE_TS_FILES} NO_GLOBAL_TARGET QM_FILES_OUTPUT_VARIABLE QM_FILES)
 
 # Run with: cmake --build <build_dir> --target lupdate
 # muse::TranslatableString(context, str) maps to QT_TRANSLATE_NOOP(context, str) semantics.
