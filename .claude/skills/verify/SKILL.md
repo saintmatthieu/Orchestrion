@@ -16,6 +16,17 @@ cmake --build build/Debug --target install   # binary: build/Debug/install/bin/O
 The app links Qt from `~/Qt/<version>/gcc_64`, which ships the `vnc` platform plugin.
 `pip install vncdotool` provides `vncdo` for screenshots + synthetic input.
 
+**Silence the test instance before playing anything**: the user hears it otherwise.
+Run it with isolated settings (`XDG_CONFIG_HOME`/`XDG_DATA_HOME` pointing at scratch
+dirs) and put `AUDIO_DEVICE=null` under `[General]` in that copy of
+`<XDG_CONFIG_HOME>/Unknown Organization/OrchestrionDevelopment.ini`
+(ALSA's `null` PCM discards output). Check the launch log for
+`AlsaAudioDriver ... Connected to null` before pressing a key or play.
+Caveat: on the null device the app aborts on close ("pure virtual method called" in
+`AudioNode::process` on the audio thread while `AudioModule::onDeinit` waits), which
+also prevents a restart. To test a quit or a restart, use the default device and
+play nothing.
+
 ```bash
 LANG=fr_FR.UTF-8 LC_ALL=fr_FR.UTF-8 LANGUAGE=fr \
 QT_QPA_PLATFORM="vnc:size=1600x900" \
