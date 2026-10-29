@@ -85,8 +85,6 @@ private:
   // The ornament the chord carries, resolved once at construction like the
   // dynamic velocity; nullopt for a plain chord.
   const std::optional<Ornament> m_ornament;
-  // The score's tempo at the chord, in quarter notes per minute.
-  const double m_nominalBpm;
   // The other staff's chords of an arpeggio this chord plays for both hands
   // (see CrossStaffArpeggio): their notes are this chord's too.
   const std::vector<const mu::engraving::Chord *> m_gathered;

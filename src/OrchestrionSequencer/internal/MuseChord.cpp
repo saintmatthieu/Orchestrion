@@ -317,13 +317,6 @@ const me::Chord *EngravingChord(const me::Segment &segment, TrackIndex track)
   return dynamic_cast<const me::Chord *>(segment.element(track.value));
 }
 
-// The score's tempo at the segment, in quarter notes per second.
-double NominalBps(const me::Segment &segment)
-{
-  const auto score = segment.score();
-  return score ? score->tempo(segment.tick()).val : 2.0;
-}
-
 // How much of its written value the chord sounds for, by its articulation,
 // as MuseScore's playback has it: the average of what its marks ask for, a
 // staccato 1/2, a staccatissimo 1/4, a tenuto, an accent or a marcato the
@@ -392,7 +385,6 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
     : MuseMelodySegment{segment, track, measurePlaybackTick},
       m_dynamicVelocity{ComputeDynamicVelocity(segment, track)},
       m_ornament{ComputeOrnament(segment, track)},
-      m_nominalBpm{NominalBps(segment) * 60.0},
       m_gathered{[&]
                  {
                    const me::Chord *chord = EngravingChord(segment, track);
@@ -452,7 +444,13 @@ const Ornament *MuseChord::GetOrnament() const
   return m_ornament ? &*m_ornament : nullptr;
 }
 
-double MuseChord::GetNominalBpm() const { return m_nominalBpm; }
+double MuseChord::GetNominalBpm() const
+{
+  // Not resolved once like the dynamics: the tempo multiplier can change
+  // under a built sequencer.
+  const auto score = m_segment.score();
+  return score ? score->multipliedTempo(m_segment.tick()).val * 60.0 : 120.0;
+}
 
 const me::Chord *MuseChord::GetEngravingChord() const
 {

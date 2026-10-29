@@ -57,14 +57,28 @@ void Orchestrion::init()
             sequencerConfig()->ornamentMode() == OrnamentMode::manual;
         if (writtenOut == m_ornamentsWrittenOut || !m_sequencer)
           return;
-        std::optional<int> resumeTick;
-        for (const auto &[track, transition] :
-             m_sequencer->GetCurrentTransitions())
-          if (const IChord *future = GetFutureChord(transition))
-            resumeTick = std::min(resumeTick.value_or(INT_MAX),
-                                  future->GetBeginTick().withoutRepeats);
-        rebuildSequencer(resumeTick);
+        rebuildSequencer(resumeTick());
       });
+
+  // The written-out ornaments are as many notes as fit at the tempo they were
+  // written out at. (Played as gestures, they are timed as they are struck.)
+  tempoMultiplier()->multiplierChanged().onNotify(
+      this,
+      [this]
+      {
+        if (m_ornamentsWrittenOut && m_sequencer)
+          rebuildSequencer(resumeTick());
+      });
+}
+
+std::optional<int> Orchestrion::resumeTick() const
+{
+  std::optional<int> tick;
+  for (const auto &[track, transition] : m_sequencer->GetCurrentTransitions())
+    if (const IChord *future = GetFutureChord(transition))
+      tick = std::min(tick.value_or(INT_MAX),
+                      future->GetBeginTick().withoutRepeats);
+  return tick;
 }
 
 void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)

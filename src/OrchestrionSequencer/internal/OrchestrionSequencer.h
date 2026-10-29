@@ -21,6 +21,7 @@
 #include "IOrchestrionSequencer.h"
 #include "IOrchestrionSequencerConfiguration.h"
 #include "IStaffModes.h"
+#include "ITempoMultiplier.h"
 #include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
@@ -61,20 +62,21 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
       this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
   dgk::Inject<IStaffModes> staffModes{this};
+  dgk::Inject<ITempoMultiplier> tempoMultiplier{this};
 
 public:
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
   /**
    * `staffEvents` are what the Notes mode follows the performer along, staff
-   * by staff — right hand first — (see GetScoreEvents), at first at
-   * `nominalTicksPerMs`.
+   * by staff — right hand first — (see GetScoreEvents), at first at the
+   * tempo of `firstChord`, one of the hands' (see NominalTicksPerMs).
    */
   OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
                        HandVoices leftHand, PedalSequence,
                        std::array<std::vector<ScoreEvent>, 2> staffEvents,
                        std::array<std::vector<ScoreNote>, 2> staffNotes,
-                       double nominalTicksPerMs);
+                       const IChord *firstChord);
   ~OrchestrionSequencer();
 
   void OnInputEvent(NoteEventType, int pitch,
@@ -248,6 +250,12 @@ private:
    * play from now on start where the others were.
    */
   void OnStaffModesChanged();
+  /**
+   * The tempo the performer is first expected at, in ticks per millisecond:
+   * the first chord's (see IChord::GetNominalBpm), 120 quarters per minute if
+   * there is none.
+   */
+  double NominalTicksPerMs() const;
   /**
    * Back to the loop's start from its end: a jump, but one the performance
    * carries on through, its tempo estimate moved back with the position
@@ -444,7 +452,8 @@ private:
   size_t m_nextAutoPlayNote = 0;
   /** Each staff's lowest and highest pitch. */
   const std::array<std::pair<int, int>, 2> m_staffRanges;
-  const double m_nominalTicksPerMs;
+  /** Null if the hands have no chord. */
+  const IChord *const m_firstChord;
   /** Follows the Notes staves; nothing while no staff is in that mode. */
   FollowerThread m_follower;
   /** Where the Notes staves were last moved to by the follower. */

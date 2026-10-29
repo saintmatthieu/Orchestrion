@@ -19,6 +19,9 @@
 #include "AutomaticOrchestrionPlayer.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <QTimer>
+#include <engraving/dom/masterscore.h>
+#include <engraving/dom/tempotimeline.h>
+#include <notation/imasternotation.h>
 #include <algorithm>
 #include <cmath>
 
@@ -181,7 +184,7 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
     // delta-to-delta scheduling lost a few ms per event for good — about a
     // 32nd per ten bars. (The replay path has always done this, see
     // ScheduleReplayNext.) After a stall the overdue events catch up.
-    m_nextMs += TicksToMilliseconds(next->deltaTicks);
+    m_nextMs += TicksToMilliseconds(next->fromTick, next->deltaTicks);
     const int delay =
         std::max(0, static_cast<int>(std::lround(m_nextMs - ElapsedMs())));
     const int gen = m_generation;
@@ -217,13 +220,22 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
   ScheduleNext();
 }
 
-double AutomaticOrchestrionPlayer::TicksToMilliseconds(int ticks) const
+double AutomaticOrchestrionPlayer::TicksToMilliseconds(int fromTick,
+                                                       int ticks) const
 {
-  const double bpm = playbackController()->currentTempo().valueBpm;
-  const double multiplier = playbackController()->tempoMultiplier();
-  if (bpm <= 0 || multiplier <= 0)
+  // The score's own tempo where the delta starts, times the multiplier — not
+  // the playback controller's current tempo, whose position Orchestrion
+  // doesn't move.
+  const auto master = globalContext()->currentMasterNotation();
+  if (!master || !master->masterScore())
     return 0.0;
-  return ticks * 60000.0 / (bpm * ticksPerQuarterNote * multiplier);
+  const mu::engraving::TempoTimeline &timeline =
+      master->masterScore()->tempoTimeline(/*expandRepeats*/ true);
+  const double bps =
+      timeline.tempo(fromTick).val * timeline.tempoMultiplier().val;
+  if (bps <= 0)
+    return 0.0;
+  return ticks * 1000.0 / (bps * ticksPerQuarterNote);
 }
 
 double AutomaticOrchestrionPlayer::ElapsedMs() const

@@ -170,7 +170,7 @@ OrchestrionSequencer::OrchestrionSequencer(
     PedalSequence pedalSequence,
     std::array<std::vector<ScoreEvent>, 2> staffEvents,
     std::array<std::vector<ScoreNote>, 2> staffNotes,
-    double nominalTicksPerMs)
+    const IChord *firstChord)
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
       m_leftHand{std::move(leftHand), std::nullopt},
@@ -191,7 +191,7 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
       m_staffNotes{std::move(staffNotes)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
-      m_nominalTicksPerMs{nominalTicksPerMs},
+      m_firstChord{firstChord},
       m_follower{[this](const FollowerThread::Followed &followed)
                  { OnFollowed(followed); }}
 {
@@ -217,6 +217,15 @@ OrchestrionSequencer::OrchestrionSequencer(
 
   staffModes()->modesChanged().onNotify(this,
                                         [this] { OnStaffModesChanged(); });
+  // The follower expects the performer at the new tempo — the chords
+  // already time their ornaments with it.
+  tempoMultiplier()->multiplierChanged().onNotify(
+      this,
+      [this]
+      {
+        if (globalContext()->currentMasterNotation().get() == m_notation)
+          RebuildFollower();
+      });
 
   dispatcher()->reg(this, "nav-first-control",
                     [this] { GoToTick(0, JumpReason::Rewind); });
@@ -752,7 +761,7 @@ void OrchestrionSequencer::RebuildFollower()
   for (const bool left : {false, true})
     if (HandIn(left, StaffMode::notes))
       staves.push_back(&m_staffEvents[left ? 1 : 0]);
-  m_follower.Follow(Merge(staves), m_nominalTicksPerMs);
+  m_follower.Follow(Merge(staves), NominalTicksPerMs());
   RebuildAutoPlayNotes();
   ResetFollower();
 }
@@ -1162,6 +1171,7 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
     minTick = std::min(minTick, m_autoPlayNotes[m_nextAutoPlayNote].tick);
 
   NextAutoPlayEvents result;
+  result.fromTick = m_autoPlayTick;
   result.deltaTicks = minTick - m_autoPlayTick;
 
   // Collect all events at the minimum tick, noteoffs first.
@@ -1494,6 +1504,14 @@ void OrchestrionSequencer::ObserveTick(int tick, double nowMs)
     return;
   m_tempoTick = tick;
   m_tempo.addObservation(nowMs, tick);
+}
+
+double OrchestrionSequencer::NominalTicksPerMs() const
+{
+  const double bpm = m_firstChord && m_firstChord->GetNominalBpm() > 0.0
+                         ? m_firstChord->GetNominalBpm()
+                         : 120.0;
+  return bpm * ticksPerQuarter / 60000.0;
 }
 
 double OrchestrionSequencer::TicksPerMs(const IChord &chord) const

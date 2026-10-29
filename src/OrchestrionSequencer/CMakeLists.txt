@@ -44,6 +44,8 @@ set(MODULE_SRC
     internal/SplitChord.h
     internal/StaffModes.cpp
     internal/StaffModes.h
+    internal/TempoMultiplier.cpp
+    internal/TempoMultiplier.h
     internal/VisibleScore.cpp
     internal/VisibleScore.h
     internal/TiedVoices.cpp
@@ -66,6 +68,7 @@ set(MODULE_SRC
     IOrchestrionSequencer.h
     IRest.h
     IStaffModes.h
+    ITempoMultiplier.h
     IVisibleScore.h
     OrchestrionModule.cpp
     OrchestrionModule.h

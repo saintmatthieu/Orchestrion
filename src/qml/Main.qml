@@ -337,6 +337,10 @@ ApplicationWindow {
                     PlaybackButton {
                         id: playbackRow
                     }
+
+                    TempoReadout {
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
 
                 // Its own corner, mirroring the MIDI indicator's inset in the

@@ -3,6 +3,7 @@
     <file>src/qml/Main.qml</file>
     <file>src/qml/FullscreenButton.qml</file>
     <file>src/qml/PlaybackButton.qml</file>
+    <file>src/qml/TempoReadout.qml</file>
     <file>src/qml/GradingButton.qml</file>
     <file>src/qml/PedalIndicator.qml</file>
     <file>src/qml/BuiltInEffectDialog.qml</file>

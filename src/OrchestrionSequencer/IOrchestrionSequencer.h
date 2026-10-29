@@ -40,6 +40,8 @@ struct AutoPlayEvent
 
 struct NextAutoPlayEvents
 {
+  /** With repeats: where `deltaTicks` count from. */
+  int fromTick = 0;
   int deltaTicks = 0;
   std::optional<NoteEventType> leftHandEvent;
   std::optional<NoteEventType> rightHandEvent;

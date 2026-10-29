@@ -23,6 +23,7 @@
 #include "IModifiableItemRegistry.h"
 #include "IOrchestrion.h"
 #include "IOrchestrionSequencerConfiguration.h"
+#include "ITempoMultiplier.h"
 #include "OrchestrionSequencer.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
@@ -46,6 +47,7 @@ class Orchestrion : public IOrchestrion,
   dgk::Inject<mu::context::IGlobalContext> globalContext{this};
   dgk::Inject<ISegmentRegistry> segmentRegistry{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
+  dgk::Inject<ITempoMultiplier> tempoMultiplier{this};
 
 public:
   void init();
@@ -65,6 +67,8 @@ private:
    * resuming at `resumeTick` if given.
    */
   void rebuildSequencer(std::optional<int> resumeTick = std::nullopt);
+  /** Where the sequencer is to resume after a rebuild: its next chord. */
+  std::optional<int> resumeTick() const;
 
 private:
   IOrchestrionSequencerPtr m_sequencer;

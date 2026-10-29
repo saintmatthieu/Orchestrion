@@ -25,8 +25,8 @@
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
 #include <async/notification.h>
+#include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
-#include <playback/iplaybackcontroller.h>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -36,8 +36,8 @@ class AutomaticOrchestrionPlayer : public IOrchestrionPlayer,
                                    public muse::actions::Actionable,
                                    public dgk::Injectable
 {
-  dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
 
 public:
   AutomaticOrchestrionPlayer(IOrchestrionSequencer &sequencer);
@@ -56,7 +56,8 @@ private:
   void Stop();
   void ScheduleNext();
   void FireAndContinue(const NextAutoPlayEvents &events);
-  double TicksToMilliseconds(int ticks) const;
+  /** At the tempo the score is played at at `fromTick` (with repeats). */
+  double TicksToMilliseconds(int fromTick, int ticks) const;
   double ElapsedMs() const;
   void StartReplay();
   void ScheduleReplayNext();

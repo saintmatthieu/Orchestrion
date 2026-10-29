@@ -39,6 +39,7 @@
 #include "view/OrchestrionTheme.h"
 #include "view/PedalIndicatorModel.h"
 #include "view/PlaybackButtonModel.h"
+#include "view/TempoModel.h"
 #include "view/ScoreAttributionModel.h"
 #include "view/ScoreHeadingModel.h"
 #include "view/ScoreShelfHintModel.h"
@@ -89,6 +90,8 @@ void OrchestrionShellModule::registerUiTypes()
                                      "ScoreHeadingModel");
   qmlRegisterType<PlaybackButtonModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "PlaybackButtonModel");
+  qmlRegisterType<TempoModel>("Orchestrion.OrchestrionShell", 1, 0,
+                              "TempoModel");
   qmlRegisterType<GradingModel>("Orchestrion.OrchestrionShell", 1, 0,
                                 "GradingModel");
   qmlRegisterType<MidiKeyboardIconModel>("Orchestrion.OrchestrionShell", 1, 0,

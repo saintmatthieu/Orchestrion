@@ -22,6 +22,7 @@
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
 #include "internal/StaffModes.h"
+#include "internal/TempoMultiplier.h"
 #include "internal/VisibleScore.h"
 #include "view/NumberKeysHelpModel.h"
 
@@ -35,6 +36,7 @@ OrchestrionModule::OrchestrionModule()
       m_sequencerConfiguration(
           std::make_shared<OrchestrionSequencerConfiguration>()),
       m_staffModes(std::make_shared<StaffModes>()),
+      m_tempoMultiplier(std::make_shared<TempoMultiplier>()),
       m_visibleScore(std::make_shared<VisibleScore>())
 {
 }
@@ -47,6 +49,8 @@ void OrchestrionModule::registerExports()
   globalIoc()->registerExport<IOrchestrionSequencerConfiguration>(
       moduleName(), m_sequencerConfiguration);
   globalIoc()->registerExport<IStaffModes>(moduleName(), m_staffModes);
+  globalIoc()->registerExport<ITempoMultiplier>(moduleName(),
+                                                m_tempoMultiplier);
   globalIoc()->registerExport<IVisibleScore>(moduleName(), m_visibleScore);
 }
 
@@ -72,5 +76,6 @@ void OrchestrionModule::onContextInit(
   m_gestureInputConnector->init();
   m_sequencerConfiguration->init();
   m_staffModes->init();
+  m_tempoMultiplier->init();
 }
 } // namespace dgk

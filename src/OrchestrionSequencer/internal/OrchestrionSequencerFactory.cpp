@@ -377,11 +377,8 @@ PedalSequence GetPedalSequence(mu::engraving::Score &score, int beginStaffIdx,
   return sequence;
 }
 
-/**
- * The score's tempo at its first chord, in ticks per millisecond; 120 quarters
- * per minute if it has none.
- */
-double NominalTicksPerMs(const std::vector<const Staff *> &staves)
+/** The staves' first chord, null if they have none. */
+const IChord *FirstChord(const std::vector<const Staff *> &staves)
 {
   const IChord *first = nullptr;
   for (const Staff *staff : staves)
@@ -393,10 +390,7 @@ double NominalTicksPerMs(const std::vector<const Staff *> &staves)
             first = chord;
           break;
         }
-  constexpr double ticksPerQuarter = 480.0;
-  const double bpm =
-      first && first->GetNominalBpm() > 0.0 ? first->GetNominalBpm() : 120.0;
-  return bpm * ticksPerQuarter / 60000.0;
+  return first;
 }
 
 /**
@@ -500,7 +494,8 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   // sequencer follows the staves in that mode, whichever they are.
   std::array<std::vector<ScoreEvent>, 2> staffEvents{
       GetScoreEvents({&rightHand}), GetScoreEvents({&leftHand})};
-  const double nominalTicksPerMs = NominalTicksPerMs({&rightHand, &leftHand});
+  // Owned by the sequences the sequencer is given: it lives as long as it.
+  const IChord *const firstChord = FirstChord({&rightHand, &leftHand});
 
   // Copy the staffs before MakeHand moves them.
   Staff rightHandCopy = rightHand;
@@ -512,7 +507,7 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
       std::move(staffEvents),
       std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
                                             GetScoreNotes({&leftHandCopy})},
-      nominalTicksPerMs);
+      firstChord);
 
   return {sequencer, modifiableItems, std::move(rightHandCopy),
           std::move(leftHandCopy)};

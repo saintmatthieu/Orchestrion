@@ -42,6 +42,8 @@ set(MODULE_SRC
   view/OrchestrionTheme.h
   view/ScoreHeadingModel.cpp
   view/ScoreHeadingModel.h
+  view/TempoModel.cpp
+  view/TempoModel.h
   view/GradingModel.cpp
   view/GradingModel.h
   view/MidiKeyboardIconModel.cpp

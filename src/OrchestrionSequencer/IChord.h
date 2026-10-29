@@ -52,8 +52,9 @@ public:
   virtual const Ornament *GetOrnament() const = 0;
 
   /**
-   * The score's tempo at this chord, in quarter notes per minute: what an
-   * ornament is timed with until the performer's own tempo is known.
+   * The score's tempo at this chord, in quarter notes per minute, times the
+   * tempo multiplier (see ITempoMultiplier): what an ornament is timed with
+   * until the performer's own tempo is known.
    */
   virtual double GetNominalBpm() const = 0;
 
