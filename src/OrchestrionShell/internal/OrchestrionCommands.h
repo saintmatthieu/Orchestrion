@@ -27,6 +27,8 @@
 #include <rcommand/imodulecommandsregister.h>
 #include <rcommand/imodulecommandsstate.h>
 
+#include <functional>
+
 namespace dgk
 {
 /**
@@ -75,6 +77,18 @@ public:
   commandStateChanged() const override;
 
 private:
+  using Handler = std::function<muse::Ret(const muse::rcommand::Params &)>;
+
+  /**
+   * Registers a handler that runs from the Qt event loop, the command being
+   * answered once it has. Commands are dispatched while the thread's async
+   * queues are being processed, which locks them: a handler that joins a
+   * thread sending to the main one (opening a score rebuilds the sequencer)
+   * would wait for that thread while the thread waits for the lock.
+   */
+  void onRequest(const muse::rcommand::Command &command,
+                 const Handler &handler);
+
   muse::async::Channel<muse::rcommand::Command, muse::rcommand::CommandState>
       m_commandStateChanged;
 };
