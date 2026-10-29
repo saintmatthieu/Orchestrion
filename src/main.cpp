@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+#include "App/AppImageIntegration.h"
 #include "App/CommandLineParser.h"
 #include "App/OpenRequestReceiver.h"
 #include "App/OrchestrionAppFactory.h"
@@ -220,6 +221,7 @@ int main(int argc, char **argv)
       return EXIT_SUCCESS;
     }
     openRequests = std::make_unique<dgk::OpenRequestReceiver>();
+    dgk::integrateAppImage();
   }
 
   // ====================================================

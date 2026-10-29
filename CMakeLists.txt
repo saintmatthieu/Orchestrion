@@ -85,6 +85,8 @@ qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/App/OrchestrionAppFactory.h
     src/App/OrchestrionConsoleApp.cpp
     src/App/OrchestrionConsoleApp.h
+    src/App/AppImageIntegration.cpp
+    src/App/AppImageIntegration.h
     src/App/OpenRequestReceiver.cpp
     src/App/OpenRequestReceiver.h
 )
