@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IOpenRequestHandler.h"
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
 #include <QQuickItem>
 #include <actions/iactionsdispatcher.h>
@@ -35,6 +36,7 @@ class OrchestrionOnboardingModel : public QQuickItem, public dgk::Injectable
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration = {this};
   dgk::Inject<IOrchestrionStartupScenario> startupScenario = {this};
+  dgk::Inject<IOpenRequestHandler> openRequestHandler = {this};
 
 public:
   Q_INVOKABLE void startOnboarding();

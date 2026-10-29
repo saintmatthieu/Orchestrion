@@ -41,12 +41,14 @@ void OrchestrionApp::applyCommandLineOptions(
       std::dynamic_pointer_cast<CommandOptions>(opt);
   IF_ASSERT_FAILED(options) { return; }
 
-  if (options->startup.scoreUrl.has_value())
+  if (const std::optional<QUrl> &url = options->startup.scoreUrl; url)
   {
-    StartupProjectFile file{
-        *options->startup.scoreUrl,
-        options->startup.scoreDisplayNameOverride.value_or("")};
-    startupScenario()->setStartupScoreFile(file);
+    if (url->scheme() == "orchestrion")
+      // Opened in place of the startup score (see OrchestrionOnboardingModel).
+      openRequestHandler()->open(*url);
+    else
+      startupScenario()->setStartupScoreFile(StartupProjectFile{
+          *url, options->startup.scoreDisplayNameOverride.value_or("")});
   }
 
   // Migration options: keep everything false by default: we don't want to

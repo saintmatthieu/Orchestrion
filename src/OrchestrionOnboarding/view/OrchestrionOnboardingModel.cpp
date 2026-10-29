@@ -62,9 +62,12 @@ OrchestrionOnboardingModel::getFileOpenArgs(
 
 void OrchestrionOnboardingModel::startOnboarding()
 {
-  if (const auto args =
-          getFileOpenArgs(startupScenario()->startupProjectFile());
-      args)
-    dispatcher()->dispatch("orchestrion-file-open", *args);
+  // A link the application was started with opens in its place.
+  if (!openRequestHandler()->hasPending())
+    if (const auto args =
+            getFileOpenArgs(startupScenario()->startupProjectFile());
+        args)
+      dispatcher()->dispatch("orchestrion-file-open", *args);
+  openRequestHandler()->setReady();
 }
 } // namespace dgk

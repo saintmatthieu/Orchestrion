@@ -657,8 +657,13 @@ void CommandLineParser::parse(int argc, char **argv)
   {
     if (!scorefiles.isEmpty())
     {
-      m_options->startup.scoreUrl = QUrl::fromUserInput(
-          scorefiles[0], QDir::currentPath(), QUrl::AssumeLocalFile);
+      // A link (orchestrion://...) is no file.
+      const QString arg = m_parser.positionalArguments().first();
+      m_options->startup.scoreUrl =
+          arg.startsWith("orchestrion:", Qt::CaseInsensitive)
+              ? QUrl{arg, QUrl::StrictMode}
+              : QUrl::fromUserInput(scorefiles[0], QDir::currentPath(),
+                                    QUrl::AssumeLocalFile);
     }
 
     if (m_parser.isSet("score-display-name-override"))

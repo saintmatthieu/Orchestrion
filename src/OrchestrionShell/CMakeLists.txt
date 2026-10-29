@@ -20,6 +20,8 @@ set(MODULE_SRC
   internal/RollsLibrary.cpp
   internal/RollsLibrary.h
   internal/MuseScorePlaceholderMetaTags.h
+  internal/OpenRequestHandler.cpp
+  internal/OpenRequestHandler.h
   internal/FuzzySearch.cpp
   internal/FuzzySearch.h
   internal/ScoreIncipitCache.cpp
@@ -56,6 +58,7 @@ set(MODULE_SRC
   view/ScoreShelfHintModel.h
   view/ScoreShelfModel.cpp
   view/ScoreShelfModel.h
+  IOpenRequestHandler.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
   IRollsLibrary.h

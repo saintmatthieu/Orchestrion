@@ -19,6 +19,7 @@
 #pragma once
 
 #include "CommandOptions.h"
+#include "OrchestrionShell/IOpenRequestHandler.h"
 #include "OrchestrionShell/IOrchestrionStartupScenario.h"
 
 #include <global/modularity/ioc.h>
@@ -37,6 +38,7 @@ class OrchestrionApp : public muse::ui::GuiApplication
 {
   muse::GlobalInject<mu::project::IProjectConfiguration> projectConfiguration;
   muse::GlobalInject<IOrchestrionStartupScenario> startupScenario;
+  muse::GlobalInject<IOpenRequestHandler> openRequestHandler;
   muse::GlobalInject<mu::iex::musicxml::IMusicXmlConfiguration>
       musicXmlConfiguration;
 

@@ -24,6 +24,7 @@
 namespace dgk
 {
 class ControllerMenuManager;
+class OpenRequestHandler;
 class OrchestrionUiActions;
 class PlaybackDeviceMenuManager;
 class RollsLibrary;
@@ -61,5 +62,6 @@ private:
       m_orchestrionStartupScenario;
   const std::shared_ptr<SleepInhibitor> m_sleepInhibitor;
   const std::shared_ptr<RollsLibrary> m_rollsLibrary;
+  const std::shared_ptr<OpenRequestHandler> m_openRequestHandler;
 };
 } // namespace dgk

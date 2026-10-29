@@ -20,6 +20,7 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "interactive/iinteractiveuriregister.h"
 #include "internal/ControllerMenuManager.h"
+#include "internal/OpenRequestHandler.h"
 #include "internal/OrchestrionActionController.h"
 #include "internal/OrchestrionEventProcessor.h"
 #include "internal/OrchestrionStartupScenario.h"
@@ -63,7 +64,8 @@ OrchestrionShellModule::OrchestrionShellModule()
       m_orchestrionStartupScenario{
           std::make_shared<OrchestrionStartupScenario>()},
       m_sleepInhibitor{std::make_shared<SleepInhibitor>()},
-      m_rollsLibrary{std::make_shared<RollsLibrary>()}
+      m_rollsLibrary{std::make_shared<RollsLibrary>()},
+      m_openRequestHandler{std::make_shared<OpenRequestHandler>()}
 {
 }
 
@@ -79,6 +81,8 @@ void OrchestrionShellModule::registerExports()
   globalIoc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), m_orchestrionStartupScenario);
   globalIoc()->registerExport<IRollsLibrary>(moduleName(), m_rollsLibrary);
+  globalIoc()->registerExport<IOpenRequestHandler>(moduleName(),
+                                                   m_openRequestHandler);
 }
 
 void OrchestrionShellModule::registerUiTypes()
