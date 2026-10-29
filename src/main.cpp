@@ -17,9 +17,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "App/CommandLineParser.h"
+#include "App/OpenRequestReceiver.h"
 #include "App/OrchestrionAppFactory.h"
+#include "OrchestrionShell/IOpenRequestHandler.h"
 
 #include "global/iapplication.h"
+#include "global/modularity/ioc.h"
 #include "log.h"
 #include "muse_framework_config.h"
 
@@ -206,6 +209,19 @@ int main(int argc, char **argv)
 
   std::shared_ptr<dgk::CommandOptions> opt = commandLineParser.options();
 
+  // Orchestrion runs already: it opens what this launch was given.
+  std::unique_ptr<dgk::OpenRequestReceiver> openRequests;
+  if (runMode == muse::IApplication::RunMode::GuiApp)
+  {
+    if (dgk::OpenRequestReceiver::forwardToRunningInstance(
+            opt->startup.scoreUrl.value_or(QUrl{})))
+    {
+      delete qapp;
+      return EXIT_SUCCESS;
+    }
+    openRequests = std::make_unique<dgk::OpenRequestReceiver>();
+  }
+
   // ====================================================
   // Setup application
   // ====================================================
@@ -215,7 +231,7 @@ int main(int argc, char **argv)
   std::shared_ptr<muse::IApplication> app;
   QMetaObject::invokeMethod(
       qapp,
-      [qapp, &app, &opt]()
+      [qapp, &app, &opt, &openRequests]()
       {
         dgk::OrchestrionAppFactory f;
         app = f.newApp(opt);
@@ -223,9 +239,18 @@ int main(int argc, char **argv)
         app->showSplash();
         QMetaObject::invokeMethod(
             qapp,
-            [qapp, &app]()
+            [qapp, &app, &openRequests]()
             {
               app->setup();
+              if (openRequests)
+                openRequests->setHandler(
+                    [](const QUrl &url)
+                    {
+                      if (const auto handler =
+                              muse::modularity::globalIoc()
+                                  ->resolve<dgk::IOpenRequestHandler>("App"))
+                        handler->open(url);
+                    });
               QMetaObject::invokeMethod(
                   qapp, [&app]() { app->setupNewContext(); },
                   Qt::QueuedConnection);
@@ -238,6 +263,8 @@ int main(int argc, char **argv)
   // Run main loop
   // ====================================================
   int code = qapp->exec();
+  // Before a restart launches the next instance, which mustn't find this one.
+  openRequests.reset();
 
   // ====================================================
   // Quit
