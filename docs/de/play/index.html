@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <script>
+    // Phones and tablets can't run the app. (iPadOS reports itself as a Mac.)
+    if (/Android|iPhone|iPad|iPod|Mobi/.test(navigator.userAgent) ||
+        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) {
+      document.documentElement.classList.add("mobile");
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>In Orchestrion öffnen</title>
+  <link rel="icon" type="image/png" href="../../assets/favicon.png">
+  <meta name="theme-color" content="#2e1a12">
+  <link rel="stylesheet" href="../../assets/play.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <img src="../../assets/icon.png" alt="" width="36" height="36">
+    <a class="name" href="../../de/">Orchestrion</a>
+    <nav class="langs">
+      <a class="lang" href="../../play/" hreflang="en" lang="en">EN</a>
+      <a class="lang" href="../../fr/play/" hreflang="fr" lang="fr">FR</a>
+      <span>DE</span>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="trying">
+    <h1><span class="score-title">Die Partitur</span> wird in Orchestrion geöffnet …</h1>
+    <p>Ihr Browser fragt vielleicht, ob er Orchestrion öffnen darf: Erlauben Sie es.</p>
+  </section>
+
+  <section class="panel fallback-panel">
+    <h2>Nichts passiert?</h2>
+    <p>Vielleicht ist Orchestrion auf diesem Computer noch nicht installiert. Es ist kostenlos, für Windows, macOS und Linux:</p>
+    <div class="downloads">
+      <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Windows</strong><small>Installer (.msi)</small></a>
+      <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>macOS</strong><small>signiert &amp; notarisiert (.dmg)</small></a>
+      <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Linux</strong><small>AppImage</small></a>
+    </div>
+    <p>Nach der Installation:</p>
+    <p><a class="dl open-link" href="#">Die Partitur in Orchestrion öffnen</a></p>
+    <p class="small">Sie haben Orchestrion schon? Ältere Versionen öffnen diese Links nicht: Aktualisieren Sie es, oder klicken Sie in Orchestrion auf den Titel der Partitur und suchen Sie nach <span class="score-title">der Partitur</span>.</p>
+  </section>
+
+  <section class="panel mobile-panel">
+    <h1>Orchestrion läuft auf Computern</h1>
+    <p>Es ist eine Desktop-App für Windows, macOS und Linux. Öffnen Sie diese Seite auf Ihrem Computer, um die Partitur dort zu spielen.</p>
+    <p><button type="button" class="dl primary" id="send-link" data-copied="Link kopiert">Diesen Link an meinen Computer senden</button></p>
+  </section>
+
+  <section class="panel broken-panel">
+    <h1>Dieser Link führt zu keiner Partitur</h1>
+    <p>Suchen Sie die Partitur auf <a href="https://rolls.orchestrion.app/">Rolls</a> und spielen Sie sie von dort.</p>
+  </section>
+
+  <p class="back"><a class="rolls-page" href="https://rolls.orchestrion.app/">← Zurück zur Partitur auf Rolls</a></p>
+</main>
+
+<script src="../../assets/play.js"></script>
+</body>
+</html>

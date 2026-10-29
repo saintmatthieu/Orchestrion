@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <script>
+    // Phones and tablets can't run the app. (iPadOS reports itself as a Mac.)
+    if (/Android|iPhone|iPad|iPod|Mobi/.test(navigator.userAgent) ||
+        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) {
+      document.documentElement.classList.add("mobile");
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Ouvrir dans Orchestrion</title>
+  <link rel="icon" type="image/png" href="../../assets/favicon.png">
+  <meta name="theme-color" content="#2e1a12">
+  <link rel="stylesheet" href="../../assets/play.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <img src="../../assets/icon.png" alt="" width="36" height="36">
+    <a class="name" href="../../fr/">Orchestrion</a>
+    <nav class="langs">
+      <a class="lang" href="../../play/" hreflang="en" lang="en">EN</a>
+      <span>FR</span>
+      <a class="lang" href="../../de/play/" hreflang="de" lang="de">DE</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="trying">
+    <h1>Ouverture de <span class="score-title">la partition</span> dans Orchestrion…</h1>
+    <p>Votre navigateur vous demandera peut-être s’il peut ouvrir Orchestrion : acceptez.</p>
+  </section>
+
+  <section class="panel fallback-panel">
+    <h2>Rien ne s’est passé ?</h2>
+    <p>Orchestrion n’est peut-être pas encore installé sur cet ordinateur. Il est gratuit, pour Windows, macOS et Linux :</p>
+    <div class="downloads">
+      <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Windows</strong><small>installeur (.msi)</small></a>
+      <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>macOS</strong><small>signé et notarié (.dmg)</small></a>
+      <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Linux</strong><small>AppImage</small></a>
+    </div>
+    <p>Une fois installé :</p>
+    <p><a class="dl open-link" href="#">Ouvrir la partition dans Orchestrion</a></p>
+    <p class="small">Vous avez déjà Orchestrion ? Les versions plus anciennes n’ouvrent pas ces liens : mettez-le à jour, ou cliquez sur le titre de la partition dans Orchestrion et cherchez <span class="score-title">la partition</span>.</p>
+  </section>
+
+  <section class="panel mobile-panel">
+    <h1>Orchestrion fonctionne sur ordinateur</h1>
+    <p>C’est une application de bureau pour Windows, macOS et Linux. Ouvrez cette page sur votre ordinateur pour y jouer la partition.</p>
+    <p><button type="button" class="dl primary" id="send-link" data-copied="Lien copié">Envoyer ce lien à mon ordinateur</button></p>
+  </section>
+
+  <section class="panel broken-panel">
+    <h1>Ce lien ne mène à aucune partition</h1>
+    <p>Retrouvez la partition sur <a href="https://rolls.orchestrion.app/">Rolls</a> et jouez-la depuis là.</p>
+  </section>
+
+  <p class="back"><a class="rolls-page" href="https://rolls.orchestrion.app/">← Retour à la partition sur Rolls</a></p>
+</main>
+
+<script src="../../assets/play.js"></script>
+</body>
+</html>

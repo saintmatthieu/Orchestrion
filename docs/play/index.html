@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script>
+    // Send first-time visitors to their browser's language. A language
+    // picked explicitly is remembered and wins.
+    (function () {
+      var chosen = null;
+      try { chosen = localStorage.getItem("lang"); } catch (e) {}
+      if (chosen) return;
+      var prefs = navigator.languages || [navigator.language || ""];
+      for (var i = 0; i < prefs.length; i++) {
+        var l = (prefs[i] || "").toLowerCase().slice(0, 2);
+        if (l === "en") return;
+        if (l === "fr" || l === "de") {
+          location.replace("../" + l + "/play/" + location.search + location.hash);
+          return;
+        }
+      }
+    })();
+
+    // Phones and tablets can't run the app. (iPadOS reports itself as a Mac.)
+    if (/Android|iPhone|iPad|iPod|Mobi/.test(navigator.userAgent) ||
+        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)) {
+      document.documentElement.classList.add("mobile");
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Open in Orchestrion</title>
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <meta name="theme-color" content="#2e1a12">
+  <link rel="stylesheet" href="../assets/play.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <img src="../assets/icon.png" alt="" width="36" height="36">
+    <a class="name" href="../">Orchestrion</a>
+    <nav class="langs">
+      <span>EN</span>
+      <a class="lang" href="../fr/play/" hreflang="fr" lang="fr">FR</a>
+      <a class="lang" href="../de/play/" hreflang="de" lang="de">DE</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="trying">
+    <h1>Opening <span class="score-title">the score</span> in Orchestrion…</h1>
+    <p>Your browser may ask whether to open Orchestrion: allow it.</p>
+  </section>
+
+  <section class="panel fallback-panel">
+    <h2>Nothing happened?</h2>
+    <p>Orchestrion may not be on this computer yet. It’s free, for Windows, macOS and Linux:</p>
+    <div class="downloads">
+      <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Windows</strong><small>installer (.msi)</small></a>
+      <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>macOS</strong><small>signed &amp; notarized (.dmg)</small></a>
+      <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Linux</strong><small>AppImage</small></a>
+    </div>
+    <p>Once it’s installed:</p>
+    <p><a class="dl open-link" href="#">Open the score in Orchestrion</a></p>
+    <p class="small">Already have Orchestrion? Older versions don’t open these links: update it, or click the score’s title in Orchestrion and search for <span class="score-title">the score</span>.</p>
+  </section>
+
+  <section class="panel mobile-panel">
+    <h1>Orchestrion runs on computers</h1>
+    <p>It’s a desktop app for Windows, macOS and Linux. Open this page on your computer to play the score there.</p>
+    <p><button type="button" class="dl primary" id="send-link" data-copied="Link copied">Send this link to my computer</button></p>
+  </section>
+
+  <section class="panel broken-panel">
+    <h1>This link doesn’t lead to a score</h1>
+    <p>Find the score on <a href="https://rolls.orchestrion.app/">Rolls</a>, and play it from there.</p>
+  </section>
+
+  <p class="back"><a class="rolls-page" href="https://rolls.orchestrion.app/">← Back to the score on Rolls</a></p>
+</main>
+
+<script src="../assets/play.js"></script>
+</body>
+</html>

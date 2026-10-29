@@ -1,0 +1,79 @@
+/* The play page (play/?id=<id>): opens a score of Rolls in Orchestrion.
+   Its panels are shown by classes on <html>, set by play.js: "mobile",
+   "broken" (no score named), "fallback" (the app didn't seem to open). */
+:root {
+  --espresso: #2e1a12;
+  --espresso-warm: #3a2318;
+  --gold: #b9863e;
+  --gold-bright: #d6a85c;
+  --cream: #f7f1e3;
+  --sand: #cbbfa5;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  min-height: 100vh;
+  background: linear-gradient(var(--espresso), var(--espresso-warm));
+  color: var(--cream);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  line-height: 1.6;
+}
+a { color: var(--gold-bright); }
+.wrap { max-width: 44rem; margin: 0 auto; padding: 0 1.25rem; }
+
+header.site { padding: 1rem 0; }
+header.site .wrap { display: flex; align-items: center; gap: 0.75rem; }
+header.site img { width: 2.2rem; height: 2.2rem; }
+header.site .name {
+  font-size: 1.35rem; font-style: italic; letter-spacing: 0.02em;
+  color: var(--cream); text-decoration: none;
+}
+.langs { margin-left: auto; display: flex; gap: 0.6rem; font-size: 0.85rem; letter-spacing: 0.05em; }
+.langs a { text-decoration: none; }
+.langs a:hover { text-decoration: underline; }
+
+main { padding: 3rem 0 4rem; text-align: center; }
+h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-style: italic; font-weight: 500; line-height: 1.25;
+  color: var(--gold-bright);
+  margin-bottom: 0.75rem;
+  text-wrap: balance;
+}
+h2 {
+  font-size: 1.35rem; font-style: italic; font-weight: 500;
+  color: var(--gold-bright);
+  margin-bottom: 0.4rem;
+}
+p { color: #e8ddc8; margin: 0 auto 1rem; max-width: 36rem; text-wrap: balance; }
+p.small { font-size: 0.9rem; color: var(--sand); }
+
+.downloads { display: flex; flex-wrap: wrap; gap: 0.9rem; justify-content: center; margin: 1.25rem 0 1.75rem; }
+.dl {
+  display: inline-block;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  background: none;
+  color: var(--cream);
+  font: inherit; font-size: 1.05rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.dl:hover { background: rgba(214,168,92,0.15); transform: translateY(-1px); }
+.dl strong { color: var(--gold-bright); }
+.dl small { display: block; font-size: 0.78rem; color: var(--sand); }
+.dl.primary { background: var(--gold); color: var(--espresso); }
+.dl.primary strong, .dl.primary small { color: var(--espresso); }
+.dl.primary:hover { background: var(--gold-bright); }
+
+.panel { margin-top: 2.5rem; }
+.back { margin-top: 2.5rem; font-size: 0.95rem; }
+
+/* Which panels show. */
+.fallback-panel, .mobile-panel, .broken-panel { display: none; }
+.fallback .fallback-panel { display: block; }
+.mobile .mobile-panel { display: block; }
+.mobile .trying, .mobile .fallback-panel { display: none; }
+.broken .broken-panel { display: block; }
+.broken .trying, .broken .fallback-panel, .broken .mobile-panel, .broken .back { display: none; }
