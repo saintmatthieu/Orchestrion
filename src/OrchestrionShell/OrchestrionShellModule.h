@@ -32,6 +32,7 @@ class SynthesizerMenuManager;
 class OrchestrionEventProcessor;
 class OrchestrionActionController;
 class OrchestrionStartupScenario;
+class OrchestrionCommands;
 
 class OrchestrionShellModule : public muse::modularity::IModuleSetup
 {
@@ -59,6 +60,7 @@ private:
       m_orchestrionActionController;
   const std::shared_ptr<OrchestrionStartupScenario>
       m_orchestrionStartupScenario;
+  const std::shared_ptr<OrchestrionCommands> m_orchestrionCommands;
   const std::shared_ptr<SleepInhibitor> m_sleepInhibitor;
   const std::shared_ptr<RollsLibrary> m_rollsLibrary;
 };

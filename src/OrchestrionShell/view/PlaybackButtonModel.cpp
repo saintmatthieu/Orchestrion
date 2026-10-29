@@ -18,6 +18,7 @@
  */
 #include "PlaybackButtonModel.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
+#include "playback/playbackcommands.h"
 
 namespace dgk
 {
@@ -78,5 +79,8 @@ void PlaybackButtonModel::backStep() { dispatcher()->dispatch("prev"); }
 
 void PlaybackButtonModel::forwardStep() { dispatcher()->dispatch("next"); }
 
-void PlaybackButtonModel::toggleLoop() { dispatcher()->dispatch("loop"); }
+void PlaybackButtonModel::toggleLoop()
+{
+  commandDispatcher()->dispatch(mu::playback::LOOP_TOGGLE_COMMAND);
+}
 } // namespace dgk

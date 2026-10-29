@@ -21,6 +21,7 @@
 #include "interactive/iinteractiveuriregister.h"
 #include "internal/ControllerMenuManager.h"
 #include "internal/OrchestrionActionController.h"
+#include "internal/OrchestrionCommands.h"
 #include "internal/OrchestrionEventProcessor.h"
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
@@ -29,6 +30,8 @@
 #include "internal/SleepInhibitor.h"
 #include "internal/SynthesizerMenuManager.h"
 #include "modularity/ioc.h"
+#include "rcommand/icommandsregister.h"
+#include "rcommand/icommandsstate.h"
 #include "ui/iuiactionsregister.h"
 #include "view/GradingModel.h"
 #ifdef Q_OS_MAC
@@ -62,6 +65,7 @@ OrchestrionShellModule::OrchestrionShellModule()
           std::make_shared<OrchestrionActionController>()},
       m_orchestrionStartupScenario{
           std::make_shared<OrchestrionStartupScenario>()},
+      m_orchestrionCommands{std::make_shared<OrchestrionCommands>()},
       m_sleepInhibitor{std::make_shared<SleepInhibitor>()},
       m_rollsLibrary{std::make_shared<RollsLibrary>()}
 {
@@ -131,6 +135,11 @@ void OrchestrionShellModule::resolveImports()
     ir->registerQmlUri(muse::Uri("orchestrion://takes/keep"), "Orchestrion",
                        "TakesDialog");
   }
+
+  // The commands that carry Orchestrion's keyboard shortcuts.
+  if (auto cr =
+          globalIoc()->resolve<muse::rcommand::ICommandsRegister>(moduleName()))
+    cr->reg(std::make_shared<OrchestrionCommandsRegister>());
 }
 
 muse::modularity::IContextSetup *OrchestrionShellModule::newContext(
@@ -152,6 +161,11 @@ void OrchestrionShellModule::onContextResolveImports() const
                 ->resolve<muse::ui::IUiActionsRegister>(moduleName());
   if (ar)
     ar->reg(m_orchestrionUiActions);
+  // So are the commands' states.
+  auto cs = muse::modularity::ioc(iocContext())
+                ->resolve<muse::rcommand::ICommandsState>(moduleName());
+  if (cs)
+    cs->reg(m_orchestrionCommands);
 }
 
 void OrchestrionShellModule::onContextPreInit(
@@ -169,6 +183,7 @@ void OrchestrionShellModule::onContextInit(
   m_orchestrionUiActions->init();
   m_orchestrionActionController->init();
   m_orchestrionStartupScenario->init();
+  m_orchestrionCommands->registerHandlers();
   m_sleepInhibitor->init();
 }
 } // namespace dgk

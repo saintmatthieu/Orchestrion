@@ -37,7 +37,7 @@ void ScoreAttributionModel::load()
 {
   loadManifest();
 
-  context()->currentProjectChanged().onNotify(this, [this]
+  projectSession()->projectChanged().onNotify(this, [this]
                                               { onCurrentProjectChanged(); });
 }
 
@@ -86,7 +86,7 @@ void ScoreAttributionModel::onCurrentProjectChanged()
 {
   m_current = Attribution{};
 
-  if (const auto project = context()->currentProject())
+  if (const auto project = projectSession()->project())
   {
     const QString path = project->path().toQString();
     if (const auto id = rollsLibrary()->idOf(path))

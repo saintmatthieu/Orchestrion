@@ -25,18 +25,19 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <global/iapplication.h>
 #include <global/iglobalconfiguration.h>
 #include <interactive/iinteractive.h>
 #include <interactive/iplatforminteractive.h>
 #include <modularity/ioc.h>
 #include <multiwindows/imultiwindowsprovider.h>
+#include <project/iopenprojectscenario.h>
 #include <project/iprojectautosaver.h>
 #include <project/iprojectconfiguration.h>
 #include <project/iprojectcreator.h>
-#include <project/iprojectfilescontroller.h>
+#include <project/iprojectsession.h>
 #include <project/irecentfilescontroller.h>
+#include <project/isaveprojectscenario.h>
 #include <ui/imainwindow.h>
 #include <ui/iuiconfiguration.h>
 
@@ -59,12 +60,12 @@ class OrchestrionActionController : public muse::actions::Actionable,
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
   dgk::Inject<IEffectChain> effectChain{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::IApplication> application{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IProjectConfiguration> projectConfiguration{this};
-  dgk::Inject<mu::project::IProjectFilesController> projectFilesController{
-      this};
+  dgk::Inject<mu::project::IOpenProjectScenario> openProjectScenario{this};
+  dgk::Inject<mu::project::ISaveProjectScenario> saveProjectScenario{this};
   dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
   dgk::Inject<mu::project::IProjectCreator> projectCreator{this};
   dgk::Inject<mu::project::IProjectAutoSaver> projectAutoSaver{this};
@@ -92,7 +93,7 @@ private:
 
   void onFileOpen(const muse::actions::ActionData &data) const;
   void onFileSave() const;
-  void onFileSaveAs() const;
+  void onFileSaveAs();
   /**
    * Whether the score has changes to save: Orchestrion's own modifications,
    * or edits in the score's undo stack.

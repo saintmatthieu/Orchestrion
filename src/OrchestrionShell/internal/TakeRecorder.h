@@ -27,8 +27,8 @@
 
 #include <QElapsedTimer>
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <optional>
+#include <project/iprojectsession.h>
 #include <vector>
 
 namespace dgk
@@ -47,7 +47,7 @@ class TakeRecorder : public muse::async::Asyncable, public dgk::Injectable
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IStaffModes> staffModes{this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
 
 public:
   void init();

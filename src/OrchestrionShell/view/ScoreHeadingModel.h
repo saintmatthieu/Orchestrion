@@ -22,7 +22,7 @@
 #pragma once
 
 #include "async/asyncable.h"
-#include "context/iglobalcontext.h"
+#include "project/iprojectsession.h"
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -38,7 +38,7 @@ class ScoreHeadingModel : public QObject,
 {
   Q_OBJECT
 
-  dgk::Inject<mu::context::IGlobalContext> context{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
 
   //! The work's title as displayed on the score itself (not the window):
   //! the score's "workTitle" meta tag, or the file's base name when there is

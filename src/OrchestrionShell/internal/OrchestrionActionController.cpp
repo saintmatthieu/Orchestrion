@@ -248,7 +248,7 @@ void OrchestrionActionController::init()
   // Orchestrion::init) — a one-way, in-place rewrite of the score. So a
   // grading switch only takes effect, in either direction, by reloading the
   // score.
-  globalContext()->currentMasterNotationChanged().onNotify(
+  projectSession()->masterNotationChanged().onNotify(
       this, [this]
       { m_scoreLoadedWithGrading = sequencerConfig()->gradingEnabled(); });
   sequencerConfig()->gradingEnabledChanged().onNotify(this, [this]
@@ -266,8 +266,7 @@ void OrchestrionActionController::reloadForGrading()
     return; // the loaded score already has the repeat layout we need
   m_scoreLoadedWithGrading = grading;
 
-  const mu::project::INotationProjectPtr project =
-      globalContext()->currentProject();
+  const mu::project::INotationProjectPtr project = projectSession()->project();
   if (!project)
     return;
   const QUrl url = QUrl::fromLocalFile(project->path().toQString());
@@ -298,7 +297,7 @@ bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
 
 bool OrchestrionActionController::closeCurrentProject() const
 {
-  if (!globalContext()->currentProject())
+  if (!projectSession()->project())
     return true;
 
   if (scoreModified())
@@ -330,7 +329,7 @@ bool OrchestrionActionController::closeCurrentProject() const
   m_takeReplayer->Stop();
   offerTakes();
   interactive()->closeAllDialogsSync();
-  globalContext()->setCurrentProject(nullptr);
+  projectSession()->setProject(nullptr);
   return true;
 }
 
@@ -400,13 +399,13 @@ void OrchestrionActionController::replayTake() const
     LOGE() << "Not a take: " << path;
     return;
   }
-  const auto project = globalContext()->currentProject();
+  const auto project = projectSession()->project();
   if (!project || project->path().toQString() != take->scorePath)
   {
     // The take's score opens first; the replay starts once it is ready.
     if (!closeCurrentProject())
       return;
-    projectFilesController()->openProject(
+    openProjectScenario()->openProject(
         mu::project::ProjectFile{muse::io::path_t{take->scorePath}});
   }
   m_takeReplayer->Replay(std::move(*take));
@@ -447,7 +446,7 @@ void OrchestrionActionController::onFileSave() const
   prepareSave();
 
   if (const mu::project::INotationProjectPtr notationProject =
-          globalContext()->currentProject())
+          projectSession()->project())
     if (notationProject->save())
       markScoreSaved();
 }
@@ -458,7 +457,7 @@ void OrchestrionActionController::prepareSave() const
     registry->Save();
   // A MusicXML score that gives no MIDI channels is imported without any,
   // which its export (saving it in place) needs.
-  if (const auto master = globalContext()->currentMasterNotation())
+  if (const auto master = projectSession()->masterNotation())
     master->masterScore()->rebuildMidiMapping();
 }
 
@@ -471,7 +470,7 @@ bool OrchestrionActionController::scoreModified() const
       orchestrion()->modifiableItemRegistry();
   if (registry && registry->Modified())
     return true;
-  const auto master = globalContext()->currentMasterNotation();
+  const auto master = projectSession()->masterNotation();
   return master && !master->notation()->undoStack()->isStackClean();
 }
 
@@ -479,7 +478,7 @@ void OrchestrionActionController::markScoreSaved() const
 {
   // MuseScore doesn't move the clean state of the undo stack when it saves
   // (it keeps its own isNeedSave() flag): the stack is clean from here on.
-  if (const auto master = globalContext()->currentMasterNotation())
+  if (const auto master = projectSession()->masterNotation())
     master->masterScore()->undoStack()->markClean();
 }
 
@@ -492,7 +491,7 @@ static const std::vector<std::string> filter{
     muse::trc("project", "MusicXML files") + " (*.mxl *.musicxml *.xml)"};
 } // namespace
 
-void OrchestrionActionController::onFileSaveAs() const
+void OrchestrionActionController::onFileSaveAs()
 {
   prepareSave();
 
@@ -502,9 +501,15 @@ void OrchestrionActionController::onFileSaveAs() const
     defaultDir = fallbackPath();
   const muse::io::path_t filePath = interactive()->selectSavingFileSync(
       muse::trc("project", "Save as"), defaultDir, filter);
-  if (projectFilesController()->saveProjectLocally(
-          filePath, mu::project::SaveMode::SaveAs))
-    markScoreSaved();
+  if (filePath.empty())
+    return;
+  saveProjectScenario()->saveProject(filePath).onResolve(
+      this,
+      [this](const muse::Ret &ret)
+      {
+        if (ret)
+          markScoreSaved();
+      });
 }
 
 void OrchestrionActionController::openFromDir(const muse::io::path_t &dir) const
@@ -530,7 +535,7 @@ void OrchestrionActionController::openProject(
 
   if (!openLocalProjectForced(projectFile))
     // MuseScore's own way, with its dialogs for what can't be opened.
-    projectFilesController()->openProject(projectFile);
+    openProjectScenario()->openProject(projectFile);
 }
 
 bool OrchestrionActionController::openLocalProjectForced(
@@ -571,7 +576,7 @@ bool OrchestrionActionController::openLocalProjectForced(
   mu::project::RecentFile recentFile;
   recentFile.path = path;
   recentFilesController()->prependRecentFile(recentFile);
-  globalContext()->setCurrentProject(project);
+  projectSession()->setProject(project);
   if (!interactive()->isOpened(notationPageUri).val)
     interactive()->open(notationPageUri);
   return true;

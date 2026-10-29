@@ -96,7 +96,6 @@
 #include <framework/audioplugins/audiopluginsmodule.h>
 
 // MuseScore modules (and stubs)
-#include <context/contextmodule.h>
 #include <engraving/engravingmodule.h>
 #include <importexport/midi/midimodule.h>
 #include <importexport/musicxml/musicxmlmodule.h>
@@ -162,7 +161,6 @@ std::shared_ptr<muse::IApplication> OrchestrionAppFactory::newGuiApp(
   // MuseScore
   app->addModule(new mu::braille::BrailleModule());
   app->addModule(new muse::cloud::CloudModule());
-  app->addModule(new mu::context::ContextModule());
   app->addModule(new mu::engraving::EngravingModule());
   app->addModule(new mu::iex::midi::MidiModule());
   app->addModule(new mu::iex::mnxio::MnxModule());

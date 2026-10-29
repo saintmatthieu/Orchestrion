@@ -19,8 +19,8 @@
 #pragma once
 
 #include "IOrchestrionNotationInteractionProcessor.h"
-#include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
+#include <project/iprojectsession.h>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -29,7 +29,7 @@ class OrchestrionNotationInteractionProcessor
     : public IOrchestrionNotationInteractionProcessor,
       public dgk::Injectable
 {
-  dgk::Inject<mu::context::IGlobalContext> globalContext = {this};
+  dgk::Inject<mu::project::IProjectSession> projectSession = {this};
 
 public:
   void onMousePressed(const muse::PointF &logicalPosition,

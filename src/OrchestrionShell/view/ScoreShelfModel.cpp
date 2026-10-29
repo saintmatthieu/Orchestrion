@@ -402,10 +402,10 @@ void ScoreShelfModel::load()
   reload();
   onCurrentProjectChanged();
 
-  recentFilesController()->recentFilesListChanged().onNotify(this, [this]
-                                                             { reload(); });
-  globalContext()->currentProjectChanged().onNotify(
-      this, [this] { onCurrentProjectChanged(); });
+  recentFilesController()->recentFilesListChanged().onReceive(
+      this, [this](const mu::project::RecentFilesChange &) { reload(); });
+  projectSession()->projectChanged().onNotify(this, [this]
+                                              { onCurrentProjectChanged(); });
   rollsLibrary()->scoresChanged().onNotify(this, [this] { reload(); });
   rollsLibrary()->downloadFinished().onReceive(
       this, [this](const QString &id, bool ok) { onDownloadFinished(id, ok); });
@@ -457,7 +457,7 @@ void ScoreShelfModel::setQuery(const QString &query)
 
 bool ScoreShelfModel::hasScore() const
 {
-  return globalContext()->currentProject() != nullptr;
+  return projectSession()->project() != nullptr;
 }
 
 bool ScoreShelfModel::open(const QString &path,
@@ -828,7 +828,7 @@ void ScoreShelfModel::reload()
 
 void ScoreShelfModel::onCurrentProjectChanged()
 {
-  const auto project = globalContext()->currentProject();
+  const auto project = projectSession()->project();
   m_currentPath = project ? project->path().toQString() : QString{};
   for (ScoreListModel *list : lists())
     list->setCurrentPath(m_currentPath);

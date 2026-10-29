@@ -17,8 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ScoreAnimator.h"
-#include <notation/imasternotation.h>
-#include <notation/inotation.h>
 #include "OrchestrionSequencer/IChord.h"
 #include "OrchestrionSequencer/IOrchestrionSequencer.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
@@ -27,6 +25,8 @@
 #include <engraving/dom/note.h>
 #include <engraving/dom/tie.h>
 #include <log.h>
+#include <notation/imasternotation.h>
+#include <notation/inotation.h>
 
 namespace dgk
 {
@@ -74,7 +74,7 @@ void ScoreAnimator::OnChordTransitions(
 
 mu::notation::INotationInteractionPtr ScoreAnimator::GetInteraction() const
 {
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (!masterNotation)
     return nullptr;
   return masterNotation->notation()->interaction();

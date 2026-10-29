@@ -1,0 +1,30 @@
+[
+    {
+      "scope": "APP",
+      "shortcuts": [
+        {"command": "command://orchestrion/browse-scores",  "sequences": ["Ctrl+O"], "autorepeat": false},
+        {"command": "command://orchestrion/file-save",  "sequences": ["Ctrl+S"], "autorepeat": false},
+        {"command": "command://orchestrion/file-save-as",  "sequences": ["Ctrl+Shift+S"], "autorepeat": false},
+        {"command": "command://orchestrion/fullscreen",  "sequences": ["F11"], "autorepeat": false}
+      ]
+    },
+    {
+      "scope": "PLAYBACK",
+      "shortcuts": [
+        {"command": "command://orchestrion/play-toggle",  "sequences": ["Space"], "autorepeat": false},
+        {"command": "command://orchestrion/rewind",  "sequences": ["Home"], "autorepeat": false},
+        {"command": "command://orchestrion/prev",  "sequences": ["Left"]},
+        {"command": "command://orchestrion/next",  "sequences": ["Right"]},
+        {"command": "command://playback/loop-toggle",  "sequences": ["Ctrl+L"], "autorepeat": false},
+        {"command": "command://orchestrion/loop-in",  "sequences": ["I"], "autorepeat": false},
+        {"command": "command://orchestrion/loop-out",  "sequences": ["O"], "autorepeat": false}
+      ]
+    },
+    {
+      "scope": "NOTATION_PAGE",
+      "shortcuts": [
+        {"command": "command://notation/view/zoom-in",  "sequences": ["+"]},
+        {"command": "command://notation/view/zoom-out",  "sequences": ["-"]}
+      ]
+    }
+]
