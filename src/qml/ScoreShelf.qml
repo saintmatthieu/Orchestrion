@@ -724,6 +724,14 @@ Item {
                 font.pixelSize: 14
                 verticalAlignment: TextInput.AlignVCenter
                 onTextChanged: root.model.query = text
+                // The model's own searches (a link's score, see openRolls()).
+                Connections {
+                    target: root.model
+                    function onQueryChanged() {
+                        if (searchField.text !== root.model.query)
+                            searchField.text = root.model.query
+                    }
+                }
                 Keys.onDownPressed: root.focusFirstCard()
                 onAccepted: {
                     if (root.model.openBestMatch())

@@ -261,6 +261,11 @@ public:
   Q_INVOKABLE void update(const QString &path);
   /** Rolls' website. */
   Q_INVOKABLE void openRollsSite();
+  /**
+   * Opens that score of Rolls (openRollsScore). If it must be downloaded
+   * first, the shelf is opened on its card, which shows the download.
+   */
+  void openRolls(const QString &id);
   /** The shelf's links: the same as the File menu's. */
   Q_INVOKABLE void openFromComputer();
   Q_INVOKABLE void searchOnline();
@@ -339,6 +344,8 @@ private:
   /** The score of Rolls to open once downloaded. */
   QString m_pendingOpen;
   QString m_pendingDisplayName;
+  /** The search openRolls() made for it, cleared once it is opened. */
+  QString m_queryOfPendingOpen;
   bool m_active = false;
   bool m_renderScheduled = false;
 };

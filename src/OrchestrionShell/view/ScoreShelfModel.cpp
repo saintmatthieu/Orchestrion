@@ -412,6 +412,9 @@ void ScoreShelfModel::load()
 
   dispatcher()->reg(this, actionIds::browseScores,
                     [this] { emit openRequested(); });
+  dispatcher()->reg(this, actionIds::openRollsScore,
+                    [this](const muse::actions::ActionData &args)
+                    { openRolls(args.arg<QString>(0)); });
 }
 
 QObject *ScoreShelfModel::sections() const { return m_sections; }
@@ -531,6 +534,21 @@ void ScoreShelfModel::update(const QString &path)
     list->setDownloadState(*id, rollsLibrary()->isDownloading(*id), false);
 }
 
+void ScoreShelfModel::openRolls(const QString &id)
+{
+  if (!rollsLibrary()->score(id))
+    return;
+  const QString path = rollsLibrary()->localPath(id);
+  if (!rollsLibrary()->isDownloaded(id))
+  {
+    // The shelf shows the download on the score's card, alone.
+    setQuery(rollsLibrary()->score(id)->title);
+    m_queryOfPendingOpen = m_query;
+    emit openRequested();
+  }
+  open(path, QString{});
+}
+
 void ScoreShelfModel::openRollsSite()
 {
   platformInteractive()->openUrl(rollsLibrary()->siteUrl());
@@ -554,6 +572,10 @@ void ScoreShelfModel::onDownloadFinished(const QString &id, bool ok)
     m_pendingOpen.clear();
     open(path, m_pendingDisplayName);
     emit closeRequested();
+    // Not left for the next time the shelf is opened.
+    if (!m_queryOfPendingOpen.isEmpty() && m_query == m_queryOfPendingOpen)
+      setQuery(QString{});
+    m_queryOfPendingOpen.clear();
   }
 }
 
