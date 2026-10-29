@@ -110,6 +110,12 @@ if (OS_IS_LIN)
     file(CREATE_LINK "${CMAKE_INSTALL_PREFIX}/share" "${CMAKE_BINARY_DIR}/share" SYMBOLIC)
 endif()
 
+if (OS_IS_MAC)
+    set_target_properties(Orchestrion PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/buildscripts/packaging/macOS/Info.plist.in"
+    )
+endif()
+
 if (OS_IS_WIN)
     # Match the exe filename to MUSESCORE_EXECUTABLE_NAME used by the WiX installer,
     # so the shortcut and "launch on finish" file references resolve correctly.
