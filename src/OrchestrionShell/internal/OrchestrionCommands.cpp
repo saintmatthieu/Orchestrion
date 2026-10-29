@@ -19,6 +19,8 @@
 #include "OrchestrionCommands.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
 
+#include <QCoreApplication>
+
 namespace dgk
 {
 namespace
@@ -101,12 +103,33 @@ OrchestrionCommandsRegister::commandInfoList() const
 void OrchestrionCommands::registerHandlers()
 {
   for (const ActionCommand &ac : actionCommands())
-    commandDispatcher()->onRequest(this, ac.command,
-                                   [this, action = ac.action]
-                                   {
-                                     actionsDispatcher()->dispatch(action);
-                                     return muse::make_ok();
-                                   });
+    onRequest(ac.command,
+              [this, action = ac.action](const muse::rcommand::Params &)
+              {
+                actionsDispatcher()->dispatch(action);
+                return muse::make_ok();
+              });
+}
+
+void OrchestrionCommands::onRequest(const muse::rcommand::Command &command,
+                                    const Handler &handler)
+{
+  commandDispatcher()->onRequest(
+      this, command,
+      muse::rcommand::ICommandDispatcher::AsyncCallBack(
+          [handler](
+              const muse::rcommand::Request &request,
+              const muse::rcommand::ICommandDispatcher::OnResponse &onResponse)
+          {
+            QMetaObject::invokeMethod(
+                qApp,
+                [handler, request, onResponse]
+                {
+                  onResponse(muse::rcommand::make_response(
+                      request, handler(request.params)));
+                },
+                Qt::QueuedConnection);
+          }));
 }
 
 std::string OrchestrionCommands::moduleName() const { return moduleName_; }
