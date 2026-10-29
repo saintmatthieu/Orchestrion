@@ -17,6 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionApp.h"
+#include "muse_framework_config.h" // MUSE_MODULE_* macros
+#ifdef MUSE_MODULE_TESTFLOW
+#include "TestflowRunner.h"
+#endif
 
 #include <QCoreApplication>
 #include <audioplugins/iregisteraudiopluginsscenario.h>
@@ -94,12 +98,19 @@ void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &ctx)
   // effects among them then show up in the Effects menu.
   muse::ContextInject<muse::audioplugins::IRegisterAudioPluginsScenario>
       registerAudioPluginsScenario{ctx};
-  if (!registerAudioPluginsScenario())
-    return;
-  // The progress dialog may be the only window for a moment (see MuseScore's
-  // StartupScenario::registerAudioPlugins).
-  qApp->setQuitLockEnabled(false);
-  registerAudioPluginsScenario()->updatePluginsRegistry();
-  qApp->setQuitLockEnabled(true);
+  if (registerAudioPluginsScenario())
+  {
+    // The progress dialog may be the only window for a moment (see
+    // MuseScore's StartupScenario::registerAudioPlugins).
+    qApp->setQuitLockEnabled(false);
+    registerAudioPluginsScenario()->updatePluginsRegistry();
+    qApp->setQuitLockEnabled(true);
+  }
+
+#ifdef MUSE_MODULE_TESTFLOW
+  if (const auto options =
+          std::dynamic_pointer_cast<CommandOptions>(contextData(ctx).options))
+    TestflowRunner::runIfRequested(ctx, options->testflow);
+#endif
 }
 } // namespace dgk

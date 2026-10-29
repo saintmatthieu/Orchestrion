@@ -22,6 +22,18 @@ dirs) and put `AUDIO_DEVICE=null` under `[General]` in that copy of
 `<XDG_CONFIG_HOME>/Unknown Organization/OrchestrionDevelopment.ini`
 (ALSA's `null` PCM discards output). Check the launch log for
 `AlsaAudioDriver ... Connected to null` before pressing a key or play.
+**But the `null` PCM doesn't pace the driver**: it renders back to back, and the
+audio engine thread, which only runs its operations between two renders, is
+starved: track adds never answer, so after opening a second score MuseScore's
+playback never counts as loaded (its loop command stays disabled, ...). For
+anything beyond the first score, use a paced silent output instead: a
+PipeWire/PulseAudio null sink, with `AUDIO_DEVICE=pipewire` and the stream
+targeted at it (check `pactl list sink-inputs` before playing; unload it after):
+```bash
+MOD=$(pactl load-module module-null-sink sink_name=orchestrion_testflow)
+PIPEWIRE_NODE=orchestrion_testflow build/.../Orchestrion ...
+pactl unload-module $MOD
+```
 Caveat: on the null device the app aborts on close ("pure virtual method called" in
 `AudioNode::process` on the audio thread while `AudioModule::onDeinit` waits), which
 also prevents a restart. To test a quit or a restart, use the default device and

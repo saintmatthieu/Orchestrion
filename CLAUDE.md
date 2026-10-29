@@ -90,6 +90,10 @@ MuseScore's audio engine runs on its own thread and talks to the main thread ove
 
 The console-app construction path is `OrchestrionAppFactory::newConsoleApp` (don't lump it together with the GUI path).
 
+### Testflow (scripted runs)
+
+MuseScore's testflow module runs JavaScript scenarios in the GUI app: `Orchestrion --test-case <script or name> [--test-case-speed Fast]` (`src/App/TestflowRunner`, adapted from Audacity's) runs the script once the window is up and exits with 0 (passed), 1 (failed) or 2 (couldn't run). Scripts live in `testflowscripts/` (not installed); `require("steps/...")` and script names resolve against `MUSE_TESTFLOW_SCRIPTS_PATH`, reports go to `MUSE_TESTFLOW_DATA_PATH`/reports. Scripts drive the app with commands through `api.commands.dispatch(uri, params)` (a muse fork patch), which returns `{success, code, text}` once the command has responded — no guessed sleeps. Orchestrion's commands (`command://orchestrion/...`, incl. `open-score?path=`) are registered in `OrchestrionShell/internal/OrchestrionCommands.cpp`; their handlers run from a queued Qt event, because commands are dispatched while kors' queues are being processed, which holds the main thread's queue lock — a handler joining a thread that sends to the main one (opening a score rebuilds the sequencer) deadlocks there. Run headless with Xvfb and a paced silent audio output (see the verify skill: ALSA's `null` device starves the audio engine).
+
 ### QML / UI
 
 Top-level QML is registered via `qt_add_qml_module(Orchestrion URI Orchestrion ...)` in the root `CMakeLists.txt`; every file in `src/qml/` must be listed there (`QML_FILES`) as well as in `resources.qrc`. Module-internal QML lives under each module's `qml/` and is imported via `MODULE_QML_IMPORT` from that module's `CMakeLists.txt`. See `qml-architecture.md` for the high-level shell composition (`AppWindow → WindowContent → {HomePage, NotationPage, DockToolBar, ...}`).

@@ -143,14 +143,19 @@ struct CommandOptions : public muse::CmdOptions
     QString output;
   } diagnostic;
 
-  struct Autobot
+  /**
+   * --test-case <script>: runs a testflow script in the GUI application, then
+   * exits with its result (see TestflowRunner).
+   */
+  struct Testflow
   {
     QString testCaseNameOrFile;
     QString testCaseContextNameOrFile;
     QString testCaseContextValue;
     QString testCaseFunc;
     QString testCaseFuncArgs;
-  } autobot;
+    QString testCaseSpeed;
+  } testflow;
 
   // --register-audio-plugin <path> [--register-audio-plugin-out <file>]: the
   // subprocess the GUI application runs to examine a newly found plugin (see

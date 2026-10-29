@@ -213,7 +213,7 @@ void CommandLineParser::init()
   m_parser.addOption(QCommandLineOption("diagnostic-drawdiff-to-png",
                                         "Convert draw diff to png"));
 
-  // Autobot
+  // Testflow
   m_parser.addOption(QCommandLineOption(
       "test-case", "Run test case by name or file", "nameOrFile"));
   m_parser.addOption(QCommandLineOption("test-case-context",
@@ -225,6 +225,9 @@ void CommandLineParser::init()
       QCommandLineOption("test-case-func", "Call test case function", "name"));
   m_parser.addOption(QCommandLineOption(
       "test-case-func-args", "Call test case function args", "args"));
+  m_parser.addOption(QCommandLineOption(
+      "test-case-speed", "Test case speed: Default, Fast, Normal or Slow",
+      "speed"));
 
   // Audio plugins
   m_parser.addOption(
@@ -507,7 +510,8 @@ void CommandLineParser::parse(int argc, char **argv)
     m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
     m_options->converterTask.type = ConvertType::ExportScoreVideo;
     m_options->converterTask.inputFile = scorefiles[0];
-    m_options->converterTask.outputFile = fromUserInputPath(m_parser.value("o"));
+    m_options->converterTask.outputFile =
+        fromUserInputPath(m_parser.value("o"));
 
     if (m_parser.isSet("view-mode"))
     {
@@ -622,34 +626,39 @@ void CommandLineParser::parse(int argc, char **argv)
     m_options->diagnostic.input = scorefiles;
   }
 
-  // Autobot
+  // Testflow (in the GUI application: the scripts drive its UI)
   if (m_parser.isSet("test-case"))
   {
-    m_options->runMode = muse::IApplication::RunMode::ConsoleApp;
-    m_options->autobot.testCaseNameOrFile =
+    m_options->testflow.testCaseNameOrFile =
         fromUserInputPath(m_parser.value("test-case"));
   }
 
   if (m_parser.isSet("test-case-context"))
   {
-    m_options->autobot.testCaseContextNameOrFile =
+    m_options->testflow.testCaseContextNameOrFile =
         fromUserInputPath(m_parser.value("test-case-context"));
   }
 
   if (m_parser.isSet("test-case-context-value"))
   {
-    m_options->autobot.testCaseContextValue =
+    m_options->testflow.testCaseContextValue =
         m_parser.value("test-case-context-value");
   }
 
   if (m_parser.isSet("test-case-func"))
   {
-    m_options->autobot.testCaseFunc = m_parser.value("test-case-func");
+    m_options->testflow.testCaseFunc = m_parser.value("test-case-func");
   }
 
   if (m_parser.isSet("test-case-func-args"))
   {
-    m_options->autobot.testCaseFuncArgs = m_parser.value("test-case-func-args");
+    m_options->testflow.testCaseFuncArgs =
+        m_parser.value("test-case-func-args");
+  }
+
+  if (m_parser.isSet("test-case-speed"))
+  {
+    m_options->testflow.testCaseSpeed = m_parser.value("test-case-speed");
   }
 
   // Startup
@@ -695,9 +704,9 @@ CommandOptions::Diagnostic CommandLineParser::diagnostic() const
   return m_options->diagnostic;
 }
 
-CommandOptions::Autobot CommandLineParser::autobot() const
+CommandOptions::Testflow CommandLineParser::testflow() const
 {
-  return m_options->autobot;
+  return m_options->testflow;
 }
 
 CommandOptions::AudioPluginRegistration

@@ -82,7 +82,8 @@ set(MUSE_MODULE_MEDIA ON) # the media stub does not compile (missing include pat
 set(MUSE_MODULE_MIDIREMOTE OFF)
 set(MUSE_MODULE_MUSESAMPLER OFF)
 set(MUSE_MODULE_RCONTROL OFF) # MuseScore's MCP remote-control server: it listens on TCP 2212, which makes Windows ask for firewall permission at first launch
-set(MUSE_MODULE_TESTFLOW OFF)
+set(MUSE_MODULE_TESTFLOW ON) # scripted runs of the app (--test-case), for tests and demos
+set(MUSE_MODULE_TESTFLOW_QML OFF)
 set(MUSE_MODULE_TOURS OFF)
 set(MUSE_MODULE_UPDATE OFF)
 set(MUSE_MODULE_VST ON)

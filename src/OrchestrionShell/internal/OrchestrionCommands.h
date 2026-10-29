@@ -22,6 +22,8 @@
 
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
+#include <global/iglobalconfiguration.h>
+#include <project/iprojectsession.h>
 #include <rcommand/commandable.h>
 #include <rcommand/icommanddispatcher.h>
 #include <rcommand/imodulecommandsregister.h>
@@ -32,10 +34,11 @@
 namespace dgk
 {
 /**
- * The commands that carry Orchestrion's keyboard shortcuts.
+ * Orchestrion's commands: the ones that carry its keyboard shortcuts, and the
+ * ones scripts (testflow) drive it with.
  *
  * MuseScore's shortcuts (v2) only trigger commands, and Orchestrion's
- * handlers are still actions: each of these commands dispatches the action of
+ * handlers are still actions: most of these commands dispatch the action of
  * the same name. A command whose handler moves off actions just changes its
  * registration in OrchestrionCommands.
  */
@@ -60,6 +63,8 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
 {
   dgk::Inject<muse::rcommand::ICommandDispatcher> commandDispatcher{this};
   dgk::Inject<muse::actions::IActionsDispatcher> actionsDispatcher{this};
+  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
 
 public:
   /**
@@ -88,6 +93,12 @@ private:
    */
   void onRequest(const muse::rcommand::Command &command,
                  const Handler &handler);
+
+  /**
+   * command://orchestrion/open-score?path=...: responds once the score is the
+   * current one, so that a script needn't wait for it.
+   */
+  muse::Ret openScore(const muse::rcommand::Params &params);
 
   muse::async::Channel<muse::rcommand::Command, muse::rcommand::CommandState>
       m_commandStateChanged;

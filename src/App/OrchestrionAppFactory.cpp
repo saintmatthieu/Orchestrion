@@ -72,6 +72,9 @@
 #else
 #include <framework/stubs/midiremote/midiremotestubmodule.h>
 #endif
+#ifdef MUSE_MODULE_TESTFLOW
+#include <framework/testflow/testflowmodule.h>
+#endif
 #ifdef MUSE_MODULE_TOURS
 #include <framework/tours/toursmodule.h>
 #else
@@ -148,6 +151,9 @@ std::shared_ptr<muse::IApplication> OrchestrionAppFactory::newGuiApp(
   app->addModule(new muse::mpe::MpeModule());
   app->addModule(new muse::network::NetworkModule());
   app->addModule(new muse::shortcuts::ShortcutsModule());
+#ifdef MUSE_MODULE_TESTFLOW
+  app->addModule(new muse::testflow::TestflowModule());
+#endif
   app->addModule(new muse::ui::UiModule());
   app->addModule(new muse::uicomponents::UiComponentsModule());
 #ifdef MUSE_MODULE_DOCKWINDOW
