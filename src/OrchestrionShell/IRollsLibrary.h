@@ -52,6 +52,9 @@ struct RollsScore
   QString version;
 };
 
+/** Whether that is how the id of a score of Rolls can be written. */
+bool isRollsId(const QString &id);
+
 /**
  * The scores of Rolls, the online library of free scores made for
  * Orchestrion, and the copies of them downloaded to this computer.
@@ -82,6 +85,17 @@ public:
    * under way. A failure keeps the scores as they were.
    */
   virtual void refresh() = 0;
+  /**
+   * Fetches the index again however recently it was, unless a fetch is under
+   * way: for a score that may have been added since.
+   */
+  virtual void refreshNow() = 0;
+  /**
+   * A fetch of the index ended: whether Rolls could be reached. If it was,
+   * the scores are those of the index fetched, unless this version of
+   * Orchestrion can't read it.
+   */
+  virtual muse::async::Channel<bool> indexFetched() const = 0;
 
   /** Where the score is (or will be) downloaded. */
   virtual QString localPath(const QString &id) const = 0;

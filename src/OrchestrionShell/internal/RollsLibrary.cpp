@@ -99,6 +99,8 @@ QString joined(const QJsonArray &credits, bool namesOnly)
 }
 } // namespace
 
+bool isRollsId(const QString &id) { return idPattern.match(id).hasMatch(); }
+
 RollsLibrary::RollsLibrary() : m_indexUrl{indexUrlFromEnvironment()} {}
 
 RollsLibrary::~RollsLibrary() = default;
@@ -234,9 +236,25 @@ void RollsLibrary::refresh()
     return;
   if (m_lastAttempt.isValid() && m_lastAttempt.secsTo(now) < retryIntervalSecs)
     return;
+  fetchIndex();
+}
 
+void RollsLibrary::refreshNow()
+{
+  ensureLoaded();
+  if (!m_fetching)
+    fetchIndex();
+}
+
+muse::async::Channel<bool> RollsLibrary::indexFetched() const
+{
+  return m_indexFetched;
+}
+
+void RollsLibrary::fetchIndex()
+{
   m_fetching = true;
-  m_lastAttempt = now;
+  m_lastAttempt = QDateTime::currentDateTimeUtc();
   QNetworkReply *const reply = network().get(makeRequest(m_indexUrl));
   QObject::connect(reply, &QNetworkReply::finished,
                    [this, reply] { onIndexFetched(reply); });
@@ -251,13 +269,16 @@ void RollsLibrary::onIndexFetched(QNetworkReply *reply)
     // Offline, most likely: the scores stay as they were.
     LOGI() << "Could not fetch the Rolls index: "
            << reply->errorString().toStdString();
+    m_indexFetched.send(false);
     return;
   }
   const QByteArray json = reply->readAll();
-  if (!parseIndex(json, m_indexUrl))
-    return;
-  writeFile(indexPath(), json);
-  m_scoresChanged.notify();
+  if (parseIndex(json, m_indexUrl))
+  {
+    writeFile(indexPath(), json);
+    m_scoresChanged.notify();
+  }
+  m_indexFetched.send(true);
 }
 
 QString RollsLibrary::localPath(const QString &id) const
