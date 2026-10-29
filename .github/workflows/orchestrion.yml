@@ -4,8 +4,12 @@ on:
   push:
     branches: [master]
     tags: ["v*"]
+    # The website (docs/) is published by GitHub Pages; no need to build the
+    # app for it. Tag pushes ignore path filters, so releases still build.
+    paths-ignore: ["docs/**"]
   pull_request:
     branches: [master]
+    paths-ignore: ["docs/**"]
 
 # When pushing a commit and a tag pointing at it together (i.e. cutting a
 # release), the branch and tag events would otherwise spawn two identical
