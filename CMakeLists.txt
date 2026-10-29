@@ -89,6 +89,13 @@ qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/App/OrchestrionConsoleApp.h
 )
 
+if (MUSE_MODULE_TESTFLOW)
+    target_sources(Orchestrion PRIVATE
+        src/App/TestflowRunner.cpp
+        src/App/TestflowRunner.h
+    )
+endif()
+
 set_target_properties(Orchestrion PROPERTIES
     AUTOMOC ON
     AUTORCC ON
@@ -151,6 +158,7 @@ add_to_link_if_exists(muse::multiwindows)
 add_to_link_if_exists(muse::musesampler)
 add_to_link_if_exists(muse::network)
 add_to_link_if_exists(muse::shortcuts)
+add_to_link_if_exists(muse::testflow)
 add_to_link_if_exists(muse::toast)
 add_to_link_if_exists(muse::tours)
 add_to_link_if_exists(muse::ui)

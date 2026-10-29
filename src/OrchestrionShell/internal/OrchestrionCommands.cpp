@@ -20,12 +20,17 @@
 #include "MuseScoreShell/OrchestrionActionIds.h"
 
 #include <QCoreApplication>
+#include <QFileInfo>
+#include <QUrl>
 
 namespace dgk
 {
 namespace
 {
 constexpr auto moduleName_ = "orchestrion";
+
+const muse::rcommand::Command
+    openScoreCommand("command://orchestrion/open-score");
 
 struct ActionCommand
 {
@@ -77,7 +82,7 @@ OrchestrionCommandsRegister::commandList() const
 {
   static const std::vector<muse::rcommand::Command> list = []
   {
-    std::vector<muse::rcommand::Command> list;
+    std::vector<muse::rcommand::Command> list{openScoreCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -91,6 +96,14 @@ OrchestrionCommandsRegister::commandInfoList() const
   static const std::vector<muse::rcommand::CommandInfo> list = []
   {
     std::vector<muse::rcommand::CommandInfo> list;
+    list.emplace_back(
+        openScoreCommand, muse::TranslatableString("orchestrion", "Open score"),
+        muse::TranslatableString("orchestrion", "Open a score"),
+        muse::rcommand::InputSchema(
+            {{"path", muse::rcommand::Arg(
+                          muse::rcommand::DataType::String,
+                          u"Absolute, or relative to the bundled scores")}}),
+        muse::rcommand::Decoration());
     for (const ActionCommand &ac : actionCommands())
       list.emplace_back(ac.command, ac.title, ac.title,
                         muse::rcommand::InputSchema(),
@@ -102,6 +115,8 @@ OrchestrionCommandsRegister::commandInfoList() const
 
 void OrchestrionCommands::registerHandlers()
 {
+  onRequest(openScoreCommand, [this](const muse::rcommand::Params &params)
+            { return openScore(params); });
   for (const ActionCommand &ac : actionCommands())
     onRequest(ac.command,
               [this, action = ac.action](const muse::rcommand::Params &)
@@ -130,6 +145,34 @@ void OrchestrionCommands::onRequest(const muse::rcommand::Command &command,
                 },
                 Qt::QueuedConnection);
           }));
+}
+
+muse::Ret OrchestrionCommands::openScore(const muse::rcommand::Params &params)
+{
+  const auto it = params.find("path");
+  const QString arg = it == params.end() ? QString() : it->second.toQString();
+  const QString path =
+      QFileInfo{arg}.isAbsolute()
+          ? arg
+          : (globalConfiguration()->appDataPath() + "scores/" + arg)
+                .toQString();
+  if (!QFileInfo::exists(path))
+    return muse::make_ret(muse::Ret::Code::UnknownError,
+                          "no such score: " + path.toStdString());
+
+  actionsDispatcher()->dispatch(
+      "orchestrion-file-open",
+      muse::actions::ActionData::make_arg2<QUrl, QString>(
+          QUrl::fromLocalFile(path), QString{}));
+
+  // Opening is synchronous, but may have been refused (by the user, asked
+  // about the current score's changes) or have failed.
+  const auto project = projectSession()->project();
+  if (!project || QFileInfo{project->path().toQString()}.absoluteFilePath() !=
+                      QFileInfo{path}.absoluteFilePath())
+    return muse::make_ret(muse::Ret::Code::UnknownError,
+                          "score not opened: " + path.toStdString());
+  return muse::make_ok();
 }
 
 std::string OrchestrionCommands::moduleName() const { return moduleName_; }

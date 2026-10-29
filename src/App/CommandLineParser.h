@@ -47,13 +47,14 @@ public:
   // Tasks
   CommandOptions::ConverterTask converterTask() const;
   CommandOptions::Diagnostic diagnostic() const;
-  CommandOptions::Autobot autobot() const;
+  CommandOptions::Testflow testflow() const;
   CommandOptions::AudioPluginRegistration audioPluginRegistration() const;
 
 private:
   void printLongVersion() const;
 
   QCommandLineParser m_parser;
-  std::shared_ptr<CommandOptions> m_options = std::make_shared<CommandOptions>();
+  std::shared_ptr<CommandOptions> m_options =
+      std::make_shared<CommandOptions>();
 };
 } // namespace dgk
