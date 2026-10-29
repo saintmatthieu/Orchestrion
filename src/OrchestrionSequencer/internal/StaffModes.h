@@ -22,7 +22,7 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
+#include <project/iprojectsession.h>
 
 namespace dgk
 {
@@ -35,7 +35,7 @@ class StaffModes : public IStaffModes,
                    public muse::async::Asyncable,
                    public dgk::Injectable
 {
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
 
 public:
   void init();

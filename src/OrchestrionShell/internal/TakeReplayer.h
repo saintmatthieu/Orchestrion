@@ -28,8 +28,8 @@
 #include <QElapsedTimer>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <optional>
+#include <project/iprojectsession.h>
 
 namespace dgk
 {
@@ -47,7 +47,7 @@ class TakeReplayer : public muse::async::Asyncable, public dgk::Injectable
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IStaffModes> staffModes{this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
 
 public:

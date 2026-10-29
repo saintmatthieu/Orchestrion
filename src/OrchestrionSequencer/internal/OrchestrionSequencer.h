@@ -24,8 +24,8 @@
 #include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
-#include "internal/OrnamentSchedule.h"
 #include "internal/FollowerThread.h"
+#include "internal/OrnamentSchedule.h"
 #include "internal/ScoreEvents.h"
 #include "internal/VoiceSequencer.h"
 
@@ -35,7 +35,6 @@
 #include <async/asyncable.h>
 #include <chrono>
 #include <condition_variable>
-#include <context/iglobalcontext.h>
 #include <deque>
 #include <functional>
 #include <map>
@@ -43,8 +42,10 @@
 #include <modularity/ioc.h>
 #include <mutex>
 #include <notation/imasternotation.h>
+#include <project/iprojectsession.h>
 #include <random>
 #include <thread>
+#include <types/retval.h>
 #include <vector>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
@@ -55,7 +56,7 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
                              public muse::async::Asyncable,
                              public muse::actions::Actionable
 {
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
       this};

@@ -11,6 +11,8 @@ set(MODULE_SRC
   internal/OrchestrionActionController.h
   internal/OrchestrionEventProcessor.cpp
   internal/OrchestrionEventProcessor.h
+  internal/OrchestrionCommands.cpp
+  internal/OrchestrionCommands.h
   internal/OrchestrionUiActions.cpp
   internal/OrchestrionUiActions.h
   internal/OrchestrionStartupScenario.cpp

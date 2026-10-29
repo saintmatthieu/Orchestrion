@@ -23,9 +23,9 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
 #include <notation/inotationinteraction.h>
+#include <project/iprojectsession.h>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace mu::engraving
@@ -41,7 +41,7 @@ class ScoreAnimator : public IScoreAnimator,
 {
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<ISegmentRegistry> melodySegRegistry{this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
 
 public:
   void init();

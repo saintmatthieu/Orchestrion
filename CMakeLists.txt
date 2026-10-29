@@ -13,6 +13,8 @@ string(REGEX REPLACE "^v" "" ORCHESTRION_VERSION "${ORCHESTRION_VERSION}")
 if(NOT ORCHESTRION_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
     message(FATAL_ERROR "ORCHESTRION_VERSION must be of the form [v]x.y.z, got \"${ORCHESTRION_VERSION}\"")
 endif()
+# Before project(): it sets CMAKE_OSX_DEPLOYMENT_TARGET
+include(${CMAKE_CURRENT_LIST_DIR}/MuseScore/muse/buildscripts/cmake/SetupMacOSDeploymentTarget.cmake)
 project(Orchestrion VERSION ${ORCHESTRION_VERSION} LANGUAGES C CXX)
 
 # A real version is only injected on tag-triggered CI builds; those are the

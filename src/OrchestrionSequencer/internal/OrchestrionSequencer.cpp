@@ -169,8 +169,7 @@ OrchestrionSequencer::OrchestrionSequencer(
     InstrumentIndex instrument, HandVoices rightHand, HandVoices leftHand,
     PedalSequence pedalSequence,
     std::array<std::vector<ScoreEvent>, 2> staffEvents,
-    std::array<std::vector<ScoreNote>, 2> staffNotes,
-    double nominalTicksPerMs)
+    std::array<std::vector<ScoreNote>, 2> staffNotes, double nominalTicksPerMs)
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
       m_leftHand{std::move(leftHand), std::nullopt},
@@ -187,7 +186,7 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_ornamentThread{MakeThread<OrnamentStepDue>(
           *this, m_ornamentThreadMembers,
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
-      m_notation{globalContext()->currentMasterNotation().get()},
+      m_notation{projectSession()->masterNotation().get()},
       m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
       m_staffNotes{std::move(staffNotes)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
@@ -374,11 +373,10 @@ void OrchestrionSequencer::SendTransitions(
 
   if (!rolled.empty())
   {
-    std::stable_sort(
-        rolled.begin(), rolled.end(),
-        [up = *roll == RollDirection::up](const NoteEvent &a,
-                                          const NoteEvent &b)
-        { return up ? a.pitch < b.pitch : a.pitch > b.pitch; });
+    std::stable_sort(rolled.begin(), rolled.end(),
+                     [up = *roll == RollDirection::up](const NoteEvent &a,
+                                                       const NoteEvent &b)
+                     { return up ? a.pitch < b.pitch : a.pitch > b.pitch; });
     PostNoteEvents(std::move(rolled), /*strum=*/false,
                    ArpeggioNoteMs(rollTicksPerMs));
   }
@@ -566,11 +564,8 @@ void OrchestrionSequencer::OnGesture(NoteEventType type, bool isLeftHand,
                                      int key, std::optional<float> velocity,
                                      bool byPerformer)
 {
-  const auto loopEnabled = globalContext()
-                               ->currentMasterNotation()
-                               ->playback()
-                               ->loopBoundaries()
-                               .enabled;
+  const auto loopEnabled =
+      projectSession()->masterNotation()->playback()->loopBoundaries().enabled;
   OnInputEventRecursive(type, isLeftHand, key, std::move(velocity), loopEnabled,
                         byPerformer);
 
@@ -681,8 +676,7 @@ void OrchestrionSequencer::ReleaseFollowedChords()
             if (now->tick < begin + 0.75 * (end - begin))
               return std::nullopt;
             const std::vector<int> pitches = chord->GetPitches();
-            if (std::any_of(pitches.begin(), pitches.end(),
-                            [this](int pitch)
+            if (std::any_of(pitches.begin(), pitches.end(), [this](int pitch)
                             { return m_playedPitches.count(pitch) > 0; }))
               return std::nullopt;
             // Past its end: on to the rest before the next.
@@ -810,7 +804,8 @@ void OrchestrionSequencer::ResetFollower()
   // The automatic player plays on from there too.
   m_nextAutoPlayNote = static_cast<size_t>(
       std::lower_bound(m_autoPlayNotes.begin(), m_autoPlayNotes.end(), tick,
-                       [](const AutoPlayNote &n, int t) { return n.tick < t; }) -
+                       [](const AutoPlayNote &n, int t)
+                       { return n.tick < t; }) -
       m_autoPlayNotes.begin());
 }
 
@@ -883,7 +878,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type,
       GetCursorTick(hand.voices, type).value_or(m_finalTick);
 
   const auto &loopBoundaries =
-      globalContext()->currentMasterNotation()->playback()->loopBoundaries();
+      projectSession()->masterNotation()->playback()->loopBoundaries();
 
   if (loop && type == NoteEventType::noteOn &&
       loopBoundaries.loopOutTick.ticks() > 0 &&
@@ -1070,7 +1065,7 @@ std::vector<const VoiceSequencer *> OrchestrionSequencer::PlayingVoices() const
 
 void OrchestrionSequencer::OnStaffModesChanged()
 {
-  if (globalContext()->currentMasterNotation().get() != m_notation)
+  if (projectSession()->masterNotation().get() != m_notation)
     // Another score's: this sequencer is on its way out.
     return;
   const std::array<StaffMode, 2> modes{Mode(false), Mode(true)};
@@ -1328,14 +1323,14 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum,
                        [&](const QueueEntry<NoteEvent> &entry)
                        {
                          return entry.event.type == NoteEventType::noteOn &&
-                                std::any_of(events.begin(), events.end(),
-                                            [&](const NoteEvent &e)
-                                            {
-                                              return e.type ==
-                                                         NoteEventType::noteOff &&
-                                                     e.track == entry.event.track &&
-                                                     e.pitch == entry.event.pitch;
-                                            });
+                                std::any_of(
+                                    events.begin(), events.end(),
+                                    [&](const NoteEvent &e)
+                                    {
+                                      return e.type == NoteEventType::noteOff &&
+                                             e.track == entry.event.track &&
+                                             e.pitch == entry.event.pitch;
+                                    });
                        }),
         m.queue.end());
     if (m.queue.size() != size)

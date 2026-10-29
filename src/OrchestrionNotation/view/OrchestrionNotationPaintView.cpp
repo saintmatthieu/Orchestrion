@@ -853,7 +853,7 @@ void OrchestrionNotationPaintView::bakePerformanceWarp(bool animate)
   // Instant (re-tuning): apply the final table in one step.
   m_warpTimer.stop();
   m_warpProgress = 1.0;
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (const auto master =
           masterNotation ? masterNotation->masterScore() : nullptr)
   {
@@ -914,7 +914,7 @@ void OrchestrionNotationPaintView::applyWarpStep()
   for (auto &[tick, warped] : table)
     warped = (1.0 - eased) * tick + eased * warped;
 
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   const auto master = masterNotation ? masterNotation->masterScore() : nullptr;
   if (!master)
   {
@@ -939,7 +939,7 @@ void OrchestrionNotationPaintView::clearPerformanceWarp()
   m_warpBaked = false;
   m_warpTable.clear();
   m_timingOverlay.setWarpProgress(0.0);
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   const auto master = masterNotation ? masterNotation->masterScore() : nullptr;
   if (master && master->hasLayoutTickWarp())
   {
@@ -1098,7 +1098,7 @@ void OrchestrionNotationPaintView::onUnloadNotation(
   mu::notation::NotationPaintView::onUnloadNotation(std::move(notation));
   // The score was closed (a replacement gets updateNotation() from
   // onLoadNotation): reset the per-score state.
-  if (!globalContext()->currentNotation())
+  if (!projectSession()->currentNotation())
     updateNotation();
 }
 
@@ -1429,7 +1429,7 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
 std::optional<mu::notation::LoopBoundaryType>
 OrchestrionNotationPaintView::loopFlagAt(const muse::PointF &logicPos) const
 {
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (!masterNotation || !masterNotation->playback()->loopBoundaries().enabled)
     return std::nullopt;
 
@@ -1466,7 +1466,7 @@ void OrchestrionNotationPaintView::dragLoopBoundaryTo(
     const muse::PointF &logicPos)
 {
   const auto notation = this->notation();
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (!notation || !masterNotation)
     return;
 
@@ -1867,7 +1867,7 @@ void OrchestrionNotationPaintView::updateNotation()
   m_estimator.reset(); // and the position estimate
   m_loudness.clear();
   m_tempoVizModel.clear();
-  if (const auto notation = globalContext()->currentNotation())
+  if (const auto notation = projectSession()->currentNotation())
   {
     applyBarNumbers(*notation);
     // Time-proportional spacing uses MuseScore's duration-proportional
@@ -2198,7 +2198,7 @@ QColor OrchestrionNotationPaintView::loopAccentColor() const
 
 void OrchestrionNotationPaintView::paintLoopRegionUnderlay(QPainter *painter)
 {
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (!masterNotation || !masterNotation->playback()->loopBoundaries().enabled)
     return;
 
@@ -2229,7 +2229,7 @@ void OrchestrionNotationPaintView::paintLoopMarkers(
     muse::draw::Painter *painter)
 {
   const auto notation = this->notation();
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (!notation || !masterNotation ||
       !masterNotation->playback()->loopBoundaries().enabled)
     return;

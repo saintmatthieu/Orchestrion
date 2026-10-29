@@ -192,6 +192,7 @@ set(QT_NO_PRIVATE_MODULE_WARNING ON)
 set(MUSE_MODULE_MULTIWINDOWS_SINGLEPROC_MODE ON)
 # The vendored KDDockWidgets v1 backend; v2 would be an extra source dependency.
 set(MUSE_MODULE_DOCKWINDOW_KDDOCKWIDGETS_V2 OFF)
+set(MUSE_MODULE_SHORTCUTS_V2 ON)
 
 include(GetPlatformInfo)
 
@@ -267,8 +268,6 @@ if (MUE_BUILD_BRAILLE_MODULE)
 else()
     add_subdirectory(MuseScore/src/stubs/braille)
 endif()
-
-add_subdirectory(MuseScore/src/context)
 
 if (MUE_BUILD_CONVERTER_MODULE)
     add_subdirectory(MuseScore/src/converter)

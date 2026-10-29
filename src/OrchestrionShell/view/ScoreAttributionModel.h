@@ -20,11 +20,11 @@
 
 #include "OrchestrionShell/IRollsLibrary.h"
 #include "async/asyncable.h"
-#include "context/iglobalcontext.h"
 #include "global/iglobalconfiguration.h"
 #include "interactive/iinteractive.h"
 #include "interactive/iplatforminteractive.h"
 #include "modularity/ioc.h"
+#include "project/iprojectsession.h"
 
 #include <QHash>
 #include <QObject>
@@ -49,7 +49,7 @@ class ScoreAttributionModel : public QObject,
 {
   Q_OBJECT
 
-  dgk::Inject<mu::context::IGlobalContext> context{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};

@@ -11,8 +11,6 @@
         <file>configs/user_agent.cfg</file>
         <file>configs/update.cfg</file>
         <file>configs/learn.cfg</file>
-        <file>configs/data/shortcuts.xml</file>
-        <file>configs/data/shortcuts_mac.xml</file>
-        <file>configs/data/shortcuts_azerty.xml</file>
+        <file>configs/data/shortcuts.json</file>
     </qresource>
 </RCC>

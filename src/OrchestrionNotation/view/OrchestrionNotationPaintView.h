@@ -39,11 +39,11 @@
 #include <QImage>
 #include <QVariantList>
 #include <actions/iactionsdispatcher.h>
-#include <context/iglobalcontext.h>
 #include <limits>
 #include <notation/inotationconfiguration.h>
 #include <notation/inotationcontextconfiguration.h>
 #include <notationscene/qml/MuseScore/NotationScene/notationpaintview.h>
+#include <project/iprojectsession.h>
 #include <ui/iuiconfiguration.h>
 #include <unordered_map>
 #include <vector>
@@ -131,7 +131,7 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   dgk::Inject<mu::notation::INotationConfiguration> configuration{this};
   dgk::Inject<mu::notation::INotationContextConfiguration> contextConfiguration{
       this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
   //! For the Orchestrion palette (see OrchestrionPalette.h): what this view
   //! paints itself — highlights, loop markers, the beat grid — follows the

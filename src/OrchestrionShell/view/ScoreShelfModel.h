@@ -24,10 +24,10 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <global/iglobalconfiguration.h>
 #include <interactive/iinteractive.h>
 #include <interactive/iplatforminteractive.h>
+#include <project/iprojectsession.h>
 #include <project/irecentfilescontroller.h>
 
 #include <QAbstractListModel>
@@ -229,7 +229,7 @@ class ScoreShelfModel : public QObject,
   Q_PROPERTY(bool hasScore READ hasScore NOTIFY hasScoreChanged)
 
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IRecentFilesController> recentFilesController{this};
   dgk::Inject<muse::IInteractive> interactive{this};

@@ -106,4 +106,10 @@ through `AutomaticOrchestrionPlayer` and has its own re-entrancy/timing paths
 - **Tall menus don't open**: a StyledMenu submenu taller than the screen never
   shows. If a dynamic list is long, launch with `vnc:size=1600x1500` to see it, or
   better, keep the list short (see the memory note on StyledMenu height).
+- **No comma in `lastOpenedProjectsPath`**: QSettings reads an unquoted ini value
+  with a comma as a list, so a score like "Ah vous dirai-je, Maman - Theme.mxl"
+  silently falls back to onboarding. Pick a score without one.
+- **File dialogs are invisible on VNC** (Linux uses MuseScore's QML `FileDialog`, a
+  separate window): the app just waits. Test open/save dialogs under Xvfb; the
+  dialog's name field takes a typed absolute path. `vncdo` also can't send `+`.
 - Logs also land in `~/.local/share/OrchestrionDevelopment/logs/`.

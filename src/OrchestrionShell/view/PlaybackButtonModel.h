@@ -23,6 +23,7 @@
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
 #include "playback/iplaybackcontroller.h"
+#include "rcommand/icommanddispatcher.h"
 #include <QObject>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
@@ -40,6 +41,7 @@ class PlaybackButtonModel : public QObject,
 
   dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
+  dgk::Inject<muse::rcommand::ICommandDispatcher> commandDispatcher{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
 
 public:

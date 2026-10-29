@@ -70,19 +70,19 @@ void StaffModes::init()
 {
   const auto watchNotation = [this]
   {
-    if (const auto master = globalContext()->currentMasterNotation())
+    if (const auto master = projectSession()->masterNotation())
       // Edits, undos and redos of the modes all go through the undo stack.
       master->notation()->undoStack()->stackChanged().onNotify(
           this, [this] { checkChanged(); }, Mode::SetReplace);
     checkChanged();
   };
-  globalContext()->currentMasterNotationChanged().onNotify(this, watchNotation);
+  projectSession()->masterNotationChanged().onNotify(this, watchNotation);
   watchNotation();
 }
 
 std::vector<StaffMode> StaffModes::savedModes() const
 {
-  const auto master = globalContext()->currentMasterNotation();
+  const auto master = projectSession()->masterNotation();
   if (!master || !master->masterScore())
     return {};
   std::vector<StaffMode> modes;
@@ -103,7 +103,7 @@ StaffMode StaffModes::mode(int staff) const
 
 void StaffModes::setMode(int staff, StaffMode mode)
 {
-  const auto master = globalContext()->currentMasterNotation();
+  const auto master = projectSession()->masterNotation();
   if (!master || !master->masterScore() || staff < 0)
     return;
   auto modes = savedModes();

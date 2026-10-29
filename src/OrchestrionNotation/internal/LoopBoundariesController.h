@@ -23,9 +23,9 @@
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <modularity/ioc.h>
 #include <notation/inotationplayback.h>
+#include <project/iprojectsession.h>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -35,10 +35,10 @@ class LoopBoundariesController : public ILoopBoundariesController,
                                  public muse::async::Asyncable,
                                  public muse::actions::Actionable
 {
-  dgk::Inject<mu::context::IGlobalContext> globalContext = {this};
+  dgk::Inject<mu::project::IProjectSession> projectSession = {this};
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher = {this};
-  dgk::Inject<IOrchestrionNotationInteractionProcessor>
-      interactionProcessor = {this};
+  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor = {
+      this};
 
 public:
   void init();

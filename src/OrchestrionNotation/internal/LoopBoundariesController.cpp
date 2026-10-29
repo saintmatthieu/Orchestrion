@@ -17,10 +17,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "LoopBoundariesController.h"
-#include <notation/imasternotation.h>
-#include <notation/inotationplayback.h>
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include <engraving/dom/chordrest.h>
+#include <notation/imasternotation.h>
+#include <notation/inotationplayback.h>
 
 namespace dgk
 {
@@ -79,7 +79,8 @@ void LoopBoundariesController::onChordShiftClicked(const ChordTicks &ticks)
   const auto playback = this->playback();
   if (!playback)
     return;
-  if (m_awaitingLoopEnd && ticks.start > playback->loopBoundaries().loopInTick.ticks())
+  if (m_awaitingLoopEnd &&
+      ticks.start > playback->loopBoundaries().loopInTick.ticks())
     setLoopEnd(ticks.end);
   else
     setLoopStart(ticks.start);
@@ -120,7 +121,7 @@ void LoopBoundariesController::clearLoop()
 
 mu::notation::INotationPlaybackPtr LoopBoundariesController::playback() const
 {
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   return masterNotation ? masterNotation->playback() : nullptr;
 }
 } // namespace dgk

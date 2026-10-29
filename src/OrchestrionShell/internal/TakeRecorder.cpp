@@ -60,8 +60,8 @@ void TakeRecorder::init()
                                              [this] { OnSequencerChanged(); });
   sequencerConfiguration()->ornamentModeChanged().onNotify(
       this, [this] { EndTake(std::nullopt); });
-  globalContext()->currentMasterNotationChanged().onNotify(
-      this, [this] { OnNotationChanged(); });
+  projectSession()->masterNotationChanged().onNotify(this, [this]
+                                                     { OnNotationChanged(); });
   OnSequencerChanged();
   OnNotationChanged();
 }
@@ -101,7 +101,7 @@ void TakeRecorder::OnSequencerChanged()
 void TakeRecorder::OnNotationChanged()
 {
   EndTake(std::nullopt);
-  if (const auto notation = globalContext()->currentMasterNotation())
+  if (const auto notation = projectSession()->masterNotation())
     notation->playback()->loopBoundariesChanged().onNotify(
         this, [this] { EndTake(std::nullopt); },
         muse::async::Asyncable::Mode::SetReplace);
@@ -151,8 +151,8 @@ void TakeRecorder::Add(Take::Event e)
       // A release or a pedal from before: no take begins with it.
       return;
     Take take;
-    const auto notation = globalContext()->currentMasterNotation();
-    if (const auto project = globalContext()->currentProject())
+    const auto notation = projectSession()->masterNotation();
+    if (const auto project = projectSession()->project())
       take.scorePath = project->path().toQString();
     take.startTick =
         m_nextStartTick ? *m_nextStartTick : NextChordTick().value_or(0);
@@ -190,7 +190,7 @@ std::optional<int> TakeRecorder::NextChordTick() const
 
 int TakeRecorder::BarAt(int tick) const
 {
-  const auto notation = globalContext()->currentMasterNotation();
+  const auto notation = projectSession()->masterNotation();
   if (!notation)
     return 1;
   const mu::engraving::Measure *measure = notation->masterScore()->tick2measure(

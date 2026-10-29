@@ -71,7 +71,7 @@ OrchestrionNotationInteractionProcessor::itemClicked() const
 mu::notation::INotationInteractionPtr
 OrchestrionNotationInteractionProcessor::muInteraction() const
 {
-  const auto notation = globalContext()->currentNotation();
+  const auto notation = projectSession()->currentNotation();
   return notation ? notation->interaction() : nullptr;
 }
 } // namespace dgk

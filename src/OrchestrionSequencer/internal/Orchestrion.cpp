@@ -69,7 +69,7 @@ void Orchestrion::init()
 
 void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
 {
-  const auto masterNotation = globalContext()->currentMasterNotation();
+  const auto masterNotation = projectSession()->masterNotation();
   if (!masterNotation)
   {
     setSequencer(nullptr);
@@ -111,7 +111,7 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
   setSequencer(products.sequencer);
 
   // Unrolling the repeats is not a modification of the user's score.
-  if (const auto notation = globalContext()->currentMasterNotation())
+  if (const auto notation = projectSession()->masterNotation())
     notation->masterScore()->undoStack()->markClean();
 }
 

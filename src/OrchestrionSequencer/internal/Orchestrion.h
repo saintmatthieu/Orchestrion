@@ -27,8 +27,8 @@
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
-#include <context/iglobalcontext.h>
 #include <optional>
+#include <project/iprojectsession.h>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace mu::engraving
@@ -43,7 +43,7 @@ class Orchestrion : public IOrchestrion,
                     public dgk::Injectable
 {
   dgk::Inject<mu::playback::IPlaybackController> playbackController{this};
-  dgk::Inject<mu::context::IGlobalContext> globalContext{this};
+  dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<ISegmentRegistry> segmentRegistry{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
 

@@ -149,8 +149,9 @@ void OrchestrionMenuModel::load()
       this, [this]
       { createMenus(sequencerConfiguration()->velocityRecordingEnabled()); });
 
-  recentFilesController()->recentFilesListChanged().onNotify(
-      this, [this] { updateRecentScoresSubmenu(); });
+  recentFilesController()->recentFilesListChanged().onReceive(
+      this, [this](const mu::project::RecentFilesChange &)
+      { updateRecentScoresSubmenu(); });
 
   effectChain()->availableEffectsChanged().onNotify(this, [this]
                                                     { updateEffectsMenu(); });

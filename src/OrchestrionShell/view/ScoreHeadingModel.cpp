@@ -32,12 +32,12 @@ void ScoreHeadingModel::load()
 {
   update();
 
-  context()->currentProjectChanged().onNotify(
+  projectSession()->projectChanged().onNotify(
       this,
       [this]()
       {
         update();
-        if (auto currentProject = context()->currentProject())
+        if (auto currentProject = projectSession()->project())
           currentProject->displayNameChanged().onNotify(this,
                                                         [this]() { update(); });
       });
@@ -71,7 +71,7 @@ void ScoreHeadingModel::setScoreComposer(const QString &scoreComposer)
 
 void ScoreHeadingModel::update()
 {
-  const mu::project::INotationProjectPtr project = context()->currentProject();
+  const mu::project::INotationProjectPtr project = projectSession()->project();
   if (!project)
   {
     setScoreTitle("");

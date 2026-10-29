@@ -79,7 +79,7 @@ void TakeReplayer::Start()
       staffModes()->setMode(staff, take.staffModes[staff]);
   if (sequencerConfiguration()->ornamentMode() != take.ornamentMode)
     sequencerConfiguration()->setOrnamentMode(take.ornamentMode);
-  if (const auto notation = globalContext()->currentMasterNotation())
+  if (const auto notation = projectSession()->masterNotation())
   {
     const auto playback = notation->playback();
     if (take.loopInTick != take.loopOutTick)
