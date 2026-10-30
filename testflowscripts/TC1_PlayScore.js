@@ -27,7 +27,7 @@ var Orchestrion = require("steps/Orchestrion.js")
 
 var testCase = {
     name: "TC1: Play a score",
-    description: "Opens a bundled score and lets the automatic player play a few bars of it",
+    description: "Opens a bundled score and lets the automatic player play a few bars of it, clicking the transport buttons with the demo cursor",
     steps: [
         {name: "Full screen", func: function() {
             Orchestrion.toggleFullScreen()
@@ -36,18 +36,18 @@ var testCase = {
             Orchestrion.openScore("Frere Jacques.mxl")
         }},
         {name: "Play", func: function() {
-            Orchestrion.togglePlay()
+            Orchestrion.click("Controls/Playback/Play")
             api.testflow.sleep(3000)
         }},
         {name: "Stop", func: function() {
-            Orchestrion.togglePlay()
+            Orchestrion.click("Controls/Playback/Stop")
         }},
         {name: "Loop and play from the start", func: function() {
-            Orchestrion.rewind()
-            Orchestrion.toggleLoop()
-            Orchestrion.togglePlay()
+            Orchestrion.click("Controls/Playback/Rewind")
+            Orchestrion.click("Controls/Playback/Loop")
+            Orchestrion.click("Controls/Playback/Play")
             api.testflow.sleep(2000)
-            Orchestrion.togglePlay()
+            Orchestrion.click("Controls/Playback/Stop")
         }},
     ]
 }

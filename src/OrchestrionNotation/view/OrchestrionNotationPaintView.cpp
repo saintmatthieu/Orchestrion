@@ -1118,14 +1118,17 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 
     if (inScope)
     {
-      // Gate on real cursor movement: Qt synthesises hover events as the
+      // Gate on real pointer movement: Qt synthesises hover events as the
       // scene graph updates (e.g. when a child runs an infinite opacity
-      // animation), and those carry the unchanged cursor position.
+      // animation), and those carry the unchanged position. The event's,
+      // rather than the system cursor's: the demo cursor (DemoCursor) moves
+      // by events alone.
       if (type == QEvent::MouseButtonPress)
         emit mouseActivity();
       else
       {
-        const QPoint pos = QCursor::pos();
+        const QPoint pos =
+            static_cast<QSinglePointEvent *>(event)->globalPosition().toPoint();
         if (pos != m_lastCursorPos)
         {
           m_lastCursorPos = pos;

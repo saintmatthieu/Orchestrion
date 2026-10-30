@@ -32,6 +32,20 @@ constexpr auto moduleName_ = "orchestrion";
 const muse::rcommand::Command
     openScoreCommand("command://orchestrion/open-score");
 const muse::rcommand::Command quitCommand("command://orchestrion/quit");
+// The demo cursor (DemoCursor): `control` is a navigation path, e.g.
+// Controls/Playback/Play.
+const muse::rcommand::Command
+    demoClickCommand("command://orchestrion/demo-click");
+const muse::rcommand::Command
+    demoMoveCommand("command://orchestrion/demo-move");
+const muse::rcommand::Command
+    demoHideCommand("command://orchestrion/demo-hide");
+
+QString controlParam(const muse::rcommand::Params &params)
+{
+  const auto it = params.find("control");
+  return it == params.end() ? QString() : it->second.toQString();
+}
 
 struct ActionCommand
 {
@@ -83,7 +97,9 @@ OrchestrionCommandsRegister::commandList() const
 {
   static const std::vector<muse::rcommand::Command> list = []
   {
-    std::vector<muse::rcommand::Command> list{openScoreCommand, quitCommand};
+    std::vector<muse::rcommand::Command> list{openScoreCommand, quitCommand,
+                                              demoClickCommand, demoMoveCommand,
+                                              demoHideCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -105,6 +121,26 @@ OrchestrionCommandsRegister::commandInfoList() const
                           muse::rcommand::DataType::String,
                           u"Absolute, or relative to the bundled scores")}}),
         muse::rcommand::Decoration());
+    const muse::rcommand::InputSchema controlSchema(
+        {{"control", muse::rcommand::Arg(
+                         muse::rcommand::DataType::String,
+                         u"Navigation path, e.g. Controls/Playback/Play")}});
+    list.emplace_back(
+        demoClickCommand,
+        muse::TranslatableString("orchestrion", "Demo: click"),
+        muse::TranslatableString("orchestrion",
+                                 "The demo cursor glides to a control and "
+                                 "clicks it"),
+        controlSchema, muse::rcommand::Decoration());
+    list.emplace_back(demoMoveCommand,
+                      muse::TranslatableString("orchestrion", "Demo: move"),
+                      muse::TranslatableString(
+                          "orchestrion", "The demo cursor glides to a control"),
+                      controlSchema, muse::rcommand::Decoration());
+    list.emplace_back(
+        demoHideCommand, muse::TranslatableString("orchestrion", "Demo: hide"),
+        muse::TranslatableString("orchestrion", "Hides the demo cursor"),
+        muse::rcommand::InputSchema(), muse::rcommand::Decoration());
     list.emplace_back(
         quitCommand, muse::TranslatableString("orchestrion", "Quit"),
         muse::TranslatableString("orchestrion", "Quit Orchestrion"),
@@ -122,6 +158,20 @@ void OrchestrionCommands::registerHandlers()
 {
   onRequest(openScoreCommand, [this](const muse::rcommand::Params &params)
             { return openScore(params); });
+  onRequestAsync(demoClickCommand,
+                 [this](const muse::rcommand::Params &params, Done done) {
+                   m_demoCursor->click(controlParam(params), std::move(done));
+                 });
+  onRequestAsync(demoMoveCommand,
+                 [this](const muse::rcommand::Params &params, Done done) {
+                   m_demoCursor->moveTo(controlParam(params), std::move(done));
+                 });
+  onRequest(demoHideCommand,
+            [this](const muse::rcommand::Params &)
+            {
+              m_demoCursor->hide();
+              return muse::make_ok();
+            });
   // As the window's close button does: OrchestrionActionController offers to
   // save the score's changes, and the user may cancel.
   onRequest(quitCommand,
@@ -142,6 +192,13 @@ void OrchestrionCommands::registerHandlers()
 void OrchestrionCommands::onRequest(const muse::rcommand::Command &command,
                                     const Handler &handler)
 {
+  onRequestAsync(command, [handler](const muse::rcommand::Params &params,
+                                    Done done) { done(handler(params)); });
+}
+
+void OrchestrionCommands::onRequestAsync(const muse::rcommand::Command &command,
+                                         const AsyncHandler &handler)
+{
   commandDispatcher()->onRequest(
       this, command,
       muse::rcommand::ICommandDispatcher::AsyncCallBack(
@@ -153,8 +210,11 @@ void OrchestrionCommands::onRequest(const muse::rcommand::Command &command,
                 qApp,
                 [handler, request, onResponse]
                 {
-                  onResponse(muse::rcommand::make_response(
-                      request, handler(request.params)));
+                  handler(request.params,
+                          [request, onResponse](const muse::Ret &ret) {
+                            onResponse(
+                                muse::rcommand::make_response(request, ret));
+                          });
                 },
                 Qt::QueuedConnection);
           }));
@@ -186,6 +246,11 @@ muse::Ret OrchestrionCommands::openScore(const muse::rcommand::Params &params)
     return muse::make_ret(muse::Ret::Code::UnknownError,
                           "score not opened: " + path.toStdString());
   return muse::make_ok();
+}
+
+OrchestrionCommands::OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor)
+    : m_demoCursor{std::move(demoCursor)}
+{
 }
 
 std::string OrchestrionCommands::moduleName() const { return moduleName_; }

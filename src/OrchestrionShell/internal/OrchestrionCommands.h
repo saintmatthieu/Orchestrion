@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "DemoCursor.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 
 #include <actions/iactionsdispatcher.h>
@@ -69,6 +70,8 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
 
 public:
+  explicit OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor);
+
   /**
    * Registers the handlers; call once the context's dispatchers exist.
    */
@@ -85,6 +88,10 @@ public:
 
 private:
   using Handler = std::function<muse::Ret(const muse::rcommand::Params &)>;
+  using Done = std::function<void(const muse::Ret &)>;
+  /** Calls `done` once it's done, which answers the command. */
+  using AsyncHandler =
+      std::function<void(const muse::rcommand::Params &, Done done)>;
 
   /**
    * Registers a handler that runs from the Qt event loop, the command being
@@ -95,6 +102,8 @@ private:
    */
   void onRequest(const muse::rcommand::Command &command,
                  const Handler &handler);
+  void onRequestAsync(const muse::rcommand::Command &command,
+                      const AsyncHandler &handler);
 
   /**
    * command://orchestrion/open-score?path=...: responds once the score is the
@@ -102,6 +111,7 @@ private:
    */
   muse::Ret openScore(const muse::rcommand::Params &params);
 
+  const std::shared_ptr<DemoCursor> m_demoCursor;
   muse::async::Channel<muse::rcommand::Command, muse::rcommand::CommandState>
       m_commandStateChanged;
 };

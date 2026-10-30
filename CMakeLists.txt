@@ -251,6 +251,7 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/Theme.qml"
     QML_FILES "src/qml/BackdropFrame.qml"
     QML_FILES "src/qml/MetalGlyph.qml"
+    QML_FILES "src/qml/DemoCursorOverlay.qml"
     QML_FILES "src/qml/TransportButton.qml"
     QML_FILES "src/qml/TransportGlow.qml"
     QML_FILES "src/qml/OrchestrionToolTip.qml"
