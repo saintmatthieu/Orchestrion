@@ -152,15 +152,17 @@ done
 export MUSE_TESTFLOW_SCRIPTS_PATH="$SCRIPTS_DIR"
 export MUSE_TESTFLOW_DATA_PATH="$WORK/testflow"
 
-# Recorded in full, then cut at the record-after step if any
-RAW_VIDEO="$RECORD"
-[ -z "$RECORD_AFTER" ] || RAW_VIDEO="$WORK/raw.mp4"
+# Recorded in full, then cut at the record-after step if any. Both inputs'
+# timestamps are the wall clock (-copyts): ffmpeg would otherwise start each at
+# zero, and the audio capture starts later than the screen's (by most of a
+# second on CI), which would put the sound ahead of the picture.
+RAW_VIDEO="$WORK/raw.mp4"
 if [ -n "$RECORD" ]; then
     mkdir -p "$(dirname "$RECORD")"
-    RECORD_START_MS=$(date +%s%3N)
     ffmpeg -loglevel error -y \
         -f x11grab -video_size "${WIDTH}x${HEIGHT}" -framerate 30 -i "$DISPLAY" \
         -f pulse -i "$SINK.monitor" \
+        -copyts \
         -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k \
         "$RAW_VIDEO" < /dev/null > "$WORK/ffmpeg.log" 2>&1 &
     FFMPEG_PID=$!
@@ -176,20 +178,22 @@ if [ -n "$RECORD" ]; then
     # Stopped this way, ffmpeg exits with 255 even when the video is fine
     wait "$FFMPEG_PID" || true
     [ -s "$RAW_VIDEO" ] || { echo "--- ffmpeg failed:"; cat "$WORK/ffmpeg.log"; }
+    # The wall-clock time of the first frame
+    RAW_START_S=$(ffprobe -v error -show_entries format=start_time -of csv=p=0 "$RAW_VIDEO")
+    STEP_END_MS=""
     if [ -n "$RECORD_AFTER" ]; then
-        # The step's end, from the app's log. ffmpeg starts capturing a little
-        # after RECORD_START_MS, so this cuts a little late: testflow's pause
-        # between steps leaves room for that.
+        # The step's end, from the app's log
         STEP_END_MS=$(grep -F "] step finished at=" "$WORK/app.log" \
             | awk -v name="$RECORD_AFTER" '{ at = $4; sub(/^at=/, "", at); $1 = $2 = $3 = $4 = ""; sub(/^ +/, ""); if ($0 == name) { print at; exit } }')
-        if [ -n "$STEP_END_MS" ]; then
-            CUT_S=$(awk -v ms=$((STEP_END_MS - RECORD_START_MS)) 'BEGIN { printf "%.3f", (ms > 0 ? ms : 0) / 1000 }')
-            ffmpeg -loglevel error -y -ss "$CUT_S" -i "$RAW_VIDEO" \
-                -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k "$RECORD"
-        else
-            echo "step \"$RECORD_AFTER\" (record-after) didn't finish: the video is the whole run"
-            mv "$RAW_VIDEO" "$RECORD"
-        fi
+        [ -n "$STEP_END_MS" ] || echo "step \"$RECORD_AFTER\" (record-after) didn't finish: the video is the whole run"
+    fi
+    # Written anew, its timestamps from zero (the streams keeping their offset)
+    if [ -n "$STEP_END_MS" ]; then
+        CUT_S=$(awk -v end="$STEP_END_MS" -v start="$RAW_START_S" 'BEGIN { s = end / 1000 - start; printf "%.3f", (s > 0 ? s : 0) }')
+        ffmpeg -loglevel error -y -ss "$CUT_S" -i "$RAW_VIDEO" \
+            -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k "$RECORD"
+    else
+        ffmpeg -loglevel error -y -i "$RAW_VIDEO" -c copy "$RECORD"
     fi
     echo "recorded $RECORD"
 fi
