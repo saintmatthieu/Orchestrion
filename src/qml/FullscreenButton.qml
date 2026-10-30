@@ -19,13 +19,30 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
 
+import Muse.Ui as MUI // qualified, like Main.qml's
+
 import Orchestrion 1.0
 
 TransportButton {
     id: root
 
+    /** The navigation section the button's panel belongs to. */
+    property MUI.NavigationSection navigationSection
+
     icon: "fullscreen.svg"
     tooltip: qsTr("Full screen")
+    navigation.name: "FullScreen"
+    navigation.panel: navPanel
+    navigation.order: 1
+
+    MUI.NavigationPanel {
+        id: navPanel
+        name: "View"
+        section: root.navigationSection
+        order: 2
+        enabled: root.enabled && root.visible
+        accessible.name: qsTr("View")
+    }
     engaged: Window.window && Window.window.visibility === Window.FullScreen
 
     onClicked: {
