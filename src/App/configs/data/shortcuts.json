@@ -1,5 +1,16 @@
 [
     {
+      "scope": "NAVIGATION",
+      "shortcuts": [
+        {"command": "command://navigation/next-panel",  "sequences": ["Tab"]},
+        {"command": "command://navigation/prev-panel",  "sequences": ["Shift+Tab"]},
+        {"command": "command://navigation/right",  "sequences": ["Right"]},
+        {"command": "command://navigation/left",  "sequences": ["Left"]},
+        {"command": "command://navigation/trigger-control",  "sequences": ["Return", "Enter", "Space"], "autorepeat": false},
+        {"command": "command://navigation/escape",  "sequences": ["Esc"]}
+      ]
+    },
+    {
       "scope": "APP",
       "shortcuts": [
         {"command": "command://orchestrion/browse-scores",  "sequences": ["Ctrl+O"], "autorepeat": false},

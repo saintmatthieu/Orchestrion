@@ -40,7 +40,7 @@ TransportButton {
         name: "View"
         section: root.navigationSection
         order: 2
-        enabled: root.enabled && root.visible
+        enabled: root.enabled // faded out too: Tab brings them back (Main.qml)
         accessible.name: qsTr("View")
     }
     engaged: Window.window && Window.window.visibility === Window.FullScreen

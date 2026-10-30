@@ -13,6 +13,8 @@ set(MODULE_SRC
   internal/OrchestrionEventProcessor.h
   internal/OrchestrionCommands.cpp
   internal/OrchestrionCommands.h
+  internal/OrchestrionShortcutsResolver.cpp
+  internal/OrchestrionShortcutsResolver.h
   internal/OrchestrionUiActions.cpp
   internal/OrchestrionUiActions.h
   internal/OrchestrionStartupScenario.cpp
@@ -54,6 +56,8 @@ set(MODULE_SRC
   view/PlaybackButtonModel.h
   view/ScoreAttributionModel.cpp
   view/ScoreAttributionModel.h
+  view/KeyboardNavigationModel.cpp
+  view/KeyboardNavigationModel.h
   view/ScoreShelfHintModel.cpp
   view/ScoreShelfHintModel.h
   view/ScoreShelfModel.cpp

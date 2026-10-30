@@ -132,6 +132,16 @@ ApplicationWindow {
         Component.onCompleted: load()
     }
 
+    KeyboardNavigationModel {
+        id: keyboardNavigation
+        Component.onCompleted: load()
+        // Tab, or an arrow between controls, shows them like the mouse does
+        onNavigated: {
+            notationPaintView.controlsVisible = true
+            hideControlsTimer.restart()
+        }
+    }
+
     MainWindowBridge {
         id: bridge
         window: root
@@ -277,7 +287,12 @@ ApplicationWindow {
                     id: hideControlsTimer
                     interval: 5000
                     repeat: false
-                    onTriggered: notationPaintView.controlsVisible = false
+                    onTriggered: {
+                        notationPaintView.controlsVisible = false
+                        // Hiding the controls ends their keyboard navigation:
+                        // Space and the arrows are Orchestrion's again.
+                        keyboardNavigation.release()
+                    }
                 }
 
                 // The lining that frames the whole view, on its own border:
