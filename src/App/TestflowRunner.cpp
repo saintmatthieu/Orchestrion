@@ -21,6 +21,7 @@
 #include <testflow/itestflow.h>
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QTimer>
@@ -119,6 +120,16 @@ void TestflowRunner::execAndReport()
       {
         if (step.status == muse::testflow::StepStatus::Started)
           ++m_startedSteps;
+        // With the wall-clock time, for tools/run_testflow.sh to cut the
+        // video it records at a step (see its record-after directive).
+        if (step.status == muse::testflow::StepStatus::Started ||
+            step.status == muse::testflow::StepStatus::Finished)
+          std::cout << "[testflow] step "
+                    << (step.status == muse::testflow::StepStatus::Started
+                            ? "started"
+                            : "finished")
+                    << " at=" << QDateTime::currentMSecsSinceEpoch() << " "
+                    << step.name.toStdString() << std::endl;
       });
 
   // Returns once the script has run (its sleeps spin nested event loops).

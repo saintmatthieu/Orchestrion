@@ -348,6 +348,64 @@ jobs:
           name: Orchestrion Linux
           path: "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-Linux-x86_64.AppImage"
 
+  # Runs the testflow scripts (testflowscripts/) against the AppImage, and
+  # records each run: the videos show what the app looks like at this commit.
+  testflow_linux:
+    needs: build_linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            testflowscripts
+            tools
+
+      - name: Install dependencies
+        # A display, a window manager (for full screen), a sound server with a
+        # null sink (paced like a sound card), the recorder, and what the
+        # AppImage takes from the system.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb openbox \
+            pulseaudio pulseaudio-utils libasound2-plugins alsa-utils \
+            ffmpeg \
+            libgl1 libglx0 libopengl0 libegl1 \
+            libx11-6 libx11-xcb1 libxcb1 libxcb-cursor0 libxkbcommon-x11-0 \
+            libfontconfig1 libfreetype6 libasound2t64
+
+      - name: Download AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: Orchestrion Linux
+          path: ./app
+
+      - name: Run testflow scripts
+        run: |
+          APPIMAGE=$(find ./app -name '*.AppImage' -print -quit)
+          chmod +x "$APPIMAGE"
+          mkdir -p videos
+          rc=0
+          for script in testflowscripts/*.js; do
+            name=$(basename "$script" .js)
+            echo "::group::$name"
+            tools/run_testflow.sh "$APPIMAGE" "$script" --record "videos/$name.mp4" || { echo "::error::$name failed"; rc=1; }
+            echo "::endgroup::"
+          done
+          exit $rc
+
+      - name: Upload videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orchestrion testflow videos
+          path: videos/
+          if-no-files-found: ignore
+
   release:
     needs: [build_win, build_mac, build_linux]
     if: startsWith(github.ref, 'refs/tags/v')
