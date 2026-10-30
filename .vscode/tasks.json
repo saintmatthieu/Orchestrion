@@ -27,6 +27,57 @@
 			},
 			"dependsOn": "CMake: install",
 			"problemMatcher": []
+		},
+		{
+			// A fresh profile for the "Testflow script" launch configuration, so that a
+			// run neither depends on nor changes yours: no hints over the score.
+			"label": "testflow: reset profile",
+			"type": "shell",
+			"command": "rm -rf build/testflow_profile && mkdir -p 'build/testflow_profile/config/Unknown Organization' build/testflow_profile/data build/testflow_profile/cache build/testflow_profile/state && printf '[General]\\nKEYBOARD_HELP_DISMISSED=true\\nSCORE_SHELF_HINT_DISMISSED=true\\n' > 'build/testflow_profile/config/Unknown Organization/OrchestrionDevelopment.ini'",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"dependsOn": "CMake: install",
+			"problemMatcher": []
+		},
+		{
+			// Runs a script headless, like CI (see tools/run_testflow.sh): a virtual
+			// display, a silent audio output, a fresh profile. The picker requires the
+			// Command Variable extension; escaping it leaves ${input:testflowScript}
+			// unsubstituted, which the script rejects.
+			"label": "testflow: run script (headless)",
+			"type": "shell",
+			"command": "tools/run_testflow.sh \"${command:cmake.buildDirectory}/install/bin/Orchestrion\" '${input:testflowScript}'",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"dependsOn": "CMake: install",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			// The same, recorded into build/testflow_videos/<script>.mp4 (needs ffmpeg).
+			"label": "testflow: record script (headless)",
+			"type": "shell",
+			"command": "tools/run_testflow.sh \"${command:cmake.buildDirectory}/install/bin/Orchestrion\" '${input:testflowScript}' --record build/testflow_videos/",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"dependsOn": "CMake: install",
+			"group": "test",
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "testflowScript",
+			"type": "command",
+			"command": "extension.commandvariable.file.pickFile",
+			"args": {
+				// The scripts, not steps/ (their helpers)
+				"include": "testflowscripts/*.js",
+				"description": "Testflow script"
+			}
 		}
 	]
 }
