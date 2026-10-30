@@ -16,7 +16,8 @@
         {"command": "command://orchestrion/browse-scores",  "sequences": ["Ctrl+O"], "autorepeat": false},
         {"command": "command://orchestrion/file-save",  "sequences": ["Ctrl+S"], "autorepeat": false},
         {"command": "command://orchestrion/file-save-as",  "sequences": ["Ctrl+Shift+S"], "autorepeat": false},
-        {"command": "command://orchestrion/fullscreen",  "sequences": ["F11"], "autorepeat": false}
+        {"command": "command://orchestrion/fullscreen",  "sequences": ["F11"], "autorepeat": false},
+        {"command": "command://orchestrion/quit",  "sequences": ["Ctrl+Q"], "autorepeat": false}
       ]
     },
     {

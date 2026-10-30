@@ -12,5 +12,6 @@
         <file>configs/update.cfg</file>
         <file>configs/learn.cfg</file>
         <file>configs/data/shortcuts.json</file>
+        <file>configs/data/shortcuts_mac.json</file>
     </qresource>
 </RCC>
