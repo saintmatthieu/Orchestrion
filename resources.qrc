@@ -23,6 +23,7 @@
     <file>src/qml/TakesDialog.qml</file>
     <file>src/qml/BackdropFrame.qml</file>
     <file>src/qml/MetalGlyph.qml</file>
+    <file>src/qml/DemoCursorOverlay.qml</file>
     <file>src/qml/TransportButton.qml</file>
     <file>src/qml/TransportGlow.qml</file>
     <file>src/qml/OrchestrionToolTip.qml</file>

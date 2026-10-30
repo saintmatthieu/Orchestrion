@@ -49,11 +49,30 @@ function toggleLoop() {
     command("command://playback/loop-toggle")
 }
 
+// The demo cursor glides to a control, by its navigation path (e.g.
+// "Controls/Playback/Play"), and clicks it as a user would: returns once
+// released.
+function click(control) {
+    command("command://orchestrion/demo-click", { control: control })
+}
+
+// The demo cursor glides to a control and rests there
+function moveTo(control) {
+    command("command://orchestrion/demo-move", { control: control })
+}
+
+function hideCursor() {
+    command("command://orchestrion/demo-hide")
+}
+
 module.exports = {
     command: command,
     openScore: openScore,
     toggleFullScreen: toggleFullScreen,
     togglePlay: togglePlay,
     rewind: rewind,
-    toggleLoop: toggleLoop
+    toggleLoop: toggleLoop,
+    click: click,
+    moveTo: moveTo,
+    hideCursor: hideCursor
 }

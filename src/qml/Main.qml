@@ -790,4 +790,10 @@ ApplicationWindow {
             notationPaintViewLoaderModel.init()
         }
     }
+
+    // Over everything else in the window
+    DemoCursorOverlay {
+        anchors.fill: parent
+        z: 1000
+    }
 }
