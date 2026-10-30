@@ -53,8 +53,8 @@ Item {
         anchors.fill: parent
         source: "qrc:/icons/player/" + root.icon
         engaged: root.engaged
-        // Keyboard focus shows as hovering does
-        hovered: mouseArea.containsMouse || navCtrl.highlight
+        hovered: mouseArea.containsMouse
+        focused: navCtrl.highlight
         pressed: mouseArea.pressed
     }
 
