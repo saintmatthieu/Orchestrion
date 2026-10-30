@@ -45,7 +45,7 @@ OrchestrionOnboardingModel::getFileOpenArgs(
   if (projectFile.url.isEmpty())
   {
     const muse::io::path_t path =
-        globalConfiguration()->appDataPath() + "scores/Frère Jacques.mxl";
+        globalConfiguration()->appDataPath() + "scores/Frere Jacques.mxl";
     IF_ASSERT_FAILED(fileExists(path.toStdString()))
     {
       LOGE() << "File not found: " << path;
