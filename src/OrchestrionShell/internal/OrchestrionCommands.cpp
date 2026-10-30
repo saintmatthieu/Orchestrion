@@ -31,6 +31,7 @@ constexpr auto moduleName_ = "orchestrion";
 
 const muse::rcommand::Command
     openScoreCommand("command://orchestrion/open-score");
+const muse::rcommand::Command quitCommand("command://orchestrion/quit");
 
 struct ActionCommand
 {
@@ -82,7 +83,7 @@ OrchestrionCommandsRegister::commandList() const
 {
   static const std::vector<muse::rcommand::Command> list = []
   {
-    std::vector<muse::rcommand::Command> list{openScoreCommand};
+    std::vector<muse::rcommand::Command> list{openScoreCommand, quitCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -104,6 +105,10 @@ OrchestrionCommandsRegister::commandInfoList() const
                           muse::rcommand::DataType::String,
                           u"Absolute, or relative to the bundled scores")}}),
         muse::rcommand::Decoration());
+    list.emplace_back(
+        quitCommand, muse::TranslatableString("orchestrion", "Quit"),
+        muse::TranslatableString("orchestrion", "Quit Orchestrion"),
+        muse::rcommand::InputSchema(), muse::rcommand::Decoration());
     for (const ActionCommand &ac : actionCommands())
       list.emplace_back(ac.command, ac.title, ac.title,
                         muse::rcommand::InputSchema(),
@@ -117,6 +122,14 @@ void OrchestrionCommands::registerHandlers()
 {
   onRequest(openScoreCommand, [this](const muse::rcommand::Params &params)
             { return openScore(params); });
+  // As the window's close button does: OrchestrionActionController offers to
+  // save the score's changes, and the user may cancel.
+  onRequest(quitCommand,
+            [this](const muse::rcommand::Params &)
+            {
+              mainWindow()->qWindow()->close();
+              return muse::make_ok();
+            });
   for (const ActionCommand &ac : actionCommands())
     onRequest(ac.command,
               [this, action = ac.action](const muse::rcommand::Params &)

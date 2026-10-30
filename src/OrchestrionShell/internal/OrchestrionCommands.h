@@ -28,6 +28,7 @@
 #include <rcommand/icommanddispatcher.h>
 #include <rcommand/imodulecommandsregister.h>
 #include <rcommand/imodulecommandsstate.h>
+#include <ui/imainwindow.h>
 
 #include <functional>
 
@@ -65,6 +66,7 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<muse::actions::IActionsDispatcher> actionsDispatcher{this};
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
+  dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
 
 public:
   /**
