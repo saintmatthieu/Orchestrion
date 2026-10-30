@@ -17,12 +17,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*
+ * Plays a bundled score, then loops it.
+ *
+ * @testflow record-after Open Frère Jacques
+ */
+
 var Orchestrion = require("steps/Orchestrion.js")
 
 var testCase = {
     name: "TC1: Play a score",
     description: "Opens a bundled score and lets the automatic player play a few bars of it",
     steps: [
+        {name: "Full screen", func: function() {
+            Orchestrion.toggleFullScreen()
+        }},
         {name: "Open Frère Jacques", func: function() {
             Orchestrion.openScore("Frere Jacques.mxl")
         }},

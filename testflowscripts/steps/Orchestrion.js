@@ -33,6 +33,10 @@ function openScore(path) {
     command("command://orchestrion/open-score", { path: path })
 }
 
+function toggleFullScreen() {
+    command("command://orchestrion/fullscreen")
+}
+
 function togglePlay() {
     command("command://orchestrion/play-toggle")
 }
@@ -48,6 +52,7 @@ function toggleLoop() {
 module.exports = {
     command: command,
     openScore: openScore,
+    toggleFullScreen: toggleFullScreen,
     togglePlay: togglePlay,
     rewind: rewind,
     toggleLoop: toggleLoop
