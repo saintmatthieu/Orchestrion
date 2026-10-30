@@ -20,11 +20,12 @@
 # Runs one testflow script (testflowscripts/) in a throwaway environment and
 # exits with its result (0 passed, 1 failed, 2 couldn't run, 124 timed out):
 #
-#   tools/run_testflow.sh <app> <script> [--record <video.mp4 or dir/>] [--speed <speed>]
+#   tools/run_testflow.sh <app> <script> [--record <video.mp4 or dir/>] [--speed <speed>] [--log <file>]
 #
 # <app>: the Orchestrion executable, an extracted AppImage's AppRun, or an
 # .AppImage (extracted, so FUSE isn't needed). <script>: a file, or a name in
-# testflowscripts/.
+# testflowscripts/. --log keeps the app's log (with the scripts' api.log
+# output), which is otherwise deleted with the rest of the environment.
 #
 # The environment: a fresh profile; a virtual X display (Xvfb, with openbox if
 # installed, without which the window can't go full screen); a silent audio
@@ -51,10 +52,12 @@ SCRIPT=$2
 shift 2
 RECORD=""
 SPEED=""
+LOG=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --record) RECORD=$2; shift 2 ;;
         --speed) SPEED=$2; shift 2 ;;
+        --log) LOG=$(realpath -m "$2"); shift 2 ;;
         *) usage ;;
     esac
 done
@@ -172,6 +175,7 @@ ARGS=(--test-case "$SCRIPT")
 [ -z "$SPEED" ] || ARGS+=(--test-case-speed "$SPEED")
 rc=0
 timeout -k 15 "$TIMEOUT_S" "$APP" "${ARGS[@]}" > "$WORK/app.log" 2>&1 || rc=$?
+[ -z "$LOG" ] || { mkdir -p "$(dirname "$LOG")"; cp "$WORK/app.log" "$LOG"; }
 
 if [ -n "$RECORD" ]; then
     kill -INT "$FFMPEG_PID" 2>/dev/null || true
