@@ -18,6 +18,8 @@
  */
 import QtQuick 2.15
 
+import Muse.Ui as MUI // qualified, like Main.qml's
+
 import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
@@ -27,6 +29,19 @@ Row {
     id: root
 
     spacing: 2
+
+    /** The navigation section the row's panel belongs to. */
+    property MUI.NavigationSection navigationSection
+
+    MUI.NavigationPanel {
+        id: navPanel
+        name: "Playback"
+        section: root.navigationSection
+        order: 1
+        direction: MUI.NavigationPanel.Horizontal
+        enabled: root.enabled && root.visible
+        accessible.name: qsTr("Playback")
+    }
 
     PlaybackButtonModel {
         id: playbackModel
@@ -39,18 +54,27 @@ Row {
     TransportButton {
         icon: "rewind.svg"
         tooltip: qsTr("Rewind (Home)")
+        navigation.name: "Rewind"
+        navigation.panel: navPanel
+        navigation.order: 1
         onClicked: playbackModel.rewind()
     }
 
     TransportButton {
         icon: "previous.svg"
         tooltip: qsTr("Previous (Left)")
+        navigation.name: "Previous"
+        navigation.panel: navPanel
+        navigation.order: 2
         onClicked: playbackModel.backStep()
     }
 
     TransportButton {
         icon: "play.svg"
         tooltip: qsTr("Play/Pause (Space)")
+        navigation.name: "Play"
+        navigation.panel: navPanel
+        navigation.order: 3
         engaged: playbackModel.isPlaying
         onClicked: playbackModel.togglePlay()
     }
@@ -58,6 +82,9 @@ Row {
     TransportButton {
         icon: "stop.svg"
         tooltip: qsTr("Stop")
+        navigation.name: "Stop"
+        navigation.panel: navPanel
+        navigation.order: 4
         onClicked: playbackModel.stop()
     }
 
@@ -66,12 +93,18 @@ Row {
     TransportButton {
         icon: "next.svg"
         tooltip: qsTr("Next (Right)")
+        navigation.name: "Next"
+        navigation.panel: navPanel
+        navigation.order: 5
         onClicked: playbackModel.forwardStep()
     }
 
     TransportButton {
         icon: "loop.svg"
         tooltip: qsTr("Loop (Ctrl+L)")
+        navigation.name: "Loop"
+        navigation.panel: navPanel
+        navigation.order: 6
         engaged: playbackModel.isLoopEnabled
         onClicked: playbackModel.toggleLoop()
     }

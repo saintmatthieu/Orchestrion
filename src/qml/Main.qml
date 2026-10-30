@@ -56,6 +56,15 @@ ApplicationWindow {
         scoreHeading.load()
     }
 
+    // The controls over the score: the transport row and the full-screen
+    // button, each its own panel. Scripts (testflow, demos) reach a control
+    // by section/panel/name, e.g. Controls/Playback/Play.
+    MUI.NavigationSection {
+        id: controlsNavSection
+        name: "Controls"
+        order: 1
+    }
+
     // The native macOS menu bar (our Qt.labs.platform wrapper around the menu
     // model, adapted from MuseScore's PlatformMenuBar). Only instantiated on
     // macOS; elsewhere the menus are rendered by AppTitleBar below.
@@ -336,6 +345,7 @@ ApplicationWindow {
 
                     PlaybackButton {
                         id: playbackRow
+                        navigationSection: controlsNavSection
                     }
                 }
 
@@ -343,6 +353,7 @@ ApplicationWindow {
                 // opposite one.
                 FullscreenButton {
                     id: fullscreenButton
+                    navigationSection: controlsNavSection
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.rightMargin: 10

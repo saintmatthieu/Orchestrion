@@ -19,6 +19,8 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
+import Muse.Ui as MUI // qualified, like Main.qml's
+
 import Orchestrion 1.0
 
 /**
@@ -35,6 +37,12 @@ Item {
     property bool engaged: false
 
     property string tooltip
+
+    /**
+     * Its place in keyboard navigation, and the name scripts reach it by
+     * (testflow, demos): set its name, panel and order.
+     */
+    property alias navigation: navCtrl
 
     signal clicked()
 
@@ -54,6 +62,18 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         onClicked: root.clicked()
+    }
+
+    MUI.NavigationControl {
+        id: navCtrl
+        enabled: root.enabled && root.visible
+
+        accessible.role: MUI.MUAccessible.Button
+        accessible.name: root.tooltip
+        accessible.visualItem: root
+        accessible.enabled: navCtrl.enabled
+
+        onTriggered: root.clicked()
     }
 
     OrchestrionToolTip {
