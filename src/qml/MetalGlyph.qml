@@ -37,6 +37,10 @@ import Orchestrion 1.0
  * pointer rests on it, times the phase shared by every glyph on screen. Both
  * targets are eased by a Behavior, so a state change eases from wherever the
  * level currently stands and it can never jump.
+ *
+ * Keyboard focus breathes like hovering, but over a floor that it reaches at
+ * once: the shared phase may be at its trough when the focus arrives, and the
+ * focused glyph must show which it is without waiting for the next swell.
  */
 Item {
     id: root
@@ -48,6 +52,9 @@ Item {
 
     property bool hovered: false
     property bool pressed: false
+
+    /** It has the keyboard focus. */
+    property bool focused: false
 
     /**
      * How much halo this drawing takes at full level, where 1.0 is a bloom
@@ -61,13 +68,16 @@ Item {
      */
     property real glowStrength: 0.7
 
-    readonly property real level: Math.min(1, base + amp * TransportGlow.phase)
+    readonly property real level: Math.min(1, base + Math.max(floor, amp * TransportGlow.phase))
 
     property real base: (root.engaged || root.pressed) ? 1 : 0
-    property real amp: (root.hovered && !root.engaged && !root.pressed) ? 0.85 : 0
+    property real amp: ((root.hovered || root.focused) && !root.engaged && !root.pressed) ? 0.85 : 0
+    property real floor: (root.focused && !root.engaged && !root.pressed) ? 0.45 : 0
 
     Behavior on base { NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
     Behavior on amp { NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+    // Quick, so that the focus shows as soon as it lands
+    Behavior on floor { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
 
     // The shared oscillator only ticks while a glyph has use for it, so an
     // untouched screen costs nothing. Counted off the amplitude rather than off
