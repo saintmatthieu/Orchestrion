@@ -47,6 +47,7 @@ public:
   newContext(const muse::modularity::ContextPtr &ctx) const override;
 
 private:
+  void onContextRegisterExports() const;
   void onContextResolveImports() const;
   void onContextPreInit(const muse::IApplication::RunMode &mode) const;
   void onContextInit(const muse::IApplication::RunMode &mode) const;

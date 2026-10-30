@@ -23,6 +23,7 @@
 #include "internal/OrchestrionActionController.h"
 #include "internal/OrchestrionCommands.h"
 #include "internal/OrchestrionEventProcessor.h"
+#include "internal/OrchestrionShortcutsResolver.h"
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
 #include "internal/PlaybackDeviceMenuManager.h"
@@ -34,6 +35,7 @@
 #include "rcommand/icommandsstate.h"
 #include "ui/iuiactionsregister.h"
 #include "view/GradingModel.h"
+#include "view/KeyboardNavigationModel.h"
 #ifdef Q_OS_MAC
 #include "view/MacOSWindowChrome.h"
 #endif
@@ -103,6 +105,8 @@ void OrchestrionShellModule::registerUiTypes()
                                          "ScoreAttributionModel");
   qmlRegisterType<ScoreShelfModel>("Orchestrion.OrchestrionShell", 1, 0,
                                    "ScoreShelfModel");
+  qmlRegisterType<KeyboardNavigationModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                           "KeyboardNavigationModel");
   qmlRegisterType<ScoreShelfHintModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "ScoreShelfHintModel");
   // The palette, which the `Theme` QML singleton forwards to. A singleton
@@ -146,12 +150,22 @@ muse::modularity::IContextSetup *OrchestrionShellModule::newContext(
     const muse::modularity::ContextPtr &ctx) const
 {
   ModuleContextSetup::Hooks hooks;
+  hooks.registerExports = [this] { onContextRegisterExports(); };
   hooks.resolveImports = [this] { onContextResolveImports(); };
   hooks.onPreInit = [this](const muse::IApplication::RunMode &mode)
   { onContextPreInit(mode); };
   hooks.onInit = [this](const muse::IApplication::RunMode &mode)
   { onContextInit(mode); };
   return new ModuleContextSetup(ctx, std::move(hooks));
+}
+
+void OrchestrionShellModule::onContextRegisterExports() const
+{
+  // Which of the commands bound to the same keys a key press runs (MuseScore's
+  // shortcuts controller otherwise takes the first enabled one).
+  muse::modularity::ioc(iocContext())
+      ->registerExport<muse::shortcuts::IShortcutsResolver>(
+          moduleName(), std::make_shared<OrchestrionShortcutsResolver>());
 }
 
 void OrchestrionShellModule::onContextResolveImports() const

@@ -53,7 +53,8 @@ Item {
         anchors.fill: parent
         source: "qrc:/icons/player/" + root.icon
         engaged: root.engaged
-        hovered: mouseArea.containsMouse
+        // Keyboard focus shows as hovering does
+        hovered: mouseArea.containsMouse || navCtrl.highlight
         pressed: mouseArea.pressed
     }
 
@@ -66,7 +67,7 @@ Item {
 
     MUI.NavigationControl {
         id: navCtrl
-        enabled: root.enabled && root.visible
+        enabled: root.enabled // faded out too: Tab brings them back (Main.qml)
 
         accessible.role: MUI.MUAccessible.Button
         accessible.name: root.tooltip

@@ -39,7 +39,7 @@ Row {
         section: root.navigationSection
         order: 1
         direction: MUI.NavigationPanel.Horizontal
-        enabled: root.enabled && root.visible
+        enabled: root.enabled // faded out too: Tab brings them back (Main.qml)
         accessible.name: qsTr("Playback")
     }
 
