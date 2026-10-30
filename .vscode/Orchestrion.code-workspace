@@ -52,5 +52,11 @@
 		"chat.tools.terminal.autoApprove": {
 			"makensis": true
 		},
+	},
+	"extensions": {
+		"recommendations": [
+			// File pickers for the testflow launch configuration and tasks
+			"rioj7.command-variable"
+		]
 	}
 }

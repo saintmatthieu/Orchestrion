@@ -10,6 +10,39 @@
       "cwd": "${workspaceFolder}"
     },
     {
+      // Runs a testflow script (testflowscripts/) in the debugger, on your screen
+      // and sound card: watch it like a demo. With a fresh profile (reset by the
+      // preLaunchTask), and the scripts from the source tree, so edits need no
+      // build. Exits with the result: 0 passed, 1 failed, 2 couldn't run.
+      // The headless run, like CI, is the "testflow: run script" task.
+      "name": "Testflow script (Linux)",
+      "type": "lldb",
+      "request": "launch",
+      "preLaunchTask": "testflow: reset profile",
+      // Read by the Command Variable extension's file picker: as a ${command:}
+      // variable, it gets this whole object as arguments (and, unlike an
+      // ${input:}, escaping it cancels the run).
+      "include": "testflowscripts/*.js",
+      "description": "Testflow script",
+      "program": "${command:cmake.buildDirectory}/install/bin/Orchestrion",
+      "args": [
+        "--test-case",
+        "${command:extension.commandvariable.file.pickFile}",
+        "--test-case-speed",
+        "Default" // Default | Fast | Normal | Slow
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "MUSE_TESTFLOW_SCRIPTS_PATH": "${workspaceFolder}/testflowscripts",
+        "XDG_CONFIG_HOME": "${workspaceFolder}/build/testflow_profile/config",
+        "XDG_DATA_HOME": "${workspaceFolder}/build/testflow_profile/data",
+        "XDG_CACHE_HOME": "${workspaceFolder}/build/testflow_profile/cache",
+        "XDG_STATE_HOME": "${workspaceFolder}/build/testflow_profile/state",
+        // Outside the profile, which the next run wipes
+        "MUSE_TESTFLOW_DATA_PATH": "${workspaceFolder}/build/testflow_data"
+      }
+    },
+    {
       "name": "Launch (MacOS)",
       "type": "cppdbg",
       "request": "launch",
