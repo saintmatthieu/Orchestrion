@@ -27,6 +27,7 @@
 #include "internal/OrchestrionShortcutsResolver.h"
 #include "internal/OrchestrionStartupScenario.h"
 #include "internal/OrchestrionUiActions.h"
+#include "internal/OrchestrionUiContextResolver.h"
 #include "internal/PlaybackDeviceMenuManager.h"
 #include "internal/RollsLibrary.h"
 #include "internal/SleepInhibitor.h"
@@ -172,6 +173,10 @@ void OrchestrionShellModule::onContextRegisterExports() const
   muse::modularity::ioc(iocContext())
       ->registerExport<muse::shortcuts::IShortcutsResolver>(
           moduleName(), std::make_shared<OrchestrionShortcutsResolver>());
+  // Which UI actions (the menus' items) are enabled
+  muse::modularity::ioc(iocContext())
+      ->registerExport<muse::ui::IUiContextResolver>(
+          moduleName(), std::make_shared<OrchestrionUiContextResolver>());
 }
 
 void OrchestrionShellModule::onContextResolveImports() const

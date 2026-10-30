@@ -18,6 +18,8 @@ set(MODULE_SRC
   internal/OrchestrionShortcutsResolver.cpp
   internal/OrchestrionShortcutsResolver.h
   internal/OrchestrionUiActions.cpp
+  internal/OrchestrionUiContextResolver.cpp
+  internal/OrchestrionUiContextResolver.h
   internal/OrchestrionUiActions.h
   internal/OrchestrionStartupScenario.cpp
   internal/OrchestrionStartupScenario.h
