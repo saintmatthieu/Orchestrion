@@ -19,6 +19,7 @@
 #pragma once
 
 #include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionShell/ITutorials.h"
 #include "actions/iactionsdispatcher.h"
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
@@ -43,6 +44,7 @@ class PlaybackButtonModel : public QObject,
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<muse::rcommand::ICommandDispatcher> commandDispatcher{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<ITutorials> tutorials{this};
 
 public:
   explicit PlaybackButtonModel(QObject *parent = nullptr);
@@ -53,6 +55,9 @@ public:
 
   Q_INVOKABLE void load();
   Q_INVOKABLE void togglePlay();
+  /**
+   * Stops the player, or the tutorial if one is running.
+   */
   Q_INVOKABLE void stop();
   Q_INVOKABLE void rewind();
   Q_INVOKABLE void backStep();

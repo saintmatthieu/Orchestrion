@@ -70,6 +70,12 @@ void PlaybackButtonModel::togglePlay()
 
 void PlaybackButtonModel::stop()
 {
+  if (tutorials()->running())
+  {
+    // Which stops the player too
+    tutorials()->stop();
+    return;
+  }
   dispatcher()->dispatch(actionIds::playbackStop);
 }
 
