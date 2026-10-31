@@ -33,7 +33,7 @@
 			// run neither depends on nor changes yours: no hints over the score.
 			"label": "testflow: reset profile",
 			"type": "shell",
-			"command": "rm -rf build/testflow_profile && mkdir -p 'build/testflow_profile/config/Unknown Organization' build/testflow_profile/data build/testflow_profile/cache build/testflow_profile/state && printf '[General]\\nKEYBOARD_HELP_DISMISSED=true\\nSCORE_SHELF_HINT_DISMISSED=true\\n' > 'build/testflow_profile/config/Unknown Organization/OrchestrionDevelopment.ini'",
+			"command": "rm -rf build/testflow_profile && mkdir -p 'build/testflow_profile/config/Unknown Organization' build/testflow_profile/data build/testflow_profile/cache build/testflow_profile/state && printf '[General]\\nSCORE_SHELF_HINT_DISMISSED=true\\n' > 'build/testflow_profile/config/Unknown Organization/OrchestrionDevelopment.ini'",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},

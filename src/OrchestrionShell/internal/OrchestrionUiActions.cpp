@@ -39,8 +39,6 @@ muse::ui::UiActionList makeActions(
                          muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("orchestrion-file-help", muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY),
-      muse::ui::UiAction("orchestrion-help-number-keys", muse::ui::UiCtxAny,
-                         muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("orchestrion-file-save", muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("orchestrion-file-save-as", muse::ui::UiCtxAny,

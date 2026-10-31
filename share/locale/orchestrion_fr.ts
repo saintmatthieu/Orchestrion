@@ -105,25 +105,6 @@
     </message>
 </context>
 <context>
-    <name>NumberKeysHelp</name>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="81"/>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="153"/>
-        <source>Use your number keys to play.</source>
-        <translation>Utilisez vos touches numériques pour jouer.</translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="88"/>
-        <source>Show me!</source>
-        <translation>Montre-moi&#x2009;!</translation>
-    </message>
-    <message>
-        <location filename="../../src/OrchestrionSequencer/qml/Orchestrion/OrchestrionSequencer/NumberKeysHelp.qml" line="303"/>
-        <source>Left hand: keys 1 to 5   •   Right hand: keys 6 to 0</source>
-        <translation>Main gauche&#x2009;: touches 1 à 5   •   Main droite&#x2009;: touches 6 à 0</translation>
-    </message>
-</context>
-<context>
     <name>accessibility</name>
     <message>
         <location filename="../../MuseScore/src/framework/accessibility/internal/accessibleiteminterface.cpp" line="259"/>
@@ -414,8 +395,8 @@
     <name>appshell/menu/help</name>
     <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="217"/>
-        <source>How to play with the &amp;keyboard</source>
-        <translation>Comment jouer avec le &amp;clavier</translation>
+        <source>&amp;Tutorials…</source>
+        <translation>&amp;Tutoriels…</translation>
     </message>
     <message>
         <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="219"/>

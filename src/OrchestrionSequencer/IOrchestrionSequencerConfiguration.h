@@ -147,11 +147,6 @@ public:
   virtual void setUnrollRepeatsEnabled(bool) = 0;
   virtual muse::async::Notification unrollRepeatsEnabledChanged() const = 0;
 
-  //! Whether the beginner "use your number keys" help has been dismissed.
-  //! Persisted so the tip auto-shows only until the user closes it.
-  virtual bool keyboardHelpDismissed() const = 0;
-  virtual void setKeyboardHelpDismissed(bool) = 0;
-
   //! Whether the MIDI keyboard indicator (the piano icon in the score view's
   //! top-left corner) is shown. On by default; hidden with the icon's own
   //! cross and toggled from the View menu.

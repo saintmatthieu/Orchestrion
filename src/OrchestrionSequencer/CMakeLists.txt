@@ -53,8 +53,6 @@ set(MODULE_SRC
     internal/VoiceSequencer.cpp
     internal/VoiceSequencer.h
 
-    view/NumberKeysHelpModel.cpp
-    view/NumberKeysHelpModel.h
 
     IChord.h
     IMelodySegment.h

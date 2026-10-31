@@ -88,8 +88,6 @@ private:
   void setUnrollRepeatsEnabled(bool) override;
   muse::async::Notification unrollRepeatsEnabledChanged() const override;
 
-  bool keyboardHelpDismissed() const override;
-  void setKeyboardHelpDismissed(bool) override;
 
   bool midiKeyboardIconVisible() const override;
   void setMidiKeyboardIconVisible(bool) override;

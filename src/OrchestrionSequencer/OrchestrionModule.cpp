@@ -23,7 +23,6 @@
 #include "internal/OrchestrionSequencerConfiguration.h"
 #include "internal/StaffModes.h"
 #include "internal/VisibleScore.h"
-#include "view/NumberKeysHelpModel.h"
 
 #include <QQmlEngine>
 
@@ -52,8 +51,6 @@ void OrchestrionModule::registerExports()
 
 void OrchestrionModule::registerUiTypes()
 {
-  qmlRegisterType<NumberKeysHelpModel>("Orchestrion.OrchestrionSequencer", 1, 0,
-                                       "NumberKeysHelpModel");
 }
 
 muse::modularity::IContextSetup *OrchestrionModule::newContext(

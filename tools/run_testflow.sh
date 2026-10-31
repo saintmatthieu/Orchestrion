@@ -153,7 +153,6 @@ for name in Orchestrion OrchestrionDevelopment; do
     cat > "$XDG_CONFIG_HOME/Unknown Organization/$name.ini" <<EOF
 [General]
 AUDIO_DEVICE=$AUDIO_DEVICE
-KEYBOARD_HELP_DISMISSED=true
 SCORE_SHELF_HINT_DISMISSED=true
 EOF
 done
