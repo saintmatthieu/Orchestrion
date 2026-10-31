@@ -4,7 +4,7 @@
 <h1 align="center">Orchestrion</h1>
 <p align="center"><em>Second only to playing the piano.</em></p>
 
-![Orchestrion showing the score of Frère Jacques](docs/assets/hero.png)
+![Orchestrion showing the score of Mozart's Rondo alla Turca](docs/assets/hero.png)
 
 Orchestrion turns any score into an instrument. You tap the rhythm — on a MIDI
 keyboard or the computer keyboard — and Orchestrion plays the notes of the piece,
