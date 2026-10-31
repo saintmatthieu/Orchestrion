@@ -125,6 +125,7 @@ ApplicationWindow {
         id: scoreShelfModel
         Component.onCompleted: load()
         onOpenRequested: scoreShelf.open()
+        onTutorialsRequested: scoreShelf.open(true)
     }
 
     ScoreShelfHintModel {

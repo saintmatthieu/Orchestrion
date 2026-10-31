@@ -33,6 +33,9 @@ import Orchestrion.OrchestrionShell 1.0
 //
 // The heading, search box and links stay put; the cards scroll beneath them.
 //
+// With `tutorials`, it shows the tutorials only (Help ▸ Tutorials…); otherwise
+// they come first, above the scores.
+//
 // Instantiate with `anchors.fill: parent`; call open() / close().
 Item {
     id: root
@@ -40,12 +43,17 @@ Item {
     property ScoreShelfModel model
 
     property bool shown: false
+    // Showing the tutorials only
+    property bool tutorialsOnly: false
 
     // Read by the computer-keyboard gesture controller: keys pressed in the
     // shelf choose a score, they don't play the one underneath.
     readonly property bool suppressesGestureKeys: shown
 
-    function open() { root.shown = true }
+    function open(tutorials) {
+        root.tutorialsOnly = tutorials === true
+        root.shown = true
+    }
     function close() {
         // Nowhere to go back to without a score.
         if (root.model.hasScore)
@@ -170,7 +178,7 @@ Item {
                     continue
                 const y = card.mapToItem(flick, 0, 0).y
                 if (y + card.height > 0 && y < flick.height)
-                    paths.push(card.path)
+                    paths.push(card.picturePath)
             }
         }
         root.model.prioritize(paths)
@@ -286,11 +294,14 @@ Item {
     // Keys the shelf's controls handle, which would otherwise trigger the
     // application's shortcuts (Space plays, the arrows step through the
     // score).
+    // Keys the shelf's items take before the application's shortcuts do:
+    // Tab, for one, is keyboard navigation's (see shortcuts.json).
     function isNavigationKey(key) {
         return key === Qt.Key_Space || key === Qt.Key_Return
             || key === Qt.Key_Enter || key === Qt.Key_Left
             || key === Qt.Key_Right || key === Qt.Key_Up
-            || key === Qt.Key_Down
+            || key === Qt.Key_Down || key === Qt.Key_Tab
+            || key === Qt.Key_Backtab
     }
 
     component SectionLabel: Text {
@@ -320,6 +331,7 @@ Item {
         Keys.onShortcutOverride: function(event) {
             event.accepted = event.key === Qt.Key_Space
                 || event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab
         }
         Keys.onReturnPressed: link.clicked()
         Keys.onEnterPressed: link.clicked()
@@ -358,6 +370,8 @@ Item {
         required property bool downloading
         required property bool downloadFailed
         required property bool updateAvailable
+        required property bool tutorial
+        required property string picturePath
         required property int index
         // The index of its section.
         property int section: 0
@@ -365,6 +379,11 @@ Item {
         readonly property bool lit: cardMouse.containsMouse || activeFocus
 
         function choose() {
+            if (card.tutorial) {
+                root.shown = false
+                root.model.runTutorial(card.path)
+                return
+            }
             // The score that is open: just back to it. One still to be
             // downloaded: the shelf closes once it is, and it opens.
             if (card.current || root.model.open(card.path, card.displayNameOverride))
@@ -500,6 +519,38 @@ Item {
                     GradientStop { position: 1; color: Theme.accent }
                 }
             }
+
+            // A tutorial plays that music: a play badge over it.
+            Rectangle {
+                visible: card.tutorial
+                anchors.centerIn: parent
+                width: 52
+                height: 52
+                radius: width / 2
+                color: Theme.backdrop
+                opacity: card.lit ? 0.9 : 0.75
+                border.color: Theme.metalBright
+                border.width: 2
+
+                Canvas {
+                    anchors.centerIn: parent
+                    // Optically centred: the triangle's weight is left of its box.
+                    anchors.horizontalCenterOffset: 2
+                    width: 20
+                    height: 22
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.beginPath()
+                        ctx.moveTo(0, 0)
+                        ctx.lineTo(width, height / 2)
+                        ctx.lineTo(0, height)
+                        ctx.closePath()
+                        ctx.fillStyle = Theme.metalBright
+                        ctx.fill()
+                    }
+                }
+            }
         }
 
         Column {
@@ -543,8 +594,8 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: function(mouse) {
                 if (mouse.button === Qt.RightButton) {
-                    // Only a file on this computer can be shown.
-                    if (card.downloaded)
+                    // Only a score on this computer can be shown.
+                    if (card.downloaded && !card.tutorial)
                         cardMenu.popup()
                 } else {
                     card.choose()
@@ -696,15 +747,17 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             viewWidth: root.width
             viewHeight: root.height
-            title: qsTr("Choose a score")
+            title: root.tutorialsOnly ? qsTr("Tutorials") : qsTr("Choose a score")
         }
 
         // One row when the window is wide enough; wraps when not.
         Flow {
             anchors.horizontalCenter: parent.horizontalCenter
             width: Math.min(root.width - 48,
-                            searchField.width + fileLink.width + folderLink.width
-                            + onlineLink.width + helpLink.width + 4 * spacing)
+                            root.tutorialsOnly
+                            ? searchField.width
+                            : searchField.width + fileLink.width + folderLink.width
+                              + onlineLink.width + helpLink.width + 4 * spacing)
             spacing: 12
             topPadding: 4
 
@@ -716,7 +769,14 @@ Item {
                 height: 36
                 leftPadding: 38
                 rightPadding: 32
-                placeholderText: qsTr("Search scores")
+                placeholderText: root.tutorialsOnly ? qsTr("Search tutorials")
+                                                    : qsTr("Search scores")
+                // Return chooses, Tab moves on: not the shortcuts'.
+                Keys.onShortcutOverride: function(event) {
+                    event.accepted = event.key === Qt.Key_Return
+                        || event.key === Qt.Key_Enter || event.key === Qt.Key_Tab
+                        || event.key === Qt.Key_Backtab
+                }
                 placeholderTextColor: Theme.inkFaint
                 color: Theme.metalBright
                 selectionColor: Theme.metal
@@ -802,6 +862,7 @@ Item {
 
             ShelfLink {
                 id: fileLink
+                visible: !root.tutorialsOnly
                 height: searchField.height
                 text: qsTr("Open from computer…")
                 onClicked: {
@@ -811,18 +872,21 @@ Item {
             }
             ShelfLink {
                 id: folderLink
+                visible: !root.tutorialsOnly
                 height: searchField.height
                 text: qsTr("Add a folder…")
                 onClicked: root.model.addFolder()
             }
             ShelfLink {
                 id: onlineLink
+                visible: !root.tutorialsOnly
                 height: searchField.height
                 text: qsTr("Search on musescore.com")
                 onClicked: root.model.searchOnline()
             }
             ShelfLink {
                 id: helpLink
+                visible: !root.tutorialsOnly
                 height: searchField.height
                 text: qsTr("Help me find scores…")
                 onClicked: root.model.helpFindScores()
@@ -841,7 +905,8 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        readonly property bool empty: root.model.shownCount === 0
+        readonly property bool empty: (root.tutorialsOnly ? root.model.tutorialCount
+                                                          : root.model.shownCount) === 0
                                       && root.model.query.length > 0
 
         Flickable {
@@ -913,13 +978,15 @@ Item {
                         readonly property bool searching: root.model.query.length > 0
                         readonly property bool isFolder: kind === "folder"
                         readonly property bool isLibrary: kind === "library"
+                        readonly property bool isTutorials: kind === "tutorials"
                         readonly property bool showsAddCard: isLibrary
                             && !root.model.hasFolders && !searching
 
                         // A folder keeps its section while not searching,
                         // even empty: that's where its scores will come.
-                        visible: scores.count > 0 || (isFolder && !searching)
-                                 || showsAddCard
+                        visible: (isTutorials || !root.tutorialsOnly)
+                                 && (scores.count > 0 || (isFolder && !searching)
+                                     || showsAddCard)
                         width: parent.width
                         spacing: 18
 
@@ -1042,7 +1109,9 @@ Item {
             visible: cardsArea.empty
             anchors.horizontalCenter: parent.horizontalCenter
             y: cardsArea.fadeHeight + 24
-            text: qsTr("No score matches \u201C%1\u201D").arg(searchField.text)
+            text: (root.tutorialsOnly ? qsTr("No tutorial matches \u201C%1\u201D")
+                                      : qsTr("No score matches \u201C%1\u201D"))
+                  .arg(searchField.text)
             color: Theme.inkMuted
             font.pixelSize: 15
         }

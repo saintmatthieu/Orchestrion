@@ -6,8 +6,7 @@
         {"command": "command://navigation/prev-panel",  "sequences": ["Shift+Tab"]},
         {"command": "command://navigation/right",  "sequences": ["Right"]},
         {"command": "command://navigation/left",  "sequences": ["Left"]},
-        {"command": "command://navigation/trigger-control",  "sequences": ["Return", "Enter", "Space"], "autorepeat": false},
-        {"command": "command://navigation/escape",  "sequences": ["Esc"]}
+        {"command": "command://navigation/trigger-control",  "sequences": ["Space"], "autorepeat": false}
       ]
     },
     {
@@ -17,7 +16,8 @@
         {"command": "command://orchestrion/file-save",  "sequences": ["Ctrl+S"], "autorepeat": false},
         {"command": "command://orchestrion/file-save-as",  "sequences": ["Ctrl+Shift+S"], "autorepeat": false},
         {"command": "command://orchestrion/fullscreen",  "sequences": ["F11"], "autorepeat": false},
-        {"command": "command://orchestrion/quit",  "sequences": ["Ctrl+Q"], "autorepeat": false}
+        {"command": "command://orchestrion/quit",  "sequences": ["Ctrl+Q"], "autorepeat": false},
+        {"command": "command://orchestrion/tutorials",  "sequences": ["F1"], "autorepeat": false}
       ]
     },
     {

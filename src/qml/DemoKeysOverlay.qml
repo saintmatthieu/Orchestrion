@@ -38,6 +38,30 @@ Item {
 
     enabled: false
 
+    // While a tutorial runs in the user's session (Tutorials)
+    Rectangle {
+        anchors.horizontalCenter: parent.horizontalCenter
+        // Below the menu bar, when the window has one
+        y: 44
+        width: tutorialBadge.implicitWidth + 28
+        height: tutorialBadge.implicitHeight + 12
+        radius: height / 2
+        color: Theme.overlay
+        border.color: Theme.metal
+        border.width: 1
+        opacity: Tutorials.running ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: 300 } }
+
+        Text {
+            id: tutorialBadge
+            anchors.centerIn: parent
+            text: qsTr("Tutorial · Esc to stop")
+            color: Theme.inkMuted
+            font.pixelSize: 13
+        }
+    }
+
     Column {
         anchors.horizontalCenter: parent.horizontalCenter
         // Between the score and the transport row

@@ -279,6 +279,10 @@ elseif (OS_IS_WIN)
 endif()
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/scores/"             DESTINATION ${resource_install_dir}/scores)
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/wallpapers/"         DESTINATION ${resource_install_dir}/wallpapers)
+if (MUSE_MODULE_TESTFLOW)
+    # Testflow's scripts: the tutorials (see ITutorials), and the steps they share
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/testflowscripts/" DESTINATION ${resource_install_dir}/testflowscripts)
+endif()
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/icons"               DESTINATION ${resource_install_dir})
 
 install(TARGETS Orchestrion

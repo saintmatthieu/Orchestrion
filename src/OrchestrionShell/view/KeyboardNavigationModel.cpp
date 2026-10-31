@@ -18,6 +18,9 @@
  */
 #include "KeyboardNavigationModel.h"
 
+#include <QCoreApplication>
+#include <QKeyEvent>
+
 namespace dgk
 {
 KeyboardNavigationModel::KeyboardNavigationModel(QObject *parent)
@@ -29,13 +32,32 @@ void KeyboardNavigationModel::load()
 {
   const auto onChange = [this]
   {
-    if (navigationController()->isHighlight() &&
-        navigationController()->activeControl())
+    if (isNavigating())
       emit navigated();
   };
   navigationController()->navigationChanged().onNotify(this, onChange);
   // The first key moves the focus before turning the highlight on.
   navigationController()->highlightChanged().onNotify(this, onChange);
+
+  qApp->installEventFilter(this);
+}
+
+bool KeyboardNavigationModel::isNavigating() const
+{
+  return navigationController()->isHighlight() &&
+         navigationController()->activeControl();
+}
+
+bool KeyboardNavigationModel::eventFilter(QObject *watched, QEvent *event)
+{
+  if (event->type() == QEvent::KeyPress &&
+      static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape &&
+      isNavigating())
+  {
+    release();
+    return true;
+  }
+  return QObject::eventFilter(watched, event);
 }
 
 void KeyboardNavigationModel::release()

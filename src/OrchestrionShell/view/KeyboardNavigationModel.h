@@ -55,5 +55,10 @@ signals:
    * A control got the keyboard focus.
    */
   void navigated();
+
+private:
+  /** Esc ends keyboard navigation (not a shortcut: Esc is taken already). */
+  bool eventFilter(QObject *watched, QEvent *event) override;
+  bool isNavigating() const;
 };
 } // namespace dgk
