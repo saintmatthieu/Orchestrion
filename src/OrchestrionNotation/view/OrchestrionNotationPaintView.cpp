@@ -1984,8 +1984,19 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   // did is left outside them. A window growing after the score was opened,
   // or the score laid out after it was zoomed, left it zoomed out past the
   // point where the parchment reaches the cylinders.
-  if (const auto [minScaling, maxScaling] = scalingLimits();
-      currentScaling() < minScaling || currentScaling() > maxScaling)
+  //
+  // A zoom at the least the limits allowed, the whole score fitting between
+  // the cylinders, stays so when that least moves. At startup the first
+  // limits come from a layout that isn't finished: a window that opened at
+  // its full size was left zoomed in past the fit when the finished layout
+  // lowered it, the staves' lead cut off by the left cylinder.
+  const auto [minScaling, maxScaling] = scalingLimits();
+  const bool atFit =
+      m_fitScaling && qFuzzyCompare(currentScaling(), *m_fitScaling);
+  m_fitScaling = minScaling;
+  if (atFit && !qFuzzyCompare(currentScaling(), minScaling))
+    setScaling(minScaling, muse::PointF{width() / 2, height() / 2});
+  else if (currentScaling() < minScaling || currentScaling() > maxScaling)
     setScaling(currentScaling(), muse::PointF{width() / 2, height() / 2});
 
   const auto scaling = currentScaling();

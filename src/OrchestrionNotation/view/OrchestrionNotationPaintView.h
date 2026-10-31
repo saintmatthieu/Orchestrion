@@ -573,6 +573,9 @@ private:
   QVariantList m_finalScoreMetrics;
 
   bool m_constrainingScorePosition = false;
+  // The least zoom the limits allowed when the score's position was last
+  // constrained (see constrainScorePosition)
+  std::optional<double> m_fitScaling;
   QPoint m_lastCursorPos{-1, -1};
 
   // Rolling state of the tempo model for the visualization strip; fed by the
