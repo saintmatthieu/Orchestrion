@@ -22,7 +22,7 @@
   * keys - a key of each hand's half, short and held notes, then the whole
  * score at speed, from the top.
  *
- * @testflow record-after Full screen
+ * @testflow record-from Numbers play notes and chords
  */
 
 var Orchestrion = require("steps/Orchestrion.js")
@@ -35,9 +35,6 @@ var testCase = {
     name: "Getting started",
     description: "Plays the open score with the number keys",
     steps: [
-        {name: "Full screen", func: function() {
-            Orchestrion.toggleFullScreen()
-        }},
         {name: "Numbers play notes and chords", func: function() {
             Orchestrion.showKeys()
             Orchestrion.caption("Numbers play notes and chords")

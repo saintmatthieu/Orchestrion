@@ -35,7 +35,11 @@
 # ffmpeg records the display and that sink into a video.
 #
 # Directives, in the comments a script starts with:
+#   @testflow record-from <step name>    the video starts when that step starts
 #   @testflow record-after <step name>   the video starts when that step ends
+#   @testflow test                       a test, not a tutorial (the app lists
+#                                        the other scripts as tutorials)
+# Recorded, the app starts in full screen.
 #
 # Linux only. Needs Xvfb, pactl, and for --record ffmpeg.
 
@@ -75,11 +79,14 @@ for candidate in "$SCRIPT" "$SCRIPTS_DIR/$SCRIPT" "$SCRIPTS_DIR/$SCRIPT.js"; do
     [ -f "$candidate" ] && { SCRIPT_FILE=$candidate; break; }
 done
 RECORD_AFTER=""
+RECORD_FROM=""
 if [ -n "$SCRIPT_FILE" ]; then
     # The `@testflow <directive> [<argument>]` lines of the comments before the code
     while read -r directive argument; do
         case "$directive" in
             record-after) RECORD_AFTER=$argument ;;
+            record-from) RECORD_FROM=$argument ;;
+            test) ;;
             *) echo "unknown directive @testflow $directive in $SCRIPT_FILE"; exit 2 ;;
         esac
     done < <(awk '
@@ -173,6 +180,8 @@ fi
 
 ARGS=(--test-case "$SCRIPT")
 [ -z "$SPEED" ] || ARGS+=(--test-case-speed "$SPEED")
+# The video shows the window filling the screen
+[ -z "$RECORD" ] || ARGS+=(--full-screen)
 rc=0
 timeout -k 15 "$TIMEOUT_S" "$APP" "${ARGS[@]}" > "$WORK/app.log" 2>&1 || rc=$?
 [ -z "$LOG" ] || { mkdir -p "$(dirname "$LOG")"; cp "$WORK/app.log" "$LOG"; }
@@ -184,16 +193,23 @@ if [ -n "$RECORD" ]; then
     [ -s "$RAW_VIDEO" ] || { echo "--- ffmpeg failed:"; cat "$WORK/ffmpeg.log"; }
     # The wall-clock time of the first frame
     RAW_START_S=$(ffprobe -v error -show_entries format=start_time -of csv=p=0 "$RAW_VIDEO")
-    STEP_END_MS=""
-    if [ -n "$RECORD_AFTER" ]; then
-        # The step's end, from the app's log
-        STEP_END_MS=$(grep -F "] step finished at=" "$WORK/app.log" \
-            | awk -v name="$RECORD_AFTER" '{ at = $4; sub(/^at=/, "", at); $1 = $2 = $3 = $4 = ""; sub(/^ +/, ""); if ($0 == name) { print at; exit } }')
-        [ -n "$STEP_END_MS" ] || echo "step \"$RECORD_AFTER\" (record-after) didn't finish: the video is the whole run"
+    # The time of the record-from step's start, or of the record-after one's
+    # end, from the app's log
+    stepTime() { # event name
+        grep -F "] step $1 at=" "$WORK/app.log" \
+            | awk -v name="$2" '{ at = $4; sub(/^at=/, "", at); $1 = $2 = $3 = $4 = ""; sub(/^ +/, ""); if ($0 == name) { print at; exit } }'
+    }
+    CUT_MS=""
+    if [ -n "$RECORD_FROM" ]; then
+        CUT_MS=$(stepTime started "$RECORD_FROM")
+        [ -n "$CUT_MS" ] || echo "step \"$RECORD_FROM\" (record-from) didn't start: the video is the whole run"
+    elif [ -n "$RECORD_AFTER" ]; then
+        CUT_MS=$(stepTime finished "$RECORD_AFTER")
+        [ -n "$CUT_MS" ] || echo "step \"$RECORD_AFTER\" (record-after) didn't finish: the video is the whole run"
     fi
     # Written anew, its timestamps from zero (the streams keeping their offset)
-    if [ -n "$STEP_END_MS" ]; then
-        CUT_S=$(awk -v end="$STEP_END_MS" -v start="$RAW_START_S" 'BEGIN { s = end / 1000 - start; printf "%.3f", (s > 0 ? s : 0) }')
+    if [ -n "$CUT_MS" ]; then
+        CUT_S=$(awk -v end="$CUT_MS" -v start="$RAW_START_S" 'BEGIN { s = end / 1000 - start; printf "%.3f", (s > 0 ? s : 0) }')
         ffmpeg -loglevel error -y -ss "$CUT_S" -i "$RAW_VIDEO" \
             -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k "$RECORD"
     else

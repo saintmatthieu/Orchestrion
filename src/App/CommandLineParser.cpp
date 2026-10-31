@@ -239,6 +239,9 @@ void CommandLineParser::init()
       "register-audio-plugin-out",
       "Write the audio plugin registration result to this file", "path"));
 
+  m_parser.addOption(QCommandLineOption(
+      "full-screen", "Start with the window in full screen"));
+
   // Internal
   m_parser.addOption(
       internalCommandLineOption("score-display-name-override",
@@ -675,6 +678,8 @@ void CommandLineParser::parse(int argc, char **argv)
       m_options->startup.scoreDisplayNameOverride =
           m_parser.value("score-display-name-override");
     }
+
+    m_options->startup.fullScreen = m_parser.isSet("full-screen");
   }
 }
 
