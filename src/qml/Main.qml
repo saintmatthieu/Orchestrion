@@ -791,7 +791,12 @@ ApplicationWindow {
         }
     }
 
-    // Over everything else in the window
+        // Over everything else in the window, the cursor over the keys
+    DemoKeysOverlay {
+        anchors.fill: parent
+        z: 1000
+    }
+
     DemoCursorOverlay {
         anchors.fill: parent
         z: 1000

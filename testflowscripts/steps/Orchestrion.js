@@ -65,6 +65,36 @@ function hideCursor() {
     command("command://orchestrion/demo-hide")
 }
 
+// The number keys 1 to 0 on screen, going down as they are pressed
+function showKeys(shown) {
+    command("command://orchestrion/demo-keys", { shown: shown !== false })
+}
+
+// An empty caption hides it
+function caption(text) {
+    command("command://orchestrion/demo-caption", { text: text || "" })
+}
+
+// A number key, "0" to "9", as the computer keyboard sends it
+function keyDown(key) {
+    command("command://orchestrion/demo-key-press", { key: key })
+}
+
+function keyUp(key) {
+    command("command://orchestrion/demo-key-release", { key: key })
+}
+
+function tap(key, ms) {
+    keyDown(key)
+    api.testflow.sleep(ms)
+    keyUp(key)
+}
+
+// Returns once the player has stopped, e.g. at the end of the score
+function waitUntilStopped() {
+    api.commands.dispatch("command://orchestrion/wait-until-stopped", {}, 10 * 60 * 1000)
+}
+
 module.exports = {
     command: command,
     openScore: openScore,
@@ -74,5 +104,11 @@ module.exports = {
     toggleLoop: toggleLoop,
     click: click,
     moveTo: moveTo,
-    hideCursor: hideCursor
+    hideCursor: hideCursor,
+    showKeys: showKeys,
+    caption: caption,
+    keyDown: keyDown,
+    keyUp: keyUp,
+    tap: tap,
+    waitUntilStopped: waitUntilStopped
 }

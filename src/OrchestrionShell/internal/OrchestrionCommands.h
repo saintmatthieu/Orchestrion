@@ -19,7 +19,9 @@
 #pragma once
 
 #include "DemoCursor.h"
+#include "DemoKeys.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
+#include "OrchestrionSequencer/IOrchestrion.h"
 
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
@@ -68,9 +70,11 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
+  dgk::Inject<IOrchestrion> orchestrion{this};
 
 public:
-  explicit OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor);
+  OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor,
+                      std::shared_ptr<DemoKeys> demoKeys);
 
   /**
    * Registers the handlers; call once the context's dispatchers exist.
@@ -111,7 +115,10 @@ private:
    */
   muse::Ret openScore(const muse::rcommand::Params &params);
 
+  void waitUntilStopped(Done done);
+
   const std::shared_ptr<DemoCursor> m_demoCursor;
+  const std::shared_ptr<DemoKeys> m_demoKeys;
   muse::async::Channel<muse::rcommand::Command, muse::rcommand::CommandState>
       m_commandStateChanged;
 };
