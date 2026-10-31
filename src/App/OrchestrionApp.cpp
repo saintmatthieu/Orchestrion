@@ -23,11 +23,13 @@
 #endif
 
 #include <QCoreApplication>
+#include <QWindow>
 #include <audioplugins/iregisteraudiopluginsscenario.h>
 #include <engraving/dom/mscore.h>
 #include <engraving/types/constants.h>
 #include <log.h>
 #include <project/types/migrationtypes.h>
+#include <ui/imainwindow.h>
 
 namespace dgk
 {
@@ -107,10 +109,20 @@ void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &ctx)
     qApp->setQuitLockEnabled(true);
   }
 
+  const auto options =
+      std::dynamic_pointer_cast<CommandOptions>(contextData(ctx).options);
+  if (!options)
+    return;
+
+  if (options->startup.fullScreen)
+  {
+    muse::ContextInject<muse::ui::IMainWindow> mainWindow{ctx};
+    if (mainWindow() && mainWindow()->qWindow())
+      mainWindow()->qWindow()->showFullScreen();
+  }
+
 #ifdef MUSE_MODULE_TESTFLOW
-  if (const auto options =
-          std::dynamic_pointer_cast<CommandOptions>(contextData(ctx).options))
-    TestflowRunner::runIfRequested(ctx, options->testflow);
+  TestflowRunner::runIfRequested(ctx, options->testflow);
 #endif
 }
 } // namespace dgk
