@@ -50,14 +50,23 @@ bool KeyboardNavigationModel::isNavigating() const
 
 bool KeyboardNavigationModel::eventFilter(QObject *watched, QEvent *event)
 {
-  if (event->type() == QEvent::KeyPress &&
-      static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape &&
-      isNavigating())
+  // Not bound as shortcuts: a shortcut takes its key from whatever has the
+  // focus, such as the score shelf's search field.
+  if (event->type() != QEvent::KeyPress || !isNavigating())
+    return QObject::eventFilter(watched, event);
+  switch (static_cast<QKeyEvent *>(event)->key())
   {
+  case Qt::Key_Escape:
     release();
     return true;
+  case Qt::Key_Return:
+  case Qt::Key_Enter:
+    // Like Space (shortcuts.json's NAVIGATION scope)
+    navigationController()->activeControl()->trigger();
+    return true;
+  default:
+    return QObject::eventFilter(watched, event);
   }
-  return QObject::eventFilter(watched, event);
 }
 
 void KeyboardNavigationModel::release()

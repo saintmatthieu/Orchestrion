@@ -816,8 +816,15 @@ ApplicationWindow {
                     anchors.fill: parent
                     z: 150
                     model: scoreShelfModel
-                    // Found: no more need for the hint.
-                    onShownChanged: if (shown) scoreShelfHint.dismiss()
+                    onShownChanged: {
+                        if (shown) {
+                            // Found: no more need for the hint.
+                            scoreShelfHint.dismiss()
+                            // The keys are the shelf's now: Space and Return
+                            // would otherwise press the control underneath.
+                            keyboardNavigation.release()
+                        }
+                    }
                 }
 
                 // Post-take tuning panel: the tempo model's smoothing memory.

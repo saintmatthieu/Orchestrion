@@ -57,7 +57,7 @@ signals:
   void navigated();
 
 private:
-  /** Esc ends keyboard navigation (not a shortcut: Esc is taken already). */
+  /** Esc ends keyboard navigation and Return presses the focused control. */
   bool eventFilter(QObject *watched, QEvent *event) override;
   bool isNavigating() const;
 };
