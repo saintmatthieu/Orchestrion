@@ -384,6 +384,23 @@ ApplicationWindow {
                     Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
 
+                // Beside it, at the transport row's spacing
+                TransportButton {
+                    icon: "help.svg"
+                    tooltip: Qt.platform.os === "osx" ? qsTr("Tutorials (⌘?)")
+                                                      : qsTr("Tutorials (F1)")
+                    navigation.name: "Tutorials"
+                    navigation.panel: fullscreenButton.navigationPanel
+                    navigation.order: 1
+                    anchors.right: fullscreenButton.left
+                    anchors.top: fullscreenButton.top
+                    anchors.rightMargin: 2
+                    visible: opacity > 0
+                    opacity: notationPaintView.controlsVisible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                    onClicked: scoreShelf.open(true)
+                }
+
                 // The first-class controls get the top centre: grading
                 // switches between plain playing and the graded performance.
                 Row {

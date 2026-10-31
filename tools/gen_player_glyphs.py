@@ -386,6 +386,8 @@ def build(font):
         # Unringed: these two are not transport actions.
         "loop": loop(),
         "fullscreen": fullscreen(),
+        # Nor is help, but a bare question mark reads as punctuation.
+        "help": band + font_glyph(font, "?", MARK_H, CX, CY),
     }
 
 

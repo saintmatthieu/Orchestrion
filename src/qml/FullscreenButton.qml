@@ -28,12 +28,14 @@ TransportButton {
 
     /** The navigation section the button's panel belongs to. */
     property MUI.NavigationSection navigationSection
+    /** Its panel, which the tutorials button beside it shares (Main.qml). */
+    readonly property alias navigationPanel: navPanel
 
     icon: "fullscreen.svg"
     tooltip: qsTr("Full screen")
     navigation.name: "FullScreen"
     navigation.panel: navPanel
-    navigation.order: 1
+    navigation.order: 2
 
     MUI.NavigationPanel {
         id: navPanel

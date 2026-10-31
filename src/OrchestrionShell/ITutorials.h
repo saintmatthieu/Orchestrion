@@ -30,7 +30,7 @@ namespace dgk
  * The tutorials: the testflow scripts installed with the application, but
  * for those marked `@testflow test`. One runs in the user's session, on the
  * score that is open, showing what it does with the demo keys and cursor; Esc
- * stops it. The application stays open after it.
+ * or the stop button stops it. The application stays open after it.
  */
 class ITutorials : MODULE_GLOBAL_EXPORT_INTERFACE
 {
