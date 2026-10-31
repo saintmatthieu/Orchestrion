@@ -19,6 +19,7 @@
 #pragma once
 
 #include "OrchestrionShell/IRollsLibrary.h"
+#include "OrchestrionShell/ITutorials.h"
 #include "OrchestrionShell/internal/ScoreIncipitCache.h"
 
 #include <actions/actionable.h>
@@ -76,6 +77,10 @@ public:
     DownloadFailedRole,
     /** Whether Rolls has a newer version than the one downloaded. */
     UpdateAvailableRole,
+    /** Whether it is a tutorial (ITutorials) rather than a score. */
+    TutorialRole,
+    /** The score whose music the card shows: its own, or a tutorial's. */
+    PicturePathRole,
   };
 
   struct Item
@@ -99,6 +104,12 @@ public:
     bool downloading = false;
     bool downloadFailed = false;
     bool updateAvailable = false;
+    /**
+     * A tutorial, at `path`: its card shows the music of the score it plays,
+     * at `scorePath`, under its title and description.
+     */
+    bool tutorial = false;
+    QString scorePath;
   };
 
   explicit ScoreListModel(QObject *parent = nullptr);
@@ -163,6 +174,7 @@ public:
 
   enum class Kind
   {
+    Tutorials,
     Recent,
     Folder,
     Library,
@@ -221,6 +233,8 @@ class ScoreShelfModel : public QObject,
   Q_PROPERTY(bool hasFolders READ hasFolders NOTIFY foldersChanged)
   /** How many cards are shown, in all sections. */
   Q_PROPERTY(int shownCount READ shownCount NOTIFY shownCountChanged)
+  /** How many tutorials' cards are shown. */
+  Q_PROPERTY(int tutorialCount READ tutorialCount NOTIFY shownCountChanged)
   /** Set while the shelf is shown: that is when missing cards get rendered. */
   Q_PROPERTY(bool active READ active WRITE setActive NOTIFY activeChanged)
   /** What the search box holds: only the scores that match it are shown. */
@@ -235,6 +249,7 @@ class ScoreShelfModel : public QObject,
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
   dgk::Inject<IRollsLibrary> rollsLibrary{this};
+  dgk::Inject<ITutorials> tutorials{this};
 
 public:
   explicit ScoreShelfModel(QObject *parent = nullptr);
@@ -254,6 +269,11 @@ public:
    * first (see open()).
    */
   Q_INVOKABLE bool openBestMatch();
+
+  /**
+   * Runs that tutorial, on the score that is open (ITutorials).
+   */
+  Q_INVOKABLE void runTutorial(const QString &path);
   /**
    * Asks whether to replace that score of Rolls with its newer version, and
    * downloads it if so.
@@ -286,6 +306,7 @@ public:
   QObject *sections() const;
   bool hasFolders() const;
   int shownCount() const;
+  int tutorialCount() const;
   bool active() const;
   void setActive(bool active);
   bool hasScore() const;
@@ -294,6 +315,8 @@ public:
 
 signals:
   void openRequested();
+  /** Help ▸ Tutorials…: the shelf, showing the tutorials only. */
+  void tutorialsRequested();
   /** A score was opened from outside the cards (dropped on the shelf). */
   void closeRequested();
   void foldersChanged();
@@ -311,6 +334,8 @@ private:
 
   /** Rebuilds every section, each leaving out what those above it have. */
   void reload();
+  /** The tutorials' cards, showing the music of the score that is open. */
+  void reloadTutorials();
   /** reload(), a little later: a folder's files change in bursts. */
   void scheduleReload();
   void watch(const QStringList &directories);
@@ -327,6 +352,7 @@ private:
 
   ScoreIncipitCache m_cache;
   ScoreSectionsModel *const m_sections;
+  ScoreListModel *const m_tutorialScores;
   ScoreListModel *const m_recentScores;
   ScoreListModel *const m_libraryScores;
   /** The folders' lists, kept across reloads by folder path. */

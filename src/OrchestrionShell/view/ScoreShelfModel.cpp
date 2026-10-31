@@ -127,6 +127,12 @@ QString imageUrl(const QString &path)
   return path.isEmpty() ? QString{} : QUrl::fromLocalFile(path).toString();
 }
 
+// The score whose music the item's card shows
+const QString &pictureOf(const ScoreListModel::Item &item)
+{
+  return item.tutorial ? item.scorePath : item.path;
+}
+
 QString searchText(const ScoreListModel::Item &item)
 {
   // The file name too: it is what a user who downloaded the score knows it
@@ -181,6 +187,10 @@ QVariant ScoreListModel::data(const QModelIndex &index, int role) const
     return item.downloadFailed;
   case UpdateAvailableRole:
     return item.updateAvailable;
+  case TutorialRole:
+    return item.tutorial;
+  case PicturePathRole:
+    return pictureOf(item);
   default:
     return {};
   }
@@ -201,6 +211,8 @@ QHash<int, QByteArray> ScoreListModel::roleNames() const
       {DownloadingRole, "downloading"},
       {DownloadFailedRole, "downloadFailed"},
       {UpdateAvailableRole, "updateAvailable"},
+      {TutorialRole, "tutorial"},
+      {PicturePathRole, "picturePath"},
   };
 }
 
@@ -223,9 +235,9 @@ void ScoreListModel::setEntry(const QString &path,
   bool found = false;
   for (Item &item : m_items)
   {
-    if (item.path != path)
+    if (pictureOf(item) != path)
       continue;
-    if (!item.titledByIndex)
+    if (!item.titledByIndex && !item.tutorial)
     {
       item.title = entry.title;
       item.composer = entry.composer;
@@ -245,7 +257,7 @@ void ScoreListModel::setEntry(const QString &path,
     return;
   }
   for (int row = 0; row < count(); ++row)
-    if (shownItem(row).path == path)
+    if (pictureOf(shownItem(row)) == path)
       emit dataChanged(index(row), index(row),
                        {TitleRole, ComposerRole, IncipitRole, ReadyRole});
 }
@@ -331,6 +343,8 @@ QVariant ScoreSectionsModel::data(const QModelIndex &index, int role) const
   case KindRole:
     switch (section.kind)
     {
+    case Kind::Tutorials:
+      return QStringLiteral("tutorials");
     case Kind::Recent:
       return QStringLiteral("recent");
     case Kind::Folder:
@@ -385,8 +399,9 @@ void ScoreSectionsModel::setSections(std::vector<Section> sections)
 
 ScoreShelfModel::ScoreShelfModel(QObject *parent)
     : QObject(parent), m_sections{new ScoreSectionsModel(this)},
-      m_recentScores{makeList()}, m_libraryScores{makeList()},
-      m_watcher{new QFileSystemWatcher(this)}, m_reloadTimer{new QTimer(this)}
+      m_tutorialScores{makeList()}, m_recentScores{makeList()},
+      m_libraryScores{makeList()}, m_watcher{new QFileSystemWatcher(this)},
+      m_reloadTimer{new QTimer(this)}
 {
   m_reloadTimer->setSingleShot(true);
   m_reloadTimer->setInterval(reloadDelayMs);
@@ -412,6 +427,8 @@ void ScoreShelfModel::load()
 
   dispatcher()->reg(this, actionIds::browseScores,
                     [this] { emit openRequested(); });
+  dispatcher()->reg(this, "orchestrion-tutorials",
+                    [this] { emit tutorialsRequested(); });
 }
 
 QObject *ScoreShelfModel::sections() const { return m_sections; }
@@ -425,6 +442,8 @@ int ScoreShelfModel::shownCount() const
     count += list->count();
   return count;
 }
+
+int ScoreShelfModel::tutorialCount() const { return m_tutorialScores->count(); }
 
 bool ScoreShelfModel::active() const { return m_active; }
 
@@ -498,7 +517,39 @@ bool ScoreShelfModel::openBestMatch()
       best = match;
   if (!best)
     return false;
+  if (best->second->tutorial)
+  {
+    runTutorial(best->second->path);
+    return true;
+  }
   return open(best->second->path, best->second->displayNameOverride);
+}
+
+void ScoreShelfModel::runTutorial(const QString &path)
+{
+  // Deferred, as open() is: the click comes from the shelf.
+  muse::async::Async::call(this, [this, path] { tutorials()->run(path); });
+}
+
+void ScoreShelfModel::reloadTutorials()
+{
+  const QString bundledScore =
+      globalConfiguration()->appDataPath().toQString() +
+      "scores/Frere Jacques.mxl";
+  const QString scorePath =
+      m_currentPath.isEmpty() ? bundledScore : m_currentPath;
+  std::vector<ScoreListModel::Item> items;
+  for (const ITutorials::Tutorial &tutorial : tutorials()->tutorials())
+  {
+    ScoreListModel::Item item = makeItem(scorePath, QString{});
+    item.path = tutorial.path;
+    item.title = tutorial.title;
+    item.composer = tutorial.description;
+    item.tutorial = true;
+    item.scorePath = scorePath;
+    items.push_back(std::move(item));
+  }
+  m_tutorialScores->setItems(std::move(items));
 }
 
 void ScoreShelfModel::update(const QString &path)
@@ -749,6 +800,11 @@ void ScoreShelfModel::reload()
 
   std::vector<ScoreSectionsModel::Section> sections;
 
+  reloadTutorials();
+  sections.push_back({ScoreSectionsModel::Kind::Tutorials,
+                      muse::qtrc("orchestrion/shelf", "Tutorials"), QString{},
+                      m_tutorialScores});
+
   std::vector<ScoreListModel::Item> recent;
   for (const mu::project::RecentFile &file :
        recentFilesController()->recentFilesList())
@@ -832,6 +888,9 @@ void ScoreShelfModel::onCurrentProjectChanged()
   m_currentPath = project ? project->path().toQString() : QString{};
   for (ScoreListModel *list : lists())
     list->setCurrentPath(m_currentPath);
+  // Their cards show the music they would play.
+  reloadTutorials();
+  scheduleRender();
   emit hasScoreChanged();
 }
 
@@ -857,7 +916,7 @@ void ScoreShelfModel::renderNext()
   {
     for (const ScoreListModel *list : all)
       for (const ScoreListModel::Item &item : list->items())
-        if (item.path == path && !item.ready)
+        if (pictureOf(item) == path && !item.ready)
           return true;
     return false;
   };
@@ -877,7 +936,7 @@ void ScoreShelfModel::renderNext()
     for (const ScoreListModel::Item &item : list->items())
       if (!item.ready)
       {
-        path = item.path;
+        path = pictureOf(item);
         break;
       }
   }

@@ -68,6 +68,12 @@ public:
   bool press(QChar key);
   bool release(QChar key);
 
+  /**
+   * Releases the keys still down, and hides the keys and the caption: what a
+   * stopped demo leaves.
+   */
+  void reset();
+
   bool shown() const;
   QString caption() const;
   int pressedKeys() const;

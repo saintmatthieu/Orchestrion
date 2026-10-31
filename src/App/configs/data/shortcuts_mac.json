@@ -2,7 +2,8 @@
     {
       "scope": "APP",
       "shortcuts": [
-        {"command": "command://orchestrion/quit",  "sequences": []}
+        {"command": "command://orchestrion/quit",  "sequences": []},
+        {"command": "command://orchestrion/tutorials",  "sequences": ["Ctrl+?"]}
       ]
     }
 ]

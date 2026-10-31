@@ -33,6 +33,7 @@
 #include "internal/RollsLibrary.h"
 #include "internal/SleepInhibitor.h"
 #include "internal/SynthesizerMenuManager.h"
+#include "internal/Tutorials.h"
 #include "modularity/ioc.h"
 #include "rcommand/icommandsregister.h"
 #include "rcommand/icommandsstate.h"
@@ -72,6 +73,7 @@ OrchestrionShellModule::OrchestrionShellModule()
           std::make_shared<OrchestrionStartupScenario>()},
       m_demoCursor{std::make_shared<DemoCursor>()},
       m_demoKeys{std::make_shared<DemoKeys>()},
+      m_tutorials{std::make_shared<Tutorials>(m_demoCursor, m_demoKeys)},
       m_orchestrionCommands{
           std::make_shared<OrchestrionCommands>(m_demoCursor, m_demoKeys)},
       m_sleepInhibitor{std::make_shared<SleepInhibitor>()},
@@ -91,6 +93,7 @@ void OrchestrionShellModule::registerExports()
   globalIoc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), m_orchestrionStartupScenario);
   globalIoc()->registerExport<IRollsLibrary>(moduleName(), m_rollsLibrary);
+  globalIoc()->registerExport<ITutorials>(moduleName(), m_tutorials);
 }
 
 void OrchestrionShellModule::registerUiTypes()
@@ -117,6 +120,8 @@ void OrchestrionShellModule::registerUiTypes()
   // The demo's number keys and caption, which DemoKeysOverlay.qml draws
   qmlRegisterSingletonInstance("Orchestrion.OrchestrionShell", 1, 0, "DemoKeys",
                                m_demoKeys.get());
+  qmlRegisterSingletonInstance("Orchestrion.OrchestrionShell", 1, 0,
+                               "Tutorials", m_tutorials.get());
   qmlRegisterType<KeyboardNavigationModel>("Orchestrion.OrchestrionShell", 1, 0,
                                            "KeyboardNavigationModel");
   qmlRegisterType<ScoreShelfHintModel>("Orchestrion.OrchestrionShell", 1, 0,

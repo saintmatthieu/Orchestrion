@@ -111,6 +111,21 @@ bool DemoKeys::sendKey(QEvent::Type type, QChar key)
   return true;
 }
 
+void DemoKeys::reset()
+{
+  // The row's keys: 1 to 9, then 0
+  static const QString keys = QStringLiteral("1234567890");
+  for (int index = 0; index < keys.size(); ++index)
+    if (m_pressedKeys & (1 << index))
+      release(keys[index]);
+  // The automatic player's, which aren't the keyboard's
+  m_pressedKeys = 0;
+  m_leftAutoKey = m_rightAutoKey = -1;
+  emit pressedKeysChanged();
+  setShown(false);
+  setCaption(QString{});
+}
+
 void DemoKeys::setKeyDown(int index, bool down)
 {
   if (index < 0)

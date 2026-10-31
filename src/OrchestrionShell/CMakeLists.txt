@@ -9,6 +9,8 @@ set(MODULE_SRC
     internal/DemoCursor.h
   internal/DemoKeys.cpp
   internal/DemoKeys.h
+  internal/Tutorials.cpp
+  internal/Tutorials.h
   internal/DeviceMenuManager.cpp
   internal/DeviceMenuManager.h
   internal/OrchestrionActionController.cpp
@@ -70,6 +72,7 @@ set(MODULE_SRC
   view/ScoreShelfModel.h
   IOrchestrionStartupScenario.h
   IOrchestrionUiActions.h
+  ITutorials.h
   IRollsLibrary.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h

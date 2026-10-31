@@ -35,6 +35,7 @@ class OrchestrionStartupScenario;
 class OrchestrionCommands;
 class DemoCursor;
 class DemoKeys;
+class Tutorials;
 
 class OrchestrionShellModule : public muse::modularity::IModuleSetup
 {
@@ -65,6 +66,7 @@ private:
       m_orchestrionStartupScenario;
   const std::shared_ptr<DemoCursor> m_demoCursor;
   const std::shared_ptr<DemoKeys> m_demoKeys;
+  const std::shared_ptr<Tutorials> m_tutorials;
   const std::shared_ptr<OrchestrionCommands> m_orchestrionCommands;
   const std::shared_ptr<SleepInhibitor> m_sleepInhibitor;
   const std::shared_ptr<RollsLibrary> m_rollsLibrary;
