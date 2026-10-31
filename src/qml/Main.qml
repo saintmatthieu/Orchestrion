@@ -407,13 +407,6 @@ ApplicationWindow {
                     visible: shown
                 }
 
-                // Beginner help: number-key tooltip + "Show me!" animation.
-                // Stays put (not tied to the fading controls overlay).
-                NumberKeysHelp {
-                    anchors.fill: parent
-                    z: 100
-                }
-
                 // Once the performer has played a score to its end: there are
                 // others, and the title is the way to them. Hung under the
                 // title's chevron, which it shows.

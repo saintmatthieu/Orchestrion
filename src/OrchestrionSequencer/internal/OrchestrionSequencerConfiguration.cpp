@@ -51,8 +51,6 @@ const muse::Settings::Key TEMPO_SMOOTHING_MEMORY(module_name,
                                                  "TEMPO_SMOOTHING_MEMORY");
 const muse::Settings::Key UNROLL_REPEATS_ENABLED(module_name,
                                                  "UNROLL_REPEATS_ENABLED");
-const muse::Settings::Key KEYBOARD_HELP_DISMISSED(module_name,
-                                                  "KEYBOARD_HELP_DISMISSED");
 const muse::Settings::Key
     MIDI_KEYBOARD_ICON_VISIBLE(module_name, "MIDI_KEYBOARD_ICON_VISIBLE");
 const muse::Settings::Key PEDAL_INDICATOR_VISIBLE(module_name,
@@ -152,7 +150,6 @@ void OrchestrionSequencerConfiguration::init()
       .onReceive(this, [this](const muse::Val &)
                  { m_unrollRepeatsEnabledChanged.notify(); });
 
-  muse::settings()->setDefaultValue(KEYBOARD_HELP_DISMISSED, muse::Val{false});
 
   muse::settings()->setDefaultValue(MIDI_KEYBOARD_ICON_VISIBLE,
                                     muse::Val{true});
@@ -397,17 +394,6 @@ muse::async::Notification
 OrchestrionSequencerConfiguration::unrollRepeatsEnabledChanged() const
 {
   return m_unrollRepeatsEnabledChanged;
-}
-
-bool OrchestrionSequencerConfiguration::keyboardHelpDismissed() const
-{
-  return muse::settings()->value(KEYBOARD_HELP_DISMISSED).toBool();
-}
-
-void OrchestrionSequencerConfiguration::setKeyboardHelpDismissed(bool dismissed)
-{
-  muse::settings()->setSharedValue(KEYBOARD_HELP_DISMISSED,
-                                   muse::Val{dismissed});
 }
 
 bool OrchestrionSequencerConfiguration::midiKeyboardIconVisible() const
