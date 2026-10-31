@@ -258,6 +258,11 @@
         <source>A&amp;dvanced</source>
         <translation>E&amp;rweitert</translation>
     </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="639"/>
+        <source>Show &amp;tempo visualization</source>
+        <translation>&amp;Tempo-Visualisierung anzeigen</translation>
+    </message>
 </context>
 <context>
     <name>appshell/menu/audio-midi</name>
@@ -1147,6 +1152,16 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <source>Open</source>
         <translation>Öffnen</translation>
     </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="307"/>
+        <source>Save changes to the score before closing?</source>
+        <translation>Änderungen an der Partitur vor dem Schließen speichern?</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="308"/>
+        <source>Your changes will be lost if you don&apos;t save them.</source>
+        <translation>Deine Änderungen gehen verloren, wenn du sie nicht speicherst.</translation>
+    </message>
 </context>
 <context>
     <name>project/save</name>
@@ -1686,6 +1701,21 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <source>Drop a folder to add it to the shelf, or a score to open it</source>
         <translation>Einen Ordner ablegen, um ihn dem Regal hinzuzufügen, oder eine Partitur, um sie zu öffnen</translation>
     </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="750"/>
+        <source>Tutorials</source>
+        <translation>Anleitungen</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="772"/>
+        <source>Search tutorials</source>
+        <translation>Anleitungen durchsuchen</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="1112"/>
+        <source>No tutorial matches “%1”</source>
+        <translation>Keine Anleitung passt zu „%1“</translation>
+    </message>
 </context>
 <context>
     <name>orchestrion/shelf</name>
@@ -1724,6 +1754,11 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <source>Library</source>
         <translation>Bibliothek</translation>
     </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="805"/>
+        <source>Tutorials</source>
+        <translation>Anleitungen</translation>
+    </message>
 </context>
 <context>
     <name>Main</name>
@@ -1736,6 +1771,36 @@ wählen Sie einen anderen Controller oder verwenden Sie die Computertastatur.</t
         <location filename="../../src/qml/Main.qml" line="432"/>
         <source>Show me</source>
         <translation>Zeig mir</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="390"/>
+        <source>Tutorials (⌘?)</source>
+        <translation>Anleitungen (⌘?)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="391"/>
+        <source>Tutorials (F1)</source>
+        <translation>Anleitungen (F1)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="460"/>
+        <source>New here? Watch how to play.</source>
+        <translation>Neu hier? Sieh dir an, wie man spielt.</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="476"/>
+        <source>Play</source>
+        <translation>Abspielen</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="710"/>
+        <source>You scored %1 !</source>
+        <translation>Du hast %1 erreicht!</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="851"/>
+        <source>tempo smoothing: %1</source>
+        <translation>Tempoglättung: %1</translation>
     </message>
 </context>
 <context>
@@ -1758,6 +1823,389 @@ Es werden keine Noten gelöscht.</translation>
         <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="540"/>
         <source>Revert</source>
         <translation>Zurücksetzen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="89"/>
+        <source>Browse scores</source>
+        <translation>Partituren durchsuchen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="92"/>
+        <source>Save</source>
+        <translation>Speichern</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="95"/>
+        <source>Save as</source>
+        <translation>Speichern unter</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="98"/>
+        <source>Play</source>
+        <translation>Abspielen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="100"/>
+        <source>Rewind</source>
+        <translation>Zum Anfang</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="102"/>
+        <source>Previous chord</source>
+        <translation>Vorheriger Akkord</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="104"/>
+        <source>Next chord</source>
+        <translation>Nächster Akkord</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="106"/>
+        <source>Loop in</source>
+        <translation>Schleifenanfang</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="108"/>
+        <source>Loop out</source>
+        <translation>Schleifenende</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="111"/>
+        <source>Tutorials</source>
+        <translation>Anleitungen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="114"/>
+        <source>Full screen</source>
+        <translation>Vollbild</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="149"/>
+        <source>Open score</source>
+        <translation>Partitur öffnen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="150"/>
+        <source>Open a score</source>
+        <translation>Öffnet eine Partitur</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Demo: click</source>
+        <translation>Demo: Klick</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="163"/>
+        <source>The demo cursor glides to a control and clicks it</source>
+        <translation>Der Demo-Zeiger gleitet zu einem Bedienelement und klickt darauf</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="168"/>
+        <source>Demo: move</source>
+        <translation>Demo: Bewegen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="169"/>
+        <source>The demo cursor glides to a control</source>
+        <translation>Der Demo-Zeiger gleitet zu einem Bedienelement</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="173"/>
+        <source>Demo: hide</source>
+        <translation>Demo: Ausblenden</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="174"/>
+        <source>Hides the demo cursor</source>
+        <translation>Blendet den Demo-Zeiger aus</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="181"/>
+        <source>Demo: number keys</source>
+        <translation>Demo: Zifferntasten</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="182"/>
+        <source>Shows or hides the number keys</source>
+        <translation>Blendet die Zifferntasten ein oder aus</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="190"/>
+        <source>Demo: caption</source>
+        <translation>Demo: Beschriftung</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="191"/>
+        <source>Shows a caption; an empty one hides it</source>
+        <translation>Zeigt eine Beschriftung; eine leere blendet sie aus</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="199"/>
+        <source>Demo: press key</source>
+        <translation>Demo: Taste drücken</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="200"/>
+        <source>Presses a number key</source>
+        <translation>Drückt eine Zifferntaste</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="204"/>
+        <source>Demo: release key</source>
+        <translation>Demo: Taste loslassen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="205"/>
+        <source>Releases a number key</source>
+        <translation>Lässt eine Zifferntaste los</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="209"/>
+        <source>Wait until stopped</source>
+        <translation>Bis zum Stopp warten</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="210"/>
+        <source>Answers once the player has stopped</source>
+        <translation>Antwortet, sobald die Wiedergabe gestoppt ist</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="214"/>
+        <source>Quit</source>
+        <translation>Beenden</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="215"/>
+        <source>Quit Orchestrion</source>
+        <translation>Orchestrion beenden</translation>
+    </message>
+</context>
+<context>
+    <name>DemoKeysOverlay</name>
+    <message>
+        <location filename="../../src/qml/DemoKeysOverlay.qml" line="59"/>
+        <source>Tutorial · Esc or Stop to end it</source>
+        <translation>Anleitung · Esc oder Stopp zum Beenden</translation>
+    </message>
+</context>
+<context>
+    <name>FullscreenButton</name>
+    <message>
+        <location filename="../../src/qml/FullscreenButton.qml" line="35"/>
+        <source>Full screen</source>
+        <translation>Vollbild</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/FullscreenButton.qml" line="46"/>
+        <source>View</source>
+        <translation>Ansicht</translation>
+    </message>
+</context>
+<context>
+    <name>GradingButton</name>
+    <message>
+        <location filename="../../src/qml/GradingButton.qml" line="66"/>
+        <source>Grading (on)</source>
+        <translation>Bewertung (an)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingButton.qml" line="67"/>
+        <source>Grading (off)</source>
+        <translation>Bewertung (aus)</translation>
+    </message>
+</context>
+<context>
+    <name>GradingSettingsPopup</name>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="64"/>
+        <source>Grading</source>
+        <translation>Bewertung</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="89"/>
+        <source>Grading enabled</source>
+        <translation>Bewertung aktiviert</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="109"/>
+        <source>Keep timing marks on screen</source>
+        <translation>Timing-Markierungen eingeblendet lassen</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="115"/>
+        <source>Hand-synchronization sub-score</source>
+        <translation>Teilnote Hand-Synchronisation</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="121"/>
+        <source>Dynamics sub-score</source>
+        <translation>Teilnote Dynamik</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="127"/>
+        <source>Time-proportional spacing</source>
+        <translation>Zeitproportionaler Abstand</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="133"/>
+        <source>Play button</source>
+        <translation>Wiedergabetaste</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="156"/>
+        <source>Replay performance</source>
+        <translation>Darbietung wiedergeben</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="157"/>
+        <source>Replay at fitted tempo</source>
+        <translation>Mit angepasstem Tempo wiedergeben</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/GradingSettingsPopup.qml" line="158"/>
+        <source>Metronomic playback</source>
+        <translation>Metronomische Wiedergabe</translation>
+    </message>
+</context>
+<context>
+    <name>PedalIndicator</name>
+    <message>
+        <location filename="../../src/qml/PedalIndicator.qml" line="94"/>
+        <source>Sustain pedal (down)</source>
+        <translation>Haltepedal (gedrückt)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PedalIndicator.qml" line="95"/>
+        <source>Sustain pedal (up)</source>
+        <translation>Haltepedal (losgelassen)</translation>
+    </message>
+</context>
+<context>
+    <name>PlaybackButton</name>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="43"/>
+        <source>Playback</source>
+        <translation>Wiedergabe</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="56"/>
+        <source>Rewind (Home)</source>
+        <translation>Zum Anfang (Pos1)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="65"/>
+        <source>Previous (Left)</source>
+        <translation>Zurück (Links)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="74"/>
+        <source>Play/Pause (Space)</source>
+        <translation>Wiedergabe/Pause (Leertaste)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="84"/>
+        <source>Stop</source>
+        <translation>Stopp</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="95"/>
+        <source>Next (Right)</source>
+        <translation>Weiter (Rechts)</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/PlaybackButton.qml" line="104"/>
+        <source>Loop (Ctrl+L)</source>
+        <translation>Schleife (Strg+L)</translation>
+    </message>
+</context>
+<context>
+    <name>appshell/menu/development</name>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="695"/>
+        <source>Expose &amp;grading</source>
+        <translation>&amp;Bewertung freischalten</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="701"/>
+        <source>Record &amp;takes</source>
+        <translation>&amp;Takes aufnehmen</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="707"/>
+        <source>&amp;Development</source>
+        <translation>&amp;Entwicklung</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="711"/>
+        <source>&amp;Replay a take…</source>
+        <translation>Take &amp;wiedergeben…</translation>
+    </message>
+</context>
+<context>
+    <name>appshell/menu/grading</name>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="725"/>
+        <source>&amp;Enabled</source>
+        <translation>&amp;Aktiviert</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="731"/>
+        <source>&amp;Settings…</source>
+        <translation>&amp;Einstellungen…</translation>
+    </message>
+    <message>
+        <location filename="../../src/MuseScoreShell/view/OrchestrionMenuModel.cpp" line="733"/>
+        <source>&amp;Grading</source>
+        <translation>&amp;Bewertung</translation>
+    </message>
+</context>
+<context>
+    <name>orchestrion/staffmode</name>
+    <message>
+        <location filename="../../src/OrchestrionNotation/view/OrchestrionNotationPaintView.cpp" line="1359"/>
+        <source>Notes</source>
+        <translation>Noten</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionNotation/view/OrchestrionNotationPaintView.cpp" line="1361"/>
+        <source>Rhythm</source>
+        <translation>Rhythmus</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionNotation/view/OrchestrionNotationPaintView.cpp" line="1363"/>
+        <source>Follow</source>
+        <translation>Folgen</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionNotation/view/OrchestrionNotationPaintView.cpp" line="1365"/>
+        <source>Mute</source>
+        <translation>Stumm</translation>
+    </message>
+</context>
+<context>
+    <name>orchestrion/takes</name>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="353"/>
+        <source>Take %1: from bar %2, %3 notes, %4:%5</source>
+        <translation>Take %1: ab Takt %2, %3 Noten, %4:%5</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="388"/>
+        <source>Replay a take</source>
+        <translation>Take wiedergeben</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionActionController.cpp" line="390"/>
+        <source>Takes</source>
+        <translation>Takes</translation>
+    </message>
+</context>
+<context>
+    <name>undoableAction</name>
+    <message>
+        <location filename="../../src/OrchestrionSequencer/internal/StaffModes.cpp" line="131"/>
+        <source>Change staff mode</source>
+        <translation>Notenzeilenmodus ändern</translation>
     </message>
 </context>
 </TS>
