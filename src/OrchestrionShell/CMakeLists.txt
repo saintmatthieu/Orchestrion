@@ -6,7 +6,9 @@ set(MODULE_SRC
   internal/ControllerMenuManager.cpp
   internal/ControllerMenuManager.h
   internal/DemoCursor.cpp
-  internal/DemoCursor.h
+    internal/DemoCursor.h
+  internal/DemoKeys.cpp
+  internal/DemoKeys.h
   internal/DeviceMenuManager.cpp
   internal/DeviceMenuManager.h
   internal/OrchestrionActionController.cpp

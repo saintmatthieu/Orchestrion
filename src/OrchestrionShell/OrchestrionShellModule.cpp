@@ -21,6 +21,7 @@
 #include "interactive/iinteractiveuriregister.h"
 #include "internal/ControllerMenuManager.h"
 #include "internal/DemoCursor.h"
+#include "internal/DemoKeys.h"
 #include "internal/OrchestrionActionController.h"
 #include "internal/OrchestrionCommands.h"
 #include "internal/OrchestrionEventProcessor.h"
@@ -70,8 +71,9 @@ OrchestrionShellModule::OrchestrionShellModule()
       m_orchestrionStartupScenario{
           std::make_shared<OrchestrionStartupScenario>()},
       m_demoCursor{std::make_shared<DemoCursor>()},
+      m_demoKeys{std::make_shared<DemoKeys>()},
       m_orchestrionCommands{
-          std::make_shared<OrchestrionCommands>(m_demoCursor)},
+          std::make_shared<OrchestrionCommands>(m_demoCursor, m_demoKeys)},
       m_sleepInhibitor{std::make_shared<SleepInhibitor>()},
       m_rollsLibrary{std::make_shared<RollsLibrary>()}
 {
@@ -112,6 +114,9 @@ void OrchestrionShellModule::registerUiTypes()
   // The one demo cursor, which DemoCursorOverlay.qml draws
   qmlRegisterSingletonInstance("Orchestrion.OrchestrionShell", 1, 0,
                                "DemoCursor", m_demoCursor.get());
+  // The demo's number keys and caption, which DemoKeysOverlay.qml draws
+  qmlRegisterSingletonInstance("Orchestrion.OrchestrionShell", 1, 0, "DemoKeys",
+                               m_demoKeys.get());
   qmlRegisterType<KeyboardNavigationModel>("Orchestrion.OrchestrionShell", 1, 0,
                                            "KeyboardNavigationModel");
   qmlRegisterType<ScoreShelfHintModel>("Orchestrion.OrchestrionShell", 1, 0,
@@ -209,6 +214,7 @@ void OrchestrionShellModule::onContextInit(
   m_orchestrionActionController->init();
   m_orchestrionStartupScenario->init();
   m_orchestrionCommands->registerHandlers();
+  m_demoKeys->init();
   m_sleepInhibitor->init();
 }
 } // namespace dgk

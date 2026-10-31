@@ -21,6 +21,7 @@
 
 #include <QCoreApplication>
 #include <QFileInfo>
+#include <QTimer>
 #include <QUrl>
 
 namespace dgk
@@ -41,10 +42,36 @@ const muse::rcommand::Command
 const muse::rcommand::Command
     demoHideCommand("command://orchestrion/demo-hide");
 
+// The demo's keys and caption (DemoKeys)
+const muse::rcommand::Command
+    demoKeysCommand("command://orchestrion/demo-keys");
+const muse::rcommand::Command
+    demoCaptionCommand("command://orchestrion/demo-caption");
+const muse::rcommand::Command
+    demoKeyPressCommand("command://orchestrion/demo-key-press");
+const muse::rcommand::Command
+    demoKeyReleaseCommand("command://orchestrion/demo-key-release");
+// Answers once the player has stopped, e.g. at the end of the score
+const muse::rcommand::Command
+    waitUntilStoppedCommand("command://orchestrion/wait-until-stopped");
+
+QString stringParam(const muse::rcommand::Params &params, const char *name)
+{
+  const auto it = params.find(name);
+  return it == params.end() ? QString() : it->second.toQString();
+}
+
 QString controlParam(const muse::rcommand::Params &params)
 {
-  const auto it = params.find("control");
-  return it == params.end() ? QString() : it->second.toQString();
+  return stringParam(params, "control");
+}
+
+muse::Ret keyParamRet(const muse::rcommand::Params &params, bool sent)
+{
+  return sent ? muse::make_ok()
+              : muse::make_ret(muse::Ret::Code::UnknownError,
+                               "not a number key: " +
+                                   stringParam(params, "key").toStdString());
 }
 
 struct ActionCommand
@@ -97,9 +124,11 @@ OrchestrionCommandsRegister::commandList() const
 {
   static const std::vector<muse::rcommand::Command> list = []
   {
-    std::vector<muse::rcommand::Command> list{openScoreCommand, quitCommand,
-                                              demoClickCommand, demoMoveCommand,
-                                              demoHideCommand};
+    std::vector<muse::rcommand::Command> list{
+        openScoreCommand,       quitCommand,         demoClickCommand,
+        demoMoveCommand,        demoHideCommand,     demoKeysCommand,
+        demoCaptionCommand,     demoKeyPressCommand, demoKeyReleaseCommand,
+        waitUntilStoppedCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -141,6 +170,43 @@ OrchestrionCommandsRegister::commandInfoList() const
         demoHideCommand, muse::TranslatableString("orchestrion", "Demo: hide"),
         muse::TranslatableString("orchestrion", "Hides the demo cursor"),
         muse::rcommand::InputSchema(), muse::rcommand::Decoration());
+    const muse::rcommand::InputSchema keySchema(
+        {{"key", muse::rcommand::Arg(muse::rcommand::DataType::String,
+                                     u"A number key, 0 to 9")}});
+    list.emplace_back(
+        demoKeysCommand,
+        muse::TranslatableString("orchestrion", "Demo: number keys"),
+        muse::TranslatableString("orchestrion",
+                                 "Shows or hides the number keys"),
+        muse::rcommand::InputSchema(
+            {{"shown", muse::rcommand::Arg(muse::rcommand::DataType::Boolean,
+                                           u"Whether they show")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        demoCaptionCommand,
+        muse::TranslatableString("orchestrion", "Demo: caption"),
+        muse::TranslatableString("orchestrion",
+                                 "Shows a caption; an empty one hides it"),
+        muse::rcommand::InputSchema(
+            {{"text", muse::rcommand::Arg(muse::rcommand::DataType::String,
+                                          u"The caption")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        demoKeyPressCommand,
+        muse::TranslatableString("orchestrion", "Demo: press key"),
+        muse::TranslatableString("orchestrion", "Presses a number key"),
+        keySchema, muse::rcommand::Decoration());
+    list.emplace_back(
+        demoKeyReleaseCommand,
+        muse::TranslatableString("orchestrion", "Demo: release key"),
+        muse::TranslatableString("orchestrion", "Releases a number key"),
+        keySchema, muse::rcommand::Decoration());
+    list.emplace_back(
+        waitUntilStoppedCommand,
+        muse::TranslatableString("orchestrion", "Wait until stopped"),
+        muse::TranslatableString("orchestrion",
+                                 "Answers once the player has stopped"),
+        muse::rcommand::InputSchema(), muse::rcommand::Decoration());
     list.emplace_back(
         quitCommand, muse::TranslatableString("orchestrion", "Quit"),
         muse::TranslatableString("orchestrion", "Quit Orchestrion"),
@@ -166,6 +232,36 @@ void OrchestrionCommands::registerHandlers()
                  [this](const muse::rcommand::Params &params, Done done) {
                    m_demoCursor->moveTo(controlParam(params), std::move(done));
                  });
+  onRequest(demoKeysCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const auto it = params.find("shown");
+              m_demoKeys->setShown(it == params.end() || it->second.toBool());
+              return muse::make_ok();
+            });
+  onRequest(demoCaptionCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              m_demoKeys->setCaption(stringParam(params, "text"));
+              return muse::make_ok();
+            });
+  onRequest(demoKeyPressCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const QString key = stringParam(params, "key");
+              return keyParamRet(params,
+                                 key.size() == 1 && m_demoKeys->press(key[0]));
+            });
+  onRequest(demoKeyReleaseCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const QString key = stringParam(params, "key");
+              return keyParamRet(params, key.size() == 1 &&
+                                             m_demoKeys->release(key[0]));
+            });
+  onRequestAsync(waitUntilStoppedCommand,
+                 [this](const muse::rcommand::Params &, Done done)
+                 { waitUntilStopped(std::move(done)); });
   onRequest(demoHideCommand,
             [this](const muse::rcommand::Params &)
             {
@@ -248,9 +344,27 @@ muse::Ret OrchestrionCommands::openScore(const muse::rcommand::Params &params)
   return muse::make_ok();
 }
 
-OrchestrionCommands::OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor)
-    : m_demoCursor{std::move(demoCursor)}
+OrchestrionCommands::OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor,
+                                         std::shared_ptr<DemoKeys> demoKeys)
+    : m_demoCursor{std::move(demoCursor)}, m_demoKeys{std::move(demoKeys)}
 {
+}
+
+void OrchestrionCommands::waitUntilStopped(Done done)
+{
+  // Polled, rather than subscribed to: the player is replaced with the
+  // sequencer, when the score changes.
+  const auto timer = std::make_shared<QTimer>();
+  const auto check = [this, timer, done]
+  {
+    const auto player = orchestrion()->player();
+    if (player && player->IsPlaying())
+      return;
+    timer->stop();
+    done(muse::make_ok());
+  };
+  QObject::connect(timer.get(), &QTimer::timeout, check);
+  timer->start(100);
 }
 
 std::string OrchestrionCommands::moduleName() const { return moduleName_; }
