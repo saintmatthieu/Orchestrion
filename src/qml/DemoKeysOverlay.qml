@@ -56,7 +56,7 @@ Item {
         Text {
             id: tutorialBadge
             anchors.centerIn: parent
-            text: qsTr("Tutorial · Esc to stop")
+            text: qsTr("Tutorial · Esc or Stop to end it")
             color: Theme.inkMuted
             font.pixelSize: 13
         }
