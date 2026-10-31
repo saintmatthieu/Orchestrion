@@ -32,7 +32,9 @@
 # output that runs in real time, like a sound card (a null sink of the running
 # PulseAudio/PipeWire server, or of a PulseAudio daemon started for the run -
 # ALSA's null device won't do, it starves the audio engine). With --record,
-# ffmpeg records the display and that sink into a video.
+# ffmpeg records the display (without the X pointer: scripts point with the
+# app's demo cursor) and that sink into a video, and saves its opening frame
+# beside it (<video>.webp), its cover on the website.
 #
 # Directives, in the comments a script starts with:
 #   @testflow record-from <step name>    the video starts when that step starts
@@ -96,8 +98,9 @@ if [ -n "$SCRIPT_FILE" ]; then
         /^[ \t]*\/\*/ { if ($0 !~ /\*\//) inComment = 1; next }
         { exit }' "$SCRIPT_FILE")
 fi
+# 16:10, like the website's frame (docs/), where the videos play
 WIDTH=1920
-HEIGHT=1080
+HEIGHT=1200
 TIMEOUT_S=${TESTFLOW_TIMEOUT_S:-300}
 
 WORK=$(mktemp -d)
@@ -170,7 +173,7 @@ RAW_VIDEO="$WORK/raw.mp4"
 if [ -n "$RECORD" ]; then
     mkdir -p "$(dirname "$RECORD")"
     ffmpeg -loglevel error -y \
-        -f x11grab -video_size "${WIDTH}x${HEIGHT}" -framerate 30 -i "$DISPLAY" \
+        -f x11grab -draw_mouse 0 -video_size "${WIDTH}x${HEIGHT}" -framerate 30 -i "$DISPLAY" \
         -f pulse -i "$SINK.monitor" \
         -copyts \
         -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k \
@@ -207,15 +210,20 @@ if [ -n "$RECORD" ]; then
         CUT_MS=$(stepTime finished "$RECORD_AFTER")
         [ -n "$CUT_MS" ] || echo "step \"$RECORD_AFTER\" (record-after) didn't finish: the video is the whole run"
     fi
-    # Written anew, its timestamps from zero (the streams keeping their offset)
+    # Written anew, its timestamps from zero (the streams keeping their offset),
+    # and the index first, so that a browser can start playing it at once
     if [ -n "$CUT_MS" ]; then
         CUT_S=$(awk -v end="$CUT_MS" -v start="$RAW_START_S" 'BEGIN { s = end / 1000 - start; printf "%.3f", (s > 0 ? s : 0) }')
         ffmpeg -loglevel error -y -ss "$CUT_S" -i "$RAW_VIDEO" \
-            -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k "$RECORD"
+            -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 160k \
+            -movflags +faststart "$RECORD"
     else
-        ffmpeg -loglevel error -y -i "$RAW_VIDEO" -c copy "$RECORD"
+        ffmpeg -loglevel error -y -i "$RAW_VIDEO" -c copy -movflags +faststart "$RECORD"
     fi
-    echo "recorded $RECORD"
+    # Its cover on the website (docs/): the opening frame
+    POSTER="${RECORD%.*}.webp"
+    ffmpeg -loglevel error -y -ss 0.5 -i "$RECORD" -frames:v 1 -c:v libwebp -quality 80 "$POSTER"
+    echo "recorded $RECORD and $POSTER"
 fi
 
 grep '^\[testflow\]' "$WORK/app.log" || { echo "--- app log (tail):"; tail -40 "$WORK/app.log"; }
