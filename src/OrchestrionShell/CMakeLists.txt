@@ -66,6 +66,8 @@ set(MODULE_SRC
   view/ScoreAttributionModel.h
   view/KeyboardNavigationModel.cpp
   view/KeyboardNavigationModel.h
+  view/TutorialOfferModel.cpp
+  view/TutorialOfferModel.h
   view/ScoreShelfHintModel.cpp
   view/ScoreShelfHintModel.h
   view/ScoreShelfModel.cpp

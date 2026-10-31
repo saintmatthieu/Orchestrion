@@ -70,7 +70,7 @@ void ScoreShelfHintModel::followSequencer()
         if (event.type != NoteEventType::noteOn)
           return;
         // Whose the notes are is told at the strike: the automatic player
-        // ("Show me!", a replay) may have stopped by the time its last
+        // (a tutorial, a replay) may have stopped by the time its last
         // release gets here.
         m_performerStruck = !orchestrion()->player()->IsPlaying();
         // Playing on: out of the way, till the next end.

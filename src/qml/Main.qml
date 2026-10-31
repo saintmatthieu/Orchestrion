@@ -128,6 +128,11 @@ ApplicationWindow {
         onTutorialsRequested: scoreShelf.open(true)
     }
 
+    TutorialOfferModel {
+        id: tutorialOffer
+        Component.onCompleted: load()
+    }
+
     ScoreShelfHintModel {
         id: scoreShelfHint
         Component.onCompleted: load()
@@ -410,6 +415,85 @@ ApplicationWindow {
                 // Once the performer has played a score to its end: there are
                 // others, and the title is the way to them. Hung under the
                 // title's chevron, which it shows.
+                // A while after a score opens, until taken up or closed: the
+                // Getting started tutorial. Low in the view, where its keys
+                // will show.
+                Rectangle {
+                    id: tutorialOfferCard
+                    z: 100
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: parent.height * 0.72
+                    width: tutorialOfferRow.implicitWidth + 28
+                    height: tutorialOfferRow.implicitHeight + 20
+                    radius: 8
+                    color: Theme.backdrop
+                    border.color: Theme.metal
+                    border.width: 1
+                    visible: opacity > 0
+                    opacity: tutorialOffer.shown && !scoreShelf.shown ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                    Row {
+                        id: tutorialOfferRow
+                        anchors.centerIn: parent
+                        spacing: 12
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("New here? Watch how to play.")
+                            color: Theme.metalBright
+                            font.pixelSize: 14
+                        }
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: tutorialOfferLabel.implicitWidth + 24
+                            height: tutorialOfferLabel.implicitHeight + 10
+                            radius: height / 2
+                            color: "transparent"
+                            border.color: tutorialOfferMouse.containsMouse ? Theme.metalBright
+                                                                           : Theme.metal
+                            Text {
+                                id: tutorialOfferLabel
+                                anchors.centerIn: parent
+                                text: qsTr("Play")
+                                color: tutorialOfferMouse.containsMouse ? Theme.metalBright
+                                                                        : Theme.metal
+                                font.pixelSize: 13
+                            }
+                            MouseArea {
+                                id: tutorialOfferMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: tutorialOffer.play()
+                            }
+                        }
+
+                        // Dismiss
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 22
+                            height: 22
+                            radius: 11
+                            color: tutorialOfferCloseMouse.containsMouse ? Theme.overlay
+                                                                         : "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u00D7"
+                                color: Theme.inkMuted
+                                font.pixelSize: 16
+                            }
+                            MouseArea {
+                                id: tutorialOfferCloseMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: tutorialOffer.dismiss()
+                            }
+                        }
+                    }
+                }
+
                 Rectangle {
                     id: shelfHintCard
                     z: 100

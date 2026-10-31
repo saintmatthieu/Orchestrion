@@ -154,6 +154,7 @@ for name in Orchestrion OrchestrionDevelopment; do
 [General]
 AUDIO_DEVICE=$AUDIO_DEVICE
 SCORE_SHELF_HINT_DISMISSED=true
+TUTORIAL_OFFER_DISMISSED=true
 EOF
 done
 
