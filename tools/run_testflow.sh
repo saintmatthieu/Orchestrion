@@ -20,7 +20,7 @@
 # Runs one testflow script (testflowscripts/) in a throwaway environment and
 # exits with its result (0 passed, 1 failed, 2 couldn't run, 124 timed out):
 #
-#   tools/run_testflow.sh <app> <script> [--record <video.mp4 or dir/>] [--speed <speed>] [--log <file>]
+#   tools/run_testflow.sh <app> <script> [--render|--record <video.mp4 or dir/>] [--speed <speed>] [--log <file>]
 #
 # <app>: the Orchestrion executable, an extracted AppImage's AppRun, or an
 # .AppImage (extracted, so FUSE isn't needed). <script>: a file, or a name in
@@ -33,17 +33,24 @@
 # PulseAudio/PipeWire server, or of a PulseAudio daemon started for the run -
 # ALSA's null device won't do, it starves the audio engine). With --record,
 # ffmpeg records the display (without the X pointer: scripts point with the
-# app's demo cursor) and that sink into a video, and saves its opening frame
-# beside it (<video>.webp), its cover on the website.
+# app's demo cursor) and that sink into a video.
+#
+# With --render, the app renders the video itself, offline, on a virtual
+# clock (--test-case-render, see src/App/OfflineRenderer.h): no display nor
+# sound server is needed, the machine's speed and load make no difference
+# (two renders are identical, no sound drops out), and it is faster than
+# recording. Either way, the video's opening frame is saved beside it
+# (<video>.webp), its cover on the website.
 #
 # Directives, in the comments a script starts with:
 #   @testflow record-from <step name>    the video starts when that step starts
 #   @testflow record-after <step name>   the video starts when that step ends
 #   @testflow test                       a test, not a tutorial (the app lists
 #                                        the other scripts as tutorials)
-# Recorded, the app starts in full screen.
+# Recorded or rendered, the app starts in full screen.
 #
-# Linux only. Needs Xvfb, pactl, and for --record ffmpeg.
+# Linux only. Needs Xvfb and pactl (but for --render), and for --record and
+# --render ffmpeg.
 
 set -euo pipefail
 
@@ -57,20 +64,25 @@ APP=$(realpath "$1")
 SCRIPT=$2
 shift 2
 RECORD=""
+RENDER=""
 SPEED=""
 LOG=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --record) RECORD=$2; shift 2 ;;
+        --render) RENDER=$2; shift 2 ;;
         --speed) SPEED=$2; shift 2 ;;
         --log) LOG=$(realpath -m "$2"); shift 2 ;;
         *) usage ;;
     esac
 done
 
+[ -z "$RECORD" ] || [ -z "$RENDER" ] || usage
 # A directory (ending with /) gets a video named after the script
 [[ "$RECORD" != */ ]] || RECORD="$RECORD$(basename "$SCRIPT" .js).mp4"
 [ -z "$RECORD" ] || RECORD=$(realpath -m "$RECORD")
+[[ "$RENDER" != */ ]] || RENDER="$RENDER$(basename "$SCRIPT" .js).mp4"
+[ -z "$RENDER" ] || RENDER=$(realpath -m "$RENDER")
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 SCRIPTS_DIR="$REPO/testflowscripts"
@@ -121,31 +133,35 @@ if [[ "$APP" == *.AppImage ]]; then
 fi
 [ -x "$APP" ] || { echo "not an executable: $APP"; exit 2; }
 
-# A display
-exec 3< <(Xvfb -displayfd 1 -screen 0 "${WIDTH}x${HEIGHT}x24" -nolisten tcp 2> "$WORK/xvfb.log")
-PIDS+=($!)
-read -r -t 10 DISPLAY_NUM <&3 || { echo "Xvfb didn't start"; cat "$WORK/xvfb.log"; exit 2; }
-export DISPLAY=":$DISPLAY_NUM"
-if command -v openbox > /dev/null; then
-    openbox > "$WORK/openbox.log" 2>&1 &
+# Rendering, the app needs neither a display nor a sound server
+AUDIO_DEVICE=""
+if [ -z "$RENDER" ]; then
+    # A display
+    exec 3< <(Xvfb -displayfd 1 -screen 0 "${WIDTH}x${HEIGHT}x24" -nolisten tcp 2> "$WORK/xvfb.log")
     PIDS+=($!)
-fi
+    read -r -t 10 DISPLAY_NUM <&3 || { echo "Xvfb didn't start"; cat "$WORK/xvfb.log"; exit 2; }
+    export DISPLAY=":$DISPLAY_NUM"
+    if command -v openbox > /dev/null; then
+        openbox > "$WORK/openbox.log" 2>&1 &
+        PIDS+=($!)
+    fi
 
-# A silent audio output, paced like a sound card
-if ! pactl info > /dev/null 2>&1; then
-    command -v pulseaudio > /dev/null || { echo "no sound server, and no pulseaudio to start one"; exit 2; }
-    pulseaudio --daemonize=no --exit-idle-time=-1 --disallow-exit > "$WORK/pulseaudio.log" 2>&1 &
-    PIDS+=($!)
-    for _ in $(seq 50); do pactl info > /dev/null 2>&1 && break; sleep 0.1; done
-fi
-SINK="orchestrion_testflow_$$"
-SINK_MODULE=$(pactl load-module module-null-sink "sink_name=$SINK" "sink_properties=device.description=$SINK")
-export PULSE_SINK="$SINK"     # ALSA's pulse device
-export PIPEWIRE_NODE="$SINK"  # ALSA's pipewire device
-if aplay -L 2> /dev/null | grep -qx pipewire; then
-    AUDIO_DEVICE=pipewire
-else
-    AUDIO_DEVICE=pulse
+    # A silent audio output, paced like a sound card
+    if ! pactl info > /dev/null 2>&1; then
+        command -v pulseaudio > /dev/null || { echo "no sound server, and no pulseaudio to start one"; exit 2; }
+        pulseaudio --daemonize=no --exit-idle-time=-1 --disallow-exit > "$WORK/pulseaudio.log" 2>&1 &
+        PIDS+=($!)
+        for _ in $(seq 50); do pactl info > /dev/null 2>&1 && break; sleep 0.1; done
+    fi
+    SINK="orchestrion_testflow_$$"
+    SINK_MODULE=$(pactl load-module module-null-sink "sink_name=$SINK" "sink_properties=device.description=$SINK")
+    export PULSE_SINK="$SINK"     # ALSA's pulse device
+    export PIPEWIRE_NODE="$SINK"  # ALSA's pipewire device
+    if aplay -L 2> /dev/null | grep -qx pipewire; then
+        AUDIO_DEVICE=pipewire
+    else
+        AUDIO_DEVICE=pulse
+    fi
 fi
 
 # A fresh profile: no hints over the score, and the audio to the null sink
@@ -155,10 +171,10 @@ mkdir -p "$XDG_CONFIG_HOME/Unknown Organization"
 for name in Orchestrion OrchestrionDevelopment; do
     cat > "$XDG_CONFIG_HOME/Unknown Organization/$name.ini" <<EOF
 [General]
-AUDIO_DEVICE=$AUDIO_DEVICE
 SCORE_SHELF_HINT_DISMISSED=true
 TUTORIAL_OFFER_DISMISSED=true
 EOF
+    [ -z "$AUDIO_DEVICE" ] || echo "AUDIO_DEVICE=$AUDIO_DEVICE" >> "$XDG_CONFIG_HOME/Unknown Organization/$name.ini"
 done
 
 # Testflow's paths: scripts (and their require("steps/...")), and reports
@@ -184,7 +200,14 @@ fi
 ARGS=(--test-case "$SCRIPT")
 [ -z "$SPEED" ] || ARGS+=(--test-case-speed "$SPEED")
 # The video shows the window filling the screen
-[ -z "$RECORD" ] || ARGS+=(--full-screen)
+[ -z "$RECORD$RENDER" ] || ARGS+=(--full-screen)
+if [ -n "$RENDER" ]; then
+    mkdir -p "$(dirname "$RENDER")"
+    rm -f "$RENDER"
+    ARGS+=(--test-case-render "$RENDER")
+    [ -z "$RECORD_FROM" ] || ARGS+=(--test-case-render-from "$RECORD_FROM")
+    [ -z "$RECORD_AFTER" ] || ARGS+=(--test-case-render-after "$RECORD_AFTER")
+fi
 rc=0
 timeout -k 15 "$TIMEOUT_S" "$APP" "${ARGS[@]}" > "$WORK/app.log" 2>&1 || rc=$?
 [ -z "$LOG" ] || { mkdir -p "$(dirname "$LOG")"; cp "$WORK/app.log" "$LOG"; }
@@ -220,10 +243,19 @@ if [ -n "$RECORD" ]; then
     else
         ffmpeg -loglevel error -y -i "$RAW_VIDEO" -c copy -movflags +faststart "$RECORD"
     fi
-    # Its cover on the website (docs/): the opening frame
-    POSTER="${RECORD%.*}.webp"
-    ffmpeg -loglevel error -y -ss 0.5 -i "$RECORD" -frames:v 1 -c:v libwebp -quality 80 "$POSTER"
-    echo "recorded $RECORD and $POSTER"
+fi
+
+# Its cover on the website (docs/): the opening frame
+VIDEO=$RECORD$RENDER
+if [ -n "$VIDEO" ]; then
+    if [ -s "$VIDEO" ]; then
+        POSTER="${VIDEO%.*}.webp"
+        ffmpeg -loglevel error -y -ss 0.5 -i "$VIDEO" -frames:v 1 -c:v libwebp -quality 80 "$POSTER"
+        echo "${RECORD:+recorded}${RENDER:+rendered} $VIDEO and $POSTER"
+    else
+        echo "no video was made"
+        [ "$rc" -ne 0 ] || rc=1
+    fi
 fi
 
 grep '^\[testflow\]' "$WORK/app.log" || { echo "--- app log (tail):"; tail -40 "$WORK/app.log"; }

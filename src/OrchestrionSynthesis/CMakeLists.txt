@@ -39,6 +39,8 @@ set(MODULE_SRC
     internal/LowpassFilterBank.h
     internal/LowpassFilteredSynthesizer.cpp
     internal/LowpassFilteredSynthesizer.h
+    internal/OfflineAudioDriver.cpp
+    internal/OfflineAudioDriver.h
     internal/OrchestrionSynthesizerWrapper.cpp
     internal/OrchestrionSynthesizerWrapper.h
     internal/OrchestrionSynthesisConfiguration.cpp

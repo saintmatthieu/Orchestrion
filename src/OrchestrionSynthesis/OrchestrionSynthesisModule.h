@@ -38,6 +38,7 @@ public:
 private:
   std::string moduleName() const override;
   void registerExports() override;
+  void onPreInit(const muse::IApplication::RunMode &mode) override;
   void registerUiTypes() override;
   void resolveImports() override;
   void onDelayedInit() override;

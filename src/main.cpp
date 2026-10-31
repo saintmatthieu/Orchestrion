@@ -17,6 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "App/CommandLineParser.h"
+#ifdef Q_OS_LINUX
+#include "App/OfflineRenderer.h"
+#endif
 #include "App/OrchestrionAppFactory.h"
 
 #include "global/iapplication.h"
@@ -94,7 +97,7 @@ int main(int argc, char **argv)
   qputenv("QML_DISABLE_DISK_CACHE", "true");
 
 #ifdef Q_OS_LINUX
-  if (qEnvironmentVariable("QT_QPA_PLATFORM") != "offscreen")
+  if (!qEnvironmentVariable("QT_QPA_PLATFORM").startsWith("offscreen"))
   {
     qputenv("QT_QPA_PLATFORMTHEME", "gtk3");
   }
@@ -190,6 +193,13 @@ int main(int argc, char **argv)
   commandLineParser.init();
   commandLineParser.parse(argcFinal, argvFinal);
 
+#ifdef Q_OS_LINUX
+  // Before the application is created: its platform and clock
+  if (const QString video = commandLineParser.options()->testflow.renderPath;
+      !video.isEmpty())
+    dgk::OfflineRenderer::prepare(video);
+#endif
+
   muse::IApplication::RunMode runMode = commandLineParser.runMode();
   QCoreApplication *qapp = nullptr;
 
@@ -203,6 +213,9 @@ int main(int argc, char **argv)
   }
 
   commandLineParser.processBuiltinArgs(*qapp);
+#ifdef Q_OS_LINUX
+  dgk::OfflineRenderer::start();
+#endif
 
   std::shared_ptr<dgk::CommandOptions> opt = commandLineParser.options();
 

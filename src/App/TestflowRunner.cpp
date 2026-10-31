@@ -17,6 +17,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "TestflowRunner.h"
+#ifdef Q_OS_LINUX
+#include "OfflineRenderer.h"
+#endif
 
 #include <testflow/itestflow.h>
 
@@ -45,6 +48,16 @@ constexpr int settleMs = 3000;
  * device of headless runs aborts. Flush the output first.
  */
 [[noreturn]] void exitWithoutTeardown(int code) { std::_Exit(code); }
+
+/**
+ * The video being rendered (--test-case-render) starts now.
+ */
+void startRendering()
+{
+#ifdef Q_OS_LINUX
+  OfflineRenderer::startCapture();
+#endif
+}
 } // namespace
 
 void TestflowRunner::runIfRequested(const muse::modularity::ContextPtr &ctx,
@@ -120,6 +133,11 @@ void TestflowRunner::execAndReport()
       {
         if (step.status == muse::testflow::StepStatus::Started)
           ++m_startedSteps;
+        if ((step.status == muse::testflow::StepStatus::Started &&
+             step.name == m_options.renderFromStep) ||
+            (step.status == muse::testflow::StepStatus::Finished &&
+             step.name == m_options.renderAfterStep))
+          startRendering();
         // With the wall-clock time, for tools/run_testflow.sh to cut the
         // video it records at a step (see its record-after directive).
         if (step.status == muse::testflow::StepStatus::Started ||
@@ -132,8 +150,14 @@ void TestflowRunner::execAndReport()
                     << step.name.toStdString() << std::endl;
       });
 
+  if (m_options.renderFromStep.isEmpty() && m_options.renderAfterStep.isEmpty())
+    startRendering();
+
   // Returns once the script has run (its sleeps spin nested event loops).
   testflow->execScript(m_scriptPath, opt);
+#ifdef Q_OS_LINUX
+  OfflineRenderer::finish();
+#endif
 
   const muse::testflow::ITestflow::Status status = testflow->status();
   const bool ok = status == muse::testflow::ITestflow::Status::Finished &&

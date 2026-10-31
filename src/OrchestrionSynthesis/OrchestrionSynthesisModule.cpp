@@ -19,16 +19,19 @@
 #include "OrchestrionSynthesisModule.h"
 #include "IBuiltInEffects.h"
 #include "IEffectChain.h"
+#include "OrchestrionCommon/OfflineRendering.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/BuiltInEffects.h"
 #include "internal/EffectChain.h"
+#include "internal/OfflineAudioDriver.h"
 #include "internal/OrchestrionFxResolver.h"
 #include "internal/OrchestrionSynthesisConfiguration.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
 #include "internal/TrackChannelMapper.h"
-#include "view/EffectMeterModel.h"
 #include "view/EffectHeaderModel.h"
+#include "view/EffectMeterModel.h"
+#include <audio/common/workmode.h>
 #include <interactive/iinteractiveuriregister.h>
 
 #include <QQmlEngine>
@@ -40,8 +43,8 @@ OrchestrionSynthesisModule::OrchestrionSynthesisModule()
       m_synthesizerManager{std::make_shared<SynthesizerManager>()},
       m_configuration{std::make_shared<OrchestrionSynthesisConfiguration>()},
       m_builtInEffects{std::make_shared<BuiltInEffects>()},
-      m_fxResolver{std::make_shared<OrchestrionFxResolver>(
-          m_builtInEffects->runtime())},
+      m_fxResolver{
+          std::make_shared<OrchestrionFxResolver>(m_builtInEffects->runtime())},
       m_effectChain{std::make_shared<EffectChain>(m_fxResolver)}
 {
 }
@@ -60,8 +63,24 @@ void OrchestrionSynthesisModule::registerExports()
   globalIoc()->registerExport<ISynthesizerManager>(moduleName(),
                                                    m_synthesizerManager);
   globalIoc()->registerExport<IEffectChain>(moduleName(), m_effectChain);
-  globalIoc()->registerExport<IBuiltInEffects>(moduleName(),
-                                               m_builtInEffects);
+  globalIoc()->registerExport<IBuiltInEffects>(moduleName(), m_builtInEffects);
+
+  // Rendering a video offline, the sound goes to a file
+  if (!offlineRendering.audioPath.empty())
+  {
+    globalIoc()->unregister<muse::audio::IAudioDriverFactory>(moduleName());
+    globalIoc()->registerExport<muse::audio::IAudioDriverFactory>(
+        moduleName(), std::make_shared<OfflineAudioDriverFactory>());
+  }
+}
+
+void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
+{
+  // Rendering a video offline, all the engine's work is done in the driver's
+  // callback (its "driver mode"), which OfflineAudioDriver calls when the
+  // clock says: none of it on a timer of its own.
+  if (!offlineRendering.audioPath.empty())
+    muse::audio::workmode::setSessionMode(muse::audio::workmode::DriverMode);
 }
 
 void OrchestrionSynthesisModule::registerUiTypes()

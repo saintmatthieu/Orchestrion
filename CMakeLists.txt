@@ -89,6 +89,16 @@ qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/App/OrchestrionConsoleApp.h
 )
 
+if (OS_IS_LIN)
+    target_sources(Orchestrion PRIVATE
+        src/App/OfflineRenderer.cpp
+        src/App/OfflineRenderer.h
+    )
+    # The offline renderer's event dispatcher wraps Qt's
+    find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+    target_link_libraries(Orchestrion PRIVATE Qt6::GuiPrivate)
+endif()
+
 if (MUSE_MODULE_TESTFLOW)
     target_sources(Orchestrion PRIVATE
         src/App/TestflowRunner.cpp

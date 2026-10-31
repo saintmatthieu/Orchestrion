@@ -316,6 +316,9 @@ jobs:
           set -e
           export LD_LIBRARY_PATH=${{env.QT_ROOT_DIR}}/lib:$LD_LIBRARY_PATH
           export QML_SOURCES_PATHS=${{github.workspace}}/src:${{github.workspace}}/MuseScore/src:${{github.workspace}}/MuseScore/muse/framework
+          # Besides xcb: the offscreen platform, which videos are rendered on
+          # (--test-case-render, see the testflow job)
+          export EXTRA_PLATFORM_PLUGINS=libqoffscreen.so
 
           # Pre-populate AppDir with the install tree data files (wallpapers, soundfonts, etc.)
           # linuxdeploy only bundles the executable and libraries, so we need to
@@ -349,7 +352,7 @@ jobs:
           path: "${{env.BUILD_DIR}}/Orchestrion-${{env.RELEASE_VERSION}}-Linux-x86_64.AppImage"
 
   # Runs the testflow scripts (testflowscripts/) against the AppImage, and
-  # records each run: the videos show what the app looks like at this commit.
+  # renders each run's video: they show what the app looks like at this commit.
   testflow_linux:
     needs: build_linux
     runs-on: ubuntu-24.04
@@ -365,14 +368,13 @@ jobs:
             tools
 
       - name: Install dependencies
-        # A display, a window manager (for full screen), a sound server with a
-        # null sink (paced like a sound card), the recorder, and what the
-        # AppImage takes from the system.
+        # The encoder, and what the AppImage takes from the system. The videos
+        # are rendered offline, on the app's own clock (tools/run_testflow.sh
+        # --render): no display, no sound server, and the runner's speed and
+        # load make no difference to them.
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            xvfb openbox \
-            pulseaudio pulseaudio-utils libasound2-plugins alsa-utils \
             ffmpeg \
             libgl1 libglx0 libopengl0 libegl1 \
             libx11-6 libx11-xcb1 libxcb1 libxcb-cursor0 libxkbcommon-x11-0 \
@@ -393,7 +395,7 @@ jobs:
           for script in testflowscripts/*.js; do
             name=$(basename "$script" .js)
             echo "::group::$name"
-            tools/run_testflow.sh "$APPIMAGE" "$script" --record "videos/$name.mp4" || { echo "::error::$name failed"; rc=1; }
+            tools/run_testflow.sh "$APPIMAGE" "$script" --render "videos/$name.mp4" || { echo "::error::$name failed"; rc=1; }
             echo "::endgroup::"
           done
           exit $rc

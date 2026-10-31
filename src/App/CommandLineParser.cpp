@@ -228,6 +228,15 @@ void CommandLineParser::init()
   m_parser.addOption(QCommandLineOption(
       "test-case-speed", "Test case speed: Default, Fast, Normal or Slow",
       "speed"));
+  m_parser.addOption(QCommandLineOption(
+      "test-case-render",
+      "Render the test case's video offline, faster than it plays (Linux)",
+      "video"));
+  m_parser.addOption(QCommandLineOption("test-case-render-from",
+                                        "Start the video when this step starts",
+                                        "step"));
+  m_parser.addOption(QCommandLineOption(
+      "test-case-render-after", "Start the video when this step ends", "step"));
 
   // Audio plugins
   m_parser.addOption(
@@ -662,6 +671,16 @@ void CommandLineParser::parse(int argc, char **argv)
   if (m_parser.isSet("test-case-speed"))
   {
     m_options->testflow.testCaseSpeed = m_parser.value("test-case-speed");
+  }
+
+  if (m_parser.isSet("test-case-render"))
+  {
+    m_options->testflow.renderPath =
+        fromUserInputPath(m_parser.value("test-case-render"));
+    m_options->testflow.renderFromStep =
+        m_parser.value("test-case-render-from");
+    m_options->testflow.renderAfterStep =
+        m_parser.value("test-case-render-after");
   }
 
   // Startup

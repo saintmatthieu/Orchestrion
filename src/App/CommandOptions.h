@@ -157,6 +157,15 @@ struct CommandOptions : public muse::CmdOptions
     QString testCaseFunc;
     QString testCaseFuncArgs;
     QString testCaseSpeed;
+    /**
+     * --test-case-render <video.mp4>: the script's video, rendered offline
+     * (OfflineRenderer; Linux only). It starts with the script, or when the
+     * step --test-case-render-from names starts, or when the one
+     * --test-case-render-after names ends.
+     */
+    QString renderPath;
+    QString renderFromStep;
+    QString renderAfterStep;
   } testflow;
 
   // --register-audio-plugin <path> [--register-audio-plugin-out <file>]: the
