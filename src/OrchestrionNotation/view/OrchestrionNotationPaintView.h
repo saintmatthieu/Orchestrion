@@ -583,9 +583,16 @@ private:
   QVariantList m_finalScoreMetrics;
 
   bool m_constrainingScorePosition = false;
-  // The least zoom the limits allowed when the score's position was last
-  // constrained (see constrainScorePosition)
-  std::optional<double> m_fitScaling;
+  // The view shows the score's start, and is to keep showing it (see
+  // constrainScorePosition)
+  bool m_atStart = false;
+  // The score is at the default zoom, which follows the view's size, the user
+  // not having zoomed since it was opened
+  bool m_defaultZoom = false;
+  // The view itself is setting the zoom, not the user
+  bool m_zoomingItself = false;
+  /** Whether the score is laid out on its one line, as the view shows it. */
+  bool laidOutOnLine() const;
   QPoint m_lastCursorPos{-1, -1};
 
   // Rolling state of the tempo model for the visualization strip; fed by the

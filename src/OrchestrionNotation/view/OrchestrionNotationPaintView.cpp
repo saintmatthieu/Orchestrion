@@ -83,6 +83,10 @@ constexpr double staffSelectorInset = 0.8;
 // modes show when a score is opened, and how long after the pointer has left
 // them.
 constexpr int modesRollMs = 350;
+
+// The zoom a score opens at: its staff spaces this many to the view's height,
+// whatever the screen and whatever size the score is engraved at.
+constexpr double defaultStaffSpacesPerViewHeight = 140;
 constexpr int modesShownOnOpenMs = 4000;
 constexpr int modesShownAfterLeavingMs = 1500;
 
@@ -1882,9 +1886,12 @@ void OrchestrionNotationPaintView::updateVisibleTicks()
 
 void OrchestrionNotationPaintView::updateNotation()
 {
-  // A score opened: its staves' modes show for a while.
+  // A score opened: it shows from its start, and its staves' modes for a
+  // while.
   if (projectSession()->currentNotation())
   {
+    m_atStart = true;
+    m_defaultZoom = true;
     revealModes(true);
     m_modesHideTimer.start(modesShownOnOpenMs);
   }
@@ -2009,24 +2016,29 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   // or the score laid out after it was zoomed, left it zoomed out past the
   // point where the parchment reaches the cylinders.
   //
-  // A zoom at the least the limits allowed, the whole score fitting between
-  // the cylinders, stays so when that least moves. At startup the first
-  // limits come from a layout that isn't finished: a window that opened at
-  // its full size was left zoomed in past the fit when the finished layout
-  // lowered it, the staves' lead cut off by the left cylinder.
-  const auto [minScaling, maxScaling] = scalingLimits();
-  const bool atFit =
-      m_fitScaling && qFuzzyCompare(currentScaling(), *m_fitScaling);
-  m_fitScaling = minScaling;
-  if (atFit && !qFuzzyCompare(currentScaling(), minScaling))
-    setScaling(minScaling, muse::PointF{width() / 2, height() / 2});
-  else if (currentScaling() < minScaling || currentScaling() > maxScaling)
+  // Until the user zooms, a score just opened is at the default zoom, which
+  // follows the view's height (see defaultStaffSpacesPerViewHeight).
+  m_zoomingItself = true;
+  if (m_defaultZoom && laidOutOnLine())
+    setScaling(height() / defaultStaffSpacesPerViewHeight /
+                   notation()->elements()->msScore()->style().spatium(),
+               muse::PointF{width() / 2, height() / 2});
+  else if (const auto [minScaling, maxScaling] = scalingLimits();
+           currentScaling() < minScaling || currentScaling() > maxScaling)
     setScaling(currentScaling(), muse::PointF{width() / 2, height() / 2});
+  m_zoomingItself = false;
 
   const auto scaling = currentScaling();
   const auto topLogicalY = centredTopY(scaling);
 
-  const double leftLogicalX = clampLeftX(viewport().left(), scaling);
+  // A view showing the score's start keeps showing it, through a zoom or a
+  // window growing, until it is scrolled away from it - as a score just
+  // opened is shown (see updateNotation).
+  const double startLeftX =
+      clampLeftX(std::numeric_limits<double>::lowest(), scaling);
+  const double leftLogicalX =
+      m_atStart ? startLeftX : clampLeftX(viewport().left(), scaling);
+  m_atStart = leftLogicalX <= startLeftX + 1 / scaling;
 
   moveCanvasToPosition(muse::PointF{leftLogicalX, topLogicalY});
 
@@ -2113,7 +2125,8 @@ double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
   // Two horizontal rules (shared by the manual constraint and the auto-follow):
   // 1. not more than maxEmptyPhysical empty pixels past either end of the
   // system;
-  // 2. if the system is narrower than the view, it stays centered.
+  // 2. if the system fits between the cylinders, it stays centred there;
+  // otherwise it scrolls, rather than hang its ends on both.
   const auto belt = beltRect();
   const QRectF content = belt ? *belt : notationContentRect().toQRectF();
   // Wound right out, the end of the parchment sits on the crown of the
@@ -2123,7 +2136,7 @@ double OrchestrionNotationPaintView::clampLeftX(double desiredLeftX,
   const auto [margin, radius] = rollBase();
   const double emptyPhysical = radius >= 1 ? margin + radius : 200.;
   const double contentWidthPhysical = content.width() * scaling;
-  if (contentWidthPhysical < width())
+  if (contentWidthPhysical < width() - 2 * emptyPhysical)
     return content.left() - (width() - contentWidthPhysical) / (2 * scaling);
   const double minLeft = content.left() - emptyPhysical / scaling;
   const double maxLeft =
@@ -2627,10 +2640,24 @@ std::pair<double, double> OrchestrionNotationPaintView::scalingLimits() const
   return {std::max(0.0, minScaling), std::max(minScaling, maxScaling)};
 }
 
+bool OrchestrionNotationPaintView::laidOutOnLine() const
+{
+  // Laid out in pages first, before the view mode is applied (see
+  // updateNotation)
+  const auto notation = this->notation();
+  const mu::engraving::Score *score =
+      notation ? notation->elements()->msScore() : nullptr;
+  return score && score->systems().size() == 1;
+}
+
 void OrchestrionNotationPaintView::setScaling(qreal scaling,
                                               const muse::PointF &pos,
                                               bool overrideZoomType)
 {
+  // The user's zoom stands from then on. Not one set before the score is on
+  // its line: MuseScore's own, on opening it.
+  if (!m_zoomingItself && laidOutOnLine())
+    m_defaultZoom = false;
   const auto [minScaling, maxScaling] = scalingLimits();
   NotationPaintView::setScaling(std::clamp(scaling, minScaling, maxScaling),
                                 pos, overrideZoomType);
