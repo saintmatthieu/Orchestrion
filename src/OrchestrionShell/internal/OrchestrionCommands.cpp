@@ -400,9 +400,13 @@ void OrchestrionCommands::registerHandlers()
             [this](const muse::rcommand::Params &params)
             {
               if (const QString id = stringParam(params, "id"); !id.isEmpty())
+              {
                 midiDeviceService()->selectDevice(ExternalDeviceId{
                     id == u"virtual" ? virtualMidiKeyboard()->deviceId()
                                      : id.toStdString()});
+                if (id == u"virtual")
+                  tutorials()->showVirtualKeyboard();
+              }
               muse::Ret ret = muse::make_ok();
               const auto selected = midiDeviceService()->selectedDevice();
               ret.setText(selected ? selected->value : std::string{});

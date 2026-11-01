@@ -22,6 +22,7 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IStaffModes.h"
+#include "OrchestrionShell/ITutorials.h"
 
 #include <async/asyncable.h>
 #include <midi/imidiinport.h>
@@ -53,6 +54,7 @@ class VirtualKeyboardModel : public QObject,
   Q_PROPERTY(QVariantList ranges READ ranges NOTIFY rangesChanged)
 
   dgk::Inject<IVirtualMidiKeyboard> virtualKeyboard{this};
+  dgk::Inject<ITutorials> tutorials{this};
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<IStaffModes> staffModes{this};

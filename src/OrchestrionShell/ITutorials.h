@@ -55,5 +55,13 @@ public:
   virtual void stop() = 0;
   virtual bool running() const = 0;
   virtual muse::async::Notification runningChanged() const = 0;
+
+  /**
+   * The virtual keyboard stays out of a running tutorial's way, whichever MIDI
+   * device the user has chosen, unless the script chooses it itself.
+   */
+  virtual void showVirtualKeyboard() = 0;
+  /** Notified by runningChanged(). */
+  virtual bool hidesVirtualKeyboard() const = 0;
 };
 } // namespace dgk

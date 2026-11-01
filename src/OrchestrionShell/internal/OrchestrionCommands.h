@@ -25,6 +25,7 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IStaffModes.h"
+#include "OrchestrionShell/ITutorials.h"
 
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
@@ -77,6 +78,7 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<IStaffModes> staffModes{this};
   dgk::Inject<IVirtualMidiKeyboard> virtualMidiKeyboard{this};
   dgk::Inject<IMidiDeviceService> midiDeviceService{this};
+  dgk::Inject<ITutorials> tutorials{this};
 
 public:
   OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor,

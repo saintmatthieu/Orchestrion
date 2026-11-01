@@ -55,6 +55,7 @@ void VirtualKeyboardModel::load()
 {
   virtualKeyboard()->inUseChanged().onNotify(this,
                                              [this] { emit shownChanged(); });
+  tutorials()->runningChanged().onNotify(this, [this] { emit shownChanged(); });
   midiInPort()->eventReceived().onReceive(
       this, [this](muse::midi::tick_t, const muse::midi::Event &event)
       { onEvent(event); });
@@ -75,7 +76,10 @@ void VirtualKeyboardModel::release(int pitch)
   virtualKeyboard()->note(pitch, 0);
 }
 
-bool VirtualKeyboardModel::shown() const { return virtualKeyboard()->inUse(); }
+bool VirtualKeyboardModel::shown() const
+{
+  return virtualKeyboard()->inUse() && !tutorials()->hidesVirtualKeyboard();
+}
 
 QVariantList VirtualKeyboardModel::velocities() const { return m_velocities; }
 

@@ -56,6 +56,8 @@ public:
   void stop() override;
   bool running() const override;
   muse::async::Notification runningChanged() const override;
+  void showVirtualKeyboard() override;
+  bool hidesVirtualKeyboard() const override;
 
 signals:
   void runningStateChanged();
@@ -70,6 +72,7 @@ private:
   const std::shared_ptr<DemoKeys> m_demoKeys;
   mutable std::optional<std::vector<Tutorial>> m_tutorials;
   bool m_running = false;
+  bool m_showsVirtualKeyboard = false;
   muse::async::Notification m_runningChanged;
 };
 } // namespace dgk

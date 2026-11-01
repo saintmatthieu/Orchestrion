@@ -111,6 +111,7 @@ void Tutorials::run(const QString &path)
                     .toQString()),
             QString{}));
 
+  m_showsVirtualKeyboard = false;
   setRunning(true);
   qApp->installEventFilter(this);
   // Not from within whatever asked for it (a click on the shelf): the
@@ -165,6 +166,19 @@ bool Tutorials::running() const { return m_running; }
 muse::async::Notification Tutorials::runningChanged() const
 {
   return m_runningChanged;
+}
+
+void Tutorials::showVirtualKeyboard()
+{
+  if (!m_running || m_showsVirtualKeyboard)
+    return;
+  m_showsVirtualKeyboard = true;
+  m_runningChanged.notify();
+}
+
+bool Tutorials::hidesVirtualKeyboard() const
+{
+  return m_running && !m_showsVirtualKeyboard;
 }
 
 void Tutorials::setRunning(bool running)

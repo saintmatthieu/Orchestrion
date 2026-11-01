@@ -270,7 +270,7 @@ ApplicationWindow {
                 tightestTitleClearance: furniture.topRowHeight + furniture.minTitleGap
                                         + topOrnament.inkBottom + furniture.titleGap
                 tightestBottomClearance: furniture.scoreGap
-                                         + furniture.lowerBandHeight * furniture.lowerBandOpen
+                                         + furniture.underScoreHeight
                                          + bottomOrnament.height
                                          + 2 * furniture.minTransportGap
                                          + transportControls.implicitHeight
@@ -344,7 +344,8 @@ ApplicationWindow {
                 // in it: titleClearance, bottomClearance), the band under the
                 // score (the virtual keyboard's, opening as it comes and
                 // closing as it goes, the score gliding to make room), the
-                // lower rule, the transport, the pedal. Rows keep
+                // lower rule, the transport, the pedal; a demo's caption and
+                // number keys have rows over the keyboard's. Rows keep
                 // their room when what is in them fades. On a large window
                 // the air between them is what it always was (the rules at
                 // 15 and 85% of the height); it gives way to the parchment
@@ -366,7 +367,7 @@ ApplicationWindow {
                     readonly property real scoreBandRestingHeight: furniture.height * 0.7
                                                                    - topOrnament.height / 2
                                                                    - bottomOrnament.height / 2
-                                                                   - lowerBandHeight * lowerBandOpen
+                                                                   - underScoreHeight
                     readonly property real topRowHeight: 44
                     readonly property real minTitleGap: 4
                     // Under the lower rule: the pedals centred between it and
@@ -393,6 +394,9 @@ ApplicationWindow {
                         NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
                     }
 
+                    // What takes room between the score and the lower rule
+                    readonly property real underScoreHeight: demoBand.bandHeight
+                                                             + lowerBandHeight * lowerBandOpen
                     // As tall as the keyboard at its full size and the air
                     // under it, no more: the rest is the score's
                     readonly property real lowerBandBottomGap: 2
@@ -437,6 +441,13 @@ ApplicationWindow {
                         Layout.minimumHeight: Math.max(
                             60, furniture.scoreBandMargins + notationPaintView.parchmentHeight)
                         Layout.preferredHeight: furniture.scoreBandRestingHeight
+                    }
+
+                    // A demo's caption and number keys
+                    DemoKeysBand {
+                        id: demoBand
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: bandHeight
                     }
 
                     // While the virtual MIDI keyboard is the MIDI device in use
@@ -1045,7 +1056,7 @@ ApplicationWindow {
         }
     }
 
-        // Over everything else in the window, the cursor over the keys
+    // Over everything else in the window
     DemoKeysOverlay {
         anchors.fill: parent
         z: 1000
