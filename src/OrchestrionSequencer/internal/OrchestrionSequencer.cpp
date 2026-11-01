@@ -909,10 +909,12 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type,
   // Notify which hand just played — for the beginner-help key animation, and
   // (with the raw controller velocity) for the dynamics scoring. Reached only
   // after the press/release bookkeeping confirmed a genuine event, so it
-  // fires exactly once per processed note-on/note-off.
-  m_handNoteEvent.send(
-      AutoPlayEvent{type, isLeftHand,
-                    type == NoteEventType::noteOn ? velocity : std::nullopt});
+  // fires exactly once per processed note-on/note-off. Not a Follow staff's
+  // strike: no hand played it, the FollowPlayer did.
+  if (Mode(isLeftHand) != StaffMode::follow)
+    m_handNoteEvent.send(
+        AutoPlayEvent{type, isLeftHand,
+                      type == NoteEventType::noteOn ? velocity : std::nullopt});
 
   if (type == NoteEventType::noteOn)
     ObserveOnset(isLeftHand, transitions);
