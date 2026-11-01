@@ -909,6 +909,10 @@ ApplicationWindow {
         y: parent.height * 0.69 - rangesHeight
         z: 900
         rangesShown: notationPaintView.controlsVisible
+        // Not over the score shelf, which is under it in the window
+        opacity: scoreShelf.shown ? 0 : 1
+        enabled: !scoreShelf.shown
+        Behavior on opacity { NumberAnimation { duration: 200 } }
     }
 
         // Over everything else in the window, the cursor over the keys
