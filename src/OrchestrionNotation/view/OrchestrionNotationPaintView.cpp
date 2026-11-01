@@ -70,14 +70,21 @@ namespace
 // same reasoning as the timing judgments' window).
 constexpr std::size_t dynamicsMinKnots = 4;
 
-// The staff-mode choice (see StaffModeSelector), pencilled on a lead of clear
-// parchment before the score: how wide the lead is, how tall a sketch, and how
-// far before the score its middle is, as fractions of a staff's height —
-// drawn on the score, it zooms with it. The lead has room for the arrows to
-// the sketch's left, and some to spare before the tacks.
+// The staff-mode choice (see StaffModeSelector), pencilled left of the left
+// cylinder, which rolls in to uncover it: how wide the room it takes is, how
+// tall a sketch, and how far short of the room's right end its middle is, as
+// fractions of a staff's height — so it zooms with the score. The room has
+// space for the arrows to the sketch's left.
 constexpr double staffSelectorLead = 2.3;
 constexpr double staffSelectorSize = 0.8;
 constexpr double staffSelectorInset = 0.8;
+
+// How long the left cylinder takes to roll in or out; how long the staves'
+// modes show when a score is opened, and how long after the pointer has left
+// them.
+constexpr int modesRollMs = 350;
+constexpr int modesShownOnOpenMs = 4000;
+constexpr int modesShownAfterLeavingMs = 1500;
 
 // The colour a chord's notes are drawn in while a wrong key is held against it.
 const QColor wrongNoteColor{200, 40, 40};
@@ -164,6 +171,22 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
                                            { return moveCanvasBy(physicalDx); })
 {
   m_clock.start();
+  m_modesRevealAnimation.setDuration(modesRollMs);
+  m_modesRevealAnimation.setEasingCurve(QEasingCurve::InOutCubic);
+  connect(&m_modesRevealAnimation, &QVariantAnimation::valueChanged, this,
+          [this](const QVariant &reveal)
+          {
+            m_modesReveal = reveal.toDouble();
+            m_stripsDirty = true;
+            update();
+          });
+  m_modesHideTimer.setSingleShot(true);
+  m_modesHideTimer.callOnTimeout(this,
+                                 [this]
+                                 {
+                                   if (!m_pointerOverModes)
+                                     revealModes(false);
+                                 });
   m_warpTimer.setInterval(warpAnimStepMs);
   m_warpTimer.callOnTimeout([this] { applyWarpStep(); });
   // NOTE: nothing subscribes to currentThemeChanged() here, although the
@@ -1191,10 +1214,10 @@ void OrchestrionNotationPaintView::onMousePressed(
 {
   if (button == Qt::LeftButton && modifiers == Qt::NoModifier)
   {
-    const muse::PointF logical = toLogical(pos);
     const auto layout = staffSelectorLayout();
-    if (const auto hit =
-            m_staffSelector.hitAt(layout, QPointF{logical.x(), logical.y()}))
+    if (const auto hit = modesUncoveredAt(pos)
+                             ? m_staffSelector.hitAt(layout, pos)
+                             : std::nullopt)
     {
       // A click on the sketch itself is just kept from the score.
       m_staffSelectorClick = true;
@@ -1310,21 +1333,16 @@ void OrchestrionNotationPaintView::clearLoop()
 bool OrchestrionNotationPaintView::hoverStaffSelector(
     std::optional<QPointF> pos)
 {
-  std::optional<QPointF> logical;
-  if (pos)
-  {
-    const muse::PointF p = toLogical(*pos);
-    logical = QPointF{p.x(), p.y()};
-  }
+  pointerNearModes(pos);
   const auto layout = staffSelectorLayout();
-  if (m_staffSelector.hover(layout, logical))
+  const std::optional<QPointF> uncovered =
+      pos && modesUncoveredAt(*pos) ? pos : std::nullopt;
+  if (m_staffSelector.hover(layout, uncovered))
   {
-    // It is on the parchment, which the rolls carry too.
-    m_stripsDirty = true;
     update();
   }
   const auto hit =
-      logical ? m_staffSelector.hitAt(layout, *logical) : std::nullopt;
+      uncovered ? m_staffSelector.hitAt(layout, *uncovered) : std::nullopt;
   if (hit && pos)
   {
     m_hoveredNoteInfoPlacement = 0;
@@ -1864,6 +1882,12 @@ void OrchestrionNotationPaintView::updateVisibleTicks()
 
 void OrchestrionNotationPaintView::updateNotation()
 {
+  // A score opened: its staves' modes show for a while.
+  if (projectSession()->currentNotation())
+  {
+    revealModes(true);
+    m_modesHideTimer.start(modesShownOnOpenMs);
+  }
   m_kineticScroller.stop(); // the score changed under us; cancel any glide
   m_follower.reset();       // and the follow state
   m_readingFocus.clear();
@@ -2164,9 +2188,6 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   // the notes (but on top of the background), and we draw in logical
   // coordinates.
   paintBelt(painter);
-  m_staffSelector.paint(
-      *painter, staffSelectorLayout(),
-      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::accentInk));
   paintLoopRegionUnderlay(painter);
   paintBeatLines(painter);
 
@@ -2384,6 +2405,7 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   paintRoll(painter, belt, false);
   m_stripsDirty = false; // both strips have just been brought up to date
   paintRollers(painter, belt);
+  paintStaffModes(painter, belt);
 
   // If the parchment is not where constrainScorePosition() would have put it,
   // the layout landed after the last time that ran — at startup it does —
@@ -2467,8 +2489,7 @@ std::optional<QRectF> OrchestrionNotationPaintView::beltRect() const
   if (!extent)
     return std::nullopt;
   const double padding = m_beltPadding / std::max(currentScaling(), 1e-6);
-  const double lead = staffSelectorLead * staffHeight();
-  return extent->adjusted(-padding - lead, -padding, padding, padding);
+  return extent->adjusted(-padding, -padding, padding, padding);
 }
 
 double OrchestrionNotationPaintView::staffHeight() const
@@ -2502,9 +2523,10 @@ OrchestrionNotationPaintView::staffSelectorLayout() const
   std::sort(staves.begin(), staves.end());
   staves.erase(std::unique(staves.begin(), staves.end()), staves.end());
 
-  const double unit = staffHeight();
+  // In view pixels
+  const double unit = staffHeight() * currentScaling();
   layout.available = staffModes()->availableModes();
-  const double x = extent->left() - staffSelectorInset * unit;
+  const double x = rollBase().first + modesWidth() - staffSelectorInset * unit;
   for (size_t hand = 0; hand < staves.size() && hand < 2; ++hand)
   {
     const auto staffIdx = static_cast<mu::engraving::staff_idx_t>(staves[hand]);
@@ -2512,7 +2534,9 @@ OrchestrionNotationPaintView::staffSelectorLayout() const
     if (!staff)
       continue;
     const double middle =
-        system->staffYpage(staffIdx) + staff->staffHeight() / 2;
+        fromLogical(muse::PointF(0, system->staffYpage(staffIdx) +
+                                        staff->staffHeight() / 2))
+            .y();
     layout.staves.push_back({static_cast<int>(hand), QPointF{x, middle},
                              staffModes()->mode(static_cast<int>(hand))});
   }
@@ -2587,12 +2611,11 @@ std::pair<double, double> OrchestrionNotationPaintView::scalingLimits() const
   const QRectF content = *extent;
 
   // Wound right out: the parchment lies between the two tangent points, so
-  //   (contentW + lead) * s + 2 pad  =  W - 2 margin - 2 radius,
+  //   contentW * s + 2 pad  =  W - 2 margin - 2 radius,
   // with radius = ratio * (contentH * s + 2 pad).
-  const double lead = staffSelectorLead * staffHeight();
   const double minScaling =
       (width() - 2 * margin - 2 * pad * (1 + 2 * ratio)) /
-      std::max(1e-6, content.width() + lead + 2 * ratio * content.height());
+      std::max(1e-6, content.width() + 2 * ratio * content.height());
 
   // Wound in: the parchment is centred, so its top is (H - height) / 2 down
   // the view, and that is as far up as the title's ornament reaches. QML
@@ -2619,6 +2642,7 @@ OrchestrionNotationPaintView::sampleBelt() const
   BeltGeometry belt;
   const auto [margin, core] = rollBase();
   belt.margin = margin;
+  belt.leftInset = m_modesReveal * modesWidth();
   belt.core = core;
   belt.viewWidth = width();
   belt.viewHeight = height();
@@ -2844,7 +2868,7 @@ double OrchestrionNotationPaintView::woundTurns(const BeltGeometry &belt,
   // parchment has gone past the tangent point and onto this cylinder. The
   // core, not the roll, sets the tangent here — the roll's own size is what
   // this is being used to work out.
-  const double tangent = leftEnd ? belt.margin + belt.core
+  const double tangent = leftEnd ? belt.edgeMargin(true) + belt.core
                                  : belt.viewWidth - belt.margin - belt.core;
   const double end = belt.flatEnd(leftEnd);
   const double wound = std::max(0.0, leftEnd ? tangent - end : end - tangent);
@@ -3037,11 +3061,9 @@ OrchestrionNotationPaintView::updateStrip(bool leftEnd,
   return cache;
 }
 
-void OrchestrionNotationPaintView::ensureMarginBackdrops(double margin)
+void OrchestrionNotationPaintView::ensureMarginBackdrop()
 {
   const QSize viewSize{static_cast<int>(width()), static_cast<int>(height())};
-  const int stripWidth =
-      std::min(static_cast<int>(std::lround(margin)), viewSize.width() / 2);
   const QPixmap &wallpaper = configuration()->backgroundWallpaper();
   const bool useColor =
       configuration()->backgroundUseColor() || wallpaper.isNull();
@@ -3050,35 +3072,82 @@ void OrchestrionNotationPaintView::ensureMarginBackdrops(double margin)
       useColor ? static_cast<qint64>(color.rgba()) : wallpaper.cacheKey();
 
   if (viewSize == m_marginBackdropViewSize &&
-      stripWidth == m_marginBackdropWidth &&
       sourceKey == m_marginBackdropSourceKey)
     return;
 
   m_marginBackdropViewSize = viewSize;
-  m_marginBackdropWidth = stripWidth;
   m_marginBackdropSourceKey = sourceKey;
-  m_marginBackdropLeft = {};
-  m_marginBackdropRight = {};
-  if (stripWidth <= 0 || viewSize.isEmpty())
+  m_marginBackdrop = {};
+  m_marginBackdropColor.reset();
+  if (useColor)
+  {
+    m_marginBackdropColor = color;
     return;
-
+  }
+  if (viewSize.isEmpty())
+    return;
   // The backdrop as the base view lays it down — the wallpaper stretched to
   // the viewport, see AbstractNotationPaintView::paintBackground(). Anything
   // else would show as a seam against the run of it either side.
-  if (useColor)
-  {
-    QPixmap strip{stripWidth, viewSize.height()};
-    strip.fill(color);
-    m_marginBackdropLeft = strip;
-    m_marginBackdropRight = strip;
-    return;
-  }
+  m_marginBackdrop = wallpaper.scaled(viewSize, Qt::IgnoreAspectRatio,
+                                      Qt::SmoothTransformation);
+}
 
-  const QPixmap backdrop = wallpaper.scaled(viewSize, Qt::IgnoreAspectRatio,
-                                            Qt::SmoothTransformation);
-  m_marginBackdropLeft = backdrop.copy(0, 0, stripWidth, viewSize.height());
-  m_marginBackdropRight = backdrop.copy(viewSize.width() - stripWidth, 0,
-                                        stripWidth, viewSize.height());
+bool OrchestrionNotationPaintView::modesUncoveredAt(QPointF pos) const
+{
+  return m_modesReveal > 0 &&
+         pos.x() < rollBase().first + m_modesReveal * modesWidth();
+}
+
+double OrchestrionNotationPaintView::modesWidth() const
+{
+  return staffSelectorLead * staffHeight() * currentScaling();
+}
+
+void OrchestrionNotationPaintView::revealModes(bool reveal)
+{
+  const double target = reveal ? 1.0 : 0.0;
+  if (m_modesRevealAnimation.state() == QAbstractAnimation::Running
+          ? m_modesRevealAnimation.endValue().toDouble() == target
+          : m_modesReveal == target)
+    return;
+  m_modesRevealAnimation.stop();
+  m_modesRevealAnimation.setStartValue(m_modesReveal);
+  m_modesRevealAnimation.setEndValue(target);
+  m_modesRevealAnimation.start();
+}
+
+void OrchestrionNotationPaintView::pointerNearModes(std::optional<QPointF> pos)
+{
+  const BeltGeometry belt = sampleBelt();
+  // The modes, and the outer half of the cylinder, as high as the parchment
+  const bool over = pos && belt.valid && pos->x() < belt.tangent(true) &&
+                    pos->y() >= belt.bandTop && pos->y() <= belt.bandBottom;
+  if (over == m_pointerOverModes)
+    return;
+  m_pointerOverModes = over;
+  if (over)
+  {
+    m_modesHideTimer.stop();
+    revealModes(true);
+  }
+  else if (!m_modesHideTimer.isActive())
+    m_modesHideTimer.start(modesShownAfterLeavingMs);
+}
+
+void OrchestrionNotationPaintView::paintStaffModes(QPainter *painter,
+                                                   const BeltGeometry &belt)
+{
+  if (m_modesReveal <= 0)
+    return;
+  painter->save();
+  // Only what the cylinder has uncovered
+  painter->setClipRect(QRectF{0, 0, belt.edgeMargin(true), height()},
+                       Qt::IntersectClip);
+  m_staffSelector.paint(
+      *painter, staffSelectorLayout(),
+      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::accentInk));
+  painter->restore();
 }
 
 void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
@@ -3086,7 +3155,7 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
                                              bool leftEnd)
 {
   const double radius = belt.wrap(leftEnd);
-  const double margin = belt.margin;
+  const double margin = belt.edgeMargin(leftEnd);
   if (radius < 1)
     return;
 
@@ -3184,13 +3253,12 @@ void OrchestrionNotationPaintView::paintRoll(QPainter *painter,
 
   // Past the belt's end there is only backdrop, and nothing has painted it:
   // the flat run is clipped to itself and the roll stops at the edge-on line.
-  ensureMarginBackdrops(margin);
-  const QPixmap &backdrop =
-      leftEnd ? m_marginBackdropLeft : m_marginBackdropRight;
-  if (!backdrop.isNull())
-    painter->drawPixmap(
-        QRectF{leftEnd ? 0.0 : width() - margin, 0.0, margin, height()},
-        backdrop, QRectF{backdrop.rect()});
+  ensureMarginBackdrop();
+  const QRectF past{leftEnd ? 0.0 : width() - margin, 0.0, margin, height()};
+  if (m_marginBackdropColor)
+    painter->fillRect(past, *m_marginBackdropColor);
+  else if (!m_marginBackdrop.isNull())
+    painter->drawPixmap(past, m_marginBackdrop, past);
   painter->restore();
 }
 } // namespace dgk

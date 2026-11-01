@@ -37,6 +37,8 @@
 #include "TimingFeedbackOverlay.h"
 #include <QElapsedTimer>
 #include <QImage>
+#include <QTimer>
+#include <QVariantAnimation>
 #include <QVariantList>
 #include <actions/iactionsdispatcher.h>
 #include <limits>
@@ -303,6 +305,9 @@ private:
     double bandTop = 0;
     double bandBottom = 0;
     double margin = 0;
+    //! How far the left cylinder has rolled in from its place, uncovering
+    //! the staves' modes (see m_modesReveal)
+    double leftInset = 0;
     double core = 0; //!< the bare cylinder
     double radius[2] =
         {}; //!< what each end actually wraps around: [left, right]
@@ -313,9 +318,15 @@ private:
     double travel() const { return -originX; }
     double wrap(bool leftEnd) const { return radius[leftEnd ? 0 : 1]; }
     //! Where the parchment leaves the flat run and starts round the cylinder.
+    //! How far short of the view's edge this end's belt turns edge-on
+    double edgeMargin(bool leftEnd) const
+    {
+      return leftEnd ? margin + leftInset : margin;
+    }
     double tangent(bool leftEnd) const
     {
-      return leftEnd ? margin + wrap(true) : viewWidth - margin - wrap(false);
+      return leftEnd ? edgeMargin(true) + wrap(true)
+                     : viewWidth - margin - wrap(false);
     }
     //! The view x of the parchment's near end at this cylinder, before the
     //! wrap is taken into account.
@@ -370,10 +381,9 @@ private:
   StripCache &updateStrip(bool leftEnd, const BeltGeometry &belt, int originX,
                           int originY, int logicalWidth, int logicalHeight,
                           double dpr);
-  //! (Re)build the backdrop strips that fill the margins, where the belt has
-  //! already gone. A no-op unless the view size, the backdrop or the margin
-  //! changed.
-  void ensureMarginBackdrops(double margin);
+  //! (Re)build the backdrop that fills the margins, where the belt has
+  //! already gone. A no-op unless the view size or the backdrop changed.
+  void ensureMarginBackdrop();
   /**
    * The parchment, in logical (score) coordinates: everything the engraving
    * lays out — the staves and whatever the skyline says sticks out of them —
@@ -385,8 +395,8 @@ private:
   std::optional<QRectF> scoreExtent() const;
   /**
    * Where the staff-mode choice is drawn for each played staff, and what it
-   * offers: on the lead of parchment before the score, level with the
-   * staff's middle.
+   * offers, in view coordinates: left of the left cylinder, where it has
+   * rolled in from (see m_modesReveal), level with the staff's middle.
    */
   StaffModeSelector::Layout staffSelectorLayout() const;
   /**
@@ -660,10 +670,34 @@ private:
   //! the base view already holds the one currentThemeChanged() subscription
   //! this object may have, and a second would replace it.
   muse::ui::ThemeCode m_stripThemeKey;
-  QPixmap m_marginBackdropLeft;
-  QPixmap m_marginBackdropRight;
+  //! The backdrop as the base view lays it down, the whole view's; a colour
+  //! instead, when there is no wallpaper
+  QPixmap m_marginBackdrop;
+  std::optional<QColor> m_marginBackdropColor;
   QSize m_marginBackdropViewSize;
   qint64 m_marginBackdropSourceKey = 0;
-  int m_marginBackdropWidth = -1;
+
+  /**
+   * The staves' modes are not on the score: the left cylinder rolls in to
+   * uncover them, left of it, when a score is opened, for a while, and when
+   * the pointer comes over the cylinder's outer half, until a while after it
+   * has gone. How far it has (0 to 1):
+   */
+  double m_modesReveal = 0;
+  QVariantAnimation m_modesRevealAnimation;
+  QTimer m_modesHideTimer;
+  bool m_pointerOverModes = false;
+  /** The width the staves' modes take, in view pixels. */
+  double modesWidth() const;
+  /** Whether what is at `pos` is the staves' modes, uncovered. */
+  bool modesUncoveredAt(QPointF pos) const;
+  void revealModes(bool reveal);
+  /**
+   * The pointer is at `pos`, or has left: reveals the staves' modes when it
+   * is over them or the left cylinder's outer half, and hides them a while
+   * after it has gone.
+   */
+  void pointerNearModes(std::optional<QPointF> pos);
+  void paintStaffModes(QPainter *, const BeltGeometry &);
 };
 } // namespace dgk
