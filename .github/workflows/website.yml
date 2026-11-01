@@ -5,7 +5,8 @@ name: Website
 # - Released (orchestrion.yml's website job): the tag's docs/, with the videos
 #   the release's testflow job rendered from the released app.
 # - By hand (Actions > Website > Run workflow): docs/ from the branch chosen,
-#   with the live site's videos - a fix to the site between releases.
+#   with the live site's videos - a fix to the site between releases - or
+#   with those another run rendered (its id given).
 # GitHub Pages' source must be "GitHub Actions" (Settings > Pages), and the
 # github-pages environment must allow deployments from v* tags.
 
@@ -17,6 +18,11 @@ on:
         type: string
         required: true
   workflow_dispatch:
+    inputs:
+      videos-run:
+        description: Id of a run whose rendered videos to deploy (default, the live site's)
+        type: string
+        required: false
 
 # One deployment at a time, none cancelled half-way
 concurrency:
@@ -28,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     environment:
@@ -47,8 +54,17 @@ jobs:
           name: ${{ inputs.videos-artifact }}
           path: docs/assets/videos
 
+      - name: Videos of another run
+        if: inputs.videos-run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: Orchestrion testflow videos
+          run-id: ${{ inputs.videos-run }}
+          github-token: ${{ github.token }}
+          path: docs/assets/videos
+
       - name: Videos of the live site
-        if: inputs.videos-artifact == ''
+        if: inputs.videos-artifact == '' && inputs.videos-run == ''
         run: |
           site="https://$(cat docs/CNAME)/assets/videos"
           mkdir -p docs/assets/videos

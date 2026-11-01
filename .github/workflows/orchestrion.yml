@@ -439,6 +439,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     uses: ./.github/workflows/website.yml
