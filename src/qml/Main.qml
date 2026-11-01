@@ -260,6 +260,12 @@ ApplicationWindow {
 
                 property bool controlsVisible: false
 
+                StaffModeControls {
+                    anchors.fill: parent
+                    view: notationPaintView
+                    navigationSection: controlsNavSection
+                }
+
                 onMouseActivity: {
                     notationPaintView.controlsVisible = true
                     hideControlsTimer.restart()

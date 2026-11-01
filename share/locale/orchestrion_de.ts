@@ -2009,6 +2009,34 @@ Es werden keine Noten gelöscht.</translation>
     </message>
 </context>
 <context>
+    <name>StaffModeControls</name>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Staff modes</source>
+        <translation>Modi der Notenzeilen</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Upper staff</source>
+        <translation>Obere Notenzeile</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Lower staff</source>
+        <translation>Untere Notenzeile</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Next mode</source>
+        <translation>Nächster Modus</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Previous mode</source>
+        <translation>Vorheriger Modus</translation>
+    </message>
+</context>
+<context>
     <name>FullscreenButton</name>
     <message>
         <location filename="../../src/qml/FullscreenButton.qml" line="35"/>

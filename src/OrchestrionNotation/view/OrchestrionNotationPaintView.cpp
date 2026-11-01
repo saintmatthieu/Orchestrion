@@ -188,7 +188,7 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
   m_modesHideTimer.callOnTimeout(this,
                                  [this]
                                  {
-                                   if (!m_pointerOverModes)
+                                   if (!m_pointerOverModes && !m_modesHeld)
                                      revealModes(false);
                                  });
   m_warpTimer.setInterval(warpAnimStepMs);
@@ -2428,6 +2428,10 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   m_stripsDirty = false; // both strips have just been brought up to date
   paintRollers(painter, belt);
   paintStaffModes(painter, belt);
+  // Where they are drawn moves with the score: the controls in QML follow.
+  // Painted on the render thread maybe, so on the view's own.
+  QMetaObject::invokeMethod(
+      this, [this] { updateStaffModeControls(); }, Qt::QueuedConnection);
 
   // If the parchment is not where constrainScorePosition() would have put it,
   // the layout landed after the last time that ran — at startup it does —
@@ -3205,6 +3209,67 @@ void OrchestrionNotationPaintView::pointerNearModes(std::optional<QPointF> pos)
     m_modesHideTimer.start(modesShownAfterLeavingMs);
 }
 
+void OrchestrionNotationPaintView::updateStaffModeControls()
+{
+  QVariantList controls;
+  const StaffModeSelector::Layout layout = staffSelectorLayout();
+  for (const StaffModeSelector::Staff &staff : layout.staves)
+  {
+    const auto rect = [&](StaffModeSelector::Part part)
+    {
+      const QPointF centre =
+          StaffModeSelector::ArrowCentre(layout, staff, part);
+      return QRectF{centre.x() - layout.size / 2, centre.y() - layout.size / 2,
+                    layout.size, layout.size};
+    };
+    controls.push_back(QVariantMap{
+        {"staff", staff.staff},
+        {"mode", staffSelectorTooltip({staff.staff, staff.mode,
+                                       StaffModeSelector::Part::sketch})},
+        {"previous", rect(StaffModeSelector::Part::previous)},
+        {"next", rect(StaffModeSelector::Part::next)}});
+  }
+  if (controls == m_staffModeControls)
+    return;
+  m_staffModeControls = controls;
+  emit staffModeControlsChanged();
+}
+
+void OrchestrionNotationPaintView::stepStaffMode(int staff, bool next)
+{
+  const StaffModeSelector::Layout layout = staffSelectorLayout();
+  for (const StaffModeSelector::Staff &s : layout.staves)
+    if (s.staff == staff)
+      staffModes()->setMode(
+          staff,
+          StaffModeSelector::Step(layout.available, s.mode,
+                                  next ? StaffModeSelector::Part::next
+                                       : StaffModeSelector::Part::previous));
+}
+
+void OrchestrionNotationPaintView::focusStaffModeArrow(int staff, bool next)
+{
+  const bool changed =
+      staff < 0 ? m_staffSelector.setFocused(std::nullopt, std::nullopt)
+                : m_staffSelector.setFocused(
+                      staff, next ? StaffModeSelector::Part::next
+                                  : StaffModeSelector::Part::previous);
+  if (changed)
+    update();
+}
+
+void OrchestrionNotationPaintView::holdModesUncovered(bool hold)
+{
+  m_modesHeld = hold;
+  if (hold)
+  {
+    m_modesHideTimer.stop();
+    revealModes(true);
+  }
+  else if (!m_pointerOverModes && !m_modesHideTimer.isActive())
+    m_modesHideTimer.start(modesShownAfterLeavingMs);
+}
+
 void OrchestrionNotationPaintView::paintStaffModes(QPainter *painter,
                                                    const BeltGeometry &belt)
 {
@@ -3214,9 +3279,10 @@ void OrchestrionNotationPaintView::paintStaffModes(QPainter *painter,
   // Only what the cylinder has uncovered
   painter->setClipRect(QRectF{0, 0, belt.edgeMargin(true), height()},
                        Qt::IntersectClip);
-  m_staffSelector.paint(
-      *painter, staffSelectorLayout(),
-      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::accentInk));
+  const auto &theme = uiConfiguration()->currentTheme();
+  m_staffSelector.paint(*painter, staffSelectorLayout(),
+                        paletteColor(theme, paletteKeys::accentInk),
+                        paletteColor(theme, paletteKeys::metal));
   painter->restore();
 }
 

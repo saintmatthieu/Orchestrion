@@ -45,6 +45,9 @@ constexpr double arrowHalfHeight = 0.27;
 /** The sketch's area, as a fraction of its height, either way from its middle.
  */
 constexpr double sketchHalfExtent = 0.6;
+// How much larger the arrow with the keyboard's focus is drawn: it is also
+// in the metal of the focus rings, to tell from the pencil around.
+constexpr double focusedArrowScale = 1.6;
 
 } // namespace
 
@@ -83,7 +86,7 @@ StaffMode StaffModeSelector::Step(const std::vector<StaffMode> &available,
 }
 
 void StaffModeSelector::paint(QPainter &painter, const Layout &layout,
-                              const QColor &ink) const
+                              const QColor &ink, const QColor &focusInk) const
 {
   painter.save();
   painter.setRenderHint(QPainter::Antialiasing);
@@ -95,14 +98,30 @@ void StaffModeSelector::paint(QPainter &painter, const Layout &layout,
       continue;
     for (const auto part : {Part::previous, Part::next})
     {
-      painter.setOpacity(
-          m_pointedStaff == staff.staff && m_pointedPart == part
-              ? 1.0
-              : idleArrowOpacity);
-      Arrow(painter, part, ArrowCentre(layout, staff, part), layout.size, ink);
+      const QPointF centre = ArrowCentre(layout, staff, part);
+      if (m_focusedStaff == staff.staff && m_focusedPart == part)
+      {
+        painter.setOpacity(1.0);
+        Arrow(painter, part, centre, focusedArrowScale * layout.size, focusInk);
+        continue;
+      }
+      painter.setOpacity(m_pointedStaff == staff.staff && m_pointedPart == part
+                             ? 1.0
+                             : idleArrowOpacity);
+      Arrow(painter, part, centre, layout.size, ink);
     }
   }
   painter.restore();
+}
+
+bool StaffModeSelector::setFocused(std::optional<int> staff,
+                                   std::optional<Part> part)
+{
+  if (staff == m_focusedStaff && part == m_focusedPart)
+    return false;
+  m_focusedStaff = staff;
+  m_focusedPart = part;
+  return true;
 }
 
 bool StaffModeSelector::hover(const Layout &layout, std::optional<QPointF> pos)

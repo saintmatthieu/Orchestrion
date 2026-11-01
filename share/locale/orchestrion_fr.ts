@@ -2009,6 +2009,34 @@ Aucune partition n&apos;est supprimée.</translation>
     </message>
 </context>
 <context>
+    <name>StaffModeControls</name>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Staff modes</source>
+        <translation>Modes des portées</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Upper staff</source>
+        <translation>Portée supérieure</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Lower staff</source>
+        <translation>Portée inférieure</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Next mode</source>
+        <translation>Mode suivant</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/StaffModeControls.qml" line="40"/>
+        <source>Previous mode</source>
+        <translation>Mode précédent</translation>
+    </message>
+</context>
+<context>
     <name>FullscreenButton</name>
     <message>
         <location filename="../../src/qml/FullscreenButton.qml" line="35"/>

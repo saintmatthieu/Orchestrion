@@ -127,6 +127,11 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // stops before the treadmill would come within a margin of it.
   Q_PROPERTY(double titleClearance READ titleClearance WRITE setTitleClearance
                  NOTIFY titleClearanceChanged)
+  // The staves' mode arrows, for keyboard navigation and screen readers (see
+  // Main.qml): per played staff, upper first, {staff, mode (its name),
+  // previous, next (their rectangles in the view)}.
+  Q_PROPERTY(QVariantList staffModeControls READ staffModeControls NOTIFY
+                 staffModeControlsChanged)
 
   dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
       this};
@@ -152,6 +157,17 @@ public:
   ~OrchestrionNotationPaintView() override;
 
   Q_INVOKABLE void loadOrchestrionNotation();
+
+  QVariantList staffModeControls() const { return m_staffModeControls; }
+  /** Steps a staff's mode, as its arrow does. */
+  Q_INVOKABLE void stepStaffMode(int staff, bool next);
+  /**
+   * Keeps the staves' modes uncovered, while one of their controls has the
+   * keyboard's focus; or lets the cylinder roll back over them a while after.
+   */
+  Q_INVOKABLE void holdModesUncovered(bool hold);
+  /** The arrow with the keyboard's focus: none, staff < 0. */
+  Q_INVOKABLE void focusStaffModeArrow(int staff, bool next);
 
   QString hoveredNoteInfo() const;
   QPointF hoveredNoteInfoPos() const;
@@ -197,6 +213,7 @@ signals:
   void rollRadiusRatioChanged();
   void titleClearanceChanged();
   void rollMarginChanged();
+  void staffModeControlsChanged();
   void rollShadePowerChanged();
   void beltPaddingChanged();
   void rollerOverhangChanged();
@@ -702,6 +719,10 @@ private:
   QVariantAnimation m_modesRevealAnimation;
   QTimer m_modesHideTimer;
   bool m_pointerOverModes = false;
+  bool m_modesHeld = false;
+  QVariantList m_staffModeControls;
+  /** Brings staffModeControls up to date, from the view's thread. */
+  void updateStaffModeControls();
   /** The width the staves' modes take, in view pixels. */
   double modesWidth() const;
   /** Whether what is at `pos` is the staves' modes, uncovered. */

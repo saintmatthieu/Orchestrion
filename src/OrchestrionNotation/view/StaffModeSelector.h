@@ -76,7 +76,17 @@ public:
     Part part = Part::sketch;
   };
 
-  void paint(QPainter &, const Layout &, const QColor &ink) const;
+  /**
+   * The arrow with the keyboard's focus, `focusInk` its colour, drawn larger.
+   */
+  void paint(QPainter &, const Layout &, const QColor &ink,
+             const QColor &focusInk) const;
+
+  /**
+   * The arrow with the keyboard's focus, if any (see StaffModeControls.qml):
+   * returns whether it changed.
+   */
+  bool setFocused(std::optional<int> staff, std::optional<Part> part);
 
   /**
    * The pointer is at `pos`, or has left: returns whether what is shown
@@ -110,5 +120,8 @@ private:
   /** The staff whose choice is pointed at, and what of it. */
   std::optional<int> m_pointedStaff;
   std::optional<Part> m_pointedPart;
+  /** The staff whose arrow has the keyboard's focus, and which arrow. */
+  std::optional<int> m_focusedStaff;
+  std::optional<Part> m_focusedPart;
 };
 } // namespace dgk
