@@ -25,6 +25,8 @@
 #include "view/TempoVisualizationView.h"
 #include "view/TempoVizModel.h"
 
+#include <notation/inotationconfiguration.h>
+
 #include <QQmlEngine>
 
 namespace dgk
@@ -72,5 +74,14 @@ void OrchestrionNotationModule::onContextInit(
   if (mode == muse::IApplication::RunMode::AudioPluginRegistration)
     return;
   m_loopBoundariesController->init();
+
+  // MuseScore's MIDI input enters notes in the score and sounds them, through
+  // a stand-in note that isn't in the score (and crashes playing it, since
+  // the 2026-10 bump): Orchestrion plays MIDI keys itself, through its
+  // sequencer.
+  if (const auto configuration =
+          globalIoc()->resolve<mu::notation::INotationConfiguration>(
+              moduleName()))
+    configuration->setIsMidiInputEnabled(false);
 }
 } // namespace dgk
