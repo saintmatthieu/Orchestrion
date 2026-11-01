@@ -5,6 +5,8 @@ set(MODULE_QRC ${CMAKE_CURRENT_LIST_DIR}/OrchestrionNotation.qrc)
 set(MODULE_SRC
   internal/LoopBoundariesController.cpp
   internal/LoopBoundariesController.h
+  internal/ScoreTargets.cpp
+  internal/ScoreTargets.h
   internal/OrchestrionNotationInteractionProcessor.cpp
   internal/OrchestrionNotationInteractionProcessor.h
   view/HighlightFader.cpp
@@ -16,6 +18,7 @@ set(MODULE_SRC
   view/ReadingFocus.cpp
   view/ReadingFocus.h
   ILoopBoundariesController.h
+  IScoreTargets.h
   view/ScoreFollower.cpp
   view/ScoreFollower.h
   view/Pencil.cpp

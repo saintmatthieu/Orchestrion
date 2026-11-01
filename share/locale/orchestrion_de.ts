@@ -1891,6 +1891,26 @@ Es werden keine Noten gelöscht.</translation>
     </message>
     <message>
         <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Staff mode</source>
+        <translation>Notenzeilenmodus</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Answers with how a staff is played: notes, rhythm, follow or mute</source>
+        <translation>Antwortet, wie eine Notenzeile gespielt wird: Noten, Rhythmus, Folgen oder Stumm</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Undo</source>
+        <translation>Rückgängig</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Undoes the last edit of the score (the staves&apos; modes, ...)</source>
+        <translation>Macht die letzte Änderung der Partitur rückgängig (die Modi der Notenzeilen, …)</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
         <source>Demo: click</source>
         <translation>Demo: Klick</translation>
     </message>

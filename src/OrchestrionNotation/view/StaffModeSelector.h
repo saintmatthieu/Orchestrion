@@ -94,8 +94,13 @@ public:
   static StaffMode Step(const std::vector<StaffMode> &available, StaffMode mode,
                         Part);
 
-private:
+  /**
+   * Where a part of a staff's choice is drawn: the middle of its sketch, or
+   * of an arrow.
+   */
   static QPointF ArrowCentre(const Layout &, const Staff &, Part);
+
+private:
   static bool IsOver(const Layout &, const Staff &, Part, QPointF pos);
   static void Sketch(QPainter &, StaffMode, QPointF centre, double size,
                      const QColor &ink);

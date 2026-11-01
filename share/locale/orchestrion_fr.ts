@@ -1891,6 +1891,26 @@ Aucune partition n&apos;est supprimée.</translation>
     </message>
     <message>
         <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Staff mode</source>
+        <translation>Mode de portée</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Answers with how a staff is played: notes, rhythm, follow or mute</source>
+        <translation>Répond comment une portée est jouée : notes, rythme, suivre ou muet</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Undo</source>
+        <translation>Annuler</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
+        <source>Undoes the last edit of the score (the staves&apos; modes, ...)</source>
+        <translation>Annule la dernière modification de la partition (les modes des portées, …)</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
         <source>Demo: click</source>
         <translation>Démo : clic</translation>
     </message>

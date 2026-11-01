@@ -19,6 +19,7 @@
 #pragma once
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
+#include "OrchestrionNotation/IScoreTargets.h"
 
 #include <types/ret.h>
 #include <ui/imainwindow.h>
@@ -28,6 +29,7 @@
 #include <QPointF>
 #include <QVariantAnimation>
 #include <functional>
+#include <optional>
 
 class QQuickItem;
 
@@ -54,6 +56,7 @@ class DemoCursor : public QObject, public dgk::Injectable
 
   dgk::Inject<muse::ui::INavigationController> navigationController{this};
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
+  dgk::Inject<IScoreTargets> scoreTargets{this};
 
 public:
   using Done = std::function<void(const muse::Ret &)>;
@@ -83,6 +86,13 @@ signals:
 
 private:
   QQuickItem *findItem(const QString &controlPath, muse::Ret &ret) const;
+  /**
+   * Where a control is, by its navigation path, or something painted on the
+   * score, by "Score/" and its name (see IScoreTargets).
+   */
+  std::optional<QPointF> targetPosition(const QString &path,
+                                        muse::Ret &ret) const;
+
   void glideTo(QPointF target, std::function<void()> then);
   void sendMouse(QEvent::Type type, Qt::MouseButton button,
                  Qt::MouseButtons buttons);
@@ -91,6 +101,7 @@ private:
 
   QVariantAnimation m_glide;
   std::function<void()> m_afterGlide;
+
   QPointF m_position;
   bool m_shown = false;
   bool m_pressed = false;

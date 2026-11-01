@@ -21,6 +21,7 @@
 #include "HighlightFader.h"
 #include "ILoopBoundariesController.h"
 #include "IOrchestrionNotationInteractionProcessor.h"
+#include "IScoreTargets.h"
 #include "KineticScroller.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
@@ -144,9 +145,11 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IStaffModes> staffModes{this};
   dgk::Inject<IVisibleScore> visibleScore{this};
+  dgk::Inject<IScoreTargets> scoreTargets{this};
 
 public:
   explicit OrchestrionNotationPaintView(QQuickItem *parent = nullptr);
+  ~OrchestrionNotationPaintView() override;
 
   Q_INVOKABLE void loadOrchestrionNotation();
 
@@ -399,6 +402,11 @@ private:
    * rolled in from (see m_modesReveal), level with the staff's middle.
    */
   StaffModeSelector::Layout staffSelectorLayout() const;
+  /**
+   * Where a target a demo can point at is, in the window (see
+   * IScoreTargets::position).
+   */
+  std::optional<QPointF> targetPosition(const QString &target) const;
   /**
    * The height of the score's first staff, in logical coordinates: what the
    * staff-mode choice is sized to. 0 when no score is laid out.

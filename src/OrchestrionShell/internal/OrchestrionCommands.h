@@ -22,6 +22,7 @@
 #include "DemoKeys.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/IStaffModes.h"
 
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
@@ -71,6 +72,7 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<IStaffModes> staffModes{this};
 
 public:
   OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor,

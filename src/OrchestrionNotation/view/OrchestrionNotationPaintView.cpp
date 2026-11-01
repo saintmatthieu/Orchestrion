@@ -200,6 +200,12 @@ OrchestrionNotationPaintView::OrchestrionNotationPaintView(QQuickItem *parent)
   // would replace that one (or assert, being SetOnce by default).
 }
 
+OrchestrionNotationPaintView::~OrchestrionNotationPaintView()
+{
+  if (scoreTargets())
+    scoreTargets()->setLocator(nullptr);
+}
+
 bool OrchestrionNotationPaintView::tempoVisualizationEnabled() const
 {
   return sequencerConfiguration()->tempoVisualizationEnabled();
@@ -1693,6 +1699,9 @@ void OrchestrionNotationPaintView::loadOrchestrionNotation()
 {
   qApp->installEventFilter(this);
 
+  scoreTargets()->setLocator([this](const QString &target)
+                             { return targetPosition(target); });
+
   // Drive the follow from the window's frame loop rather than from its own
   // timer (see ScoreFollower::frameTick).
   connect(this, &QQuickItem::windowChanged, this,
@@ -2513,6 +2522,40 @@ double OrchestrionNotationPaintView::staffHeight() const
   if (!score || score->nstaves() == 0)
     return 0.0;
   return score->staff(0)->staffHeight();
+}
+
+std::optional<QPointF>
+OrchestrionNotationPaintView::targetPosition(const QString &target) const
+{
+  if (target == u"Cylinder")
+  {
+    // The left one's outer half, level with the parchment's middle: where
+    // the pointer uncovers the staves' modes (see pointerNearModes)
+    const BeltGeometry belt = sampleBelt();
+    if (!belt.valid)
+      return std::nullopt;
+    return mapToScene(QPointF(belt.edgeMargin(true) + belt.wrap(true) / 2,
+                              (belt.bandTop + belt.bandBottom) / 2));
+  }
+  const QStringList parts = target.split('/');
+  if (parts.size() != 3 || parts[0] != u"StaffMode")
+    return std::nullopt;
+  bool isNumber = false;
+  const int staff = parts[1].toInt(&isNumber);
+  std::optional<StaffModeSelector::Part> part;
+  if (parts[2] == u"mode")
+    part = StaffModeSelector::Part::sketch;
+  else if (parts[2] == u"previous")
+    part = StaffModeSelector::Part::previous;
+  else if (parts[2] == u"next")
+    part = StaffModeSelector::Part::next;
+  if (!isNumber || !part)
+    return std::nullopt;
+  const StaffModeSelector::Layout layout = staffSelectorLayout();
+  for (const StaffModeSelector::Staff &s : layout.staves)
+    if (s.staff == staff)
+      return mapToScene(StaffModeSelector::ArrowCentre(layout, s, *part));
+  return std::nullopt;
 }
 
 StaffModeSelector::Layout

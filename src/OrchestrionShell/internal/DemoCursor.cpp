@@ -64,14 +64,13 @@ DemoCursor::DemoCursor(QObject *parent) : QObject(parent)
 void DemoCursor::click(const QString &controlPath, Done done)
 {
   muse::Ret ret;
-  QQuickItem *const item = findItem(controlPath, ret);
-  if (!item)
+  const auto target = targetPosition(controlPath, ret);
+  if (!target)
   {
     done(ret);
     return;
   }
-  const QPointF target = item->mapToScene(item->boundingRect().center());
-  glideTo(target,
+  glideTo(*target,
           [this, done]
           {
             QTimer::singleShot(settleMs, this,
@@ -98,14 +97,13 @@ void DemoCursor::click(const QString &controlPath, Done done)
 void DemoCursor::moveTo(const QString &controlPath, Done done)
 {
   muse::Ret ret;
-  QQuickItem *const item = findItem(controlPath, ret);
-  if (!item)
+  const auto target = targetPosition(controlPath, ret);
+  if (!target)
   {
     done(ret);
     return;
   }
-  glideTo(item->mapToScene(item->boundingRect().center()),
-          [done] { done(muse::make_ok()); });
+  glideTo(*target, [done] { done(muse::make_ok()); });
 }
 
 void DemoCursor::hide()
@@ -116,6 +114,10 @@ void DemoCursor::hide()
     return;
   m_shown = false;
   emit shownChanged();
+  // Gone, as a pointer leaving the window: what it hovered (a tooltip, ...)
+  // is let go of.
+  QEvent leave(QEvent::Leave);
+  QCoreApplication::sendEvent(mainWindow()->qWindow(), &leave);
 }
 
 QQuickItem *DemoCursor::findItem(const QString &controlPath,
@@ -143,6 +145,24 @@ QQuickItem *DemoCursor::findItem(const QString &controlPath,
     return nullptr;
   }
   return item;
+}
+
+std::optional<QPointF> DemoCursor::targetPosition(const QString &path,
+                                                  muse::Ret &ret) const
+{
+  if (path.startsWith(u"Score/"))
+  {
+    const QString name = path.mid(6);
+    if (const auto position = scoreTargets()->position(name))
+      return position;
+    ret = muse::make_ret(muse::Ret::Code::UnknownError,
+                         "nothing on the score is " + name.toStdString());
+    return std::nullopt;
+  }
+  QQuickItem *const item = findItem(path, ret);
+  if (!item)
+    return std::nullopt;
+  return item->mapToScene(item->boundingRect().center());
 }
 
 void DemoCursor::glideTo(QPointF target, std::function<void()> then)

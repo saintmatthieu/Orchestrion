@@ -19,6 +19,10 @@
 #include "OrchestrionCommands.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
 
+#include <notation/imasternotation.h>
+#include <notation/inotation.h>
+#include <notation/inotationundostack.h>
+
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QTimer>
@@ -54,6 +58,28 @@ const muse::rcommand::Command
 // Answers once the player has stopped, e.g. at the end of the score
 const muse::rcommand::Command
     waitUntilStoppedCommand("command://orchestrion/wait-until-stopped");
+const muse::rcommand::Command
+    staffModeCommand("command://orchestrion/staff-mode");
+const muse::rcommand::Command undoCommand("command://orchestrion/undo");
+
+/**
+ * As the score names them (see StaffModes).
+ */
+std::string staffModeName(StaffMode mode)
+{
+  switch (mode)
+  {
+  case StaffMode::notes:
+    return "notes";
+  case StaffMode::rhythm:
+    return "rhythm";
+  case StaffMode::follow:
+    return "follow";
+  case StaffMode::mute:
+    return "mute";
+  }
+  return "rhythm";
+}
 
 QString stringParam(const muse::rcommand::Params &params, const char *name)
 {
@@ -128,10 +154,10 @@ OrchestrionCommandsRegister::commandList() const
   static const std::vector<muse::rcommand::Command> list = []
   {
     std::vector<muse::rcommand::Command> list{
-        openScoreCommand,       quitCommand,         demoClickCommand,
-        demoMoveCommand,        demoHideCommand,     demoKeysCommand,
-        demoCaptionCommand,     demoKeyPressCommand, demoKeyReleaseCommand,
-        waitUntilStoppedCommand};
+        openScoreCommand,        quitCommand,         demoClickCommand,
+        demoMoveCommand,         demoHideCommand,     demoKeysCommand,
+        demoCaptionCommand,      demoKeyPressCommand, demoKeyReleaseCommand,
+        waitUntilStoppedCommand, staffModeCommand,    undoCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -205,6 +231,22 @@ OrchestrionCommandsRegister::commandInfoList() const
         muse::TranslatableString("orchestrion", "Releases a number key"),
         keySchema, muse::rcommand::Decoration());
     list.emplace_back(
+        staffModeCommand, muse::TranslatableString("orchestrion", "Staff mode"),
+        muse::TranslatableString("orchestrion",
+                                 "Answers with how a staff is played: notes, "
+                                 "rhythm, follow or mute"),
+        muse::rcommand::InputSchema(
+            {{"staff",
+              muse::rcommand::Arg(muse::rcommand::DataType::Integer,
+                                  u"0 the upper staff, 1 the lower")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        undoCommand, muse::TranslatableString("orchestrion", "Undo"),
+        muse::TranslatableString("orchestrion",
+                                 "Undoes the last edit of the score (the "
+                                 "staves' modes, ...)"),
+        muse::rcommand::InputSchema(), muse::rcommand::Decoration());
+    list.emplace_back(
         waitUntilStoppedCommand,
         muse::TranslatableString("orchestrion", "Wait until stopped"),
         muse::TranslatableString("orchestrion",
@@ -261,6 +303,29 @@ void OrchestrionCommands::registerHandlers()
               const QString key = stringParam(params, "key");
               return keyParamRet(params, key.size() == 1 &&
                                              m_demoKeys->release(key[0]));
+            });
+  onRequest(staffModeCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const auto it = params.find("staff");
+              muse::Ret ret = muse::make_ok();
+              ret.setText(staffModeName(staffModes()->mode(
+                  it == params.end() ? 0 : it->second.toInt())));
+              return ret;
+            });
+  // A tutorial takes back what it changed of the user's score: undone, an
+  // edit of a score that had none leaves it without changes to save.
+  onRequest(undoCommand,
+            [this](const muse::rcommand::Params &)
+            {
+              const auto master = projectSession()->masterNotation();
+              const auto stack =
+                  master ? master->notation()->undoStack() : nullptr;
+              if (!stack || !stack->canUndo())
+                return muse::make_ret(muse::Ret::Code::UnknownError,
+                                      "nothing to undo");
+              stack->undo(nullptr);
+              return muse::make_ok();
             });
   onRequestAsync(waitUntilStoppedCommand,
                  [this](const muse::rcommand::Params &, Done done)

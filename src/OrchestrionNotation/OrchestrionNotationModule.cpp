@@ -20,6 +20,7 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/LoopBoundariesController.h"
 #include "internal/OrchestrionNotationInteractionProcessor.h"
+#include "internal/ScoreTargets.h"
 #include "view/OrchestrionNotationPaintView.h"
 #include "view/TempoVisualizationView.h"
 #include "view/TempoVizModel.h"
@@ -52,6 +53,8 @@ void OrchestrionNotationModule::registerExports()
   m_loopBoundariesController = std::make_shared<LoopBoundariesController>();
   globalIoc()->registerExport<ILoopBoundariesController>(
       moduleName(), m_loopBoundariesController);
+  globalIoc()->registerExport<IScoreTargets>(moduleName(),
+                                             std::make_shared<ScoreTargets>());
 }
 
 muse::modularity::IContextSetup *OrchestrionNotationModule::newContext(

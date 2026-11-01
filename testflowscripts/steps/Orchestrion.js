@@ -65,6 +65,21 @@ function hideCursor() {
     command("command://orchestrion/demo-hide")
 }
 
+// How a staff is played: "notes", "rhythm", "follow" or "mute" (staff 0 the
+// upper, 1 the lower). Things painted on the score that the demo cursor can
+// point at: "Score/Cylinder", the left cylinder, which uncovers the staves'
+// modes, and those, e.g. "Score/StaffMode/1/next": "mode" (its sketch),
+// "previous" and "next" (its arrows)
+function staffMode(staff) {
+    return command("command://orchestrion/staff-mode", { staff: staff }).text
+}
+
+// Undoes the score's last edit, e.g. a staff's mode: a tutorial gives the
+// user's score back as it was
+function undo() {
+    command("command://orchestrion/undo")
+}
+
 // The number keys 1 to 0 on screen, going down as they are pressed
 function showKeys(shown) {
     command("command://orchestrion/demo-keys", { shown: shown !== false })
@@ -105,6 +120,8 @@ module.exports = {
     click: click,
     moveTo: moveTo,
     hideCursor: hideCursor,
+    staffMode: staffMode,
+    undo: undo,
     showKeys: showKeys,
     caption: caption,
     keyDown: keyDown,
