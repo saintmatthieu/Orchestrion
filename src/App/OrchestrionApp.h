@@ -47,6 +47,11 @@ private:
   void applyCommandLineOptions(
       const std::shared_ptr<muse::CmdOptions> &options) override;
   QString mainWindowQmlPath(const QString &platform) const override;
+  /**
+   * Quits with exit code 2 if it fails: without a window nothing could ever
+   * happen, and an offline render would write its sound forever.
+   */
+  bool loadMainWindow(const muse::modularity::ContextPtr &ctx) override;
   void doStartupScenario(const muse::modularity::ContextPtr &ctx) override;
 };
 } // namespace dgk

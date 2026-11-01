@@ -91,6 +91,17 @@ QString OrchestrionApp::mainWindowQmlPath(const QString &) const
   return QStringLiteral("qrc:/qt/qml/Orchestrion/src/qml/Main.qml");
 }
 
+bool OrchestrionApp::loadMainWindow(const muse::modularity::ContextPtr &ctx)
+{
+  const bool ok = muse::ui::GuiApplication::loadMainWindow(ctx);
+  if (!ok)
+  {
+    LOGE() << "No main window: quitting";
+    QCoreApplication::exit(2);
+  }
+  return ok;
+}
+
 void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &ctx)
 {
   // Orchestrion's main window drives its own startup (see
