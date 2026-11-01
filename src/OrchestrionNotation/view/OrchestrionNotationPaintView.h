@@ -127,6 +127,27 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // stops before the treadmill would come within a margin of it.
   Q_PROPERTY(double titleClearance READ titleClearance WRITE setTitleClearance
                  NOTIFY titleClearanceChanged)
+  // How far up from the view's bottom what is under the score reaches (the
+  // virtual keyboard, say), from QML: the parchment is centred between that
+  // and the title, and zooming in stops before it would reach either. 0: as
+  // far as the title's, the parchment centred in the view.
+  Q_PROPERTY(double bottomClearance READ bottomClearance WRITE
+                 setBottomClearance NOTIFY bottomClearanceChanged)
+  // How far down and up the title and what is under the score reach with
+  // everything between them and the window's edges at its tightest, from QML:
+  // where zooming in stops, having pushed them there.
+  Q_PROPERTY(double tightestTitleClearance READ tightestTitleClearance WRITE
+                 setTightestTitleClearance NOTIFY tightestTitleClearanceChanged)
+  Q_PROPERTY(
+      double tightestBottomClearance READ tightestBottomClearance WRITE
+          setTightestBottomClearance NOTIFY tightestBottomClearanceChanged)
+  // The room the parchment has without pushing anything, from QML: the default
+  // zoom stays within it, only the user's own goes further.
+  Q_PROPERTY(double restingParchmentHeight READ restingParchmentHeight WRITE
+                 setRestingParchmentHeight NOTIFY restingParchmentHeightChanged)
+  // The parchment's height in the view, for QML to make room for it.
+  Q_PROPERTY(
+      double parchmentHeight READ parchmentHeight NOTIFY parchmentHeightChanged)
   // The staves' mode arrows, for keyboard navigation and screen readers (see
   // Main.qml): per played staff, upper first, {staff, mode (its name),
   // previous, next (their rectangles in the view)}.
@@ -185,6 +206,15 @@ public:
   void setRollRadiusRatio(double ratio);
   double titleClearance() const { return m_titleClearance; }
   void setTitleClearance(double clearance);
+  double bottomClearance() const { return m_bottomClearance; }
+  void setBottomClearance(double clearance);
+  double tightestTitleClearance() const { return m_tightestTitleClearance; }
+  void setTightestTitleClearance(double clearance);
+  double tightestBottomClearance() const { return m_tightestBottomClearance; }
+  void setTightestBottomClearance(double clearance);
+  double restingParchmentHeight() const { return m_restingParchmentHeight; }
+  void setRestingParchmentHeight(double height);
+  double parchmentHeight() const { return m_parchmentHeight; }
   double rollMargin() const { return m_rollMargin; }
   void setRollMargin(double margin);
   double rollShadePower() const { return m_rollShadePower; }
@@ -212,6 +242,11 @@ signals:
   void tempoSmoothingChanged();
   void rollRadiusRatioChanged();
   void titleClearanceChanged();
+  void bottomClearanceChanged();
+  void tightestTitleClearanceChanged();
+  void tightestBottomClearanceChanged();
+  void restingParchmentHeightChanged();
+  void parchmentHeightChanged();
   void rollMarginChanged();
   void staffModeControlsChanged();
   void rollShadePowerChanged();
@@ -614,6 +649,11 @@ private:
   // The score is at the default zoom, which follows the view's size, the user
   // not having zoomed since it was opened
   bool m_defaultZoom = false;
+  /**
+   * The zoom the user last chose, 0 if none yet: what the view goes back to
+   * once what made it zoom out (a demo's rows, the keyboard, ...) has gone.
+   */
+  double m_chosenScaling = 0.0;
   // The view itself is setting the zoom, not the user
   bool m_zoomingItself = false;
   /** Whether the score is laid out on its one line, as the view shows it. */
@@ -685,6 +725,13 @@ private:
   // reused between frames).
   double m_rollRadiusRatio = 0.0;
   double m_titleClearance = 0.0;
+  double m_bottomClearance = 0.0;
+  double m_tightestTitleClearance = 0.0;
+  double m_tightestBottomClearance = 0.0;
+  double m_restingParchmentHeight = 0.0;
+  double m_parchmentHeight = 0.0;
+  /** bottomClearance, or the title's when it is 0. */
+  double effectiveBottomClearance() const;
   double m_rollMargin = 0.0;
   double m_rollShadePower = 1.0;
   double m_beltPadding = 0.0;

@@ -25,7 +25,7 @@ import Orchestrion.OrchestrionShell 1.0
  * The virtual MIDI keyboard, drawn while it is the MIDI device in use: a
  * piano's 88 keys, A0 to C8. They go down, lit the brighter the harder they
  * were struck, whichever device struck them; clicked, they play the virtual
- * keyboard, the harder the nearer the front of the key. Braces over them,
+ * keyboard, the harder the nearer the front of the key. Braces under them,
  * which come and go with the transport, say what their ranges play.
  */
 Item {
@@ -34,17 +34,22 @@ Item {
     readonly property int lowest: 21  // A0
     readonly property int highest: 108 // C8
     readonly property int whiteCount: 52
-    // Small: they can be clicked, but a mouse is no way to play
-    readonly property real whiteWidth: Math.min(24, width / whiteCount)
-    readonly property real whiteHeight: whiteWidth * 4.6
+    /** The height it may take, if less than it would like. */
+    property real availableHeight: Infinity
+
+    // Small: they can be clicked, but a mouse is no way to play, and the
+    // score needs the room
+    readonly property real whiteWidth: Math.max(4, Math.min(
+        20, width / whiteCount, (availableHeight - rangesHeight) / 3.6))
+    readonly property real whiteHeight: whiteWidth * 3.6
     readonly property real blackWidth: whiteWidth * 0.6
     readonly property real blackHeight: whiteHeight * 0.62
 
-    /** Whether the braces over the keys show: as the transport does. */
+    /** Whether the braces under the keys show: as the transport does. */
     property bool rangesShown: true
 
     // The braces, their labels, and air
-    readonly property real rangesHeight: 34
+    readonly property real rangesHeight: 30
 
     implicitHeight: rangesHeight + whiteHeight
 
@@ -52,9 +57,19 @@ Item {
         id: keyboardModel
     }
 
+    FontLoader {
+        id: titleFont
+        source: "qrc:/fonts/CinzelDecorative/CinzelDecorative-Regular.ttf"
+    }
+
     Component.onCompleted: keyboardModel.load()
 
-    visible: keyboardModel.shown
+    /** Whether the virtual keyboard is the MIDI device in use. */
+    readonly property bool inUse: keyboardModel.shown
+
+    opacity: inUse ? 1 : 0
+    visible: opacity > 0
+    Behavior on opacity { NumberAnimation { duration: 350 } }
 
     function isBlack(pitch) {
         return [1, 3, 6, 8, 10].indexOf(pitch % 12) >= 0
@@ -110,10 +125,11 @@ Item {
         return ""
     }
 
-    // What the keys play: a brace over each range, its tip up, under a label
+    // What the keys play: a brace under each range, its tip down, over a label
     Item {
         id: ranges
         anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: keys.bottom
         width: keys.width
         height: root.rangesHeight
         opacity: root.rangesShown ? 1 : 0
@@ -134,18 +150,22 @@ Item {
                 Text {
                     id: label
                     anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
                     text: root.rangeLabel(modelData.role)
-                    // The ink on the parchment: the band is as pale
-                    color: Theme.accentInk
+                    // As the rule's under them, and the title's over the score
+                    color: Theme.metal
+                    font.family: titleFont.name
                     font.pixelSize: 13
+                    font.letterSpacing: 1
+                    renderType: Text.NativeRendering
                 }
 
                 Canvas {
                     id: brace
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 3
+                    anchors.top: parent.top
+                    anchors.topMargin: 3
                     height: 9
                     onWidthChanged: requestPaint()
                     onPaint: {
@@ -154,16 +174,16 @@ Item {
                         const w = width, h = height, mid = w / 2
                         // The curls' radius, and the line's height
                         const r = Math.min(h / 2, w / 4), y = h / 2
-                        ctx.strokeStyle = Theme.accentInk
+                        ctx.strokeStyle = Theme.metal
                         ctx.lineWidth = 1.5
                         ctx.beginPath()
-                        ctx.moveTo(0, h)
+                        ctx.moveTo(0, 0)
                         ctx.quadraticCurveTo(0, y, r, y)
                         ctx.lineTo(mid - r, y)
-                        ctx.quadraticCurveTo(mid, y, mid, 0)
+                        ctx.quadraticCurveTo(mid, y, mid, h)
                         ctx.quadraticCurveTo(mid, y, mid + r, y)
                         ctx.lineTo(w - r, y)
-                        ctx.quadraticCurveTo(w, y, w, h)
+                        ctx.quadraticCurveTo(w, y, w, 0)
                         ctx.stroke()
                     }
                 }
@@ -174,7 +194,6 @@ Item {
     Item {
         id: keys
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: ranges.bottom
         width: root.whiteCount * root.whiteWidth
         height: root.whiteHeight
 

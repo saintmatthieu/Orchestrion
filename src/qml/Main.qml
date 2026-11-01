@@ -35,8 +35,12 @@ ApplicationWindow {
     id: root
     visible: true
     visibility: Window.Maximized
-    width: 800
-    height: 350
+    // Un-maximized. The furniture over the score (see furniture) needs the
+    // room below the minimum: smaller, the score would be a postage stamp.
+    width: 1024
+    height: 700
+    minimumWidth: 720
+    minimumHeight: 480
     // Deliberately neither the file name nor a modified marker: the score's
     // own title is on the ornament, and there is nothing to save. On macOS
     // the title bar doesn't show it at all (see MacOSWindowChrome); it is
@@ -252,11 +256,25 @@ ApplicationWindow {
                 beltPadding: 24
                 // How much of the cylinders shows past the parchment.
                 rollerOverhang: 6
-                // Zooming in stops with as much air between the composer's
-                // name and the parchment as the heading puts between the
-                // title and the composer.
+                // The parchment keeps as much air from the composer's name as
+                // the heading puts between the title and the composer.
                 titleClearance: topOrnament.y + topOrnament.inkBottom
-                                + topOrnament.titleGap
+                                + furniture.titleGap
+                // The score's band (see furniture, below)
+                bottomClearance: height - (scoreBand.y + scoreBand.height)
+                                 + furniture.scoreGap
+                restingParchmentHeight: furniture.scoreBandRestingHeight
+                                        - furniture.scoreBandMargins
+                // Zooming in pushes the furniture out of the way, down to its
+                // least (see furniture)
+                tightestTitleClearance: furniture.topRowHeight + furniture.minTitleGap
+                                        + topOrnament.inkBottom + furniture.titleGap
+                tightestBottomClearance: furniture.scoreGap
+                                         + furniture.lowerBandHeight * furniture.lowerBandOpen
+                                         + bottomOrnament.height
+                                         + 2 * furniture.minTransportGap
+                                         + transportControls.implicitHeight
+                                         + furniture.pedalRowHeight + furniture.minUnderPedals
 
                 property bool controlsVisible: false
 
@@ -319,29 +337,192 @@ ApplicationWindow {
                 // The backdrop's metal lining, mirrored top and bottom; the top
                 // one carries the score's title and composer. Declared first
                 // so that every control and popup draws above it.
-                BackdropOrnament {
-                    id: topOrnament
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height * 0.15 - height / 2
-                    viewWidth: parent.width
-                    viewHeight: parent.height
-                    title: scoreHeading.scoreTitle
-                    subtitle: scoreHeading.scoreComposer
-                    // The way to the other scores.
-                    titleClickable: true
-                    titleHintShown: notationPaintView.controlsVisible
-                                    || scoreShelfHint.shown
-                    onTitleClicked: scoreShelf.open()
-                }
+                // The window's furniture over the score, a row each, top to
+                // bottom, so that none can come over another whatever the
+                // window's size: the top controls' row (their own anchors),
+                // the title, the score's band (the view keeps the parchment
+                // in it: titleClearance, bottomClearance), the band under the
+                // score (the virtual keyboard's, opening as it comes and
+                // closing as it goes, the score gliding to make room), the
+                // lower rule, the transport, the pedal. Rows keep
+                // their room when what is in them fades. On a large window
+                // the air between them is what it always was (the rules at
+                // 15 and 85% of the height); it gives way to the parchment
+                // as that is zoomed in, and on a small window it shrinks first,
+                // then the score's band.
+                ColumnLayout {
+                    id: furniture
+                    anchors.fill: parent
+                    spacing: 0
 
-                BackdropOrnament {
-                    id: bottomOrnament
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height * 0.85 - height / 2
-                    viewWidth: parent.width
-                    viewHeight: parent.height
-                }
+                    // The least between the parchment, zoomed in to the most,
+                    // and what is over and under it
+                    readonly property real scoreGap: 10
+                    readonly property real titleGap: Math.max(topOrnament.titleGap, scoreGap)
+                    // What the score's band has around the parchment: the
+                    // composer's name hangs into it
+                    readonly property real scoreBandMargins: topOrnament.inkBottom + titleGap
+                                                             - topOrnament.height + scoreGap
+                    readonly property real scoreBandRestingHeight: furniture.height * 0.7
+                                                                   - topOrnament.height / 2
+                                                                   - bottomOrnament.height / 2
+                                                                   - lowerBandHeight * lowerBandOpen
+                    readonly property real topRowHeight: 44
+                    readonly property real minTitleGap: 4
+                    // Under the lower rule: the pedals centred between it and
+                    // the window's bottom, the transport between it and them.
+                    // On a small window the air under the pedals goes first.
+                    readonly property real underRule: Math.max(
+                        0, furniture.height * 0.15 - bottomOrnament.height / 2)
+                    readonly property real minTransportGap: 6
+                    readonly property real minUnderPedals: 4
+                    // Their ink, which their item overflows
+                    readonly property real pedalRowHeight: 16
+                    readonly property real underPedals: Math.max(minUnderPedals, Math.min(
+                        (underRule - pedalRowHeight) / 2,
+                        underRule - 2 * minTransportGap
+                        - transportControls.implicitHeight - pedalRowHeight))
+                    readonly property real transportGap: Math.max(
+                        minTransportGap,
+                        (underRule - transportControls.implicitHeight
+                         - pedalRowHeight - underPedals) / 2)
+                    // How far the band under the score is open: wholly while
+                    // the virtual keyboard shows
+                    property real lowerBandOpen: virtualKeyboard.inUse ? 1 : 0
+                    Behavior on lowerBandOpen {
+                        NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                    }
 
+                    // As tall as the keyboard at its full size and the air
+                    // under it, no more: the rest is the score's
+                    readonly property real lowerBandBottomGap: 2
+                    readonly property real lowerBandHeight:
+                        Math.min(20, (furniture.width - 96) / 52) * 3.6
+                        + virtualKeyboard.rangesHeight + lowerBandBottomGap
+
+                    Item {
+                        Layout.preferredHeight: furniture.topRowHeight
+                    }
+                    Item {
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: furniture.minTitleGap
+                        Layout.preferredHeight: Math.max(0, furniture.height * 0.15
+                                                         - furniture.topRowHeight
+                                                         - topOrnament.height / 2)
+                    }
+
+                    // The backdrop's metal lining, mirrored top and bottom; the
+                    // top one carries the score's title and composer. Declared
+                    // first so that every control and popup draws above it.
+                    BackdropOrnament {
+                        id: topOrnament
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredHeight: implicitHeight
+                        viewWidth: furniture.width
+                        viewHeight: furniture.height
+                        title: scoreHeading.scoreTitle
+                        subtitle: scoreHeading.scoreComposer
+                        // The way to the other scores.
+                        titleClickable: true
+                        titleHintShown: notationPaintView.controlsVisible
+                                        || scoreShelfHint.shown
+                        onTitleClicked: scoreShelf.open()
+                    }
+
+                    Item {
+                        id: scoreBand
+                        Layout.fillHeight: true
+                        // The parchment's, however far it has been zoomed in:
+                        // it pushes what is over and under it
+                        Layout.minimumHeight: Math.max(
+                            60, furniture.scoreBandMargins + notationPaintView.parchmentHeight)
+                        Layout.preferredHeight: furniture.scoreBandRestingHeight
+                    }
+
+                    // While the virtual MIDI keyboard is the MIDI device in use
+                    Item {
+                        id: lowerBand
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: furniture.lowerBandHeight
+                                                * furniture.lowerBandOpen
+
+                        VirtualKeyboard {
+                            id: virtualKeyboard
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 48
+                            anchors.rightMargin: 48
+                            // Right under the score (bottomClearance keeps the
+                            // parchment off), the braces under the keys
+                            anchors.top: parent.top
+                            height: implicitHeight
+                            availableHeight: parent.height - furniture.lowerBandBottomGap
+                            rangesShown: notationPaintView.controlsVisible
+                        }
+                    }
+
+                    BackdropOrnament {
+                        id: bottomOrnament
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredHeight: implicitHeight
+                        viewWidth: furniture.width
+                        viewHeight: furniture.height
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: furniture.minTransportGap
+                        Layout.preferredHeight: furniture.transportGap
+                    }
+
+                    // Under the backdrop's lower rule, centred, so the two read
+                    // as one piece of furniture.
+                    Item {
+                        id: transportRow
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: transportControls.implicitHeight
+
+                        Row {
+                            id: transportControls
+                            anchors.centerIn: parent
+                            spacing: 16
+                            visible: opacity > 0
+                            opacity: notationPaintView.controlsVisible ? 1 : 0
+                            Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                            PlaybackButton {
+                                id: playbackRow
+                                navigationSection: controlsNavSection
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: furniture.minTransportGap
+                        Layout.preferredHeight: furniture.transportGap
+                    }
+
+                    // The sustain pedal. Not part of the fading controls overlay:
+                    // it is feedback while playing, when the mouse is still.
+                    Item {
+                        id: pedalRow
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: furniture.pedalRowHeight
+
+                        PedalIndicator {
+                            id: pedalIndicator
+                            anchors.centerIn: parent
+                            visible: shown
+                        }
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: furniture.minUnderPedals
+                        Layout.preferredHeight: furniture.underPedals
+                    }
+                }
                 // Stays up while hovered (its panel is read there), even
                 // though hovering isn't mouse activity for the overlay.
                 MidiKeyboardIcon {
@@ -351,29 +532,6 @@ ApplicationWindow {
                     visible: shown && opacity > 0
                     opacity: notationPaintView.controlsVisible || hovered ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 250 } }
-                }
-
-                // Under the backdrop's lower rule, centred, so the two read as
-                // one piece of furniture. Hung off the ornament rather than off
-                // the view's bottom edge, so the gap between them is the same
-                // whatever shape the window is — coming out of full screen
-                // especially, which is where absolute positions came unstuck.
-                // The floor keeps the row on screen when the view is too short
-                // to hold both, as it is at the 800 x 350 default size.
-                Row {
-                    id: transportControls
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: Math.min(bottomOrnament.y + bottomOrnament.height + 31,
-                                parent.height - height - 8)
-                    spacing: 16
-                    visible: opacity > 0
-                    opacity: notationPaintView.controlsVisible ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 250 } }
-
-                    PlaybackButton {
-                        id: playbackRow
-                        navigationSection: controlsNavSection
-                    }
                 }
 
                 // Its own corner, mirroring the MIDI indicator's inset in the
@@ -422,17 +580,6 @@ ApplicationWindow {
                         model: gradingModel
                         visible: gradingModel.exposed
                     }
-                }
-
-                // The sustain pedal, opposite the grading toggle at the
-                // bottom centre. Not part of the fading controls overlay:
-                // it is feedback while playing, when the mouse is still.
-                PedalIndicator {
-                    id: pedalIndicator
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
-                    visible: shown
                 }
 
                 // Once the performer has played a score to its end: there are
@@ -841,9 +988,8 @@ ApplicationWindow {
                     z: 104
 
                     anchors.horizontalCenter: parent.horizontalCenter
-                    // Above the pedal indicator, which has the bottom centre.
-                    anchors.bottom: pedalIndicator.top
-                    anchors.bottomMargin: 8
+                    // Above the transport, not to hide it.
+                    y: transportRow.y - height - 8
                     width: tunerRow.width + 48
                     height: tunerRow.height + 24
                     radius: height / 2
@@ -899,26 +1045,45 @@ ApplicationWindow {
         }
     }
 
-    // While the virtual MIDI keyboard is the MIDI device in use: between the
-    // score and the lower rule, where the demos' number keys go
-    VirtualKeyboard {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.leftMargin: 48
-        anchors.rightMargin: 48
-        y: parent.height * 0.69 - rangesHeight
-        z: 900
-        rangesShown: notationPaintView.controlsVisible
-        // Not over the score shelf, which is under it in the window
-        opacity: scoreShelf.shown ? 0 : 1
-        enabled: !scoreShelf.shown
-        Behavior on opacity { NumberAnimation { duration: 200 } }
-    }
-
         // Over everything else in the window, the cursor over the keys
     DemoKeysOverlay {
         anchors.fill: parent
         z: 1000
+    }
+
+    // The window's edges and corners resize it: frameless, it has no frame
+    // of its own to (macOS keeps the native one)
+    Repeater {
+        model: [
+            { edges: Qt.TopEdge, cursor: Qt.SizeVerCursor },
+            { edges: Qt.BottomEdge, cursor: Qt.SizeVerCursor },
+            { edges: Qt.LeftEdge, cursor: Qt.SizeHorCursor },
+            { edges: Qt.RightEdge, cursor: Qt.SizeHorCursor },
+            { edges: Qt.TopEdge | Qt.LeftEdge, cursor: Qt.SizeFDiagCursor },
+            { edges: Qt.BottomEdge | Qt.RightEdge, cursor: Qt.SizeFDiagCursor },
+            { edges: Qt.TopEdge | Qt.RightEdge, cursor: Qt.SizeBDiagCursor },
+            { edges: Qt.BottomEdge | Qt.LeftEdge, cursor: Qt.SizeBDiagCursor }
+        ]
+
+        MouseArea {
+            required property var modelData
+            readonly property real grip: 6
+            readonly property bool atTop: modelData.edges & Qt.TopEdge
+            readonly property bool atBottom: modelData.edges & Qt.BottomEdge
+            readonly property bool atLeft: modelData.edges & Qt.LeftEdge
+            readonly property bool atRight: modelData.edges & Qt.RightEdge
+            // A corner a little bigger than the edges, to be easier to catch
+            readonly property bool corner: (atTop || atBottom) && (atLeft || atRight)
+
+            visible: !root.isMac && root.visibility === Window.Windowed
+            z: 2000
+            x: atRight ? root.width - width : 0
+            y: atBottom ? root.height - height : 0
+            width: atLeft || atRight ? (corner ? 3 * grip : grip) : root.width
+            height: atTop || atBottom ? (corner ? 3 * grip : grip) : root.height
+            cursorShape: modelData.cursor
+            onPressed: root.startSystemResize(modelData.edges)
+        }
     }
 
     DemoCursorOverlay {

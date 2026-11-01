@@ -1901,6 +1901,7 @@ void OrchestrionNotationPaintView::updateNotation()
   {
     m_atStart = true;
     m_defaultZoom = true;
+    m_chosenScaling = 0.0;
     revealModes(true);
     m_modesHideTimer.start(modesShownOnOpenMs);
   }
@@ -1999,7 +2000,11 @@ double OrchestrionNotationPaintView::centredTopY(double scaling) const
   const auto belt = beltRect();
   const double bandTop = belt ? belt->top() : content.top();
   const double bandHeight = belt ? belt->height() : content.height();
-  return bandTop - (height() - bandHeight * scaling) / 2. / scaling;
+  // Centred between the title and what is under the score: in the view,
+  // when they are as far from its edges
+  const double centreY =
+      (m_titleClearance + height() - effectiveBottomClearance()) / 2;
+  return bandTop - (centreY - bandHeight * scaling / 2.) / scaling;
 }
 
 void OrchestrionNotationPaintView::constrainScorePosition()
@@ -2029,12 +2034,25 @@ void OrchestrionNotationPaintView::constrainScorePosition()
   // follows the view's height (see defaultStaffSpacesPerViewHeight).
   m_zoomingItself = true;
   if (m_defaultZoom && laidOutOnLine())
-    setScaling(height() / defaultStaffSpacesPerViewHeight /
-                   notation()->elements()->msScore()->style().spatium(),
-               muse::PointF{width() / 2, height() / 2});
+  {
+    double defaultScaling =
+        height() / defaultStaffSpacesPerViewHeight /
+        notation()->elements()->msScore()->style().spatium();
+    // Not so large that it pushes the furniture: that is for the user to do
+    if (const auto extent = scoreExtent();
+        extent && extent->height() > 0 && m_restingParchmentHeight > 0)
+      defaultScaling = std::min(defaultScaling,
+                                (m_restingParchmentHeight - 2 * m_beltPadding) /
+                                    extent->height());
+    setScaling(defaultScaling, muse::PointF{width() / 2, height() / 2});
+  }
   else if (const auto [minScaling, maxScaling] = scalingLimits();
-           currentScaling() < minScaling || currentScaling() > maxScaling)
-    setScaling(currentScaling(), muse::PointF{width() / 2, height() / 2});
+           !qFuzzyCompare(std::clamp(m_chosenScaling > 0 ? m_chosenScaling
+                                                         : currentScaling(),
+                                     minScaling, maxScaling),
+                          currentScaling()))
+    setScaling(m_chosenScaling > 0 ? m_chosenScaling : currentScaling(),
+               muse::PointF{width() / 2, height() / 2});
   m_zoomingItself = false;
 
   const auto scaling = currentScaling();
@@ -2431,7 +2449,19 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   // Where they are drawn moves with the score: the controls in QML follow.
   // Painted on the render thread maybe, so on the view's own.
   QMetaObject::invokeMethod(
-      this, [this] { updateStaffModeControls(); }, Qt::QueuedConnection);
+      this,
+      [this, parchmentHeight = belt.valid ? belt.viewY(belt.paper.bottom()) -
+                                                belt.viewY(belt.paper.top())
+                                          : m_parchmentHeight]
+      {
+        updateStaffModeControls();
+        if (!qFuzzyCompare(parchmentHeight, m_parchmentHeight))
+        {
+          m_parchmentHeight = parchmentHeight;
+          emit parchmentHeightChanged();
+        }
+      },
+      Qt::QueuedConnection);
 
   // If the parchment is not where constrainScorePosition() would have put it,
   // the layout landed after the last time that ran — at startup it does —
@@ -2440,7 +2470,9 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   // every frame.
   const double bandCentre =
       (belt.viewY(belt.paper.top()) + belt.viewY(belt.paper.bottom())) / 2;
-  if (std::abs(bandCentre - height() / 2) > 1.0 &&
+  const double centreY =
+      (m_titleClearance + height() - effectiveBottomClearance()) / 2;
+  if (std::abs(bandCentre - centreY) > 1.0 &&
       !qFuzzyCompare(bandCentre, m_lastRecentreAt))
   {
     m_lastRecentreAt = bandCentre;
@@ -2467,6 +2499,62 @@ void OrchestrionNotationPaintView::setTitleClearance(double clearance)
     return;
   m_titleClearance = clearance;
   emit titleClearanceChanged();
+  // The parchment's place depends on it
+  if (notation())
+    constrainScorePosition();
+}
+
+void OrchestrionNotationPaintView::setBottomClearance(double clearance)
+{
+  clearance = std::max(0.0, clearance);
+  if (qFuzzyCompare(clearance, m_bottomClearance))
+    return;
+  m_bottomClearance = clearance;
+  emit bottomClearanceChanged();
+  // The parchment's place depends on it
+  if (notation())
+    constrainScorePosition();
+}
+
+void OrchestrionNotationPaintView::setRestingParchmentHeight(double height)
+{
+  height = std::max(0.0, height);
+  if (qFuzzyCompare(height, m_restingParchmentHeight))
+    return;
+  m_restingParchmentHeight = height;
+  emit restingParchmentHeightChanged();
+  // The default zoom depends on it
+  if (notation())
+    constrainScorePosition();
+}
+
+void OrchestrionNotationPaintView::setTightestTitleClearance(double clearance)
+{
+  clearance = std::max(0.0, clearance);
+  if (qFuzzyCompare(clearance, m_tightestTitleClearance))
+    return;
+  m_tightestTitleClearance = clearance;
+  emit tightestTitleClearanceChanged();
+  // The largest zoom depends on it
+  if (notation())
+    constrainScorePosition();
+}
+
+void OrchestrionNotationPaintView::setTightestBottomClearance(double clearance)
+{
+  clearance = std::max(0.0, clearance);
+  if (qFuzzyCompare(clearance, m_tightestBottomClearance))
+    return;
+  m_tightestBottomClearance = clearance;
+  emit tightestBottomClearanceChanged();
+  // The largest zoom depends on it
+  if (notation())
+    constrainScorePosition();
+}
+
+double OrchestrionNotationPaintView::effectiveBottomClearance() const
+{
+  return m_bottomClearance > 0 ? m_bottomClearance : m_titleClearance;
 }
 
 void OrchestrionNotationPaintView::setRollMargin(double margin)
@@ -2677,13 +2765,19 @@ std::pair<double, double> OrchestrionNotationPaintView::scalingLimits() const
       (width() - 2 * margin - 2 * pad * (1 + 2 * ratio)) /
       std::max(1e-6, content.width() + 2 * ratio * content.height());
 
-  // Wound in: the parchment is centred, so its top is (H - height) / 2 down
-  // the view, and that is as far up as the title's ornament reaches. QML
-  // hands over where that is, so tightening or loosening the headroom is a
-  // matter of what it passes.
-  const double maxScaling = (height() - 2 * pad - 2 * m_titleClearance) /
+  // Wound in: the parchment pushes the title and what is under the score out
+  // of its way (see Main.qml), until they can go no further, and reaches
+  // neither. QML hands over where that is, so tightening or loosening the
+  // headroom is a matter of what it passes.
+  const double maxScaling = (height() - 2 * pad - m_tightestTitleClearance -
+                             m_tightestBottomClearance) /
                             std::max(1e-6, content.height());
 
+  // A view too flat for both: the parchment keeps clear of the title and
+  // what is under the score rather than reach the cylinders. With no room at
+  // all it isn't laid out yet, and a scaling must not be 0.
+  if (maxScaling > 0 && maxScaling < minScaling)
+    return {maxScaling, maxScaling};
   return {std::max(0.0, minScaling), std::max(minScaling, maxScaling)};
 }
 
@@ -2703,11 +2797,14 @@ void OrchestrionNotationPaintView::setScaling(qreal scaling,
 {
   // The user's zoom stands from then on. Not one set before the score is on
   // its line: MuseScore's own, on opening it.
-  if (!m_zoomingItself && laidOutOnLine())
-    m_defaultZoom = false;
   const auto [minScaling, maxScaling] = scalingLimits();
-  NotationPaintView::setScaling(std::clamp(scaling, minScaling, maxScaling),
-                                pos, overrideZoomType);
+  const double clamped = std::clamp(scaling, minScaling, maxScaling);
+  if (!m_zoomingItself && laidOutOnLine())
+  {
+    m_defaultZoom = false;
+    m_chosenScaling = clamped;
+  }
+  NotationPaintView::setScaling(clamped, pos, overrideZoomType);
 }
 
 OrchestrionNotationPaintView::BeltGeometry
