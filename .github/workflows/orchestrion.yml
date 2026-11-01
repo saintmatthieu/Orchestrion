@@ -4,8 +4,9 @@ on:
   push:
     branches: [master]
     tags: ["v*"]
-    # The website (docs/) is published by GitHub Pages; no need to build the
-    # app for it. Tag pushes ignore path filters, so releases still build.
+    # The website (docs/) is deployed by website.yml, at releases or by hand;
+    # no need to build the app for it. Tag pushes ignore path filters, so
+    # releases still build.
     paths-ignore: ["docs/**"]
   pull_request:
     branches: [master]
@@ -418,6 +419,8 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
+          # The installers (and symbols), not the website's videos
+          pattern: "Orchestrion {Windows,Mac,Linux}*"
           path: ./artifacts
           merge-multiple: true
 
@@ -428,3 +431,16 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The website, with the videos rendered from the released app: a release
+  # updates it, a push to master doesn't.
+  website:
+    needs: [release, testflow_linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/website.yml
+    with:
+      videos-artifact: Orchestrion testflow videos

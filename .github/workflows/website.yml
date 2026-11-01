@@ -1,0 +1,80 @@
+name: Website
+
+# Deploys orchestrion.app: docs/, with the tutorials' videos, which aren't in
+# the repository (see tools/run_testflow.sh --render).
+# - Released (orchestrion.yml's website job): the tag's docs/, with the videos
+#   the release's testflow job rendered from the released app.
+# - By hand (Actions > Website > Run workflow): docs/ from the branch chosen,
+#   with the live site's videos - a fix to the site between releases.
+# GitHub Pages' source must be "GitHub Actions" (Settings > Pages), and the
+# github-pages environment must allow deployments from v* tags.
+
+on:
+  workflow_call:
+    inputs:
+      videos-artifact:
+        description: The calling run's artifact holding the videos
+        type: string
+        required: true
+  workflow_dispatch:
+
+# One deployment at a time, none cancelled half-way
+concurrency:
+  group: website
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: docs
+
+      - name: Videos of the release
+        if: inputs.videos-artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.videos-artifact }}
+          path: docs/assets/videos
+
+      - name: Videos of the live site
+        if: inputs.videos-artifact == ''
+        run: |
+          site="https://$(cat docs/CNAME)/assets/videos"
+          mkdir -p docs/assets/videos
+          if ! curl -fsSL "$site/manifest.json" -o manifest.json; then
+            echo "::warning::$site/manifest.json not found: deploying without videos"
+            exit 0
+          fi
+          for file in $(jq -r '.files[]' manifest.json); do
+            curl -fsSL "$site/$file" -o "docs/assets/videos/$file"
+          done
+
+      - name: Manifest of the videos
+        # What a deployment by hand takes from the live site
+        run: |
+          cd docs/assets/videos
+          ls | grep -vx manifest.json | jq -R . | jq -s '{files: .}' > manifest.json
+          cat manifest.json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

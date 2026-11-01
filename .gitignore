@@ -7,3 +7,6 @@ _deps
 *.pyc
 .vs
 .claude/settings.json
+
+# The tutorials' videos, rendered at deployment (.github/workflows/website.yml)
+docs/assets/videos/
