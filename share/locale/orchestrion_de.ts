@@ -1910,6 +1910,41 @@ Es werden keine Noten gelöscht.</translation>
         <translation>Macht die letzte Änderung der Partitur rückgängig (die Modi der Notenzeilen, …)</translation>
     </message>
     <message>
+        <location filename="../../src/ExternalDevices/internal/MidiDevice/VirtualMidiInPort.cpp" line="1"/>
+        <source>Virtual keyboard</source>
+        <translation>Virtuelle Tastatur</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>MIDI note</source>
+        <translation>MIDI-Note</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>Plays a key of the virtual MIDI keyboard</source>
+        <translation>Spielt eine Taste der virtuellen MIDI-Tastatur</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>MIDI pedal</source>
+        <translation>MIDI-Pedal</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>Presses or lifts the virtual MIDI keyboard&apos;s pedal</source>
+        <translation>Tritt oder löst das Pedal der virtuellen MIDI-Tastatur</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>MIDI device</source>
+        <translation>MIDI-Gerät</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>Chooses the MIDI input device, as the Audio/MIDI menu does; answers with the one in use</source>
+        <translation>Wählt das MIDI-Eingabegerät, wie das Menü Audio/MIDI; antwortet mit dem verwendeten</translation>
+    </message>
+    <message>
         <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
         <source>Demo: click</source>
         <translation>Demo: Klick</translation>
@@ -2006,6 +2041,24 @@ Es werden keine Noten gelöscht.</translation>
         <location filename="../../src/qml/DemoKeysOverlay.qml" line="59"/>
         <source>Tutorial · Esc or Stop to end it</source>
         <translation>Anleitung · Esc oder Stopp zum Beenden</translation>
+    </message>
+</context>
+<context>
+    <name>VirtualKeyboard</name>
+    <message>
+        <location filename="../../src/qml/VirtualKeyboard.qml" line="85"/>
+        <source>Left hand</source>
+        <translation>Linke Hand</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/VirtualKeyboard.qml" line="85"/>
+        <source>Right hand</source>
+        <translation>Rechte Hand</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/VirtualKeyboard.qml" line="85"/>
+        <source>Notes</source>
+        <translation>Noten</translation>
     </message>
 </context>
 <context>

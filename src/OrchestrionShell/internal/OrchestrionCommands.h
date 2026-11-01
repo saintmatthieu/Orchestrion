@@ -20,6 +20,8 @@
 
 #include "DemoCursor.h"
 #include "DemoKeys.h"
+#include "ExternalDevices/IMidiDeviceService.h"
+#include "ExternalDevices/IVirtualMidiKeyboard.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IStaffModes.h"
@@ -73,6 +75,8 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<muse::ui::IMainWindow> mainWindow{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<IStaffModes> staffModes{this};
+  dgk::Inject<IVirtualMidiKeyboard> virtualMidiKeyboard{this};
+  dgk::Inject<IMidiDeviceService> midiDeviceService{this};
 
 public:
   OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor,

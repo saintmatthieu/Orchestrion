@@ -55,7 +55,11 @@ void MidiDeviceGestureController::onMidiEventReceived(
   if (event.opcode() == muse::midi::Event::Opcode::NoteOn)
   {
     const auto velocity = event.velocity7() / 128.0f;
-    m_noteOn.send(event.note(), compressVelocity(velocity));
+    // Not the virtual keyboard's, struck where it is clicked: compressed, it
+    // couldn't play softer than pp
+    m_noteOn.send(event.note(), virtualKeyboard()->inUse()
+                                    ? velocity
+                                    : compressVelocity(velocity));
   }
   else if (event.opcode() == muse::midi::Event::Opcode::NoteOff)
     m_noteOff.send(event.note());

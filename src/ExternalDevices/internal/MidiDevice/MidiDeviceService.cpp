@@ -141,9 +141,11 @@ std::vector<ExternalDeviceId> MidiDeviceService::availableDevices() const
 
 std::vector<ExternalDeviceId> MidiDeviceService::controllerCandidates() const
 {
+  // Not the virtual keyboard either: only ever chosen expressly
   std::vector<ExternalDeviceId> ids;
   for (const auto &device : midiInPort()->availableDevices())
-    if (device.id != noDevice.value && device.name != "Midi Through")
+    if (device.id != noDevice.value && device.name != "Midi Through" &&
+        device.id != virtualKeyboard()->deviceId())
       ids.emplace_back(device.id);
   return ids;
 }

@@ -21,6 +21,7 @@
 #include "internal/AudioDevice/AudioDeviceService.h"
 #include "internal/ExternalDevicesConfiguration.h"
 #include "internal/MidiDevice/MidiDeviceService.h"
+#include "internal/MidiDevice/VirtualMidiInPort.h"
 
 namespace dgk
 {
@@ -41,10 +42,23 @@ void ExternalDevicesModule::registerExports()
                                                   m_midiDeviceService);
   globalIoc()->registerExport<IExternalDevicesConfiguration>(moduleName(),
                                                              m_configuration);
+
+  // MuseScore's MIDI input port, with the virtual keyboard among its devices,
+  // in its stead (the midi module registers before this one)
+  if (const auto port =
+          globalIoc()->resolve<muse::midi::IMidiInPort>(moduleName()))
+  {
+    const auto virtualPort = std::make_shared<VirtualMidiInPort>(port);
+    globalIoc()->unregister<muse::midi::IMidiInPort>(moduleName());
+    globalIoc()->registerExport<muse::midi::IMidiInPort>(moduleName(),
+                                                         virtualPort);
+    globalIoc()->registerExport<IVirtualMidiKeyboard>(moduleName(),
+                                                      virtualPort);
+  }
 }
 
-muse::modularity::IContextSetup *ExternalDevicesModule::newContext(
-    const muse::modularity::ContextPtr &ctx) const
+muse::modularity::IContextSetup *
+ExternalDevicesModule::newContext(const muse::modularity::ContextPtr &ctx) const
 {
   ModuleContextSetup::Hooks hooks;
   hooks.onInit = [this](const muse::IApplication::RunMode &mode)

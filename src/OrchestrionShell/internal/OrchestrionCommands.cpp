@@ -61,6 +61,20 @@ const muse::rcommand::Command
 const muse::rcommand::Command
     staffModeCommand("command://orchestrion/staff-mode");
 const muse::rcommand::Command undoCommand("command://orchestrion/undo");
+const muse::rcommand::Command
+    midiNoteCommand("command://orchestrion/midi-note");
+const muse::rcommand::Command
+    midiPedalCommand("command://orchestrion/midi-pedal");
+const muse::rcommand::Command
+    midiDeviceCommand("command://orchestrion/midi-device");
+
+muse::Ret virtualKeyboardInUseRet(bool inUse)
+{
+  return inUse ? muse::make_ok()
+               : muse::make_ret(muse::Ret::Code::UnknownError,
+                                "the virtual keyboard isn't the MIDI device "
+                                "in use (see midi-device)");
+}
 
 /**
  * As the score names them (see StaffModes).
@@ -157,7 +171,8 @@ OrchestrionCommandsRegister::commandList() const
         openScoreCommand,        quitCommand,         demoClickCommand,
         demoMoveCommand,         demoHideCommand,     demoKeysCommand,
         demoCaptionCommand,      demoKeyPressCommand, demoKeyReleaseCommand,
-        waitUntilStoppedCommand, staffModeCommand,    undoCommand};
+        waitUntilStoppedCommand, staffModeCommand,    undoCommand,
+        midiNoteCommand,         midiPedalCommand,    midiDeviceCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -239,6 +254,39 @@ OrchestrionCommandsRegister::commandInfoList() const
             {{"staff",
               muse::rcommand::Arg(muse::rcommand::DataType::Integer,
                                   u"0 the upper staff, 1 the lower")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        midiNoteCommand, muse::TranslatableString("orchestrion", "MIDI note"),
+        muse::TranslatableString("orchestrion",
+                                 "Plays a key of the virtual MIDI keyboard"),
+        muse::rcommand::InputSchema(
+            {{"pitch", muse::rcommand::Arg(muse::rcommand::DataType::Integer,
+                                           u"The MIDI pitch, 60 middle C")},
+             {"velocity",
+              muse::rcommand::Arg(muse::rcommand::DataType::Float,
+                                  u"How hard, 0 to 1; 0 releases the key")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        midiPedalCommand, muse::TranslatableString("orchestrion", "MIDI pedal"),
+        muse::TranslatableString(
+            "orchestrion",
+            "Presses or lifts the virtual MIDI keyboard's pedal"),
+        muse::rcommand::InputSchema(
+            {{"down", muse::rcommand::Arg(muse::rcommand::DataType::Boolean,
+                                          u"Whether it is down")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        midiDeviceCommand,
+        muse::TranslatableString("orchestrion", "MIDI device"),
+        muse::TranslatableString(
+            "orchestrion",
+            "Chooses the MIDI input device, as the Audio/MIDI menu does; "
+            "answers with the one in use"),
+        muse::rcommand::InputSchema(
+            {{"id", muse::rcommand::Arg(
+                        muse::rcommand::DataType::String,
+                        u"Its id, \"virtual\" the virtual keyboard; none, "
+                        u"no change")}}),
         muse::rcommand::Decoration());
     list.emplace_back(
         undoCommand, muse::TranslatableString("orchestrion", "Undo"),
@@ -326,6 +374,39 @@ void OrchestrionCommands::registerHandlers()
                                       "nothing to undo");
               stack->undo(nullptr);
               return muse::make_ok();
+            });
+  onRequest(midiNoteCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const auto pitch = params.find("pitch");
+              const auto velocity = params.find("velocity");
+              if (pitch == params.end())
+                return muse::make_ret(muse::Ret::Code::UnknownError,
+                                      "no pitch");
+              virtualMidiKeyboard()->note(
+                  pitch->second.toInt(),
+                  velocity == params.end() ? 0.0f : velocity->second.toFloat());
+              return virtualKeyboardInUseRet(virtualMidiKeyboard()->inUse());
+            });
+  onRequest(midiPedalCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const auto it = params.find("down");
+              virtualMidiKeyboard()->sustainPedal(it == params.end() ||
+                                                  it->second.toBool());
+              return virtualKeyboardInUseRet(virtualMidiKeyboard()->inUse());
+            });
+  onRequest(midiDeviceCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              if (const QString id = stringParam(params, "id"); !id.isEmpty())
+                midiDeviceService()->selectDevice(ExternalDeviceId{
+                    id == u"virtual" ? virtualMidiKeyboard()->deviceId()
+                                     : id.toStdString()});
+              muse::Ret ret = muse::make_ok();
+              const auto selected = midiDeviceService()->selectedDevice();
+              ret.setText(selected ? selected->value : std::string{});
+              return ret;
             });
   onRequestAsync(waitUntilStoppedCommand,
                  [this](const muse::rcommand::Params &, Done done)

@@ -102,6 +102,7 @@ public:
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
+  KeyRole RoleOfKey(int pitch) const override;
 
 private:
   struct Hand

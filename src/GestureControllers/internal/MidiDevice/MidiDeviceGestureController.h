@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "ExternalDevices/IVirtualMidiKeyboard.h"
 #include "IGestureController.h"
 
 #include "async/asyncable.h"
@@ -46,6 +47,7 @@ private:
   muse::async::Channel<bool> sustainPedal() const override;
 
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
+  dgk::Inject<IVirtualMidiKeyboard> virtualKeyboard{this};
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
   muse::async::Channel<bool> m_sustainPedal;

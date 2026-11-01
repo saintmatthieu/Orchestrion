@@ -53,6 +53,7 @@
 #include "view/ScoreShelfHintModel.h"
 #include "view/ScoreShelfModel.h"
 #include "view/TutorialOfferModel.h"
+#include "view/VirtualKeyboardModel.h"
 
 #include <QQmlEngine>
 
@@ -109,6 +110,8 @@ void OrchestrionShellModule::registerUiTypes()
                                 "GradingModel");
   qmlRegisterType<MidiKeyboardIconModel>("Orchestrion.OrchestrionShell", 1, 0,
                                          "MidiKeyboardIconModel");
+  qmlRegisterType<VirtualKeyboardModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                        "VirtualKeyboardModel");
   qmlRegisterType<PedalIndicatorModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "PedalIndicatorModel");
   qmlRegisterType<ScoreAttributionModel>("Orchestrion.OrchestrionShell", 1, 0,

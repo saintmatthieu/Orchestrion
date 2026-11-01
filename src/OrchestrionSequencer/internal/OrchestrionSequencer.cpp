@@ -547,6 +547,16 @@ bool OrchestrionSequencer::IsNotesKey(int pitch) const
   return true;
 }
 
+IOrchestrionSequencer::KeyRole OrchestrionSequencer::RoleOfKey(int pitch) const
+{
+  // As OnInputEvent routes a key struck
+  if (IsNotesKey(pitch))
+    return KeyRole::notes;
+  if (const auto isLeftHand = PerformerHand(pitch))
+    return *isLeftHand ? KeyRole::leftHand : KeyRole::rightHand;
+  return KeyRole::none;
+}
+
 std::optional<bool> OrchestrionSequencer::PerformerHand(int pitch) const
 {
   const auto plays = [this](bool isLeftHand)

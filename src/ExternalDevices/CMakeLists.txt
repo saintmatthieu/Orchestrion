@@ -6,6 +6,8 @@ set(MODULE_SRC
 
     internal/MidiDevice/MidiDeviceService.cpp
     internal/MidiDevice/MidiDeviceService.h
+    internal/MidiDevice/VirtualMidiInPort.cpp
+    internal/MidiDevice/VirtualMidiInPort.h
 
     internal/ExternalDevicesConfiguration.cpp
     internal/ExternalDevicesConfiguration.h
@@ -15,6 +17,7 @@ set(MODULE_SRC
     ExternalDevicesModule.h
     ExternalDevicesTypes.h
     IMidiDeviceService.h
+    IVirtualMidiKeyboard.h
 )
 
 set(MODULE_LINK muse_audio)

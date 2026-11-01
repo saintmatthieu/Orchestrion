@@ -21,6 +21,7 @@
 #include "../ExternalDevicesUtils.h"
 #include "IExternalDevicesConfiguration.h"
 #include "IMidiDeviceService.h"
+#include "IVirtualMidiKeyboard.h"
 
 #include "async/asyncable.h"
 #include "async/notification.h"
@@ -77,6 +78,7 @@ private:
 
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
   dgk::Inject<IExternalDevicesConfiguration> configuration{this};
+  dgk::Inject<IVirtualMidiKeyboard> virtualKeyboard{this};
   muse::async::Notification m_selectedDeviceChanged;
   bool m_deviceChangeExpected = false;
   bool m_postInitCalled = false;

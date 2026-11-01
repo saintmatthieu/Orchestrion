@@ -185,6 +185,20 @@ public:
    * the Mute ones. Returns std::nullopt when there is nothing left to play.
    */
   virtual std::optional<NextAutoPlayEvents> WhatToPlayNext() = 0;
+
+  /** What a key of a MIDI keyboard plays (see OnInputEvent). */
+  enum class KeyRole
+  {
+    /** Nothing */
+    none,
+    /** The left hand's next chord */
+    leftHand,
+    /** The right hand's next chord */
+    rightHand,
+    /** Its own pitch, of a staff in the Notes mode */
+    notes,
+  };
+  virtual KeyRole RoleOfKey(int pitch) const = 0;
 };
 
 using IOrchestrionSequencerPtr = std::shared_ptr<IOrchestrionSequencer>;

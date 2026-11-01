@@ -899,6 +899,18 @@ ApplicationWindow {
         }
     }
 
+    // While the virtual MIDI keyboard is the MIDI device in use: between the
+    // score and the lower rule, where the demos' number keys go
+    VirtualKeyboard {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 48
+        anchors.rightMargin: 48
+        y: parent.height * 0.69 - rangesHeight
+        z: 900
+        rangesShown: notationPaintView.controlsVisible
+    }
+
         // Over everything else in the window, the cursor over the keys
     DemoKeysOverlay {
         anchors.fill: parent

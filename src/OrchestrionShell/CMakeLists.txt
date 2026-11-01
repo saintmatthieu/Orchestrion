@@ -58,6 +58,8 @@ set(MODULE_SRC
   view/GradingModel.h
   view/MidiKeyboardIconModel.cpp
   view/MidiKeyboardIconModel.h
+  view/VirtualKeyboardModel.cpp
+  view/VirtualKeyboardModel.h
   view/PedalIndicatorModel.cpp
   view/PedalIndicatorModel.h
   view/PlaybackButtonModel.cpp

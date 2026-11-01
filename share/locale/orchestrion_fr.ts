@@ -1910,6 +1910,41 @@ Aucune partition n&apos;est supprimée.</translation>
         <translation>Annule la dernière modification de la partition (les modes des portées, …)</translation>
     </message>
     <message>
+        <location filename="../../src/ExternalDevices/internal/MidiDevice/VirtualMidiInPort.cpp" line="1"/>
+        <source>Virtual keyboard</source>
+        <translation>Clavier virtuel</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>MIDI note</source>
+        <translation>Note MIDI</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>Plays a key of the virtual MIDI keyboard</source>
+        <translation>Joue une touche du clavier MIDI virtuel</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>MIDI pedal</source>
+        <translation>Pédale MIDI</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>Presses or lifts the virtual MIDI keyboard&apos;s pedal</source>
+        <translation>Enfonce ou relève la pédale du clavier MIDI virtuel</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>MIDI device</source>
+        <translation>Appareil MIDI</translation>
+    </message>
+    <message>
+        <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="1"/>
+        <source>Chooses the MIDI input device, as the Audio/MIDI menu does; answers with the one in use</source>
+        <translation>Choisit l’appareil d’entrée MIDI, comme le menu Audio/MIDI ; répond avec celui utilisé</translation>
+    </message>
+    <message>
         <location filename="../../src/OrchestrionShell/internal/OrchestrionCommands.cpp" line="162"/>
         <source>Demo: click</source>
         <translation>Démo : clic</translation>
@@ -2006,6 +2041,24 @@ Aucune partition n&apos;est supprimée.</translation>
         <location filename="../../src/qml/DemoKeysOverlay.qml" line="59"/>
         <source>Tutorial · Esc or Stop to end it</source>
         <translation>Tutoriel · Échap ou Stop pour l’arrêter</translation>
+    </message>
+</context>
+<context>
+    <name>VirtualKeyboard</name>
+    <message>
+        <location filename="../../src/qml/VirtualKeyboard.qml" line="85"/>
+        <source>Left hand</source>
+        <translation>Main gauche</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/VirtualKeyboard.qml" line="85"/>
+        <source>Right hand</source>
+        <translation>Main droite</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/VirtualKeyboard.qml" line="85"/>
+        <source>Notes</source>
+        <translation>Notes</translation>
     </message>
 </context>
 <context>
