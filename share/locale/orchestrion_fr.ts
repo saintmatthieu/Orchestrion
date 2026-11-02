@@ -101,7 +101,7 @@
     <message>
         <location filename="../../src/qml/MidiKeyboardIcon.qml" line="145"/>
         <source>Use a MIDI keyboard to get better control over nuances</source>
-        <translation>Utilisez un clavier MIDI pour un meilleur contrôle des nuances</translation>
+        <translation>Utilise un clavier MIDI pour un meilleur contrôle des nuances</translation>
     </message>
 </context>
 <context>
@@ -481,12 +481,12 @@
     <message>
         <location filename="../../MuseScore/src/framework/audio/internal/soundfontrepository.cpp" line="105"/>
         <source>Do you want to add the SoundFont: %1?</source>
-        <translation>Voulez-vous ajouter la SoundFont : %1 ?</translation>
+        <translation>Veux-tu ajouter la SoundFont : %1 ?</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/audio/internal/soundfontrepository.cpp" line="123"/>
         <source>File already exists. Do you want to overwrite it?</source>
-        <translation>Le fichier existe déjà. Voulez-vous le remplacer ?</translation>
+        <translation>Le fichier existe déjà. Veux-tu le remplacer ?</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/audio/internal/soundfontrepository.cpp" line="125"/>
@@ -501,7 +501,7 @@
     <message>
         <location filename="../../MuseScore/src/framework/audio/internal/soundfontrepository.cpp" line="145"/>
         <source>You can assign soundfonts to instruments using the mixer panel.</source>
-        <translation>Vous pouvez assigner des SoundFonts aux instruments depuis le panneau de mixage.</translation>
+        <translation>Tu peux assigner des SoundFonts aux instruments depuis le panneau de mixage.</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/audioplugins/internal/registeraudiopluginsscenario.cpp" line="80"/>
@@ -515,7 +515,7 @@
     <message>
         <location filename="../../MuseScore/src/framework/cloud/internal/oauthhttpserverreplyhandler.cpp" line="184"/>
         <source>Sign in successful! You're good to go back to MuseScore Studio.</source>
-        <translation>Connexion réussie ! Vous pouvez retourner dans MuseScore Studio.</translation>
+        <translation>Connexion réussie ! Tu peux retourner dans MuseScore Studio.</translation>
     </message>
 </context>
 <context>
@@ -528,7 +528,7 @@
     <message>
         <location filename="../../MuseScore/src/framework/diagnostics/internal/savediagnosticfilesscenario.cpp" line="38"/>
         <source>This will create a .zip file with information about your MuseScore Studio setup to help developers diagnose any problems you are having. You can inspect the contents of this file before sending it to anyone.</source>
-        <translation>Un fichier .zip contenant des informations sur votre configuration de MuseScore Studio sera créé pour aider les développeurs à diagnostiquer vos problèmes. Vous pouvez en inspecter le contenu avant de l&apos;envoyer.</translation>
+        <translation>Un fichier .zip contenant des informations sur ta configuration de MuseScore Studio sera créé pour aider les développeurs à diagnostiquer tes problèmes. Tu peux en inspecter le contenu avant de l&apos;envoyer.</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/diagnostics/internal/savediagnosticfilesscenario.cpp" line="52"/>
@@ -581,7 +581,7 @@
     <message>
         <location filename="../../src/OrchestrionSynthesis/internal/EffectChain.cpp" line="465"/>
         <source>Start Orchestrion with QT_QPA_PLATFORM=xcb to open a plugin&apos;s settings window.</source>
-        <translation>Démarrez Orchestrion avec QT_QPA_PLATFORM=xcb pour ouvrir la fenêtre de réglages d&apos;un plugin.</translation>
+        <translation>Démarre Orchestrion avec QT_QPA_PLATFORM=xcb pour ouvrir la fenêtre de réglages d&apos;un plugin.</translation>
     </message>
     <message>
         <location filename="../../src/qml/EffectHeader.qml" line="94"/>
@@ -654,12 +654,12 @@
     <message>
         <location filename="../../MuseScore/src/framework/extensions/internal/extensionsactioncontroller.cpp" line="72"/>
         <source>The plugin "%1" is currently disabled. Do you want to enable it now?</source>
-        <translation>Le plugin « %1 » est actuellement désactivé. Voulez-vous l&apos;activer maintenant ?</translation>
+        <translation>Le plugin « %1 » est actuellement désactivé. Veux-tu l&apos;activer maintenant ?</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/extensions/internal/extensionsactioncontroller.cpp" line="73"/>
         <source>Alternatively, you can enable it at any time from Home &gt; Plugins.</source>
-        <translation>Vous pouvez également l&apos;activer à tout moment depuis Accueil &gt; Plugins.</translation>
+        <translation>Tu peux également l&apos;activer à tout moment depuis Accueil &gt; Plugins.</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/extensions/internal/extensionsprovider.cpp" line="42"/>
@@ -1049,9 +1049,9 @@ Whether you are just getting started with music notation software, or are a powe
 In addition, Mastering MuseScore features a supportive community of musicians, with discussion spaces, live streams, and other related courses and services to help you create your best music. Take advantage of this opportunity to learn MuseScore from one of its most recognized experts!</source>
         <translation>Bienvenue dans Mastering MuseScore – la ressource la plus complète pour apprendre le logiciel de notation musicale le plus populaire au monde ! Je m&apos;appelle Marc Sabatella, et j&apos;aide à développer, soutenir et promouvoir MuseScore depuis sa sortie initiale il y a plus de dix ans.
 
-Que vous débutiez avec un logiciel de notation musicale ou que vous soyez un utilisateur avancé souhaitant explorer des techniques de gravure et de lecture sophistiquées, mon cours en ligne phare Mastering MuseScore couvre tout ce dont vous avez besoin pour tirer le meilleur parti de MuseScore.
+Que tu débutes avec un logiciel de notation musicale ou que tu sois un utilisateur avancé souhaitant explorer des techniques de gravure et de lecture sophistiquées, mon cours en ligne phare Mastering MuseScore couvre tout ce dont tu as besoin pour tirer le meilleur parti de MuseScore.
 
-De plus, Mastering MuseScore propose une communauté de musiciens solidaire, avec des espaces de discussion, des diffusions en direct, et d&apos;autres cours et services connexes pour vous aider à créer votre meilleure musique. Profitez de cette occasion pour apprendre MuseScore auprès de l&apos;un de ses experts les plus reconnus !</translation>
+De plus, Mastering MuseScore propose une communauté de musiciens solidaire, avec des espaces de discussion, des diffusions en direct, et d&apos;autres cours et services connexes pour t'aider à créer ta meilleure musique. Profite de cette occasion pour apprendre MuseScore auprès de l&apos;un de ses experts les plus reconnus !</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/learn/view/learnpagemodel.cpp" line="96"/>
@@ -1070,8 +1070,8 @@ De plus, Mastering MuseScore propose une communauté de musiciens solidaire, ave
         <location filename="../../src/OrchestrionShell/internal/ControllerMenuManager.cpp" line="136"/>
         <source>You may check that it is not used by another application,
 select another controller or use the computer keyboard.</source>
-        <translation>Vérifiez qu&apos;il n&apos;est pas utilisé par une autre application,
-sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.</translation>
+        <translation>Vérifie qu&apos;il n&apos;est pas utilisé par une autre application,
+sélectionne un autre contrôleur ou utilise le clavier de l&apos;ordinateur.</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/midi/internal/platform/lin/alsamidiinport.cpp" line="85"/>
@@ -1256,7 +1256,7 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../MuseScore/src/framework/shortcuts/view/editshortcutmodel.cpp" line="171"/>
         <source>Are you sure you want to assign it to &lt;b&gt;%1&lt;/b&gt; instead?</source>
-        <translation>Voulez-vous vraiment l&apos;assigner à &lt;b&gt;%1&lt;/b&gt; à la place ?</translation>
+        <translation>Veux-tu vraiment l&apos;assigner à &lt;b&gt;%1&lt;/b&gt; à la place ?</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/shortcuts/view/editshortcutmodel.cpp" line="176"/>
@@ -1523,12 +1523,12 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../MuseScore/src/framework/update/internal/updatescenario.cpp" line="140"/>
         <source>You already have the latest version of MuseScore Studio. Please visit &lt;a href=&quot;%1&quot;&gt;musescore.org&lt;/a&gt; for news on what's coming next.</source>
-        <translation>Vous disposez déjà de la dernière version de MuseScore Studio. Consultez &lt;a href=&quot;%1&quot;&gt;musescore.org&lt;/a&gt; pour les nouveautés à venir.</translation>
+        <translation>Tu disposes déjà de la dernière version de MuseScore Studio. Consulte &lt;a href=&quot;%1&quot;&gt;musescore.org&lt;/a&gt; pour les nouveautés à venir.</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/update/internal/updatescenario.cpp" line="147"/>
         <source>You're up to date!</source>
-        <translation>Vous êtes à jour !</translation>
+        <translation>Tu es à jour !</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/update/internal/updatescenario.cpp" line="176"/>
@@ -1538,12 +1538,12 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../MuseScore/src/framework/update/internal/updatescenario.cpp" line="177"/>
         <source>Sorry - please try again later</source>
-        <translation>Désolé, veuillez réessayer plus tard</translation>
+        <translation>Désolé, réessaie plus tard</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/update/internal/updatescenario.cpp" line="193"/>
         <source>MuseScore Studio needs to close to complete the installation. If you have any unsaved changes, you will be prompted to save them before MuseScore Studio closes.</source>
-        <translation>MuseScore Studio doit se fermer pour terminer l&apos;installation. Si vous avez des modifications non enregistrées, vous serez invité à les enregistrer avant la fermeture.</translation>
+        <translation>MuseScore Studio doit se fermer pour terminer l&apos;installation. Si tu as des modifications non enregistrées, tu seras invité à les enregistrer avant la fermeture.</translation>
     </message>
     <message>
         <location filename="../../MuseScore/src/framework/update/internal/updatescenario.cpp" line="198"/>
@@ -1599,7 +1599,7 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="496"/>
         <source>Couldn&apos;t download it: are you online?</source>
-        <translation>Téléchargement impossible : êtes-vous en ligne ?</translation>
+        <translation>Téléchargement impossible : es-tu en ligne ?</translation>
     </message>
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="499"/>
@@ -1619,17 +1619,17 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="560"/>
         <source>A newer version is available: open another score to update this one</source>
-        <translation>Une version plus récente est disponible : ouvrez une autre partition pour mettre celle-ci à jour</translation>
+        <translation>Une version plus récente est disponible : ouvre une autre partition pour mettre celle-ci à jour</translation>
     </message>
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="561"/>
         <source>A newer version is available: click to update</source>
-        <translation>Une version plus récente est disponible : cliquez pour la mettre à jour</translation>
+        <translation>Une version plus récente est disponible : clique pour la mettre à jour</translation>
     </message>
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="620"/>
         <source>Add a folder of your own scores</source>
-        <translation>Ajouter un dossier de vos partitions</translation>
+        <translation>Ajouter un dossier de tes partitions</translation>
     </message>
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="627"/>
@@ -1699,7 +1699,7 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="1065"/>
         <source>Drop a folder to add it to the shelf, or a score to open it</source>
-        <translation>Déposez un dossier pour l&apos;ajouter à l&apos;étagère, ou une partition pour l&apos;ouvrir</translation>
+        <translation>Dépose un dossier pour l&apos;ajouter à l&apos;étagère, ou une partition pour l&apos;ouvrir</translation>
     </message>
     <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="750"/>
@@ -1727,7 +1727,7 @@ sélectionnez un autre contrôleur ou utilisez le clavier de l&apos;ordinateur.<
     <message>
         <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="516"/>
         <source>A newer version of this score is available. It replaces the one on this computer, with any changes you saved to it, and may differ from what you practised: the takes you recorded were played on the version you have.</source>
-        <translation>Une version plus récente de cette partition est disponible. Elle remplace celle de cet ordinateur, avec les modifications que vous y avez enregistrées, et peut différer de ce que vous avez travaillé : les prises que vous avez enregistrées ont été jouées sur votre version.</translation>
+        <translation>Une version plus récente de cette partition est disponible. Elle remplace celle de cet ordinateur, avec les modifications que tu y as enregistrées, et peut différer de ce que tu as travaillé : les prises que tu as enregistrées ont été jouées sur ta version.</translation>
     </message>
     <message>
         <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="523"/>

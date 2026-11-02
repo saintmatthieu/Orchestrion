@@ -7,7 +7,7 @@
     <name>project</name>
     <message>
         <source>This file could not be opened. Please make sure that MuseScore Studio has permission to read this file.</source>
-        <translation>Ce fichier n'a pas pu être ouvert. Vérifiez qu'Orchestrion a l'autorisation de lire ce fichier.</translation>
+        <translation>Ce fichier n'a pas pu être ouvert. Vérifie qu'Orchestrion a l'autorisation de lire ce fichier.</translation>
     </message>
     <message>
         <source>This file contains errors that could cause MuseScore Studio to malfunction.</source>
@@ -15,7 +15,7 @@
     </message>
     <message>
         <source>Get help for this issue on MuseScore.org.</source>
-        <translation>Orchestrion lit les partitions avec le moteur de MuseScore : vous pouvez obtenir de l'aide sur ce problème sur MuseScore.org.</translation>
+        <translation>Orchestrion lit les partitions avec le moteur de MuseScore : tu peux obtenir de l'aide sur ce problème sur MuseScore.org.</translation>
     </message>
 </context>
 </TS>

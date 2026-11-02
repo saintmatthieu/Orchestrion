@@ -7,7 +7,7 @@
     <name>project</name>
     <message>
         <source>This file could not be opened. Please make sure that MuseScore Studio has permission to read this file.</source>
-        <translation>Diese Datei konnte nicht geöffnet werden. Bitte stellen Sie sicher, dass Orchestrion die Berechtigung hat, diese Datei zu lesen.</translation>
+        <translation>Diese Datei konnte nicht geöffnet werden. Bitte stelle sicher, dass Orchestrion die Berechtigung hat, diese Datei zu lesen.</translation>
     </message>
     <message>
         <source>This file contains errors that could cause MuseScore Studio to malfunction.</source>
