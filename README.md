@@ -2,14 +2,15 @@
   <img src="icons/orchestrion.png" width="120" alt="Orchestrion icon">
 </p>
 <h1 align="center">Orchestrion</h1>
-<p align="center"><em>Second only to playing the piano.</em></p>
+<p align="center"><em>Play what you can, Orchestrion plays the rest.</em></p>
 
 ![Orchestrion showing the score of Mozart's Rondo alla Turca](docs/assets/hero.png)
 
-Orchestrion turns any score into an instrument. You tap the rhythm — on a MIDI
-keyboard or the computer keyboard — and Orchestrion plays the notes of the piece,
-at your own pulse. Pitch accuracy is taken out of the equation; what remains is
-the music itself — a secure rhythm and real nuance still make all the difference.
+Orchestrion turns any score into an instrument. Play what you can — just the
+rhythm, just the right hand — on a MIDI keyboard or the computer keyboard, and
+Orchestrion plays the rest, at your own pulse. Tap only the rhythm and pitch
+accuracy is taken out of the equation; what remains is the music itself — a secure
+rhythm and real nuance still make all the difference.
 
 One idea, many ways to play it: rhythm-focused practice in the music lesson, kids
 getting familiar with notation while having fun, music lovers discovering

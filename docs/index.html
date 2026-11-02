@@ -28,8 +28,8 @@
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Orchestrion — second only to playing the piano</title>
-  <meta name="description" content="Orchestrion is a free, open-source app that turns any score into an instrument: tap the rhythm on a MIDI or computer keyboard and it plays the notes. For classrooms, kids, music lovers and bands. Windows, macOS, Linux.">
+  <title>Orchestrion — Play what you can, Orchestrion plays the rest</title>
+  <meta name="description" content="A free, open-source app that turns any score into an instrument: play what you can — just the rhythm, just the right hand — and it plays the rest.">
   <link rel="canonical" href="https://orchestrion.app/">
   <link rel="alternate" hreflang="en" href="https://orchestrion.app/">
   <link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/">
@@ -37,8 +37,8 @@
   <link rel="alternate" hreflang="x-default" href="https://orchestrion.app/">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <meta name="theme-color" content="#2e1a12">
-  <meta property="og:title" content="Orchestrion — second only to playing the piano">
-  <meta property="og:description" content="A free, open-source app: you tap the rhythm, the score supplies the pitches. Works with MuseScore and MusicXML files.">
+  <meta property="og:title" content="Orchestrion — Play what you can, Orchestrion plays the rest">
+  <meta property="og:description" content="A free, open-source app: play just the rhythm or just the right hand, and you still hear the whole piece. Works with MuseScore and MusicXML files.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://orchestrion.app/">
   <meta property="og:image" content="https://orchestrion.app/assets/og-image.png">
@@ -113,6 +113,8 @@
     }
     /* On narrow screens the deliberate break can't fit — let text flow. */
     @media (max-width: 44rem) { .hero p.sub br { display: none; } }
+    /* Breaks between these, not inside them, while they fit */
+    .hero .unit { display: inline-block; }
     /* The tutorials' videos. The selected one's opening frame is the cover,
        with a play button; their list is a drawer on the left, collapsed to a
        tab on the frame's edge (under the frame on narrow screens, open). */
@@ -335,7 +337,7 @@
       .hero .rolls p { margin-left: 0; max-width: none; }
       .hero h1 {
         margin-bottom: 0.5rem;
-        font-size: clamp(1.8rem, min(4.5vw, 5.5vh), 3rem);
+        font-size: clamp(1.8rem, min(4.5vw, 5.5vh), 2.4rem);
       }
       .hero p.sub { margin-bottom: 0; }
       /* The release note sits in the last of three rows; the first, empty
@@ -367,9 +369,13 @@
 
     /* Short wide screens: tighter text so the column fits the screenshot. */
     @media (min-width: 64rem) and (max-height: 62rem) {
-      .hero h1 { font-size: clamp(1.8rem, 5vh, 3rem); }
-      .hero p.sub { font-size: 1rem; line-height: 1.5; }
+      .hero h1 { font-size: clamp(1.8rem, 5vh, 2.4rem); }
+      /* No room left to keep the buttons centred. */
+      .hero .copy { grid-template-rows: auto auto 1fr auto; }
+      .hero p.sub { font-size: 1rem; line-height: 1.4; }
+      .rolls p { line-height: 1.4; }
       .hero footer.site { font-size: 0.8rem; line-height: 1.4; }
+      .hero footer.site .footer-langs { margin-top: 0.25rem; }
       .release-note { font-size: 0.82rem; }
     }
 
@@ -403,10 +409,11 @@
   <div class="wrap">
     <div class="copy">
       <div class="intro">
-        <h1>Second only to playing the piano.</h1>
+        <h1><span class="unit">Play what you can,</span> <span class="unit">Orchestrion plays the rest.</span></h1>
         <p class="sub">
-          You tap the rhythm — on a MIDI keyboard or the computer keyboard —<br>
-          Orchestrion plays the notes.
+          <span class="unit">Just the rhythm? Just the right hand?</span>
+          <span class="unit">Either way, you hear the whole piece.</span>
+          <span class="unit">On a MIDI keyboard or the computer keyboard.</span>
         </p>
       </div>
 
@@ -443,6 +450,7 @@
           <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/LICENSE">GPL-3.0 license</a> ·
           <a href="https://github.com/saintmatthieu/Orchestrion/issues">Report an issue</a>
         </p>
+        <p>Built on <a href="https://musescore.org">MuseScore</a>'s engraving and playback engine.</p>
         <p>Bundled scores include community engravings —
            see <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/scores/attributions.json">attributions</a>.</p>
         <p>© 2024–2026 Matthieu Hodgkinson</p>

@@ -12,8 +12,8 @@
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Orchestrion — nur das Klavier selbst ist besser</title>
-  <meta name="description" content="Orchestrion ist eine kostenlose Open-Source-App, die jede Partitur in ein Instrument verwandelt: Tippen Sie den Rhythmus auf einem MIDI-Keyboard oder der Computertastatur, und sie spielt die Noten. Für Unterricht, Kinder, Musikliebhaber und Bands. Windows, macOS, Linux.">
+  <title>Orchestrion — Spiele was du kannst, Orchestrion spielt den Rest</title>
+  <meta name="description" content="Eine kostenlose Open-Source-App, die jede Partitur in ein Instrument verwandelt: Spiele was du kannst — nur den Rhythmus, nur die rechte Hand — und sie spielt den Rest.">
   <link rel="canonical" href="https://orchestrion.app/de/">
   <link rel="alternate" hreflang="en" href="https://orchestrion.app/">
   <link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/">
@@ -21,8 +21,8 @@
   <link rel="alternate" hreflang="x-default" href="https://orchestrion.app/">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
   <meta name="theme-color" content="#2e1a12">
-  <meta property="og:title" content="Orchestrion — nur das Klavier selbst ist besser">
-  <meta property="og:description" content="Eine kostenlose Open-Source-App: Sie tippen den Rhythmus, die Partitur liefert die Tonhöhen. Kompatibel mit MuseScore- und MusicXML-Dateien.">
+  <meta property="og:title" content="Orchestrion — Spiele was du kannst, Orchestrion spielt den Rest">
+  <meta property="og:description" content="Eine kostenlose Open-Source-App: Spiele nur den Rhythmus oder nur die rechte Hand, und du hörst trotzdem das ganze Stück. Kompatibel mit MuseScore- und MusicXML-Dateien.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://orchestrion.app/de/">
   <meta property="og:image" content="https://orchestrion.app/assets/og-image-de.png">
@@ -97,6 +97,8 @@
     }
     /* On narrow screens the deliberate break can't fit — let text flow. */
     @media (max-width: 44rem) { .hero p.sub br { display: none; } }
+    /* Breaks between these, not inside them, while they fit */
+    .hero .unit { display: inline-block; }
     /* Die Videos der Anleitungen. Das erste Bild der gewählten ist das
        Titelbild, mit einer Wiedergabetaste; ihre Liste ist eine Schublade
        links, eingeklappt zu einem Reiter am Rand des Rahmens (auf schmalen
@@ -321,7 +323,7 @@
       .hero .rolls p { margin-left: 0; max-width: none; }
       .hero h1 {
         margin-bottom: 0.5rem;
-        font-size: clamp(1.8rem, min(4.5vw, 5.5vh), 3rem);
+        font-size: clamp(1.8rem, min(4.5vw, 5.5vh), 2.25rem);
       }
       .hero p.sub { margin-bottom: 0; }
       /* The release note sits in the last of three rows; the first, empty
@@ -353,9 +355,13 @@
 
     /* Short wide screens: tighter text so the column fits the screenshot. */
     @media (min-width: 64rem) and (max-height: 62rem) {
-      .hero h1 { font-size: clamp(1.8rem, 5vh, 3rem); }
-      .hero p.sub { font-size: 1rem; line-height: 1.5; }
+      .hero h1 { font-size: clamp(1.8rem, 5vh, 2.25rem); }
+      /* No room left to keep the buttons centred. */
+      .hero .copy { grid-template-rows: auto auto 1fr auto; }
+      .hero p.sub { font-size: 1rem; line-height: 1.4; }
+      .rolls p { line-height: 1.4; }
       .hero footer.site { font-size: 0.8rem; line-height: 1.4; }
+      .hero footer.site .footer-langs { margin-top: 0.25rem; }
       .release-note { font-size: 0.82rem; }
     }
 
@@ -389,10 +395,11 @@
   <div class="wrap">
     <div class="copy">
       <div class="intro">
-        <h1>Nur das Klavier selbst ist besser.</h1>
+        <h1><span class="unit">Spiele was du kannst,</span> <span class="unit">Orchestrion spielt den Rest.</span></h1>
         <p class="sub">
-          Sie tippen den Rhythmus — auf einem MIDI-Keyboard oder der Computertastatur —<br>
-          Orchestrion spielt die Noten.
+          <span class="unit">Nur den Rhythmus? Nur die rechte Hand?</span>
+          <span class="unit">So oder so hörst du das ganze Stück.</span>
+          <span class="unit">Mit MIDI-Keyboard oder Computertastatur.</span>
         </p>
       </div>
 
@@ -429,8 +436,9 @@
           <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/LICENSE">GPL-3.0-Lizenz</a> ·
           <a href="https://github.com/saintmatthieu/Orchestrion/issues">Problem melden</a>
         </p>
-        <p>Einige mitgelieferte Partituren sind Community-Notensätze — siehe
-           <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/scores/attributions.json">Quellenangaben</a>.</p>
+        <p>Basiert auf der Notensatz- und Wiedergabe-Engine von <a href="https://musescore.org">MuseScore</a>.</p>
+        <p>Einige Notensätze stammen aus der Community — siehe
+           <a href="https://github.com/saintmatthieu/Orchestrion/blob/master/scores/attributions.json">Quellen</a>.</p>
         <p>© 2024–2026 Matthieu Hodgkinson</p>
         <p class="langs footer-langs">
           <a class="lang" href="../" hreflang="en" lang="en">EN</a>
