@@ -1857,6 +1857,12 @@ void OrchestrionNotationPaintView::onMatrixChanged(
     endTake();
   }
 
+  // Scrolled sideways, by whatever means: no more keeping to the score's start.
+  if (!m_constrainingScorePosition &&
+      qFuzzyCompare(oldMatrix.m11(), newMatrix.m11()) &&
+      qAbs(oldMatrix.dx() - newMatrix.dx()) > 1e-3)
+    m_atStart = false;
+
   constrainScorePosition();
   updateVisibleTicks();
 }
