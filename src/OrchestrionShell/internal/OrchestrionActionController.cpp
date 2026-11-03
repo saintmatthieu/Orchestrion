@@ -88,14 +88,6 @@ void OrchestrionActionController::init()
                       platformInteractive()->openUrl(url);
                     });
 
-  dispatcher()->reg(
-      this, "orchestrion-file-help",
-      [this]
-      {
-        const auto url = QUrl(
-            "https://github.com/saintmatthieu/Orchestrion/wiki/Find-scores");
-        platformInteractive()->openUrl(url);
-      });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-recording",
                     [this] { toggleRecording(); });
   dispatcher()->reg(this, "orchestrion-advanced-toggle-note-info",

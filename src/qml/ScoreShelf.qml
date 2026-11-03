@@ -29,7 +29,7 @@ import Orchestrion.OrchestrionShell 1.0
 // not yet on this computer has no music on its card, only a note saying it is
 // downloaded when opened. Covers the score view; opened by clicking the
 // score's title, Ctrl+O or File ▸ Browse scores…, closed by picking a score,
-// Escape or the cross. Folders (or a score) can be dropped on it.
+// Escape or the ringed cross. Folders (or a score) can be dropped on it.
 //
 // The heading, search box and links stay put; the cards scroll beneath them.
 //
@@ -311,7 +311,7 @@ Item {
         font.letterSpacing: 2
     }
 
-    // A link to elsewhere: the file dialog, musescore.com, the wiki.
+    // A link to elsewhere: the file dialog, musescore.com.
     component ShelfLink: Rectangle {
         id: link
 
@@ -754,10 +754,12 @@ Item {
         Flow {
             anchors.horizontalCenter: parent.horizontalCenter
             width: Math.min(root.width - 48,
-                            root.tutorialsOnly
-                            ? searchField.width
-                            : searchField.width + fileLink.width + folderLink.width
-                              + onlineLink.width + helpLink.width + 4 * spacing)
+                            searchField.width
+                            + (root.tutorialsOnly
+                               ? 0
+                               : fileLink.width + folderLink.width + onlineLink.width
+                                 + 3 * spacing)
+                            + (backLink.visible ? backLink.width + spacing : 0))
             spacing: 12
             topPadding: 4
 
@@ -884,12 +886,47 @@ Item {
                 text: qsTr("Search on musescore.com")
                 onClicked: root.model.searchOnline()
             }
-            ShelfLink {
-                id: helpLink
-                visible: !root.tutorialsOnly
+            // Here, away from the corner: the window's own close button is there.
+            // As tall as the row; the drawing is a little wider than tall.
+            Item {
+                id: backLink
+                visible: root.model.hasScore
                 height: searchField.height
-                text: qsTr("Help me find scores…")
-                onClicked: root.model.helpFindScores()
+                width: height * 769 / 728
+
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: backTip.text
+                Accessible.onPressAction: root.close()
+                Keys.onShortcutOverride: function(event) {
+                    event.accepted = event.key === Qt.Key_Space
+                        || event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                        || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab
+                }
+                Keys.onReturnPressed: root.close()
+                Keys.onEnterPressed: root.close()
+                Keys.onSpacePressed: root.close()
+                Keys.onDownPressed: root.focusFirstCard()
+
+                MetalGlyph {
+                    anchors.fill: parent
+                    source: "qrc:/icons/player/close.svg"
+                    hovered: backMouse.containsMouse
+                    pressed: backMouse.pressed
+                    focused: backLink.activeFocus
+                }
+                MouseArea {
+                    id: backMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.close()
+                }
+                OrchestrionToolTip {
+                    id: backTip
+                    visible: backMouse.containsMouse
+                    text: qsTr("Back to score")
+                }
             }
         }
     }
@@ -1180,26 +1217,6 @@ Item {
             text: qsTr("Drop a folder to add it to the shelf, or a score to open it")
             color: Theme.metalBright
             font.pixelSize: 18
-        }
-    }
-
-    Text {
-        visible: root.model.hasScore
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: 14
-        anchors.rightMargin: 20
-        text: "✕"
-        color: closeMouse.containsMouse ? Theme.metalBright : Theme.inkFaint
-        font.pixelSize: 20
-
-        MouseArea {
-            id: closeMouse
-            anchors.fill: parent
-            anchors.margins: -8
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.close()
         }
     }
 }

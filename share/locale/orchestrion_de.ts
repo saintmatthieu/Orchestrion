@@ -1662,6 +1662,11 @@ wähle einen anderen Controller oder verwende die Computertastatur.</translation
         <translation>Auf musescore.com suchen</translation>
     </message>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="775"/>
+        <source>Back to score</source>
+        <translation>Zurück zur Partitur</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="781"/>
         <source>Help me find scores…</source>
         <translation>Hilfe bei der Suche von Partituren…</translation>

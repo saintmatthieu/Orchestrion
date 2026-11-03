@@ -256,18 +256,14 @@ OrchestrionMenuModel::makeFileMenu(bool withSaveItem)
       makeMenuItem("orchestrion-file-open",
                    muse::TranslatableString("appshell/menu/file",
                                             "Open from &computer…")),
-      makeRecentScoresSubmenu(),
-      makeSeparator(),
+      makeRecentScoresSubmenu(), makeSeparator(),
       makeMenuItem("orchestrion-search-musescore",
                    muse::TranslatableString("appshell/menu/file",
-                                            "Search on &musescore.com")),
-      makeSeparator(),
-      makeMenuItem("orchestrion-file-help",
-                   muse::TranslatableString("appshell/menu/file",
-                                            "&Help me find scores…"))};
+                                            "Search on &musescore.com"))};
 
   if (withSaveItem)
   {
+    menu.append(makeSeparator());
     menu.append(
         makeMenuItem("orchestrion-file-save",
                      muse::TranslatableString("appshell/menu/file", "Save")));

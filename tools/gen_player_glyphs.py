@@ -134,11 +134,11 @@ def inward(px, py, tx, ty):
     return nx, ny
 
 
-def ring(w=RING_W, n=144):
+def ring(w=RING_W, n=144, height=RING_H):
     """The letter's outline, re-cut at weight w: the silhouette is sampled from
     the superellipse and the counter offset inward by what each direction
     earns."""
-    a, b = RING_H * RING_AR / 2, RING_H / 2
+    a, b = height * RING_AR / 2, height / 2
     outer, inner = [], []
     for i in range(n):
         (px, py), (tx, ty) = se_point(2 * math.pi * i / n, a, b)
@@ -366,6 +366,31 @@ def fullscreen():
     return "".join(out)
 
 
+def roman_x(h):
+    """A cross after the font's X: the falling stroke at the pen's weight, the
+    rising one at the thinnest a straight line may go. Both end square to their
+    own direction, inside a box h tall."""
+    out = []
+    for sign, t in ((1, W), (-1, FLOOR)):
+        half = t / 2 / math.sqrt(2)
+        x0, y0 = CX - h / 2 + half, CY - sign * (h / 2 - half)
+        x1, y1 = CX + h / 2 - half, CY + sign * (h / 2 - half)
+        nx, ny = sign * half, -half
+        out.append('<path d="M%s Z"/>' % pts([(x0 + nx, y0 + ny), (x1 + nx, y1 + ny),
+                                              (x1 - nx, y1 - ny), (x0 - nx, y0 - ny)]))
+    return "".join(out)
+
+
+def close():
+    """The score shelf's way out, as tall as the row it stands in (BOX, as it
+    happens): a bigger letter, at the same pen as the others. Wider than tall
+    like the letter, so it needs a wider box than they do."""
+    width = BOX * RING_AR
+    mark_h = MARK_H * 0.9 * BOX / RING_H
+    return (f'<g transform="translate({fmt((width - BOX) / 2)},0)">'
+            f'{ring(height=BOX)}{roman_x(mark_h)}</g>'), width
+
+
 def build(font):
     chevron_left = font_glyph(font, "‹", MARK_H, CX, CY, dx=-0.3)
     chevron_right = font_glyph(font, "›", MARK_H, CX, CY, dx=0.3)
@@ -391,10 +416,10 @@ def build(font):
     }
 
 
-def write(path, body):
+def write(path, body, width=BOX):
     with open(path, "w", encoding="utf-8") as f:
-        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{fmt(BOX)}" '
-                f'height="{fmt(BOX)}" viewBox="0 0 {fmt(BOX)} {fmt(BOX)}">'
+        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{fmt(width)}" '
+                f'height="{fmt(BOX)}" viewBox="0 0 {fmt(width)} {fmt(BOX)}">'
                 f'<g fill="{PREVIEW_FILL}">{body}</g></svg>\n')
     print(f"wrote {path}")
 
@@ -407,6 +432,8 @@ def main():
     os.makedirs(CONTROLLER_DIR, exist_ok=True)
     for name, body in build(font).items():
         write(os.path.join(OUT_DIR, name + ".svg"), body)
+    close_body, close_width = close()
+    write(os.path.join(OUT_DIR, "close.svg"), close_body, close_width)
     # Not a transport control, but cut from the same drawing.
     write(os.path.join(CONTROLLER_DIR, "midi-keyboard.svg"), keyboard())
 

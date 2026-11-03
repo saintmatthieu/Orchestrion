@@ -1662,6 +1662,11 @@ sélectionne un autre contrôleur ou utilise le clavier de l&apos;ordinateur.</t
         <translation>Rechercher sur musescore.com</translation>
     </message>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="775"/>
+        <source>Back to score</source>
+        <translation>Retour à la partition</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="781"/>
         <source>Help me find scores…</source>
         <translation>Aide pour trouver des partitions…</translation>

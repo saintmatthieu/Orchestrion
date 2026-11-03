@@ -284,7 +284,6 @@ public:
   /** The shelf's links: the same as the File menu's. */
   Q_INVOKABLE void openFromComputer();
   Q_INVOKABLE void searchOnline();
-  Q_INVOKABLE void helpFindScores();
 
   /** Asks for a folder and adds it to the shelf. */
   Q_INVOKABLE void addFolder();

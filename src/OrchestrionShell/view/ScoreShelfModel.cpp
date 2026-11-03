@@ -619,11 +619,6 @@ void ScoreShelfModel::searchOnline()
   dispatcher()->dispatch("orchestrion-search-musescore");
 }
 
-void ScoreShelfModel::helpFindScores()
-{
-  dispatcher()->dispatch("orchestrion-file-help");
-}
-
 void ScoreShelfModel::addFolder()
 {
   const QStringList current = folders();
