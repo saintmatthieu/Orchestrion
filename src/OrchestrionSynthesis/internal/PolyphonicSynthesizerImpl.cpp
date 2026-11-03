@@ -34,8 +34,10 @@ void PolyphonicSynthesizerImpl::Setup()
     return;
   m_voices = sequencer->GetAllVoices();
   onVoicesReset();
-  sequencer->AboutToJumpPosition().onReceive(this, [this](int, JumpReason)
-                                             { doAllNotesOff(); });
+  // Setup can run again on the same sequencer.
+  sequencer->AboutToJumpPosition().onReceive(
+      this, [this](int, JumpReason) { doAllNotesOff(); },
+      muse::async::Asyncable::Mode::SetReplace);
   // Stopping playback must silence like a jump does: the note-offs the
   // sequencer sends aren't enough, the synthesizer keeps ringing.
   orchestrion()->player()->PlayingChanged().onNotify(
