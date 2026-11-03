@@ -24,7 +24,10 @@
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QTimer>
+#include <QWheelEvent>
 #include <algorithm>
+#include <functional>
+#include <memory>
 #include <utility>
 
 namespace dgk
@@ -34,7 +37,7 @@ namespace
 // A glide takes longer the farther it goes, as a hand's would, within bounds.
 int glideMs(qreal distance)
 {
-  return static_cast<int>(std::clamp(300.0 + 0.6 * distance, 350.0, 1100.0));
+  return static_cast<int>(std::clamp(500.0 + 1.2 * distance, 600.0, 2000.0));
 }
 
 // Pauses that let the eye follow: on arrival before pressing, the press
@@ -46,6 +49,7 @@ constexpr int afterClickMs = 250;
 
 DemoCursor::DemoCursor(QObject *parent) : QObject(parent)
 {
+  m_wheelClock.start();
   m_glide.setEasingCurve(QEasingCurve::InOutCubic);
   connect(&m_glide, &QVariantAnimation::valueChanged, this,
           [this](const QVariant &value)
@@ -106,6 +110,34 @@ void DemoCursor::moveTo(const QString &controlPath, Done done)
   glideTo(*target, [done] { done(muse::make_ok()); });
 }
 
+void DemoCursor::scroll(int pixels)
+{
+  QWindow *const window = mainWindow()->qWindow();
+  QWheelEvent event(m_position, window->mapToGlobal(m_position),
+                    QPoint(0, pixels), QPoint(0, pixels), Qt::NoButton,
+                    Qt::NoModifier, Qt::NoScrollPhase, false,
+                    // As a touchpad's: Flickable then moves by the pixels, a
+                    // mouse wheel's it would turn into a flick
+                    Qt::MouseEventSynthesizedBySystem);
+  // Flickable ignores what has no timestamp
+  event.setTimestamp(static_cast<quint64>(m_wheelClock.elapsed()) + 1);
+  QCoreApplication::sendEvent(window, &event);
+}
+
+void DemoCursor::waitUntilGone(const QString &path, Done done)
+{
+  const auto timer = std::make_shared<QTimer>();
+  QObject::connect(timer.get(), &QTimer::timeout, this,
+                   [this, timer, path, done]
+                   {
+                     if (findNamedItem(path))
+                       return;
+                     timer->stop();
+                     done(muse::make_ok());
+                   });
+  timer->start(100);
+}
+
 void DemoCursor::hide()
 {
   m_glide.stop();
@@ -147,6 +179,27 @@ QQuickItem *DemoCursor::findItem(const QString &controlPath,
   return item;
 }
 
+QQuickItem *DemoCursor::findNamedItem(const QString &path) const
+{
+  const auto window = qobject_cast<QQuickWindow *>(mainWindow()->qWindow());
+  if (!window)
+    return nullptr;
+  const QString name = u"demo:" + path;
+  const std::function<QQuickItem *(QQuickItem *)> find =
+      [&](QQuickItem *item) -> QQuickItem *
+  {
+    if (!item->isVisible())
+      return nullptr;
+    if (item->objectName() == name)
+      return item;
+    for (QQuickItem *const child : item->childItems())
+      if (QQuickItem *const found = find(child))
+        return found;
+    return nullptr;
+  };
+  return find(window->contentItem());
+}
+
 std::optional<QPointF> DemoCursor::targetPosition(const QString &path,
                                                   muse::Ret &ret) const
 {
@@ -159,10 +212,13 @@ std::optional<QPointF> DemoCursor::targetPosition(const QString &path,
                          "nothing on the score is " + name.toStdString());
     return std::nullopt;
   }
-  QQuickItem *const item = findItem(path, ret);
+  QQuickItem *item = findNamedItem(path);
+  if (!item)
+    item = findItem(path, ret);
   if (!item)
     return std::nullopt;
-  return item->mapToScene(item->boundingRect().center());
+  // Not boundingRect(): a text field's follows its text
+  return item->mapToScene(QPointF(item->width() / 2, item->height() / 2));
 }
 
 void DemoCursor::glideTo(QPointF target, std::function<void()> then)

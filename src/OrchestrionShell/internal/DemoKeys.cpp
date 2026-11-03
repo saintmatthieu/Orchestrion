@@ -97,6 +97,16 @@ void DemoKeys::setCaption(const QString &caption)
   emit captionChanged();
 }
 
+void DemoKeys::type(QChar character)
+{
+  for (const QEvent::Type type : {QEvent::KeyPress, QEvent::KeyRelease})
+  {
+    QKeyEvent event(type, character.toUpper().unicode(), Qt::NoModifier,
+                    QString(character));
+    QCoreApplication::sendEvent(mainWindow()->qWindow(), &event);
+  }
+}
+
 bool DemoKeys::press(QChar key) { return sendKey(QEvent::KeyPress, key); }
 
 bool DemoKeys::release(QChar key) { return sendKey(QEvent::KeyRelease, key); }

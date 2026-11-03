@@ -64,6 +64,11 @@ public:
   /** Empty hides it. */
   void setCaption(const QString &caption);
 
+  /**
+   * Types a character, as the computer keyboard sends it.
+   */
+  void type(QChar character);
+
   /** `key` is '0' to '9'; false if it isn't. */
   bool press(QChar key);
   bool release(QChar key);

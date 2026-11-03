@@ -45,6 +45,17 @@ const muse::rcommand::Command
     demoMoveCommand("command://orchestrion/demo-move");
 const muse::rcommand::Command
     demoHideCommand("command://orchestrion/demo-hide");
+// `control` may also be the objectName, less "demo:", of what has no navigation
+// control. `pixels`: a wheel event where the cursor is (negative: down).
+const muse::rcommand::Command
+    demoScrollCommand("command://orchestrion/demo-scroll");
+// Answers once `control` no longer shows: the score shelf, once a score it
+// opened is downloaded (or was open already)
+const muse::rcommand::Command
+    demoWaitGoneCommand("command://orchestrion/demo-wait-gone");
+// `text`, a character at a time, as the computer keyboard sends it
+const muse::rcommand::Command
+    demoTypeCommand("command://orchestrion/demo-type");
 
 // The demo's keys and caption (DemoKeys)
 const muse::rcommand::Command
@@ -170,6 +181,7 @@ OrchestrionCommandsRegister::commandList() const
     std::vector<muse::rcommand::Command> list{
         openScoreCommand,        quitCommand,         demoClickCommand,
         demoMoveCommand,         demoHideCommand,     demoKeysCommand,
+        demoScrollCommand,       demoWaitGoneCommand, demoTypeCommand,
         demoCaptionCommand,      demoKeyPressCommand, demoKeyReleaseCommand,
         waitUntilStoppedCommand, staffModeCommand,    undoCommand,
         midiNoteCommand,         midiPedalCommand,    midiDeviceCommand};
@@ -205,6 +217,27 @@ OrchestrionCommandsRegister::commandInfoList() const
                                  "The demo cursor glides to a control and "
                                  "clicks it"),
         controlSchema, muse::rcommand::Decoration());
+    list.emplace_back(
+        demoScrollCommand,
+        muse::TranslatableString("orchestrion", "Demo: scroll"),
+        muse::TranslatableString("orchestrion", "Scrolls where the cursor is"),
+        muse::rcommand::InputSchema(
+            {{"pixels", muse::rcommand::Arg(muse::rcommand::DataType::Integer,
+                                            u"Negative: down")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
+        demoWaitGoneCommand,
+        muse::TranslatableString("orchestrion", "Demo: wait until gone"),
+        muse::TranslatableString("orchestrion",
+                                 "Answers once a control no longer shows"),
+        controlSchema, muse::rcommand::Decoration());
+    list.emplace_back(
+        demoTypeCommand, muse::TranslatableString("orchestrion", "Demo: type"),
+        muse::TranslatableString("orchestrion", "Types text"),
+        muse::rcommand::InputSchema(
+            {{"text", muse::rcommand::Arg(muse::rcommand::DataType::String,
+                                          u"What to type")}}),
+        muse::rcommand::Decoration());
     list.emplace_back(demoMoveCommand,
                       muse::TranslatableString("orchestrion", "Demo: move"),
                       muse::TranslatableString(
@@ -325,6 +358,24 @@ void OrchestrionCommands::registerHandlers()
                  [this](const muse::rcommand::Params &params, Done done) {
                    m_demoCursor->moveTo(controlParam(params), std::move(done));
                  });
+  onRequest(demoScrollCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              const auto it = params.find("pixels");
+              m_demoCursor->scroll(it == params.end() ? 0 : it->second.toInt());
+              return muse::make_ok();
+            });
+  onRequestAsync(
+      demoWaitGoneCommand,
+      [this](const muse::rcommand::Params &params, Done done)
+      { m_demoCursor->waitUntilGone(controlParam(params), std::move(done)); });
+  onRequest(demoTypeCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              for (const QChar character : stringParam(params, "text"))
+                m_demoKeys->type(character);
+              return muse::make_ok();
+            });
   onRequest(demoKeysCommand,
             [this](const muse::rcommand::Params &params)
             {

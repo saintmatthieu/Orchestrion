@@ -61,6 +61,28 @@ function moveTo(control) {
     command("command://orchestrion/demo-move", { control: control })
 }
 
+// The wheel, where the cursor is: down if pixels is negative
+function scroll(pixels) {
+    command("command://orchestrion/demo-scroll", { pixels: pixels })
+}
+
+// Returns once it no longer shows, e.g. the shelf once the score it opened has
+// been downloaded
+function waitUntilGone(control) {
+    var ret = api.commands.dispatch("command://orchestrion/demo-wait-gone", { control: control }, 30 * 1000)
+    if (!ret.success) {
+        api.testflow.fatal(control + " still shows: " + ret.text)
+    }
+}
+
+// Into what has the keyboard's focus, a letter at a time
+function type(text, msPerLetter) {
+    for (var i = 0; i < text.length; ++i) {
+        command("command://orchestrion/demo-type", { text: text[i] })
+        api.testflow.sleep(msPerLetter || 140)
+    }
+}
+
 function hideCursor() {
     command("command://orchestrion/demo-hide")
 }
@@ -119,6 +141,9 @@ module.exports = {
     toggleLoop: toggleLoop,
     click: click,
     moveTo: moveTo,
+    scroll: scroll,
+    waitUntilGone: waitUntilGone,
+    type: type,
     hideCursor: hideCursor,
     staffMode: staffMode,
     undo: undo,

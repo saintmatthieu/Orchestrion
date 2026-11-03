@@ -25,6 +25,7 @@
 #include <ui/imainwindow.h>
 #include <ui/inavigationcontroller.h>
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QPointF>
 #include <QVariantAnimation>
@@ -73,6 +74,17 @@ public:
    */
   void moveTo(const QString &controlPath, Done done);
 
+  /**
+   * Sends the window a wheel event where the cursor is: up the score by
+   * `pixels`, down if negative.
+   */
+  void scroll(int pixels);
+
+  /**
+   * `done` once the item of objectName "demo:<path>" no longer shows.
+   */
+  void waitUntilGone(const QString &path, Done done);
+
   void hide();
 
   bool shown() const;
@@ -87,6 +99,11 @@ signals:
 private:
   QQuickItem *findItem(const QString &controlPath, muse::Ret &ret) const;
   /**
+   * The first visible item of objectName "demo:<path>": what has no navigation
+   * control, as the score shelf's cards.
+   */
+  QQuickItem *findNamedItem(const QString &path) const;
+  /**
    * Where a control is, by its navigation path, or something painted on the
    * score, by "Score/" and its name (see IScoreTargets).
    */
@@ -100,6 +117,7 @@ private:
   void setPressed(bool pressed);
 
   QVariantAnimation m_glide;
+  QElapsedTimer m_wheelClock;
   std::function<void()> m_afterGlide;
 
   QPointF m_position;

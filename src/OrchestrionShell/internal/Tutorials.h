@@ -67,11 +67,15 @@ private:
   void setRunning(bool running);
   /** Puts away what the tutorial showed, and stops the player. */
   void cleanUp();
+  /** The score the tutorial started on, if it has opened another. */
+  void reopenScore();
 
   const std::shared_ptr<DemoCursor> m_demoCursor;
   const std::shared_ptr<DemoKeys> m_demoKeys;
   mutable std::optional<std::vector<Tutorial>> m_tutorials;
   bool m_running = false;
+  /** The score open as the tutorial started. */
+  QString m_scorePath;
   bool m_showsVirtualKeyboard = false;
   muse::async::Notification m_runningChanged;
 };

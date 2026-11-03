@@ -201,6 +201,7 @@ Item {
     // The title, its diamonds and the subtitle.
     MouseArea {
         id: titleMouse
+        objectName: root.titleClickable ? "demo:Title" : ""
         enabled: root.titleClickable && root.hasTitle
         x: row.x + titleText.x - root.gap - 2 * root.diamondHalf
         y: row.y

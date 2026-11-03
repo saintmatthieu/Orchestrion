@@ -112,6 +112,8 @@ void Tutorials::run(const QString &path)
             QString{}));
 
   m_showsVirtualKeyboard = false;
+  const auto project = projectSession()->project();
+  m_scorePath = project ? project->path().toQString() : QString{};
   setRunning(true);
   qApp->installEventFilter(this);
   // Not from within whatever asked for it (a click on the shelf): the
@@ -122,6 +124,7 @@ void Tutorials::run(const QString &path)
                        testflow()->execScript(muse::io::path_t{path});
                        qApp->removeEventFilter(this);
                        cleanUp();
+                       reopenScore();
                        setRunning(false);
                      });
 #else
@@ -159,6 +162,17 @@ void Tutorials::cleanUp()
     dispatcher()->dispatch(actionIds::playbackStop);
   m_demoKeys->reset();
   m_demoCursor->hide();
+}
+
+void Tutorials::reopenScore()
+{
+  const auto project = projectSession()->project();
+  if (m_scorePath.isEmpty() || !project ||
+      project->path().toQString() == m_scorePath)
+    return;
+  dispatcher()->dispatch("orchestrion-file-open",
+                         muse::actions::ActionData::make_arg2<QUrl, QString>(
+                             QUrl::fromLocalFile(m_scorePath), QString{}));
 }
 
 bool Tutorials::running() const { return m_running; }

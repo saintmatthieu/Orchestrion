@@ -197,6 +197,7 @@ Item {
 
     // A fresh search each time, typed straight away.
     onShownChanged: {
+        openedByTutorial = shown && Tutorials.running
         if (shown) {
             searchField.text = ""
             flick.contentY = 0
@@ -242,13 +243,41 @@ Item {
     }
 
     // Clears the search first, if there is one.
+    // Not during a tutorial, which Esc stops.
     Shortcut {
         sequence: "Escape"
-        enabled: root.shown
+        enabled: root.shown && !Tutorials.running
         onActivated: {
             if (searchField.text.length > 0)
                 searchField.text = ""
             else
+                root.close()
+        }
+    }
+
+    // A demo's caption has a row of its own under the cards: what is drawn
+    // under the shelf is hidden by it.
+    property real captionOpen: DemoKeys.caption.length > 0 ? 1 : 0
+    Behavior on captionOpen {
+        NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+    }
+    DemoCaption {
+        id: demoCaption
+        z: 1
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: header.anchors.topMargin
+        maximumWidth: parent.width - 48
+        opacity: root.captionOpen
+        visible: opacity > 0
+    }
+
+    // Opened by a tutorial: put away with it, however it ends
+    property bool openedByTutorial: false
+    Connections {
+        target: Tutorials
+        function onRunningStateChanged() {
+            if (!Tutorials.running && root.openedByTutorial)
                 root.close()
         }
     }
@@ -356,6 +385,7 @@ Item {
 
     component ScoreCard: Rectangle {
         id: card
+        objectName: "demo:Shelf/Card"
 
         // The model's roles.
         required property string title
@@ -767,6 +797,7 @@ Item {
             // finds Mozart); Return opens the best match.
             TextField {
                 id: searchField
+                objectName: "demo:Shelf/Search"
                 width: 280
                 height: 36
                 leftPadding: 38
@@ -934,11 +965,13 @@ Item {
     // The cards, scrolling on their own under the header.
     Item {
         id: cardsArea
+        objectName: "demo:Shelf/Cards"
         anchors.top: header.bottom
         anchors.topMargin: 12
         anchors.bottom: parent.bottom
-        // The same air below as the header has above.
+        // The same air below as the header has above, and a demo's caption
         anchors.bottomMargin: header.anchors.topMargin
+                              + (demoCaption.height + header.anchors.topMargin) * root.captionOpen
         anchors.left: parent.left
         anchors.right: parent.right
 
