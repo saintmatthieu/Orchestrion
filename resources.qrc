@@ -28,6 +28,7 @@
         <file>src/qml/DemoCursorOverlay.qml</file>
     <file>src/qml/DemoKeysOverlay.qml</file>
     <file>src/qml/DemoKeysBand.qml</file>
+    <file>src/qml/DemoCaption.qml</file>
     <file>src/qml/TransportButton.qml</file>
     <file>src/qml/TransportGlow.qml</file>
     <file>src/qml/OrchestrionToolTip.qml</file>
@@ -42,8 +43,8 @@
     <file>icons/player/loop.svg</file>
     <file>icons/player/fullscreen.svg</file>
     <file>icons/player/help.svg</file>
-    <file>icons/player/grading.svg</file>
     <file>icons/player/close.svg</file>
+    <file>icons/player/grading.svg</file>
     <file>icons/player/pedals_gold.svg</file>
     <file>icons/player/pedal-sustain_gold.svg</file>
     <file>icons/player/pedals_silver.svg</file>

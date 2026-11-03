@@ -28,13 +28,21 @@ import Orchestrion.OrchestrionShell 1.0
 Item {
     id: root
 
+    /** How far down the window's title bar reaches, if it has one. */
+    property real topInset: 0
+    /** The height of the row of controls under it. */
+    property real topRowHeight: 44
+    /** The score shelf is open: its title is in the middle of that row. */
+    property bool shelfShown: false
+
     enabled: false
 
     // While a tutorial runs in the user's session (Tutorials)
     Rectangle {
-        anchors.horizontalCenter: parent.horizontalCenter
-        // Below the menu bar, when the window has one
-        y: 44
+        // In the middle of the row of controls, between them, over the score's
+        // title; in the shelf's corner, its own title being there
+        x: root.shelfShown ? 20 : (root.width - width) / 2
+        y: root.topInset + (root.topRowHeight - height) / 2
         width: tutorialBadge.implicitWidth + 28
         height: tutorialBadge.implicitHeight + 12
         radius: height / 2

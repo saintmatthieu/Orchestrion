@@ -40,7 +40,16 @@ Item {
     // Under each row
     readonly property int rowGap: 12
 
-    property real captionOpen: DemoKeys.caption.length > 0 ? 1 : 0
+    /**
+     * What it stands between, from its parent's top: it takes room in a layout,
+     * and draws midway between them.
+     */
+    property real spaceTop: y
+    property real spaceBottom: y + height
+    /** Hidden by the score shelf, which has a caption of its own. */
+    property bool covered: false
+
+    property real captionOpen: DemoKeys.caption.length > 0 && !covered ? 1 : 0
     Behavior on captionOpen {
         NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
     }
@@ -51,46 +60,24 @@ Item {
 
     readonly property real bandHeight: (captionPill.height + rowGap) * captionOpen
                                        + (keys.height + rowGap) * keysOpen
+    // Where the rows start, in it
+    readonly property real rowsY: (spaceTop + spaceBottom - bandHeight + rowGap) / 2 - y
 
     enabled: false
 
-    Rectangle {
+    DemoCaption {
         id: captionPill
         anchors.horizontalCenter: parent.horizontalCenter
-        width: caption.implicitWidth + 48
-        height: caption.implicitHeight + 20
-        radius: height / 2
-        color: Theme.overlay
-        border.color: Theme.metal
-        border.width: 1
-
+        y: root.rowsY
+        maximumWidth: parent.width - 48
         opacity: root.captionOpen
         visible: opacity > 0
-
-        Text {
-            id: caption
-            anchors.centerIn: parent
-            // Kept while fading out
-            property string shown: ""
-            text: shown
-            color: Theme.metalBright
-            font.pixelSize: 28
-
-            Connections {
-                target: DemoKeys
-                function onCaptionChanged() {
-                    if (DemoKeys.caption.length > 0) {
-                        caption.shown = DemoKeys.caption
-                    }
-                }
-            }
-        }
     }
 
     Row {
         id: keys
         anchors.horizontalCenter: parent.horizontalCenter
-        y: (captionPill.height + root.rowGap) * root.captionOpen
+        y: root.rowsY + (captionPill.height + root.rowGap) * root.captionOpen
         spacing: root.handGap
 
         opacity: root.keysOpen

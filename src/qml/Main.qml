@@ -448,6 +448,13 @@ ApplicationWindow {
                         id: demoBand
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
+                        spaceTop: (notationPaintView.titleClearance + notationPaintView.height
+                                   - notationPaintView.bottomClearance
+                                   + notationPaintView.parchmentHeight) / 2
+                        spaceBottom: furniture.lowerBandOpen > 0 ? lowerBand.y : bottomOrnament.y
+                        // Till it has faded out, which is when the script takes
+                        // its caption away
+                        covered: scoreShelf.visible
                     }
 
                     // While the virtual MIDI keyboard is the MIDI device in use
@@ -1060,6 +1067,9 @@ ApplicationWindow {
     DemoKeysOverlay {
         anchors.fill: parent
         z: 1000
+        topInset: titleBar.visible ? titleBar.height : 0
+        topRowHeight: furniture.topRowHeight
+        shelfShown: scoreShelf.shown
     }
 
     // The window's edges and corners resize it: frameless, it has no frame
