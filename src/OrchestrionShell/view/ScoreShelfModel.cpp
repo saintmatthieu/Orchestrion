@@ -494,16 +494,17 @@ bool ScoreShelfModel::open(const QString &path,
   }
   m_pendingOpen.clear();
   // Deferred: the click comes from the shelf, which lies in the score view,
-  // whose model opening a score tears down and rebuilds.
-  muse::async::Async::call(
-      this,
-      [this, path, displayNameOverride]
-      {
-        dispatcher()->dispatch(
-            "orchestrion-file-open",
-            muse::actions::ActionData::make_arg2<QUrl, QString>(
-                QUrl::fromLocalFile(path), displayNameOverride));
-      });
+  // whose model opening a score tears down and rebuilds. By Qt, not by
+  // Async::call, which would run it holding the main thread's queue lock:
+  // rebuilding the sequencer joins threads that may be sending to this one.
+  QTimer::singleShot(0, this,
+                     [this, path, displayNameOverride]
+                     {
+                       dispatcher()->dispatch(
+                           "orchestrion-file-open",
+                           muse::actions::ActionData::make_arg2<QUrl, QString>(
+                               QUrl::fromLocalFile(path), displayNameOverride));
+                     });
   return true;
 }
 

@@ -36,6 +36,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QTimer>
 #include <QWindow>
 
 namespace dgk
@@ -274,9 +275,11 @@ void OrchestrionActionController::reloadForGrading()
     return;
 
   // Deferred: the switch usually comes from a click in the score view, whose
-  // model we are about to tear down and rebuild.
-  muse::async::Async::call(this, [this, url]
-                           { openProject(mu::project::ProjectFile(url)); });
+  // model we are about to tear down and rebuild. By Qt, not by Async::call,
+  // which would run it holding the main thread's queue lock: rebuilding the
+  // sequencer joins threads that may be sending to this one.
+  QTimer::singleShot(0, this, [this, url]
+                     { openProject(mu::project::ProjectFile(url)); });
 }
 
 bool OrchestrionActionController::eventFilter(QObject *watched, QEvent *event)
