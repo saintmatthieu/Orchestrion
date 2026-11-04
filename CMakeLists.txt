@@ -27,7 +27,7 @@ else()
 endif()
 
 # Find the Qt6 packages
-find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickLayouts Widgets ShaderTools WebEngineQuick)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -207,6 +207,7 @@ target_link_libraries(Orchestrion PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::QuickLayouts
+    Qt6::WebEngineQuick
     Qt6::Widgets
 
     ${MUSESCORE_LINK_LIBS}
@@ -257,6 +258,7 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/TitleBarButtonBackground.qml"
     QML_FILES "src/qml/OrchestrionStandardDialog.qml"
     QML_FILES "src/qml/TakesDialog.qml"
+    QML_FILES "src/qml/VideoBand.qml"
     QML_FILES "src/qml/BuiltInEffectDialog.qml"
     QML_FILES "src/qml/EffectHeader.qml"
     QML_FILES "src/qml/OrchestrionVstEditorDialog.qml"

@@ -347,6 +347,14 @@ def keyboard(keys=None, start=None):
     return "".join(out)
 
 
+def camera():
+    """A film camera, side on: the body, and the lens opening to the right."""
+    top, bot = CY - 4.7, CY + 4.7
+    body = [(9.6, top), (20.2, top), (20.2, bot), (9.6, bot)]
+    lens = [(21.6, CY - 1.5), (26.6, CY - 4.4), (26.6, CY + 4.4), (21.6, CY + 1.5)]
+    return outlined(body, 0.5, 0.3) + outlined(lens, 0.3, 0.2)
+
+
 def fullscreen():
     """Four corners. The square they imply is given the letter's area, so the
     two marks cover the same ground even though one is round."""
@@ -413,6 +421,7 @@ def build(font):
         "fullscreen": fullscreen(),
         # Nor is help, but a bare question mark reads as punctuation.
         "help": band + font_glyph(font, "?", MARK_H, CX, CY),
+        "watch": band + camera(),
     }
 
 

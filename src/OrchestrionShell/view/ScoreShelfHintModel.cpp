@@ -20,27 +20,16 @@
 
 #include <global/settings.h>
 
-#include <algorithm>
-#include <chrono>
-
 namespace dgk
 {
 namespace
 {
-// A moment to take in the end of the piece before the hint comes up.
-constexpr auto delayAfterEnd = std::chrono::seconds{3};
-
 const muse::Settings::Key
     SCORE_SHELF_HINT_DISMISSED("OrchestrionShell",
                                "SCORE_SHELF_HINT_DISMISSED");
 } // namespace
 
-ScoreShelfHintModel::ScoreShelfHintModel(QObject *parent) : QObject(parent)
-{
-  m_delay.setSingleShot(true);
-  m_delay.setInterval(delayAfterEnd);
-  connect(&m_delay, &QTimer::timeout, this, [this] { setShown(true); });
-}
+ScoreShelfHintModel::ScoreShelfHintModel(QObject *parent) : QObject(parent) {}
 
 void ScoreShelfHintModel::load()
 {
@@ -49,62 +38,18 @@ void ScoreShelfHintModel::load()
   m_dismissed = muse::settings()->value(SCORE_SHELF_HINT_DISMISSED).toBool();
   if (m_dismissed)
     return;
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this] { followSequencer(); });
-  followSequencer();
-}
-
-void ScoreShelfHintModel::followSequencer()
-{
-  // Another score: the end reached was that of the previous one.
-  m_delay.stop();
-  setShown(false);
-  m_performerStruck = false;
-  const auto sequencer = orchestrion()->sequencer();
-  if (!sequencer)
-    return;
-  sequencer->HandNoteEvents().onReceive(
-      this,
-      [this](const AutoPlayEvent &event)
-      {
-        if (event.type != NoteEventType::noteOn)
-          return;
-        // Whose the notes are is told at the strike: the automatic player
-        // (a tutorial, a replay) may have stopped by the time its last
-        // release gets here.
-        m_performerStruck = !orchestrion()->player()->IsPlaying();
-        // Playing on: out of the way, till the next end.
-        m_delay.stop();
-        setShown(false);
-      },
-      muse::async::Asyncable::Mode::SetReplace);
-  // The end, as for the final score: the last notes released, nothing is
-  // sounding and nothing is to come on any voice.
-  sequencer->ChordTransitions().onReceive(
-      this,
-      [this](const std::map<TrackIndex, ChordTransition> &)
-      {
-        if (m_dismissed || !m_performerStruck || m_shown || m_delay.isActive())
-          return;
-        const auto sequencer = orchestrion()->sequencer();
-        if (!sequencer)
-          return;
-        const auto &current = sequencer->GetCurrentTransitions();
-        const bool atEnd = !current.empty() &&
-                           std::all_of(current.begin(), current.end(),
-                                       [](const auto &entry) {
-                                         return !GetFutureChord(entry.second) &&
-                                                !GetPresentThing(entry.second);
-                                       });
-        if (atEnd)
-          m_delay.start();
-      },
-      muse::async::Asyncable::Mode::SetReplace);
+  m_end.reachedEnd().onNotify(this,
+                              [this]
+                              {
+                                if (!m_dismissed)
+                                  setShown(true);
+                              });
+  m_end.leftEnd().onNotify(this, [this] { setShown(false); });
+  m_end.start();
 }
 
 void ScoreShelfHintModel::dismiss()
 {
-  m_delay.stop();
   setShown(false);
   if (m_dismissed)
     return;
