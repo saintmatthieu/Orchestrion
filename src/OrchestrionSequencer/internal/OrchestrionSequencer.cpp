@@ -669,8 +669,6 @@ void OrchestrionSequencer::ReleaseFollowedChords()
   // Not before the chord is nearly over: between the notes of a trill, or of
   // a note struck again, no key is held either.
   const auto now = PerformedTempoNow();
-  if (!now)
-    return;
   std::map<TrackIndex, ChordTransition> transitions;
   for (const bool left : {false, true})
     if (HandIn(left, StaffMode::notes))
@@ -683,7 +681,10 @@ void OrchestrionSequencer::ReleaseFollowedChords()
               return std::nullopt;
             const auto begin = chord->GetBeginTick().withRepeats;
             const auto end = chord->GetEndTick().withRepeats;
-            if (now->tick < begin + 0.75 * (end - begin))
+            // The voice's last chord may be let go of at any time: nothing
+            // else would end it, and so the score.
+            if (voice.GetFutureChord() &&
+                (!now || now->tick < begin + 0.75 * (end - begin)))
               return std::nullopt;
             const std::vector<int> pitches = chord->GetPitches();
             if (std::any_of(pitches.begin(), pitches.end(), [this](int pitch)
