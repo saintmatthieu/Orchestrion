@@ -38,6 +38,7 @@
 #include <QApplication>
 #include <QQuickWindow>
 #include <QStyleHints>
+#include <QtWebEngineQuick/qtwebenginequickglobal.h>
 #include <QTextCodec>
 
 #ifndef MUSE_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT
@@ -207,6 +208,8 @@ int main(int argc, char **argv)
     qapp = new QCoreApplication(argc, argv);
   else
   {
+    // Before the application exists: the recordings play in a web view.
+    QtWebEngineQuick::initialize();
     auto app = new QApplication(argc, argv);
     app->setWindowIcon(QIcon(":/icons/orchestrion.png"));
     qapp = app;

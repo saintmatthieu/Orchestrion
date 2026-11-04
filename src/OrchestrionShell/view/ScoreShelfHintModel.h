@@ -18,11 +18,9 @@
  */
 #pragma once
 
-#include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionShell/internal/PerformanceEndWatcher.h"
 #include "async/asyncable.h"
-#include "modularity/ioc.h"
 #include <QObject>
-#include <QTimer>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
@@ -43,8 +41,6 @@ class ScoreShelfHintModel : public QObject,
 
   Q_PROPERTY(bool shown READ shown NOTIFY shownChanged)
 
-  dgk::Inject<IOrchestrion> orchestrion{this};
-
 public:
   explicit ScoreShelfHintModel(QObject *parent = nullptr);
 
@@ -61,14 +57,10 @@ signals:
   void shownChanged();
 
 private:
-  void followSequencer();
   void setShown(bool);
 
   bool m_dismissed = false;
   bool m_shown = false;
-  /** Whether the last note struck was the performer's. */
-  bool m_performerStruck = false;
-  /** From the end of the piece to the hint. */
-  QTimer m_delay;
+  PerformanceEndWatcher m_end;
 };
 } // namespace dgk

@@ -23,6 +23,7 @@
     <file>src/qml/TitleBarButtonBackground.qml</file>
     <file>src/qml/OrchestrionStandardDialog.qml</file>
     <file>src/qml/TakesDialog.qml</file>
+    <file>src/qml/VideoBand.qml</file>
     <file>src/qml/BackdropFrame.qml</file>
     <file>src/qml/MetalGlyph.qml</file>
         <file>src/qml/DemoCursorOverlay.qml</file>
@@ -44,6 +45,7 @@
     <file>icons/player/fullscreen.svg</file>
     <file>icons/player/help.svg</file>
     <file>icons/player/close.svg</file>
+    <file>icons/player/watch.svg</file>
     <file>icons/player/grading.svg</file>
     <file>icons/player/pedals_gold.svg</file>
     <file>icons/player/pedal-sustain_gold.svg</file>

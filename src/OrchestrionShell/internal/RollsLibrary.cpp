@@ -182,6 +182,23 @@ bool RollsLibrary::parseIndex(const QByteArray &json,
     scores.push_back(std::move(score));
   }
   m_scores = std::move(scores);
+
+  // Not in the scores: a bundled score's recordings are here too.
+  QHash<QString, std::vector<ScoreRecording>> recordings;
+  const QJsonObject pieces = root.value("recordings").toObject();
+  for (auto piece = pieces.begin(); piece != pieces.end(); ++piece)
+    for (const QJsonValue &value : piece.value().toArray())
+    {
+      const QJsonObject entry = value.toObject();
+      const QString performer = entry.value("performer").toString();
+      const QUrl url{entry.value("url").toString()};
+      // It comes off the network and is given to the system to open.
+      if (performer.isEmpty() || !url.isValid() || url.scheme() != "https" ||
+          url.host().isEmpty())
+        continue;
+      recordings[piece.key()].push_back({performer, url});
+    }
+  m_recordings = std::move(recordings);
   return true;
 }
 
@@ -208,6 +225,12 @@ const RollsScore *RollsLibrary::score(const QString &id) const
       std::find_if(m_scores.begin(), m_scores.end(),
                    [&id](const RollsScore &score) { return score.id == id; });
   return it == m_scores.end() ? nullptr : &*it;
+}
+
+std::vector<ScoreRecording> RollsLibrary::recordings(const QString &id) const
+{
+  ensureLoaded();
+  return m_recordings.value(id);
 }
 
 muse::async::Notification RollsLibrary::scoresChanged() const

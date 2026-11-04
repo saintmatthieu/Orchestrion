@@ -53,6 +53,15 @@ struct RollsScore
 };
 
 /**
+ * A video of someone playing a piece.
+ */
+struct ScoreRecording
+{
+  QString performer;
+  QUrl url;
+};
+
+/**
  * The scores of Rolls, the online library of free scores made for
  * Orchestrion, and the copies of them downloaded to this computer.
  *
@@ -75,6 +84,12 @@ public:
   /** The scores of the last index fetched, in its order. */
   virtual const std::vector<RollsScore> &scores() const = 0;
   virtual const RollsScore *score(const QString &id) const = 0;
+  /**
+   * The recordings of a piece, best first. A piece's id is that of its score
+   * of Rolls, or the one `scores/attributions.json` gives a bundled score.
+   */
+  virtual std::vector<ScoreRecording> recordings(const QString &id) const = 0;
+  /** The scores or the recordings changed. */
   virtual muse::async::Notification scoresChanged() const = 0;
 
   /**
