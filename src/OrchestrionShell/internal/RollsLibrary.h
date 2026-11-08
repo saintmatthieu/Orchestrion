@@ -40,7 +40,8 @@ namespace dgk
  * `downloaded.json`, which says what version of each score was downloaded.
  *
  * The index's address can be changed with the ORCHESTRION_ROLLS_URL
- * environment variable, for testing against a local copy of the site.
+ * environment variable (which --rolls-url sets), for testing against a local
+ * copy of the site: the index's address, or the site's.
  */
 class RollsLibrary : public IRollsLibrary, public dgk::Injectable
 {

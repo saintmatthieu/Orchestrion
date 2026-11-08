@@ -55,8 +55,19 @@ const QRegularExpression idPattern{"^[a-z0-9]+(-[a-z0-9]+)*$"};
 
 QUrl indexUrlFromEnvironment()
 {
-  const QByteArray url = qgetenv("ORCHESTRION_ROLLS_URL");
-  return QUrl{url.isEmpty() ? defaultIndexUrl : QString::fromUtf8(url)};
+  const QByteArray value = qgetenv("ORCHESTRION_ROLLS_URL");
+  if (value.isEmpty())
+    return QUrl{defaultIndexUrl};
+  QUrl url = QUrl::fromUserInput(QString::fromUtf8(value));
+  // The site's address: its index is at its root.
+  if (!url.path().endsWith(".json"))
+  {
+    if (!url.path().endsWith('/'))
+      url.setPath(url.path() + '/');
+    url = url.resolved(QUrl{"index.json"});
+  }
+  LOGI() << "Rolls index: " << url.toString();
+  return url;
 }
 
 QNetworkRequest makeRequest(const QUrl &url)

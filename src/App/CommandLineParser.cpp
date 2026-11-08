@@ -250,6 +250,11 @@ void CommandLineParser::init()
 
   m_parser.addOption(QCommandLineOption(
       "full-screen", "Start with the window in full screen"));
+  m_parser.addOption(QCommandLineOption(
+      "rolls-url",
+      "Get the library's scores from this copy of the Rolls site (its "
+      "address, or its index.json's), e.g. http://localhost:8000/",
+      "url"));
 
   // Internal
   m_parser.addOption(
@@ -699,6 +704,11 @@ void CommandLineParser::parse(int argc, char **argv)
     }
 
     m_options->startup.fullScreen = m_parser.isSet("full-screen");
+
+    // Passed on as the variable RollsLibrary reads, which nothing it
+    // could be injected with carries this early.
+    if (m_parser.isSet("rolls-url"))
+      qputenv("ORCHESTRION_ROLLS_URL", m_parser.value("rolls-url").toUtf8());
   }
 }
 
