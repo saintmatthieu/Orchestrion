@@ -43,9 +43,6 @@ namespace dgk
 {
 namespace
 {
-/** How many recently opened scores the shelf shows. */
-constexpr int maxRecentScores = 8;
-
 /**
  * The pause between two renderings, so that the shelf gets to paint the
  * card just rendered (and to answer the mouse) before the next one blocks.
@@ -432,6 +429,14 @@ void ScoreListModel::setQuery(const QString &foldedQuery)
   filter();
 }
 
+void ScoreListModel::setRecentFilter(std::optional<QSet<QString>> identities)
+{
+  if (identities == m_recentFilter)
+    return;
+  m_recentFilter = std::move(identities);
+  filter();
+}
+
 void ScoreListModel::setSort(const QString &key, bool descending)
 {
   if (key == m_sortKey && descending == m_sortDescending)
@@ -445,9 +450,13 @@ void ScoreListModel::filter()
 {
   std::vector<std::pair<int, size_t>> matches; // (score, index)
   for (size_t i = 0; i < m_items.size(); ++i)
+  {
+    if (m_recentFilter && !m_recentFilter->contains(m_items[i].identity))
+      continue;
     if (const std::optional<int> score =
             fuzzyScore(m_query, m_items[i].searchText))
       matches.emplace_back(*score, i);
+  }
   // Without a query everything scores 0 and keeps its order.
   std::stable_sort(matches.begin(), matches.end(),
                    [](const auto &a, const auto &b)
@@ -514,8 +523,8 @@ QVariant ScoreSectionsModel::data(const QModelIndex &index, int role) const
     {
     case Kind::Tutorials:
       return QStringLiteral("tutorials");
-    case Kind::Recent:
-      return QStringLiteral("recent");
+    case Kind::Elsewhere:
+      return QStringLiteral("elsewhere");
     case Kind::Folder:
       return QStringLiteral("folder");
     case Kind::Library:
@@ -570,10 +579,10 @@ void ScoreSectionsModel::setSections(std::vector<Section> sections)
 
 ScoreShelfModel::ScoreShelfModel(QObject *parent)
     : QObject(parent), m_sections{new ScoreSectionsModel(this)},
-      m_tutorialScores{makeList()}, m_recentScores{makeList()},
+      m_tutorialScores{makeList()}, m_elsewhereScores{makeList()},
       m_libraryScores{makeList()}, m_mergedScores{makeList()},
-      m_homeScores{makeList()}, m_allScores{makeList()},
-      m_watcher{new QFileSystemWatcher(this)}, m_reloadTimer{new QTimer(this)}
+      m_allScores{makeList()}, m_watcher{new QFileSystemWatcher(this)},
+      m_reloadTimer{new QTimer(this)}
 {
   m_reloadTimer->setSingleShot(true);
   m_reloadTimer->setInterval(reloadDelayMs);
@@ -644,7 +653,7 @@ void ScoreShelfModel::setQuery(const QString &query)
   const QString folded = foldForSearch(query);
   for (ScoreListModel *list : lists())
     // "Next" goes through every score: the search is for finding one.
-    if (list != m_homeScores && list != m_allScores)
+    if (list != m_allScores)
       list->setQuery(folded);
   emit queryChanged();
 }
@@ -698,10 +707,30 @@ void ScoreShelfModel::showSections()
   emit shownCountChanged();
 }
 
+bool ScoreShelfModel::recentOnly() const { return m_recentOnly; }
+
+void ScoreShelfModel::setRecentOnly(bool recentOnly)
+{
+  if (recentOnly == m_recentOnly)
+    return;
+  m_recentOnly = recentOnly;
+  applyRecentFilter();
+  emit recentOnlyChanged();
+}
+
+void ScoreShelfModel::applyRecentFilter()
+{
+  const auto filter =
+      m_recentOnly ? std::optional{m_recentIdentities} : std::nullopt;
+  for (ScoreListModel *list : lists())
+    if (list != m_tutorialScores && list != m_allScores)
+      list->setRecentFilter(filter);
+}
+
 void ScoreShelfModel::applySort()
 {
   for (ScoreListModel *list : lists())
-    if (list != m_tutorialScores && list != m_homeScores)
+    if (list != m_tutorialScores)
       list->setSort(m_sortKey, m_sortDescending);
 }
 
@@ -960,6 +989,7 @@ ScoreShelfModel::makeItem(const QString &path,
 {
   ScoreListModel::Item item{path, displayNameOverride,
                             titleFromFileName(muse::io::path_t{path})};
+  item.identity = identityOf(QFileInfo{path});
   if (const auto entry = m_cache.cached(path))
   {
     item.title = entry->title;
@@ -1007,8 +1037,7 @@ const ScoreListModel::Item *ScoreShelfModel::nextItem() const
   // Not by path: the score open may be another copy of one on the shelf (a
   // bundled score played from another build, say).
   const QString current = identityOf(QFileInfo{m_currentPath});
-  const ScoreListModel *const list =
-      m_sortKey.isEmpty() ? m_homeScores : m_allScores;
+  const ScoreListModel *const list = m_allScores;
   const int count = list->count();
   for (int row = 0; row + 1 < count; ++row)
     if (identityOf(QFileInfo{list->shownItem(row).path}) == current)
@@ -1042,7 +1071,6 @@ std::vector<ScoreListModel *> ScoreShelfModel::lists() const
   for (const ScoreSectionsModel::Section &section : m_unsortedSections)
     result.push_back(section.scores);
   result.push_back(m_mergedScores);
-  result.push_back(m_homeScores);
   result.push_back(m_allScores);
   return result;
 }
@@ -1072,18 +1100,6 @@ void ScoreShelfModel::reload()
     seen.insert(identity);
     return true;
   };
-  // The order "next" goes by: that of the folders and the library, as if
-  // "Play again" had taken none of their scores.
-  QSet<QString> seenAtHome;
-  std::vector<ScoreListModel::Item> home;
-  const auto addHome = [&](const QFileInfo &file)
-  {
-    if (!seenAtHome.contains(identityOf(file)))
-    {
-      seenAtHome.insert(identityOf(file));
-      home.push_back(makeItem(file.absoluteFilePath(), QString{}));
-    }
-  };
 
   std::vector<ScoreSectionsModel::Section> sections;
 
@@ -1091,23 +1107,6 @@ void ScoreShelfModel::reload()
   sections.push_back({ScoreSectionsModel::Kind::Tutorials,
                       muse::qtrc("orchestrion/shelf", "Tutorials"), QString{},
                       m_tutorialScores});
-
-  std::vector<ScoreListModel::Item> recent;
-  for (const mu::project::RecentFile &file :
-       recentFilesController()->recentFilesList())
-  {
-    if (static_cast<int>(recent.size()) == maxRecentScores)
-      break;
-    const QFileInfo info{file.path.toQString()};
-    // A score of Rolls whose file went is back in the library: MuseScore
-    // drops missing files from its list.
-    if (info.exists() && firstSeen(info))
-      recent.push_back(makeItem(info.filePath(), file.displayNameOverride));
-  }
-  m_recentScores->setItems(std::move(recent));
-  sections.push_back({ScoreSectionsModel::Kind::Recent,
-                      muse::qtrc("orchestrion/shelf", "Play again"), QString{},
-                      m_recentScores});
 
   const QStringList userFolders = folders();
   QStringList watched;
@@ -1130,11 +1129,8 @@ void ScoreShelfModel::reload()
     watched << scan.directories;
     std::vector<ScoreListModel::Item> items;
     for (const QFileInfo &file : scan.scores)
-    {
-      addHome(file);
       if (firstSeen(file))
         items.push_back(makeItem(file.absoluteFilePath(), QString{}));
-    }
     list->setItems(std::move(items));
     const QString name = QFileInfo{folder}.fileName();
     sections.push_back({ScoreSectionsModel::Kind::Folder,
@@ -1149,15 +1145,11 @@ void ScoreShelfModel::reload()
   std::vector<ScoreListModel::Item> library;
   for (const QFileInfo &file : bundledScores(
            globalConfiguration()->appDataPath().toQString() + "scores/"))
-  {
-    addHome(file);
     if (firstSeen(file))
       library.push_back(makeItem(file.absoluteFilePath(), QString{}));
-  }
   for (const RollsScore &score : rollsLibrary()->scores())
   {
     const QFileInfo file{rollsLibrary()->localPath(score.id)};
-    addHome(file);
     if (firstSeen(file))
       library.push_back(makeItem(file.absoluteFilePath(), QString{}));
   }
@@ -1168,6 +1160,25 @@ void ScoreShelfModel::reload()
        muse::qtrc("orchestrion/shelf", "Library"),
        site.host() + site.path().chopped(site.path().endsWith('/') ? 1 : 0),
        m_libraryScores});
+
+  // The scores played recently: those the filter shows, and a section for
+  // those that are in neither a folder nor the library.
+  m_recentIdentities.clear();
+  std::vector<ScoreListModel::Item> elsewhere;
+  for (const mu::project::RecentFile &file :
+       recentFilesController()->recentFilesList())
+  {
+    const QFileInfo info{file.path.toQString()};
+    m_recentIdentities.insert(identityOf(info));
+    // A score of Rolls whose file went is back in the library: MuseScore
+    // drops missing files from its list.
+    if (info.exists() && firstSeen(info))
+      elsewhere.push_back(makeItem(info.filePath(), file.displayNameOverride));
+  }
+  m_elsewhereScores->setItems(std::move(elsewhere));
+  sections.push_back({ScoreSectionsModel::Kind::Elsewhere,
+                      muse::qtrc("orchestrion/shelf", "Played from elsewhere"),
+                      QString{}, m_elsewhereScores});
 
   // The merged list: the same scores, in the sections' order.
   std::vector<ScoreListModel::Item> merged;
@@ -1183,7 +1194,7 @@ void ScoreShelfModel::reload()
     section.scores->setCurrentPath(m_currentPath);
   m_mergedScores->setCurrentPath(m_currentPath);
   m_unsortedSections = std::move(sections);
-  m_homeScores->setItems(std::move(home));
+  applyRecentFilter();
   showSections();
   applySort();
   emit shownCountChanged();

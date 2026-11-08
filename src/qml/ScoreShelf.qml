@@ -200,6 +200,7 @@ Item {
         function onQueryChanged() { priorityTimer.restart() }
         function onShownCountChanged() { priorityTimer.restart() }
         function onCloseRequested() { root.shown = false }
+        function onRecentOnlyChanged() { Qt.callLater(root.focusCurrent, true) }
     }
 
     // The search is kept from one opening to the next, each view's its own
@@ -209,9 +210,65 @@ Item {
     property string scoresQuery: ""
     property string tutorialsQuery: ""
     property string queryBeforeTutorial: ""
+    // Whether the search box still holds the search kept from before,
+    // untouched since the shelf opened.
+    property bool queryKept: false
     function showQuery() {
         searchField.text = root.tutorialsOnly ? root.tutorialsQuery : root.scoresQuery
         searchField.selectAll()
+        queryKept = searchField.text.length > 0
+    }
+
+    // The card of the score that is open, if it is shown, or null.
+    function currentCard() {
+        for (let s = 0; s < sectionsRepeater.count; ++s) {
+            const shown = sectionAt(s)
+            if (!shown || !shown.visible || shown.isTutorials)
+                continue
+            for (let i = 0; i < shown.cards.count; ++i) {
+                const card = shown.cards.itemAt(i)
+                if (card && card.current)
+                    return card
+            }
+        }
+        return null
+    }
+    // On opening: the score that is open has the focus, a third of the way
+    // down what shows of the table, so that what comes before it shows too.
+    // Else the search box, at the top.
+    // With `keepFocus`, only the scroll (the filter switched, from the switch
+    // that keeps the focus): the top if it isn't shown.
+    function focusCurrent(keepFocus) {
+        if (!root.shown || root.tutorialsOnly)
+            return
+        // Laid out now, not at the next frame: the rows may just have
+        // changed (the filter).
+        for (let s = 0; s < sectionsRepeater.count; ++s) {
+            const shown = sectionAt(s)
+            if (shown) {
+                shown.cardsColumn.forceLayout()
+                shown.forceLayout()
+            }
+        }
+        content.forceLayout()
+        const card = currentCard()
+        if (!card) {
+            if (keepFocus)
+                flick.contentY = 0
+            return
+        }
+        const top = card.mapToItem(content, 0, 0).y
+        const visible = flick.height - cardsArea.topFadeHeight - cardsArea.fadeHeight
+        const target = content.y + top - cardsArea.topFadeHeight - visible / 3
+        scrollAnimation.stop()
+        flick.contentY = Math.max(0, Math.min(target, flick.contentHeight - flick.height))
+        if (!keepFocus)
+            card.forceActiveFocus(Qt.TabFocusReason)
+    }
+    // Once laid out: the shelf is only laid out while it shows.
+    onVisibleChanged: {
+        if (visible)
+            Qt.callLater(focusCurrent)
     }
     onTutorialsOnlyChanged: {
         if (shown)
@@ -391,11 +448,14 @@ Item {
         + cardsArea.topFadeHeight + sectionLabelProbe.implicitHeight
         + sectionLabelSpacing
 
-    // A link to elsewhere: the file dialog, musescore.com.
+    // A link to elsewhere: the file dialog, musescore.com. Or, `checkable`,
+    // a switch, filled while on.
     component ShelfLink: Rectangle {
         id: link
 
         property alias text: label.text
+        property bool checkable: false
+        property bool checked: false
         signal clicked()
 
         readonly property bool lit: linkMouse.containsMouse || activeFocus
@@ -403,7 +463,7 @@ Item {
         width: label.implicitWidth + 32
         height: label.implicitHeight + 14
         radius: height / 2
-        color: "transparent"
+        color: link.checked ? (link.lit ? Theme.metalBright : Theme.metal) : "transparent"
         border.color: link.lit ? Theme.metalBright : Theme.metal
         border.width: activeFocus ? 2 : 1
 
@@ -418,10 +478,17 @@ Item {
         Keys.onSpacePressed: link.clicked()
         Keys.onDownPressed: root.focusFirstCard()
 
+        Accessible.role: link.checkable ? Accessible.CheckBox : Accessible.Button
+        Accessible.name: label.text
+        Accessible.checkable: link.checkable
+        Accessible.checked: link.checked
+        Accessible.onPressAction: link.clicked()
+
         Text {
             id: label
             anchors.centerIn: parent
-            color: link.lit ? Theme.metalBright : Theme.metal
+            color: link.checked ? Theme.backdrop
+                                : link.lit ? Theme.metalBright : Theme.metal
             font.pixelSize: 14
         }
 
@@ -690,7 +757,13 @@ Item {
                 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier
                                         | Qt.MetaModifier))) {
                 searchField.forceActiveFocus()
-                searchField.insert(searchField.length, event.text)
+                // The search kept from before is replaced, as it would be
+                // had the box kept the focus, its text selected.
+                if (root.queryKept)
+                    searchField.text = event.text
+                else
+                    searchField.insert(searchField.length, event.text)
+                root.queryKept = false
                 event.accepted = true
             }
         }
@@ -1065,8 +1138,8 @@ Item {
                             searchField.width
                             + (root.tutorialsOnly
                                ? 0
-                               : fileLink.width + folderLink.width + onlineLink.width
-                                 + 3 * spacing)
+                               : recentToggle.width + fileLink.width + folderLink.width
+                                 + onlineLink.width + 4 * spacing)
                             + (backLink.visible ? backLink.width + spacing : 0))
             spacing: 12
             // blockGap under the title's letters, which end above the
@@ -1097,6 +1170,7 @@ Item {
                 selectedTextColor: Theme.backdrop
                 font.pixelSize: 14
                 verticalAlignment: TextInput.AlignVCenter
+                onTextEdited: root.queryKept = false
                 onTextChanged: {
                     root.model.query = text
                     if (root.tutorialsOnly)
@@ -1180,6 +1254,17 @@ Item {
                 }
             }
 
+            // Only the scores played lately, where they are in the table
+            ShelfLink {
+                id: recentToggle
+                objectName: "demo:Shelf/Recent"
+                visible: !root.tutorialsOnly
+                height: searchField.height
+                text: qsTr("Recently played")
+                checkable: true
+                checked: root.model.recentOnly
+                onClicked: root.model.recentOnly = !root.model.recentOnly
+            }
             ShelfLink {
                 id: fileLink
                 visible: !root.tutorialsOnly
@@ -1267,7 +1352,8 @@ Item {
 
         readonly property bool empty: (root.tutorialsOnly ? root.model.tutorialCount
                                                           : root.model.shownCount) === 0
-                                      && root.model.query.length > 0
+                                      && (root.model.query.length > 0
+                                          || !root.tutorialsOnly && root.model.recentOnly)
 
         // The columns' headings, over the rows' columns.
         Item {
@@ -1414,6 +1500,7 @@ Item {
                         required property QtObject scores
 
                         readonly property alias cards: cardRepeater
+                        readonly property alias cardsColumn: cardsColumn
                         readonly property alias label: labelRow
                         readonly property bool searching: root.model.query.length > 0
                         readonly property bool isFolder: kind === "folder"
@@ -1421,11 +1508,13 @@ Item {
                         readonly property bool isTutorials: kind === "tutorials"
                         readonly property bool showsAddCard: isLibrary
                             && !root.model.hasFolders && !searching
+                            && !root.model.recentOnly
 
                         // A folder keeps its section while not searching,
                         // even empty: that's where its scores will come.
                         visible: isTutorials === root.tutorialsOnly
-                                 && (scores.count > 0 || (isFolder && !searching)
+                                 && (scores.count > 0
+                                     || (isFolder && !searching && !root.model.recentOnly)
                                      || showsAddCard)
                         width: parent.width
                         spacing: root.sectionLabelSpacing
@@ -1526,6 +1615,7 @@ Item {
                         }
 
                         Column {
+                            id: cardsColumn
                             width: parent.width
                             spacing: root.cardSpacing
                             visible: shelfSection.scores.count > 0 || shelfSection.showsAddCard
@@ -1549,9 +1639,13 @@ Item {
             visible: cardsArea.empty
             anchors.horizontalCenter: parent.horizontalCenter
             y: flick.y + cardsArea.topFadeHeight + 24
-            text: (root.tutorialsOnly ? qsTr("No tutorial matches \u201C%1\u201D")
-                                      : qsTr("No score matches \u201C%1\u201D"))
-                  .arg(searchField.text)
+            text: root.tutorialsOnly
+                  ? qsTr("No tutorial matches \u201C%1\u201D").arg(searchField.text)
+                  : !root.model.recentOnly
+                  ? qsTr("No score matches \u201C%1\u201D").arg(searchField.text)
+                  : searchField.text.length > 0
+                  ? qsTr("No score played recently matches \u201C%1\u201D").arg(searchField.text)
+                  : qsTr("No score played recently")
             color: Theme.inkMuted
             font.pixelSize: 15
         }

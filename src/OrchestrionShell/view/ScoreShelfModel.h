@@ -35,6 +35,7 @@
 #include <QFileInfo>
 #include <QFileSystemWatcher>
 #include <QObject>
+#include <QSet>
 #include <QTimer>
 #include <QUrl>
 #include <map>
@@ -49,7 +50,8 @@ namespace dgk
 /**
  * One section of the score shelf: its scores, as rows — those that match the
  * search, if any, best match first, unless they are sorted by a column
- * (setSort()).
+ * (setSort()); only those played recently, if so filtered
+ * (setRecentFilter()).
  */
 class ScoreListModel : public QAbstractListModel
 {
@@ -112,6 +114,8 @@ public:
     QString searchText;
     /** For a score of Rolls: its id. */
     QString rollsId;
+    /** Which score it is (ScoreShelfModel::identityOf). */
+    QString identity;
     /**
      * Whether title and composer come from the Rolls index, which the
      * score's own may not replace.
@@ -152,6 +156,11 @@ public:
    * they had. An empty key: the section's own order, or the search's.
    */
   void setSort(const QString &key, bool descending);
+  /**
+   * Shows only the items that are one of these scores (identities); all,
+   * without.
+   */
+  void setRecentFilter(std::optional<QSet<QString>> identities);
   /** The first item shown and how well it matches the query, if any. */
   std::optional<std::pair<int, const Item *>> bestMatch() const;
   /** The item shown at that row, 0 to count() - 1. */
@@ -173,13 +182,14 @@ private:
   QString m_query;
   QString m_sortKey;
   bool m_sortDescending = false;
+  std::optional<QSet<QString>> m_recentFilter;
   QString m_currentPath;
 };
 
 /**
- * The shelf's sections, in the order they are shown: the recently played
- * scores, then each folder the user added, then the library: the scores
- * bundled with the application and those of Rolls.
+ * The shelf's sections, in the order they are shown: each folder the user
+ * added, then the library (the scores bundled with the application and those
+ * of Rolls), then the scores played recently that are in neither.
  */
 class ScoreSectionsModel : public QAbstractListModel
 {
@@ -202,9 +212,10 @@ public:
   enum class Kind
   {
     Tutorials,
-    Recent,
     Folder,
     Library,
+    /** Played recently, from neither a folder nor the library. */
+    Elsewhere,
     /** Every score of the others but the tutorials', while sorted. */
     Merged,
   };
@@ -232,9 +243,10 @@ private:
 
 /**
  * Backs the score shelf, the overlay that shows the scores one can open as
- * cards: the recently opened ones, those in the folders the user added and
- * the library (the bundled scores and those of Rolls, IRollsLibrary), each
- * with its title, composer and the beginning of its music. It opens over the
+ * cards: those in the folders the user added, the library (the bundled scores
+ * and those of Rolls, IRollsLibrary) and those played from elsewhere, each
+ * with its title, composer and the beginning of its music. A filter shows
+ * only the scores played recently (recentOnly). It opens over the
  * score when the score's title is clicked or from File ▸ Browse scores…
  * (openRequested()).
  *
@@ -278,11 +290,13 @@ class ScoreShelfModel : public QObject,
    */
   Q_PROPERTY(QString sortKey READ sortKey NOTIFY sortChanged)
   Q_PROPERTY(bool sortDescending READ sortDescending NOTIFY sortChanged)
+  /** Whether only the scores played recently are shown. */
+  Q_PROPERTY(bool recentOnly READ recentOnly WRITE setRecentOnly NOTIFY
+                 recentOnlyChanged)
   /**
    * The title of the score after the one open, in the shelf's order: the
-   * sort's, if the scores are sorted, else that of the folders and the
-   * library ("Play again" only lists what was played before). Empty if the
-   * score open is the last, or isn't on the shelf. The search doesn't count.
+   * sort's, if the scores are sorted, else the sections'. Empty if the score
+   * open is the last. The search and the recentOnly filter don't count.
    */
   Q_PROPERTY(QString nextTitle READ nextTitle NOTIFY nextChanged)
 
@@ -369,6 +383,8 @@ public:
   QString sortKey() const;
   bool sortDescending() const;
   QString nextTitle() const;
+  bool recentOnly() const;
+  void setRecentOnly(bool recentOnly);
 
 signals:
   void openRequested();
@@ -383,6 +399,7 @@ signals:
   void queryChanged();
   void sortChanged();
   void nextChanged();
+  void recentOnlyChanged();
 
 private:
   /** The folders the user added, as saved in the settings. */
@@ -406,6 +423,11 @@ private:
   /** Applies the sort to every section's list but the tutorials'. */
   void applySort();
   /**
+   * Applies recentOnly to every list shown but the tutorials' (not to
+   * m_allScores).
+   */
+  void applyRecentFilter();
+  /**
    * Shows the sections, or, while sorted, the scores of all of them in one
    * (the tutorials keep theirs).
    */
@@ -426,21 +448,18 @@ private:
   ScoreIncipitCache m_cache;
   ScoreSectionsModel *const m_sections;
   ScoreListModel *const m_tutorialScores;
-  ScoreListModel *const m_recentScores;
+  ScoreListModel *const m_elsewhereScores;
   ScoreListModel *const m_libraryScores;
   /** The scores of all sections but the tutorials', shown while sorted. */
   ScoreListModel *const m_mergedScores;
   /**
-   * The scores of the folders and the library, each where it is at home,
-   * whether "Play again" has it or not: the order nextTitle goes by while
-   * not sorted. Never shown, searched nor sorted.
-   */
-  ScoreListModel *const m_homeScores;
-  /**
-   * The merged list's scores, sorted as it is, but not searched: the order
-   * nextTitle goes by while sorted (ties as the shelf shows them).
+   * The merged list's scores, sorted as it is, but neither searched nor
+   * filtered: the order nextTitle goes by. Never shown.
    */
   ScoreListModel *const m_allScores;
+  /** The scores played recently (identityOf), for recentOnly. */
+  QSet<QString> m_recentIdentities;
+  bool m_recentOnly = false;
   /** The sections as they are when not sorted, in order. */
   std::vector<ScoreSectionsModel::Section> m_unsortedSections;
   bool m_showsMerged = false;

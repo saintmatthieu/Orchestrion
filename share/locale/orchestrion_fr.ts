@@ -1702,6 +1702,21 @@ sélectionne un autre contrôleur ou utilise le clavier de l&apos;ordinateur.</t
         <translation>Aucune partition ne correspond à « %1 »</translation>
     </message>
     <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="0"/>
+        <source>Recently played</source>
+        <translation>Joué récemment</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="0"/>
+        <source>No score played recently</source>
+        <translation>Aucune partition jouée récemment</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/ScoreShelf.qml" line="0"/>
+        <source>No score played recently matches “%1”</source>
+        <translation>Aucune partition jouée récemment ne correspond à « %1 »</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/ScoreShelf.qml" line="1065"/>
         <source>Drop a folder to add it to the shelf, or a score to open it</source>
         <translation>Dépose un dossier pour l&apos;ajouter à l&apos;étagère, ou une partition pour l&apos;ouvrir</translation>
@@ -1750,9 +1765,9 @@ sélectionne un autre contrôleur ou utilise le clavier de l&apos;ordinateur.</t
         <translation>Ajouter un dossier de partitions</translation>
     </message>
     <message>
-        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="761"/>
-        <source>Play again</source>
-        <translation>Rejouer</translation>
+        <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="0"/>
+        <source>Played from elsewhere</source>
+        <translation>Jouées d’ailleurs</translation>
     </message>
     <message>
         <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="813"/>
