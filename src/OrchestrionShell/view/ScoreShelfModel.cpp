@@ -1030,7 +1030,7 @@ QString ScoreShelfModel::identityOf(const QFileInfo &file) const
   return file.fileName() + '|' + QString::number(file.size());
 }
 
-const ScoreListModel::Item *ScoreShelfModel::nextItem() const
+const ScoreListModel::Item *ScoreShelfModel::neighbour(int step) const
 {
   if (m_currentPath.isEmpty())
     return nullptr;
@@ -1039,24 +1039,27 @@ const ScoreListModel::Item *ScoreShelfModel::nextItem() const
   const QString current = identityOf(QFileInfo{m_currentPath});
   const ScoreListModel *const list = m_allScores;
   const int count = list->count();
-  for (int row = 0; row + 1 < count; ++row)
+  for (int row = 0; row < count; ++row)
     if (identityOf(QFileInfo{list->shownItem(row).path}) == current)
-      return &list->shownItem(row + 1);
+    {
+      const int other = row + step;
+      return other >= 0 && other < count ? &list->shownItem(other) : nullptr;
+    }
   return nullptr;
 }
 
-QString ScoreShelfModel::nextTitle() const
+QString ScoreShelfModel::neighbourTitle(int step) const
 {
-  const ScoreListModel::Item *const item = nextItem();
+  const ScoreListModel::Item *const item = neighbour(step);
   if (!item)
     return {};
   return item->displayNameOverride.isEmpty() ? item->title
                                              : item->displayNameOverride;
 }
 
-bool ScoreShelfModel::openNext()
+bool ScoreShelfModel::openNeighbour(int step)
 {
-  const ScoreListModel::Item *const item = nextItem();
+  const ScoreListModel::Item *const item = neighbour(step);
   if (!item)
     return false;
   // Copied: opening may reload the lists.
@@ -1064,6 +1067,14 @@ bool ScoreShelfModel::openNext()
   const QString displayName = item->displayNameOverride;
   return open(path, displayName);
 }
+
+QString ScoreShelfModel::nextTitle() const { return neighbourTitle(1); }
+
+QString ScoreShelfModel::previousTitle() const { return neighbourTitle(-1); }
+
+bool ScoreShelfModel::openNext() { return openNeighbour(1); }
+
+bool ScoreShelfModel::openPrevious() { return openNeighbour(-1); }
 
 std::vector<ScoreListModel *> ScoreShelfModel::lists() const
 {

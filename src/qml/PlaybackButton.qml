@@ -37,7 +37,9 @@ Row {
         id: navPanel
         name: "Playback"
         section: root.navigationSection
-        order: 1
+        // After the staff modes and the cards of the scores before and after
+        // (Main.qml)
+        order: 3
         direction: MUI.NavigationPanel.Horizontal
         enabled: root.enabled // faded out too: Tab brings them back (Main.qml)
         accessible.name: qsTr("Playback")

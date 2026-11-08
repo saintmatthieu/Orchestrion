@@ -118,6 +118,12 @@ void ScoreShelfHintModel::dismiss()
   emit shelfKnownChanged();
 }
 
+void ScoreShelfHintModel::hide()
+{
+  m_delay.stop();
+  setShown(false);
+}
+
 bool ScoreShelfHintModel::shown() const { return m_shown; }
 
 bool ScoreShelfHintModel::shelfKnown() const { return m_shelfKnown; }

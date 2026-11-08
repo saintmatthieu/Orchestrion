@@ -125,6 +125,91 @@ ApplicationWindow {
         id: scoreHeading
     }
 
+    // A link of a card under the score, to the score before or after the one
+    // open: brightening under the mouse or the keyboard's focus (its card
+    // shows which, framed bright), its arrow drawn (the font's ▸ sits low and
+    // close).
+    component ScoreStepLink: Item {
+        id: link
+        property alias text: label.text
+        // To the score before: the arrow first, pointing left
+        property bool pointsLeft: false
+        // Its place in keyboard navigation: set its name, panel and order
+        property alias navigation: navCtrl
+        signal activated()
+
+        // Under the mouse, or the keyboard's focus
+        readonly property bool lit: mouse.containsMouse || navCtrl.highlight
+        readonly property color ink: lit ? Theme.metalBright : Theme.metal
+        // Between the title and the arrow: a little more than a word space
+        readonly property int arrowGap: 7
+        // The capitals' height, the arrow centred on it
+        readonly property real capHeight: metrics.tightBoundingRect("H").height
+        implicitWidth: label.width + arrowGap + arrow.width
+        implicitHeight: label.implicitHeight
+
+        FontMetrics {
+            id: metrics
+            font: label.font
+        }
+
+        Text {
+            id: label
+            x: link.pointsLeft ? arrow.width + link.arrowGap : 0
+            width: Math.min(implicitWidth, 360)
+            elide: Text.ElideRight
+            color: link.ink
+            font.pixelSize: 14
+        }
+
+        // Three quarters of the capitals' height, its middle on theirs
+        Canvas {
+            id: arrow
+            readonly property color ink: link.ink
+            readonly property bool leftward: link.pointsLeft
+            x: link.pointsLeft ? 0 : label.width + link.arrowGap
+            height: Math.round(link.capHeight * 0.75)
+            width: Math.round(height * 0.8)
+            y: Math.round(label.baselineOffset - link.capHeight / 2 - height / 2)
+            onInkChanged: requestPaint()
+            onLeftwardChanged: requestPaint()
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.reset()
+                ctx.fillStyle = ink
+                ctx.beginPath()
+                if (leftward) {
+                    ctx.moveTo(width, 0)
+                    ctx.lineTo(0, height / 2)
+                    ctx.lineTo(width, height)
+                } else {
+                    ctx.moveTo(0, 0)
+                    ctx.lineTo(width, height / 2)
+                    ctx.lineTo(0, height)
+                }
+                ctx.closePath()
+                ctx.fill()
+            }
+        }
+
+        MouseArea {
+            id: mouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: link.activated()
+        }
+
+        MUI.NavigationControl {
+            id: navCtrl
+            accessible.role: MUI.MUAccessible.Button
+            accessible.name: label.text
+            accessible.visualItem: link
+            accessible.enabled: navCtrl.enabled
+            onTriggered: link.activated()
+        }
+    }
+
     ScoreShelfModel {
         id: scoreShelfModel
         Component.onCompleted: load()
@@ -148,9 +233,11 @@ ApplicationWindow {
         // Tab, or an arrow between controls, shows them like the mouse does
         onNavigated: {
             // Not for the card at a score's end, which takes the focus by
-            // itself
-            if (shelfHintCard.hasFocus)
+            // itself (and keeps it while its arrows go from link to link)
+            if (shelfHintCard.hasFocus && nextBand.atEnd) {
+                endTimer.restart()
                 return
+            }
             notationPaintView.controlsVisible = true
             hideControlsTimer.restart()
         }
@@ -324,8 +411,10 @@ ApplicationWindow {
                     onTriggered: {
                         notationPaintView.controlsVisible = false
                         // Hiding the controls ends their keyboard navigation:
-                        // Space and the arrows are Orchestrion's again.
-                        keyboardNavigation.release()
+                        // Space and the arrows are Orchestrion's again. Not
+                        // the card's at a score's end, which stays.
+                        if (!(shelfHintCard.hasFocus && nextBand.atEnd))
+                            keyboardNavigation.release()
                     }
                 }
 
@@ -401,7 +490,6 @@ ApplicationWindow {
                     // What takes room between the score and the lower rule
                     readonly property real underScoreHeight: nextBand.bandHeight
                                                              + demoBand.bandHeight
-                                                             + attributionBand.bandHeight
                                                              + offerBand.bandHeight
                                                              + lowerBandHeight * lowerBandOpen
                     // As tall as the keyboard at its full size and the air
@@ -437,7 +525,7 @@ ApplicationWindow {
                         // score's end points at till the shelf is found.
                         titleClickable: true
                         titleHintShown: notationPaintView.controlsVisible
-                                        || nextBand.wanted && !scoreShelfHint.shelfKnown
+                                        || nextBand.atEnd && !scoreShelfHint.shelfKnown
                         onTitleClicked: scoreShelf.open()
                     }
 
@@ -451,11 +539,11 @@ ApplicationWindow {
                         Layout.preferredHeight: furniture.scoreBandRestingHeight
                     }
 
-                    // Between the parchment and what is under it: the card at
-                    // a score's end, hung from the right cylinder, then the
-                    // rows of a demo's caption and keys, of a score's credit
-                    // and of the tutorial's offer, centred together: each
-                    // centred in its share.
+                    // Between the parchment and what is under it: the cards of
+                    // the scores before and after, hung from the cylinders,
+                    // with a score's credit between them, then the rows of a
+                    // demo's caption and keys and of the tutorial's offer,
+                    // centred together: each centred in its share.
                     readonly property real underParchmentTop:
                         (notationPaintView.titleClearance + notationPaintView.height
                          - notationPaintView.bottomClearance
@@ -463,9 +551,11 @@ ApplicationWindow {
                     readonly property real underParchmentBottom:
                         furniture.lowerBandOpen > 0 ? lowerBand.y : bottomOrnament.y
 
-                    // Once the performer has played a score to its end: the
-                    // next one, in the shelf's order — with, till the shelf is
-                    // found, a word on how to get to all of them. Right under
+                    // The scores before and after the one open, in the
+                    // shelf's order: with the transport and the other
+                    // controls, and once the performer has played the score
+                    // to its end — then with, till the shelf is found, a word
+                    // on how to get to all of them. Right under
                     // the score's right cylinder: a row of its own, as the
                     // credit's, but hung from the cylinder.
                     Item {
@@ -478,38 +568,122 @@ ApplicationWindow {
                         // The cylinders' foot, a little under the parchment's
                         readonly property real barrelBottom: furniture.underParchmentTop
                                                              + notationPaintView.rollerOverhang
+                        // The furthest the cards hang under the cylinders
+                        readonly property int maxBarrelGap: 20
+                        // The cards' top: barrelGap under the cylinders as they
+                        // come; then, while they show, where it is, from one
+                        // score to the next (each score's parchment is as tall
+                        // as its music, its cylinders' foot higher or lower),
+                        // so that clicking through the scores they stay still:
+                        // pushed down only by cylinders that would come closer
+                        // than barrelGap, pulled up only by ones further than
+                        // maxBarrelGap.
+                        property real cardsTop: 0
+                        function placeCards() {
+                            const closest = Math.round(barrelBottom + barrelGap)
+                            if (open === 0)
+                                cardsTop = closest
+                            else
+                                cardsTop = Math.min(Math.max(cardsTop, closest),
+                                                    Math.round(barrelBottom + maxBarrelGap))
+                        }
+                        onBarrelBottomChanged: placeCards()
+                        Component.onCompleted: placeCards()
+                        readonly property bool hasNeighbours: scoreShelfModel.nextTitle !== ""
+                                                              || scoreShelfModel.previousTitle !== ""
+                        // At the score's end, a moment after it
+                        readonly property bool atEnd: scoreShelfHint.shown
+                            && (hasNeighbours || !scoreShelfHint.shelfKnown)
                         // Wanted, whether or not the shelf covers it
-                        readonly property bool wanted: scoreShelfHint.shown
-                            && (scoreShelfModel.nextTitle !== "" || !scoreShelfHint.shelfKnown)
+                        readonly property bool wanted: atEnd
+                            || notationPaintView.controlsVisible && hasNeighbours
                         property real open: wanted && !scoreShelf.shown ? 1 : 0
-                        // Whether the card fits under the cylinder as things
-                        // are, clear of the lower rule (or the keyboard) and of
-                        // the other rows: it then takes no room, and the score
-                        // stays where it is. Else its row pushes it up. Judged
-                        // as the card comes, while its row is still closed:
-                        // the room depends on the row.
-                        property bool overlays: false
-                        onWantedChanged: {
-                            if (!wanted)
+                        Behavior on open {
+                            NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                        }
+                        // Whether the card takes room, pushing the score up:
+                        // at the score's end, if it doesn't fit under the
+                        // cylinder as things are, clear of the lower rule (or
+                        // the keyboard) and of the other rows. Judged as the
+                        // end comes, while its row is still closed (the room
+                        // depends on the row), and kept till the card is
+                        // gone. With the controls only, it lies over what is
+                        // there, as they do.
+                        property bool takesRoom: false
+                        onAtEndChanged: {
+                            if (!atEnd || open > 0)
                                 return
-                            const others = demoBand.bandHeight + attributionBand.bandHeight
-                                           + offerBand.bandHeight
+                            const others = demoBand.bandHeight + offerBand.bandHeight
                             // The other rows, centred under the score
                             const clearBelow = others > 0
                                 ? (furniture.underParchmentTop + furniture.underParchmentBottom
                                    - others + offerBand.rowGap) / 2
                                 : furniture.underParchmentBottom
-                            overlays = barrelBottom + barrelGap + shelfHintCard.height
-                                       + barrelGap <= clearBelow
+                            takesRoom = cardsTop + shelfHintCard.height + barrelGap > clearBelow
                         }
-                        Behavior on open {
-                            NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                        onOpenChanged: {
+                            if (open === 0)
+                                takesRoom = false
+                            placeCards()
                         }
-                        // Down to the card's foot: the other rows are centred
-                        // under it
-                        readonly property real bandHeight: overlays ? 0 :
-                            (notationPaintView.rollerOverhang + barrelGap
-                             + shelfHintCard.height) * open
+                        // Down to the cards' foot, or the credit's, which lies
+                        // in their row: the other rows are centred under them
+                        // (whether that takes room or not)
+                        readonly property real rowClear: Math.max(bandHeight,
+                            (cardsTop - furniture.underParchmentTop
+                             + shelfHintCard.height + barrelGap) * open,
+                            (cardsTop - furniture.underParchmentTop
+                             + attributionBand.cardHeight + barrelGap) * attributionBand.open)
+                        // Down to the card's foot, if it takes room
+                        readonly property real bandHeight: takesRoom
+                            ? (notationPaintView.rollerOverhang + barrelGap
+                               + shelfHintCard.height) * open
+                            : 0
+
+                    // The credit a score must carry, for a few seconds once
+                    // opened: in the cards' row, centred, top-aligned with
+                    // them, taking no room
+                    AttributionToast {
+                        id: attributionBand
+                        width: parent.width
+                        cardTop: shelfHintCard.y
+                    }
+
+                    // The score before, opposite: flush with the left
+                    // cylinder's outer edge
+                    Rectangle {
+                        id: previousCard
+                        x: notationPaintView.rollMargin
+                        y: shelfHintCard.y
+                        width: Math.ceil(previousLink.implicitWidth) + 28
+                        height: Math.ceil(previousLink.implicitHeight) + 20
+                        radius: 8
+                        color: Theme.backdrop
+                        // The keyboard's focus: bright and thick, as the
+                        // shelf's rows
+                        border.color: previousLink.lit ? Theme.metalBright : Theme.metal
+                        border.width: previousLink.navigation.highlight ? 2 : 1
+                        visible: opacity > 0 && scoreShelfModel.previousTitle !== ""
+                        opacity: nextBand.open
+
+                        ScoreStepLink {
+                            id: previousLink
+                            objectName: "demo:PreviousScore"
+                            anchors.centerIn: parent
+                            pointsLeft: true
+                            //: The score before the one played, on the card under the
+                            //: score; %1 is its title.
+                            text: qsTr("Previous: %1").arg(scoreShelfModel.previousTitle)
+                            navigation.name: "Previous"
+                            navigation.panel: previousNavPanel
+                            navigation.order: 1
+                            navigation.enabled: previousNavPanel.enabled
+                            onActivated: {
+                                scoreShelfHint.dismiss()
+                                scoreShelfModel.openPrevious()
+                            }
+                        }
+                    }
 
                     Rectangle {
                         id: shelfHintCard
@@ -518,61 +692,90 @@ ApplicationWindow {
                         x: parent.width - notationPaintView.rollMargin - width
                         // Hung from the cylinder, not centred in the room under
                         // the score as the other rows are
-                        y: Math.round(nextBand.barrelBottom + nextBand.barrelGap) - nextBand.y
+                        y: nextBand.cardsTop - nextBand.y
                         // Whole pixels, so that the right edge lands on the
                         // cylinder's
                         width: Math.ceil(shelfHintRow.implicitWidth) + 28
                         height: Math.ceil(shelfHintRow.implicitHeight) + 20
                         radius: 8
-                        // On the parchment: the backdrop's colour, framed in metal.
+                        // On the parchment: the backdrop's colour, framed in
+                        // metal; the keyboard's focus, bright and thick, as the
+                        // shelf's rows.
                         color: Theme.backdrop
-                        border.color: Theme.metal
-                        border.width: 1
-                        visible: opacity > 0
+                        border.color: nextLink.lit ? Theme.metalBright : Theme.metal
+                        border.width: nextLink.navigation.highlight ? 2 : 1
+                        // Something in it: the next score, or the way to the
+                        // shelf
+                        readonly property bool hasContent: scoreShelfModel.nextTitle !== ""
+                            || nextBand.atEnd && !scoreShelfHint.shelfKnown
+                        visible: opacity > 0 && hasContent
                         opacity: nextBand.open
 
-                        // Shown: the keys are its, Left and Right going from
-                        // Next to the cross (Return or Space presses, Esc
-                        // leaves, as anywhere in keyboard navigation).
-                        readonly property bool shown: nextBand.wanted && !scoreShelf.shown
-                        readonly property bool hasFocus: nextNavCtrl.active || closeNavCtrl.active
-                        onShownChanged: {
-                            if (shown) {
+                        // At the score's end the keys are the cards', from
+                        // Next (Shift+Tab to Previous; Return or Space presses,
+                        // Esc leaves, as anywhere in keyboard navigation); with
+                        // the controls, Tab comes to them after the staff modes.
+                        readonly property bool endShown: nextBand.atEnd && !scoreShelf.shown
+                        readonly property bool hasFocus: previousLink.navigation.active
+                                                         || nextLink.navigation.active
+                        // Gone again with the same timing as the transport
+                        // and the other controls; while the keyboard goes
+                        // from link to link, their time starts over.
+                        Timer {
+                            id: endTimer
+                            interval: hideControlsTimer.interval
+                            onTriggered: scoreShelfHint.hide()
+                        }
+                        onEndShownChanged: {
+                            if (endShown)
+                                endTimer.restart()
+                            else
+                                endTimer.stop()
+                            if (endShown) {
                                 Qt.callLater(function() {
-                                    if (!shelfHintCard.shown)
+                                    if (!shelfHintCard.endShown)
                                         return
                                     if (scoreShelfModel.nextTitle !== "")
-                                        nextNavCtrl.requestActive(true)
-                                    else
-                                        closeNavCtrl.requestActive(true)
+                                        nextLink.navigation.requestActive(true)
+                                    else if (scoreShelfModel.previousTitle !== "")
+                                        previousLink.navigation.requestActive(true)
                                 })
-                            } else if (hasFocus) {
+                            } else if (hasFocus && !notationPaintView.controlsVisible) {
                                 // Gone (played on, closed, a score opened):
                                 // the arrows are the score's again.
                                 keyboardNavigation.release()
                             }
                         }
 
+                        // A panel each, far apart as they are: Tab goes from
+                        // one to the other, after the staff modes and before
+                        // the transport. Faded out too, as the other controls:
+                        // Tab brings them back.
                         MUI.NavigationPanel {
-                            id: endNavPanel
-                            name: "ScoreEnd"
+                            id: previousNavPanel
+                            name: "PreviousScore"
                             section: controlsNavSection
-                            // After the transport's and the full-screen
-                            // button's
-                            order: 3
-                            direction: MUI.NavigationPanel.Horizontal
-                            enabled: shelfHintCard.shown
-                            accessible.name: qsTr("End of the score")
+                            order: 1
+                            enabled: scoreShelfModel.previousTitle !== "" && !scoreShelf.shown
+                            accessible.name: qsTr("Previous score")
+                        }
+                        MUI.NavigationPanel {
+                            id: nextNavPanel
+                            name: "NextScore"
+                            section: controlsNavSection
+                            order: 2
+                            enabled: scoreShelfModel.nextTitle !== "" && !scoreShelf.shown
+                            accessible.name: qsTr("Next score")
                         }
 
                         Row {
                             id: shelfHintRow
                             anchors.centerIn: parent
-                            spacing: 12
+                            spacing: 16
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: !scoreShelfHint.shelfKnown
+                                visible: nextBand.atEnd && !scoreShelfHint.shelfKnown
                                 // The hand pointing up at the title is drawn
                                 // larger than the text: at its size it is a smudge.
                                 textFormat: Text.StyledText
@@ -583,135 +786,21 @@ ApplicationWindow {
                                 font.pixelSize: 14
                             }
 
-                            // A link, brightening under the mouse, its arrow
-                            // drawn: the font's ▸ sits low and close.
-                            Item {
+                            ScoreStepLink {
                                 id: nextLink
                                 objectName: "demo:NextScore"
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: scoreShelfModel.nextTitle !== ""
-                                readonly property color ink: nextScoreMouse.containsMouse
-                                                             || nextNavCtrl.highlight
-                                                             ? Theme.metalBright : Theme.metal
-                                // Between the title and the arrow: a little more
-                                // than a word space
-                                readonly property int arrowGap: 7
-                                // The capitals' height, the arrow centred on it
-                                readonly property real capHeight:
-                                    nextMetrics.tightBoundingRect("H").height
-                                implicitWidth: nextLabel.width + arrowGap + arrow.width
-                                implicitHeight: nextLabel.implicitHeight
-
-                                FontMetrics {
-                                    id: nextMetrics
-                                    font: nextLabel.font
-                                }
-
-                                Text {
-                                    id: nextLabel
-                                    width: Math.min(implicitWidth, 460)
-                                    elide: Text.ElideRight
-                                    //: The score after the one played, on the card shown at
-                                    //: its end; %1 is its title.
-                                    text: qsTr("Next: %1").arg(scoreShelfModel.nextTitle)
-                                    color: nextLink.ink
-                                    font.pixelSize: 14
-                                }
-
-                                // Pointing right, three quarters of the capitals'
-                                // height, its middle on theirs
-                                Canvas {
-                                    id: arrow
-                                    readonly property color ink: nextLink.ink
-                                    x: nextLabel.width + nextLink.arrowGap
-                                    height: Math.round(nextLink.capHeight * 0.75)
-                                    width: Math.round(height * 0.8)
-                                    y: Math.round(nextLabel.baselineOffset
-                                                  - nextLink.capHeight / 2 - height / 2)
-                                    onInkChanged: requestPaint()
-                                    onPaint: {
-                                        const ctx = getContext("2d")
-                                        ctx.reset()
-                                        ctx.fillStyle = ink
-                                        ctx.beginPath()
-                                        ctx.moveTo(0, 0)
-                                        ctx.lineTo(width, height / 2)
-                                        ctx.lineTo(0, height)
-                                        ctx.closePath()
-                                        ctx.fill()
-                                    }
-                                }
-
-                                function activate() {
+                                //: The score after the one played, on the card under the
+                                //: score; %1 is its title.
+                                text: qsTr("Next: %1").arg(scoreShelfModel.nextTitle)
+                                navigation.name: "Next"
+                                navigation.panel: nextNavPanel
+                                navigation.order: 1
+                                navigation.enabled: nextNavPanel.enabled
+                                onActivated: {
                                     scoreShelfHint.dismiss()
                                     scoreShelfModel.openNext()
-                                }
-
-                                // The keyboard's focus: underlined, as a link
-                                Rectangle {
-                                    visible: nextNavCtrl.highlight
-                                    x: 0
-                                    y: Math.round(nextLabel.baselineOffset + nextMetrics.underlinePosition)
-                                    width: nextLabel.width
-                                    height: Math.max(1, Math.round(nextMetrics.lineWidth))
-                                    color: nextLink.ink
-                                }
-
-                                MouseArea {
-                                    id: nextScoreMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: nextLink.activate()
-                                }
-
-                                MUI.NavigationControl {
-                                    id: nextNavCtrl
-                                    name: "Next"
-                                    panel: endNavPanel
-                                    order: 1
-                                    enabled: scoreShelfModel.nextTitle !== ""
-                                             && shelfHintCard.shown
-                                    accessible.role: MUI.MUAccessible.Button
-                                    accessible.name: nextLabel.text
-                                    accessible.visualItem: nextLink
-                                    accessible.enabled: enabled
-                                    onTriggered: nextLink.activate()
-                                }
-                            }
-
-                            // Dismiss
-                            Rectangle {
-                                id: shelfHintClose
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 22
-                                height: 22
-                                radius: 11
-                                color: shelfHintCloseMouse.containsMouse || closeNavCtrl.highlight
-                                       ? Theme.overlay : "transparent"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "\u00D7"
-                                    color: Theme.inkMuted
-                                    font.pixelSize: 16
-                                }
-                                MouseArea {
-                                    id: shelfHintCloseMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: scoreShelfHint.dismiss()
-                                }
-                                MUI.NavigationControl {
-                                    id: closeNavCtrl
-                                    name: "Close"
-                                    panel: endNavPanel
-                                    order: 2
-                                    enabled: shelfHintCard.shown
-                                    accessible.role: MUI.MUAccessible.Button
-                                    accessible.name: qsTr("Close")
-                                    accessible.visualItem: shelfHintClose
-                                    accessible.enabled: enabled
-                                    onTriggered: scoreShelfHint.dismiss()
                                 }
                             }
                         }
@@ -723,35 +812,23 @@ ApplicationWindow {
                         id: demoBand
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
-                        spaceTop: furniture.underParchmentTop + nextBand.bandHeight
-                        spaceBottom: furniture.underParchmentBottom - attributionBand.bandHeight
-                                     - offerBand.bandHeight
+                        spaceTop: furniture.underParchmentTop + nextBand.rowClear
+                        spaceBottom: furniture.underParchmentBottom - offerBand.bandHeight
                         // Till it has faded out, which is when the script takes
                         // its caption away
                         covered: scoreShelf.visible
                     }
 
-                    // The credit a score must carry, for a few seconds once
-                    // opened
-                    AttributionToast {
-                        id: attributionBand
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: bandHeight
-                        spaceTop: furniture.underParchmentTop + nextBand.bandHeight
-                                  + demoBand.bandHeight
-                        spaceBottom: furniture.underParchmentBottom - offerBand.bandHeight
-                    }
-
                     // A while after a score opens, until taken up or closed:
                     // the Getting started tutorial, where its keys will show.
-                    // A row of its own, as the credit's.
+                    // A row of its own, as a demo's caption's.
                     Item {
                         id: offerBand
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
                         readonly property int rowGap: 12
-                        property real spaceTop: furniture.underParchmentTop + nextBand.bandHeight
-                                                + demoBand.bandHeight + attributionBand.bandHeight
+                        property real spaceTop: furniture.underParchmentTop + nextBand.rowClear
+                                                + demoBand.bandHeight
                         property real spaceBottom: furniture.underParchmentBottom
                         property real open: tutorialOffer.shown && !scoreShelf.shown ? 1 : 0
                         Behavior on open {

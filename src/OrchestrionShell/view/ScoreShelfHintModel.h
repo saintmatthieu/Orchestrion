@@ -28,12 +28,13 @@
 namespace dgk
 {
 /**
- * Backs the card that comes up a few seconds after the performer's own
- * playing has reached the end of a score (not the automatic player's, nor the
- * "Show me!" demo's): the next score, and the way to all of them — with, until
- * the user has found the score shelf (by the card, or any other way), a word
- * on how to get there. The next note hides it until the next end, and so do
- * closing it and opening the shelf, which also tell that the shelf is found.
+ * Backs the cards that come up a moment after the performer's own playing has
+ * reached the end of a score (not the automatic player's, nor the "Show me!"
+ * demo's): the scores before and after it — with, until the user has found the
+ * score shelf (by a card, or any other way), a word on how to get there. The
+ * next note hides them till the next end, and so do their own time running
+ * out (hide()) and opening the shelf, which also tells that the shelf is
+ * found (dismiss()).
  */
 class ScoreShelfHintModel : public QObject,
                             public dgk::Injectable,
@@ -53,10 +54,12 @@ public:
 
   Q_INVOKABLE void load();
   /**
-   * The card was closed or used, or the shelf opened: it hides until the next
-   * end, and won't tell the way to the shelf again.
+   * A card was used, or the shelf opened: they hide until the next end, and
+   * won't tell the way to the shelf again.
    */
   Q_INVOKABLE void dismiss();
+  /** Their time is up: they hide until the next end. */
+  Q_INVOKABLE void hide();
 
   bool shown() const;
   bool shelfKnown() const;

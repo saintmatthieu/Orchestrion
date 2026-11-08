@@ -41,7 +41,8 @@ TransportButton {
         id: navPanel
         name: "View"
         section: root.navigationSection
-        order: 2
+        // Last: after the transport
+        order: 4
         enabled: root.enabled // faded out too: Tab brings them back (Main.qml)
         accessible.name: qsTr("View")
     }

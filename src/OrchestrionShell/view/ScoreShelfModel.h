@@ -299,6 +299,8 @@ class ScoreShelfModel : public QObject,
    * open is the last. The search and the recentOnly filter don't count.
    */
   Q_PROPERTY(QString nextTitle READ nextTitle NOTIFY nextChanged)
+  /** The same for the score before the one open; empty if it is the first. */
+  Q_PROPERTY(QString previousTitle READ previousTitle NOTIFY nextChanged)
 
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
@@ -370,6 +372,8 @@ public:
    * false if there is none, or if it must be downloaded first.
    */
   Q_INVOKABLE bool openNext();
+  /** The same for the score before (previousTitle). */
+  Q_INVOKABLE bool openPrevious();
 
   QObject *sections() const;
   bool hasFolders() const;
@@ -383,6 +387,7 @@ public:
   QString sortKey() const;
   bool sortDescending() const;
   QString nextTitle() const;
+  QString previousTitle() const;
   bool recentOnly() const;
   void setRecentOnly(bool recentOnly);
 
@@ -439,8 +444,15 @@ private:
    * by its id, any other by its name and size.
    */
   QString identityOf(const QFileInfo &file) const;
-  /** The score after the one open (nextTitle), if any. */
-  const ScoreListModel::Item *nextItem() const;
+  /**
+   * The score `step` rows from the one open (1: nextTitle's, -1:
+   * previousTitle's), if any.
+   */
+  const ScoreListModel::Item *neighbour(int step) const;
+  /** Its title, as the shelf shows it; empty if none. */
+  QString neighbourTitle(int step) const;
+  /** Opens it, as open() does. */
+  bool openNeighbour(int step);
   /** Renders a card still missing, then schedules the next one. */
   void renderNext();
   void scheduleRender();

@@ -23,30 +23,22 @@ import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
 // The credit a score must carry (e.g. a Creative-Commons transcription),
-// shown for a few seconds when it is opened, in a row of its own under the
-// score: it takes room in a layout, opening as it comes and closing as it
-// goes (bandHeight), and draws midway between spaceTop and spaceBottom, so
-// that it hides nothing. Stays while hovered, so that its link can be
-// clicked.
+// shown for a few seconds when it is opened, centred, its top at `cardTop`: in
+// the row of the cards of the scores before and after (Main.qml), taking no
+// room, so that the score stays where it is from one score to the next.
+// Stays while hovered, so that its link can be clicked.
 Item {
     id: root
 
-    // Under it, as under a demo's caption
-    readonly property int rowGap: 12
-
-    /**
-     * What it stands between, from its parent's top: it takes room in a
-     * layout, and draws midway between them.
-     */
-    property real spaceTop: y
-    property real spaceBottom: y + height
+    /** Where its top is, from its parent's. */
+    property real cardTop: 0
+    /** Its card's height, open or not. */
+    readonly property real cardHeight: card.height
 
     property real open: 0
     Behavior on open {
         NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
     }
-
-    readonly property real bandHeight: (card.height + rowGap) * open
 
     ScoreAttributionModel {
         id: model
@@ -81,8 +73,7 @@ Item {
         id: card
 
         anchors.horizontalCenter: parent.horizontalCenter
-        y: (root.spaceTop + root.spaceBottom - root.bandHeight + root.rowGap) / 2
-           - root.y
+        y: root.cardTop
 
         width: layout.implicitWidth + 32
         height: layout.implicitHeight + 24

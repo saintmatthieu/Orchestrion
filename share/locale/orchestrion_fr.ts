@@ -1795,8 +1795,24 @@ sélectionne un autre contrôleur ou utilise le clavier de l&apos;ordinateur.</t
     <message>
         <location filename="../../src/qml/Main.qml" line="433"/>
         <source>Next: %1</source>
-        <extracomment>The score after the one played, on the card shown at its end; %1 is its title.</extracomment>
+        <extracomment>The score after the one played, on the card under the score; %1 is its title.</extracomment>
         <translation>Ensuite : %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="0"/>
+        <source>Previous: %1</source>
+        <extracomment>The score before the one played, on the card under the score; %1 is its title.</extracomment>
+        <translation>Précédente : %1</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="0"/>
+        <source>Previous score</source>
+        <translation>Partition précédente</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/Main.qml" line="0"/>
+        <source>Next score</source>
+        <translation>Partition suivante</translation>
     </message>
     <message>
         <location filename="../../src/qml/Main.qml" line="390"/>
