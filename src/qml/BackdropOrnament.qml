@@ -56,9 +56,17 @@ Item {
                                                      : Theme.metal
     readonly property real gap: 12
     readonly property real diamondHalf: 5
-    // Each rule, so that the plain ornament spans 32 % of the view.
+    // If set, the width the ornament spans, from one rule's end to the
+    // other's, e.g. to line up with what is under it; else 32 % of the view.
+    property real spanWidth: 0
+    // Each rule, so that the plain ornament spans 32 % of the view, or
+    // spanWidth: what the title, its diamonds and the gaps leave of it.
     readonly property real ruleLength: Math.max(
-        viewWidth * 0.16 - gap - diamondHalf, 40)
+        spanWidth > 0
+            ? (spanWidth - (hasTitle ? titleText.width + 4 * diamondHalf + 4 * gap
+                                     : 2 * diamondHalf + 2 * gap)) / 2
+            : viewWidth * 0.16 - gap - diamondHalf,
+        40)
     readonly property bool hasTitle: root.title.length > 0
     readonly property bool hasSubtitle: hasTitle && root.subtitle.length > 0
     // Kept out of the Text's grouped `font` so that letterSpacing may depend
@@ -76,6 +84,8 @@ Item {
     readonly property real inkBottom: subtitleText.visible
         ? subtitleText.y + subtitleText.height
         : row.y + row.height
+    // Where the title's letters stand: its capitals end on the baseline.
+    readonly property real titleBaseline: row.y + titleText.y + titleText.baselineOffset
     // Where the chevron under the title ends, shown or not.
     readonly property real chevronBottom: chevron.y + chevron.height
     readonly property real titleGap: subtitleText.visible

@@ -46,8 +46,9 @@
 namespace dgk
 {
 /**
- * One section of the score shelf: its scores, as cards — those that match
- * the search, if any, best match first.
+ * One section of the score shelf: its scores, as rows — those that match the
+ * search, if any, best match first, unless they are sorted by a column
+ * (setSort()).
  */
 class ScoreListModel : public QAbstractListModel
 {
@@ -81,6 +82,13 @@ public:
     TutorialRole,
     /** The score whose music the card shows: its own, or a tutorial's. */
     PicturePathRole,
+    /** The catalogue number, if Rolls' index gives one. */
+    OpusRole,
+    /** How many bars; 0 until known. */
+    MeasuresRole,
+    /** The difficulty of the rhythm and of the notes, 1 to 9; 0 if unknown. */
+    RhythmRole,
+    NotesRole,
   };
 
   struct Item
@@ -90,6 +98,14 @@ public:
     QString title;
     QString composer;
     QString incipit;
+    /** From Rolls' index; empty for other scores. */
+    QString opus;
+    QString composerSort;
+    /** From Rolls' index, else the score itself once rendered. */
+    int measures = 0;
+    /** From Rolls' index; 0 for other scores. */
+    int rhythm = 0;
+    int notes = 0;
     bool ready = false;
     /** Title, composer and file name, folded for search. */
     QString searchText;
@@ -129,6 +145,12 @@ public:
   void setCurrentPath(const QString &path);
   /** Shows only the items that match: a query as foldForSearch() returns. */
   void setQuery(const QString &foldedQuery);
+  /**
+   * Orders the items by a column (ScoreShelfModel::sortKey), the items for
+   * which it isn't known last, whichever the direction; ties keep the order
+   * they had. An empty key: the section's own order, or the search's.
+   */
+  void setSort(const QString &key, bool descending);
   /** The first item shown and how well it matches the query, if any. */
   std::optional<std::pair<int, const Item *>> bestMatch() const;
 
@@ -143,9 +165,12 @@ private:
   std::vector<Item> m_items;
   /** Indices into m_items of the items shown, in order. */
   std::vector<size_t> m_shown;
-  /** How well the first item shown matches. */
+  /** The item that matches best, and how well. */
+  std::optional<size_t> m_best;
   int m_bestScore = 0;
   QString m_query;
+  QString m_sortKey;
+  bool m_sortDescending = false;
   QString m_currentPath;
 };
 
@@ -178,6 +203,8 @@ public:
     Recent,
     Folder,
     Library,
+    /** Every score of the others but the tutorials', while sorted. */
+    Merged,
   };
 
   struct Section
@@ -231,7 +258,7 @@ class ScoreShelfModel : public QObject,
   Q_PROPERTY(QObject *sections READ sections CONSTANT)
   /** Whether the user added folders of their own. */
   Q_PROPERTY(bool hasFolders READ hasFolders NOTIFY foldersChanged)
-  /** How many cards are shown, in all sections. */
+  /** How many scores' cards are shown, in all sections. */
   Q_PROPERTY(int shownCount READ shownCount NOTIFY shownCountChanged)
   /** How many tutorials' cards are shown. */
   Q_PROPERTY(int tutorialCount READ tutorialCount NOTIFY shownCountChanged)
@@ -241,6 +268,14 @@ class ScoreShelfModel : public QObject,
   Q_PROPERTY(QString query READ query WRITE setQuery NOTIFY queryChanged)
   /** Whether a score is open (if not, the shelf can't be closed). */
   Q_PROPERTY(bool hasScore READ hasScore NOTIFY hasScoreChanged)
+  /**
+   * The column the scores are sorted by: "title", "composer", "opus",
+   * "difficulty" (the higher of the two levels), "rhythm", "notes" or "bars";
+   * empty for the sections, each in its own order. While sorted, the scores
+   * of all sections are shown in one (the tutorials keep theirs).
+   */
+  Q_PROPERTY(QString sortKey READ sortKey NOTIFY sortChanged)
+  Q_PROPERTY(bool sortDescending READ sortDescending NOTIFY sortChanged)
 
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
@@ -265,10 +300,11 @@ public:
                         const QString &displayNameOverride);
   /**
    * Opens the score that best matches the search, of any section (Return in
-   * the search box). Returns false if none does, or if it must be downloaded
-   * first (see open()).
+   * the search box), or runs the tutorial that does, with `tutorials` (the
+   * shelf shows either). Returns false if none does, or if the score must be
+   * downloaded first (see open()).
    */
-  Q_INVOKABLE bool openBestMatch();
+  Q_INVOKABLE bool openBestMatch(bool tutorials);
 
   /**
    * Runs that tutorial, on the score that is open (ITutorials).
@@ -301,6 +337,11 @@ public:
    * The scores whose cards are in view, to be rendered before the others.
    */
   Q_INVOKABLE void prioritize(const QStringList &paths);
+  /**
+   * A column's heading was clicked: sorts by it; again, the other way round;
+   * a third time, back to the sections, each in its own order.
+   */
+  Q_INVOKABLE void sortBy(const QString &key);
 
   QObject *sections() const;
   bool hasFolders() const;
@@ -311,6 +352,8 @@ public:
   bool hasScore() const;
   QString query() const;
   void setQuery(const QString &query);
+  QString sortKey() const;
+  bool sortDescending() const;
 
 signals:
   void openRequested();
@@ -323,6 +366,7 @@ signals:
   void activeChanged();
   void hasScoreChanged();
   void queryChanged();
+  void sortChanged();
 
 private:
   /** The folders the user added, as saved in the settings. */
@@ -343,7 +387,14 @@ private:
   ScoreListModel *makeList();
   ScoreListModel::Item makeItem(const QString &path,
                                 const QString &displayNameOverride) const;
-  /** Every section's list, in order. */
+  /** Applies the sort to every section's list but the tutorials'. */
+  void applySort();
+  /**
+   * Shows the sections, or, while sorted, the scores of all of them in one
+   * (the tutorials keep theirs).
+   */
+  void showSections();
+  /** Every list, shown or not: the sections' and the merged one. */
   std::vector<ScoreListModel *> lists() const;
   /** Renders a card still missing, then schedules the next one. */
   void renderNext();
@@ -354,12 +405,19 @@ private:
   ScoreListModel *const m_tutorialScores;
   ScoreListModel *const m_recentScores;
   ScoreListModel *const m_libraryScores;
+  /** The scores of all sections but the tutorials', shown while sorted. */
+  ScoreListModel *const m_mergedScores;
+  /** The sections as they are when not sorted, in order. */
+  std::vector<ScoreSectionsModel::Section> m_unsortedSections;
+  bool m_showsMerged = false;
   /** The folders' lists, kept across reloads by folder path. */
   std::map<QString, ScoreListModel *> m_folderScores;
   QFileSystemWatcher *const m_watcher;
   QTimer *const m_reloadTimer;
   QStringList m_priority;
   QString m_query;
+  QString m_sortKey;
+  bool m_sortDescending = false;
   QString m_currentPath;
   /** The score of Rolls to open once downloaded. */
   QString m_pendingOpen;

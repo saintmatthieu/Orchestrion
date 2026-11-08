@@ -22,19 +22,25 @@ import QtQuick.Controls 2.15
 import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
-// The score shelf: every score one can open at a glance, as cards showing the
-// beginning of their music — the recently opened ones, those in the folders
-// the user added, then the library (the bundled scores and those of Rolls) —
-// with a fuzzy search over them and the ways to find more. A score of Rolls
-// not yet on this computer has no music on its card, only a note saying it is
-// downloaded when opened. Covers the score view; opened by clicking the
-// score's title, Ctrl+O or File ▸ Browse scores…, closed by picking a score,
-// Escape or the ringed cross. Folders (or a score) can be dropped on it.
+// The score shelf: every score one can open at a glance, as a table whose
+// rows are cards showing the beginning of their music beside the score's
+// title, composer, opus, difficulty and length — the recently opened ones,
+// those in the folders the user added, then the library (the bundled scores
+// and those of Rolls) — with a fuzzy search over them and the ways to find
+// more. Clicking a column's heading sorts the rows by it, the sections merged
+// into one; again, the other way round; a third time, back to the sections,
+// each in its own order. A
+// score of Rolls not yet on this computer has no music on its card, only a
+// note saying it is downloaded when opened. Covers the score view; opened by
+// clicking the score's title, Ctrl+O or File ▸ Browse scores…, closed by
+// picking a score, Escape or the ringed cross. Folders (or a score) can be
+// dropped on it.
 //
-// The heading, search box and links stay put; the cards scroll beneath them.
+// The heading, search box, links and column headings stay put; the cards
+// scroll beneath them.
 //
 // With `tutorials`, it shows the tutorials only (Help ▸ Tutorials…); otherwise
-// they come first, above the scores.
+// the scores only.
 //
 // Instantiate with `anchors.fill: parent`; call open() / close().
 Item {
@@ -152,10 +158,11 @@ Item {
             ? shown.y + shown.label.y
             : card.mapToItem(content, 0, 0).y
         const bottom = card.mapToItem(content, 0, card.height).y
+        const topFade = cardsArea.topFadeHeight
         const fade = cardsArea.fadeHeight
         let target = flick.contentY
-        if (content.y + top - fade < target)
-            target = content.y + top - fade
+        if (content.y + top - topFade < target)
+            target = content.y + top - topFade
         else if (content.y + bottom + fade > target + flick.height)
             target = content.y + bottom + fade - flick.height
         target = Math.max(0, Math.min(target, flick.contentHeight - flick.height))
@@ -213,7 +220,7 @@ Item {
     // A page is what shows between the fades, so that the cards half hidden
     // under one come out whole.
     function scrollPage(direction) {
-        const page = flick.height - 2 * cardsArea.fadeHeight
+        const page = flick.height - cardsArea.topFadeHeight - cardsArea.fadeHeight
         const from = scrollAnimation.running ? scrollAnimation.to : flick.contentY
         const target = Math.max(0, Math.min(from + direction * page,
                                              flick.contentHeight - flick.height))
@@ -282,24 +289,33 @@ Item {
         }
     }
 
-    // The card's strip, as rendered by ScoreIncipitCache.
+    // The card's strip, as rendered by ScoreIncipitCache, on the row's left.
     readonly property int stripWidth: 320
     readonly property int stripHeight: 112
     readonly property int cardPadding: 8
-    readonly property int cardWidth: stripWidth + 2 * cardPadding
-    readonly property int cardSpacing: 20
-    readonly property int cardHeight: cardPadding + stripHeight + 10
-        + titleMetrics.height + 3 + composerMetrics.height + cardPadding + 4
+    readonly property int cardHeight: stripHeight + 2 * cardPadding
+    readonly property int cardSpacing: 10
+    readonly property int maxRowWidth: 1100
 
-    FontMetrics {
-        id: titleMetrics
-        font.pixelSize: 15
-        font.weight: Font.DemiBold
-    }
-    FontMetrics {
-        id: composerMetrics
-        font.pixelSize: 12
-    }
+    // The table's columns, from the left of a row: the slip, the title over
+    // the composer (taking what is left), then the opus and the difficulty's
+    // two levels, each wide enough for its heading and the sort's arrow; the
+    // levels end at the row's right edge. Dents in the card's edges mark
+    // where a column starts (columnStarts()).
+    readonly property int slipColumnWidth: stripWidth + 2 * cardPadding
+    readonly property int cellPadding: 16
+    readonly property int opusWidth: 140
+    readonly property int levelWidth: 72
+    readonly property int minTitleWidth: 220
+    readonly property int titleX: slipColumnWidth
+    // Too narrow a window: the title and composer only, unsorted.
+    readonly property bool showsColumns: !tutorialsOnly
+        && flick.rowWidth >= titleX + minTitleWidth + opusWidth + 2 * levelWidth
+    readonly property int notesX: flick.rowWidth - levelWidth
+    readonly property int rhythmX: notesX - levelWidth
+    readonly property int opusX: rhythmX - opusWidth
+    readonly property int titleWidth:
+        (showsColumns ? opusX : flick.rowWidth) - titleX
 
     FontLoader {
         id: titleFont
@@ -339,6 +355,21 @@ Item {
         font.pixelSize: 15
         font.letterSpacing: 2
     }
+    readonly property int sectionLabelSpacing: 18
+    // Measures a section's label, never shown.
+    SectionLabel {
+        id: sectionLabelProbe
+        visible: false
+        text: "X"
+    }
+
+    // The air between the shelf's blocks, the same all down: under the
+    // title's letters, under the search row, under the headings. It is what
+    // the headings need to their first row of cards: the cards' clearance
+    // and fade, then the first section's label and its spacing.
+    readonly property real blockGap: cardsArea.headingsClearance
+        + cardsArea.topFadeHeight + sectionLabelProbe.implicitHeight
+        + sectionLabelSpacing
 
     // A link to elsewhere: the file dialog, musescore.com.
     component ShelfLink: Rectangle {
@@ -383,6 +414,185 @@ Item {
         }
     }
 
+    // A number in a column of the table, blank when not known (0).
+    component NumberCell: Text {
+        property int value: 0
+        anchors.verticalCenter: parent.verticalCenter
+        horizontalAlignment: Text.AlignHCenter
+        text: value > 0 ? value : ""
+        color: Theme.metalBright
+        font.pixelSize: 15
+        font.features: ({ "tnum": 1 })
+    }
+
+    // A card whose top and bottom edges are dented, a small V pointing in,
+    // where each of its columns starts (`dents`, x positions in the card),
+    // with a hairline rule between the two dents, short of either.
+    component DentedCard: Canvas {
+        id: dented
+
+        property var dents: []
+        property color ink: Theme.metal
+        property real lineWidth: 1
+        readonly property real radius: 8
+        readonly property real dentWidth: 10
+        readonly property real dentDepth: 4
+        readonly property real ruleGap: 6
+        // The rules' opacity: subtler than the edges.
+        readonly property real ruleOpacity: 0.1
+
+        onDentsChanged: requestPaint()
+        onInkChanged: requestPaint()
+        onLineWidthChanged: requestPaint()
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            // The stroke's middle, so that all of it is inside.
+            const inset = lineWidth / 2
+            const left = inset, top = inset
+            const right = width - inset, bottom = height - inset
+            const r = radius, w = dentWidth / 2, d = dentDepth
+            // On a pixel's middle, so that the 1 px rule is crisp; the dents'
+            // tips with it.
+            const xs = dents.map(x => Math.round(x) + 0.5).sort((a, b) => a - b)
+            ctx.beginPath()
+            ctx.moveTo(left + r, top)
+            for (const x of xs) {
+                ctx.lineTo(x - w, top)
+                ctx.lineTo(x, top + d)
+                ctx.lineTo(x + w, top)
+            }
+            ctx.arcTo(right, top, right, top + r, r)
+            ctx.arcTo(right, bottom, right - r, bottom, r)
+            for (const x of xs.slice().reverse()) {
+                ctx.lineTo(x + w, bottom)
+                ctx.lineTo(x, bottom - d)
+                ctx.lineTo(x - w, bottom)
+            }
+            ctx.arcTo(left, bottom, left, bottom - r, r)
+            ctx.arcTo(left, top, left + r, top, r)
+            ctx.closePath()
+            ctx.fillStyle = Theme.popup
+            ctx.fill()
+            ctx.lineWidth = lineWidth
+            ctx.lineJoin = "round"
+            ctx.strokeStyle = ink
+            ctx.stroke()
+
+            ctx.beginPath()
+            for (const x of xs) {
+                ctx.moveTo(x, top + d + ruleGap)
+                ctx.lineTo(x, bottom - d - ruleGap)
+            }
+            ctx.lineWidth = 1
+            ctx.strokeStyle = Theme.metal
+            ctx.globalAlpha = ruleOpacity
+            ctx.stroke()
+            ctx.globalAlpha = 1
+        }
+    }
+
+    // A column's heading, which sorts by it when clicked; an arrow beside it
+    // says it does, and which way. The arrow hangs off the label, so that
+    // the label stays aligned with its column.
+    component SortHeading: Item {
+        id: heading
+
+        property string key
+        property alias text: label.text
+        property alias tip: headingTip.text
+        property bool centred: false
+        // Set like the rows' titles (bold, bright gold), for the Title's
+        // heading; else small and muted, lit when hovered or sorted.
+        property bool asTitle: false
+
+        readonly property bool sorted: root.model.sortKey === key
+        readonly property bool lit: headingMouse.containsMouse || activeFocus
+
+        function sort() { root.model.sortBy(heading.key) }
+
+        implicitWidth: label.implicitWidth + arrow.width + 4
+        implicitHeight: label.implicitHeight
+        // So that headings of different sizes can share a baseline.
+        baselineOffset: label.y + label.baselineOffset
+
+        activeFocusOnTab: true
+        Accessible.role: Accessible.ColumnHeader
+        Accessible.name: label.text
+        Accessible.onPressAction: heading.sort()
+        Keys.onShortcutOverride: function(event) {
+            event.accepted = event.key === Qt.Key_Space
+                || event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab
+        }
+        Keys.onReturnPressed: heading.sort()
+        Keys.onEnterPressed: heading.sort()
+        Keys.onSpacePressed: heading.sort()
+        Keys.onDownPressed: root.focusFirstCard()
+
+        Text {
+            id: label
+            x: heading.centred ? (heading.width - width) / 2 : 0
+            color: heading.asTitle || heading.lit || heading.sorted ? Theme.metalBright
+                                                                    : Theme.inkMuted
+            font.pixelSize: heading.asTitle ? 17 : 13
+            font.weight: heading.asTitle || heading.sorted ? Font.DemiBold : Font.Normal
+            font.underline: heading.activeFocus
+        }
+        // Drawn rather than a glyph, which a fallback font would place: a
+        // triangle in the box of the label's x-height (a little less), on
+        // its baseline; odd-wide, so that its point is on a pixel's middle.
+        FontMetrics {
+            id: labelMetrics
+            font: label.font
+        }
+        Canvas {
+            id: arrow
+            readonly property bool down: root.model.sortDescending
+            readonly property color ink: Theme.metalBright
+            x: label.x + label.width + 4
+            y: label.y + label.baselineOffset - height
+            height: Math.round(labelMetrics.xHeight * 0.85)
+            width: height + 1
+            visible: heading.sorted
+            onDownChanged: requestPaint()
+            onInkChanged: requestPaint()
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.reset()
+                ctx.beginPath()
+                if (down) {
+                    ctx.moveTo(0, 0)
+                    ctx.lineTo(width, 0)
+                    ctx.lineTo(width / 2, height)
+                } else {
+                    ctx.moveTo(0, height)
+                    ctx.lineTo(width, height)
+                    ctx.lineTo(width / 2, 0)
+                }
+                ctx.closePath()
+                ctx.fillStyle = ink
+                ctx.fill()
+            }
+        }
+        MouseArea {
+            id: headingMouse
+            anchors.fill: label
+            anchors.margins: -4
+            anchors.rightMargin: -4 - arrow.width
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: heading.sort()
+        }
+        OrchestrionToolTip {
+            id: headingTip
+            visible: headingMouse.containsMouse && text.length > 0
+        }
+    }
+
     component ScoreCard: Rectangle {
         id: card
         objectName: "demo:Shelf/Card"
@@ -402,6 +612,9 @@ Item {
         required property bool updateAvailable
         required property bool tutorial
         required property string picturePath
+        required property string opus
+        required property int rhythm
+        required property int notes
         required property int index
         // The index of its section.
         property int section: 0
@@ -420,14 +633,21 @@ Item {
                 root.shown = false
         }
 
-        width: root.cardWidth
+        width: flick.rowWidth
         height: root.cardHeight
-        radius: 8
-        color: Theme.popup
-        border.color: card.current || card.lit ? Theme.metalBright : Theme.metal
-        border.width: card.current || card.activeFocus ? 2 : 1
-        scale: card.lit ? 1.03 : 1
-        Behavior on scale { NumberAnimation { duration: 120 } }
+        color: "transparent"
+
+        // The title's column starts after the slip's; the opus's and the
+        // difficulty's, unless there is nothing in them (a tutorial).
+        DentedCard {
+            anchors.fill: parent
+            dents: root.showsColumns && !card.tutorial
+                   ? [root.titleX, root.opusX, root.rhythmX] : [root.titleX]
+            // Not lit for being the score that is open (its ◆ and "Now
+            // playing" say it): it would look focused next to the row that is.
+            ink: card.lit ? Theme.metalBright : Theme.metal
+            lineWidth: card.activeFocus ? 2 : 1
+        }
 
         activeFocusOnTab: true
         onActiveFocusChanged: {
@@ -585,34 +805,68 @@ Item {
 
         Column {
             id: textColumn
-            x: root.cardPadding + 2
-            anchors.top: slip.bottom
-            anchors.topMargin: 10
-            width: root.stripWidth - 4
-            spacing: 3
+            x: root.titleX + root.cellPadding
+            anchors.verticalCenter: parent.verticalCenter
+            // A tutorial has nothing in the other columns: its description
+            // may run over them.
+            width: (card.tutorial ? card.width - root.titleX : root.titleWidth)
+                   - 2 * root.cellPadding
+            spacing: 4
 
             Text {
                 width: parent.width
                 text: (card.current ? "◆  " : "") + card.title
                 color: Theme.metalBright
-                font.pixelSize: 15
+                font.pixelSize: 17
                 font.weight: Font.DemiBold
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
             Text {
                 width: parent.width
-                // Kept when empty, so that all cards are the same height.
+                visible: text.length > 0
                 text: card.downloadFailed
                       ? qsTr("Couldn't download it: are you online?")
                       : card.current
                       ? (card.composer.length > 0
                          ? qsTr("Now playing · %1").arg(card.composer)
                          : qsTr("Now playing"))
-                      : card.composer.length > 0 ? card.composer : " "
+                      : card.composer
                 color: Theme.inkMuted
-                font.pixelSize: 12
+                font.pixelSize: 14
+                wrapMode: card.tutorial ? Text.Wrap : Text.NoWrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
+            }
+        }
+
+        // The columns; blank where not known (the difficulty and opus of a
+        // score that doesn't say them).
+        Item {
+            visible: root.showsColumns && !card.tutorial
+            anchors.fill: parent
+
+            Text {
+                x: root.opusX + 8
+                width: root.opusWidth - 16
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: card.opus
+                color: Theme.inkMuted
+                font.pixelSize: 14
+                elide: Text.ElideRight
+            }
+            NumberCell {
+                x: root.rhythmX
+                width: root.levelWidth
+                value: card.rhythm
+            }
+            NumberCell {
+                x: root.notesX
+                width: root.levelWidth
+                value: card.notes
             }
         }
 
@@ -697,10 +951,8 @@ Item {
 
         readonly property bool lit: addMouse.containsMouse || activeFocus
 
-        width: root.cardWidth
-        height: root.cardHeight
-        scale: addCard.lit ? 1.03 : 1
-        Behavior on scale { NumberAnimation { duration: 120 } }
+        width: flick.rowWidth
+        height: 84
 
         activeFocusOnTab: true
         Keys.onShortcutOverride: function(event) {
@@ -732,28 +984,30 @@ Item {
             }
         }
 
-        Column {
+        Row {
             anchors.centerIn: parent
-            spacing: 6
+            spacing: 18
 
             Text {
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
                 text: "+"
                 color: outline.ink
                 font.pixelSize: 32
             }
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Add a folder of your own scores")
-                color: Theme.metalBright
-                font.pixelSize: 15
-                font.weight: Font.DemiBold
-            }
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTr("Its scores will be listed here, and searched")
-                color: Theme.inkMuted
-                font.pixelSize: 12
+            Column {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                Text {
+                    text: qsTr("Add a folder of your own scores")
+                    color: Theme.metalBright
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                }
+                Text {
+                    text: qsTr("Its scores will be listed here, and searched")
+                    color: Theme.inkMuted
+                    font.pixelSize: 12
+                }
             }
         }
 
@@ -774,7 +1028,10 @@ Item {
         spacing: 18
 
         BackdropOrnament {
+            id: titleOrnament
             anchors.horizontalCenter: parent.horizontalCenter
+            // The rules end where the table's rows do.
+            spanWidth: flick.rowWidth
             viewWidth: root.width
             viewHeight: root.height
             title: root.tutorialsOnly ? qsTr("Tutorials") : qsTr("Choose a score")
@@ -782,6 +1039,7 @@ Item {
 
         // One row when the window is wide enough; wraps when not.
         Flow {
+            id: linksRow
             anchors.horizontalCenter: parent.horizontalCenter
             width: Math.min(root.width - 48,
                             searchField.width
@@ -791,7 +1049,10 @@ Item {
                                  + 3 * spacing)
                             + (backLink.visible ? backLink.width + spacing : 0))
             spacing: 12
-            topPadding: 4
+            // blockGap under the title's letters, which end above the
+            // ornament's own bottom.
+            topPadding: root.blockGap - header.spacing
+                        - (titleOrnament.height - titleOrnament.titleBaseline)
 
             // Fuzzy: the letters in order, not necessarily together ("mzrt"
             // finds Mozart); Return opens the best match.
@@ -819,7 +1080,7 @@ Item {
                 onTextChanged: root.model.query = text
                 Keys.onDownPressed: root.focusFirstCard()
                 onAccepted: {
-                    if (root.model.openBestMatch())
+                    if (root.model.openBestMatch(root.tutorialsOnly))
                         root.shown = false
                 }
 
@@ -967,7 +1228,10 @@ Item {
         id: cardsArea
         objectName: "demo:Shelf/Cards"
         anchors.top: header.bottom
-        anchors.topMargin: 12
+        // The headings as far under the search row as the title's letters
+        // are above it: blockGap.
+        anchors.topMargin: linksRow.y + linksRow.topPadding
+                           - (titleOrnament.y + titleOrnament.titleBaseline)
         anchors.bottom: parent.bottom
         // The same air below as the header has above, and a demo's caption
         anchors.bottomMargin: header.anchors.topMargin
@@ -979,11 +1243,93 @@ Item {
                                                           : root.model.shownCount) === 0
                                       && root.model.query.length > 0
 
+        // The columns' headings, over the rows' columns.
+        Item {
+            id: columnHeadings
+            visible: root.showsColumns
+            x: (flick.width - flick.rowWidth) / 2
+            width: flick.rowWidth
+            height: visible ? 8 + titleHeading.implicitHeight + 4
+                              + composerHeading.implicitHeight + 8 : 0
+
+            // Framed as the rows are, dents included, but for the slips'
+            // column.
+            DentedCard {
+                x: root.titleX
+                width: parent.width - x
+                height: parent.height
+                dents: [root.opusX - x, root.rhythmX - x]
+            }
+
+            // Stacked as in the rows: the title over the composer.
+            SortHeading {
+                id: titleHeading
+                x: root.titleX + root.cellPadding
+                anchors.top: parent.top
+                anchors.topMargin: 8
+                key: "title"
+                text: qsTr("Title")
+                asTitle: true
+            }
+            SortHeading {
+                id: composerHeading
+                x: root.titleX + root.cellPadding
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 8
+                key: "composer"
+                text: qsTr("Composer")
+                tip: qsTr("By surname")
+            }
+            SortHeading {
+                x: root.opusX
+                width: root.opusWidth
+                anchors.verticalCenter: parent.verticalCenter
+                centred: true
+                key: "opus"
+                text: qsTr("Opus")
+            }
+            SortHeading {
+                id: difficultyHeading
+                x: root.rhythmX
+                width: parent.width - x
+                // On the same line as Title, as Rhythm and Notes are on
+                // Composer's.
+                anchors.baseline: titleHeading.baseline
+                centred: true
+                key: "difficulty"
+                text: qsTr("Difficulty")
+                tip: qsTr("From 1 to 9, for the rhythm and for the notes; the higher of the two sorts. Blank for a score that doesn't say.")
+            }
+            SortHeading {
+                x: root.rhythmX
+                width: root.levelWidth
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 8
+                centred: true
+                key: "rhythm"
+                text: qsTr("Rhythm")
+            }
+            SortHeading {
+                x: root.notesX
+                width: root.levelWidth
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 8
+                centred: true
+                key: "notes"
+                text: qsTr("Notes")
+            }
+        }
+
         Flickable {
             id: flick
-            anchors.fill: parent
+            anchors.top: columnHeadings.bottom
+            // The cards fade out short of the headings, not against them.
+            anchors.topMargin: columnHeadings.visible ? cardsArea.headingsClearance : 0
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
             contentWidth: width
-            contentHeight: content.height + 2 * cardsArea.fadeHeight
+            contentHeight: content.height + cardsArea.topFadeHeight + cardsArea.fadeHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             onContentYChanged: priorityTimer.restart()
@@ -1015,17 +1361,15 @@ Item {
                 }
             }
 
-            // As many cards a row as fit, the rows centred.
-            readonly property int columns: Math.max(1, Math.floor(
-                (width - 48 + root.cardSpacing) / (root.cardWidth + root.cardSpacing)))
-            readonly property int rowWidth:
-                columns * root.cardWidth + (columns - 1) * root.cardSpacing
+            // One card a row, as wide as the window allows, centred.
+            readonly property int columns: 1
+            readonly property int rowWidth: Math.min(width - 48, root.maxRowWidth)
 
             Column {
                 id: content
                 x: (flick.width - flick.rowWidth) / 2
                 // Clear of the fade when scrolled to either end.
-                y: cardsArea.fadeHeight
+                y: cardsArea.topFadeHeight
                 width: flick.rowWidth
                 spacing: 30
 
@@ -1054,11 +1398,11 @@ Item {
 
                         // A folder keeps its section while not searching,
                         // even empty: that's where its scores will come.
-                        visible: (isTutorials || !root.tutorialsOnly)
+                        visible: isTutorials === root.tutorialsOnly
                                  && (scores.count > 0 || (isFolder && !searching)
                                      || showsAddCard)
                         width: parent.width
-                        spacing: 18
+                        spacing: root.sectionLabelSpacing
 
                         // The section's label; a folder's can be
                         // right-clicked for what can be done with it.
@@ -1155,7 +1499,7 @@ Item {
                             font.pixelSize: 14
                         }
 
-                        Flow {
+                        Column {
                             width: parent.width
                             spacing: root.cardSpacing
                             visible: shelfSection.scores.count > 0 || shelfSection.showsAddCard
@@ -1178,7 +1522,7 @@ Item {
         Text {
             visible: cardsArea.empty
             anchors.horizontalCenter: parent.horizontalCenter
-            y: cardsArea.fadeHeight + 24
+            y: flick.y + cardsArea.topFadeHeight + 24
             text: (root.tutorialsOnly ? qsTr("No tutorial matches \u201C%1\u201D")
                                       : qsTr("No score matches \u201C%1\u201D"))
                   .arg(searchField.text)
@@ -1190,13 +1534,18 @@ Item {
         // so drawing its colour over them is a fade). The scroll bar's strip
         // is left out, so that it stays crisp.
         readonly property int fadeHeight: 32
+        // Shorter at the top, so that the cards start close under the
+        // headings: the headings' frame marks that edge already. With the
+        // clearance above it, the cards rest as far under the headings.
+        readonly property int topFadeHeight: 12
+        readonly property int headingsClearance: 8
 
         Rectangle {
-            anchors.top: parent.top
+            anchors.top: flick.top
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.rightMargin: 14
-            height: cardsArea.fadeHeight
+            height: cardsArea.topFadeHeight
             gradient: Gradient {
                 GradientStop { position: 0; color: Theme.backdrop }
                 GradientStop {

@@ -33,6 +33,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QRegularExpression>
 #include <QSet>
 #include <QTimer>
 #include <QUrl>
@@ -136,9 +137,130 @@ const QString &pictureOf(const ScoreListModel::Item &item)
 QString searchText(const ScoreListModel::Item &item)
 {
   // The file name too: it is what a user who downloaded the score knows it
-  // by.
-  return foldForSearch(item.title + ' ' + item.composer + ' ' +
-                       titleFromFileName(muse::io::path_t{item.path}));
+  // by. And the opus: often how a piece is searched for.
+  return foldForSearch(item.title + ' ' + item.composer + ' ' + item.opus +
+                       ' ' + titleFromFileName(muse::io::path_t{item.path}));
+}
+
+/**
+ * What the score says about itself where the index hasn't said already: its
+ * bars, its opus and its difficulty (which a score of Rolls carries anywhere
+ * it is copied).
+ */
+void fillFromScore(ScoreListModel::Item &item,
+                   const ScoreIncipitCache::Entry &entry)
+{
+  if (item.measures == 0)
+    item.measures = entry.measures;
+  if (item.opus.isEmpty())
+    item.opus = entry.opus;
+  if (item.rhythm == 0 || item.notes == 0)
+  {
+    item.rhythm = entry.rhythm;
+    item.notes = entry.notes;
+  }
+}
+
+/** Lower case, without accents. */
+QString folded(const QString &text)
+{
+  QString result;
+  for (const QChar c : text.normalized(QString::NormalizationForm_KD))
+    if (c.category() != QChar::Mark_NonSpacing)
+      result += c;
+  return result.toCaseFolded();
+}
+
+/** The title without its leading article: "The Entertainer" by E. */
+QString titleKey(const QString &title)
+{
+  static const QRegularExpression article{"^(the|a|an) "};
+  return folded(title).remove(article);
+}
+
+/**
+ * Surname first: the index's composerSort if it has one, else the last word
+ * of the name.
+ */
+QString composerKey(const ScoreListModel::Item &item)
+{
+  if (!item.composerSort.isEmpty())
+    return folded(item.composerSort);
+  QStringList words = item.composer.split(' ', Qt::SkipEmptyParts);
+  if (words.size() > 1)
+    words.prepend(words.takeLast());
+  return folded(words.join(' '));
+}
+
+/**
+ * A catalogue number as publishers order them, across composers: by
+ * catalogue ("BWV", "K.", "Op.", ...), then numerically ("Op. 68 No. 2"
+ * before "Op. 68 No. 10").
+ */
+std::pair<QString, std::vector<int>> opusKey(const QString &opus)
+{
+  static const QRegularExpression leading{"^\\D*"};
+  static const QRegularExpression number{"\\d+"};
+  std::pair<QString, std::vector<int>> key{
+      folded(leading.match(opus).captured().trimmed()), {}};
+  for (auto it = number.globalMatch(opus); it.hasNext();)
+    key.second.push_back(it.next().captured().toInt());
+  return key;
+}
+
+bool knownFor(const QString &sortKey, const ScoreListModel::Item &item)
+{
+  if (sortKey == "composer")
+    return !item.composer.isEmpty();
+  if (sortKey == "opus")
+    return !item.opus.isEmpty();
+  if (sortKey == "difficulty" || sortKey == "rhythm" || sortKey == "notes")
+    return item.rhythm > 0 && item.notes > 0;
+  if (sortKey == "bars")
+    return item.measures > 0;
+  return true;
+}
+
+template <typename T> int compare(const T &a, const T &b)
+{
+  return a < b ? -1 : b < a ? 1 : 0;
+}
+
+/** Compares two items for which the key is known: <0, 0 or >0. */
+int compareBy(const QString &sortKey, const ScoreListModel::Item &a,
+              const ScoreListModel::Item &b, const QCollator &collator)
+{
+  if (sortKey == "title")
+    return collator.compare(titleKey(a.title), titleKey(b.title));
+  if (sortKey == "composer")
+    return collator.compare(composerKey(a), composerKey(b));
+  if (sortKey == "opus")
+  {
+    const auto ka = opusKey(a.opus);
+    const auto kb = opusKey(b.opus);
+    if (const int c = collator.compare(ka.first, kb.first))
+      return c;
+    return compare(ka.second, kb.second);
+  }
+  if (sortKey == "difficulty")
+    return compare(
+        std::pair{std::max(a.rhythm, a.notes), std::min(a.rhythm, a.notes)},
+        std::pair{std::max(b.rhythm, b.notes), std::min(b.rhythm, b.notes)});
+  if (sortKey == "rhythm")
+    return compare(std::pair{a.rhythm, a.notes}, std::pair{b.rhythm, b.notes});
+  if (sortKey == "notes")
+    return compare(std::pair{a.notes, a.rhythm}, std::pair{b.notes, b.rhythm});
+  if (sortKey == "bars")
+    return compare(a.measures, b.measures);
+  return 0;
+}
+
+/** Whether the order by that key may change when a score is rendered. */
+bool dependsOnEntry(const QString &sortKey)
+{
+  return sortKey == "title" || sortKey == "composer" || sortKey == "opus" ||
+         sortKey == "difficulty" || sortKey == "rhythm" || sortKey == "notes" ||
+         sortKey == "bars";
 }
 } // namespace
 
@@ -191,6 +313,14 @@ QVariant ScoreListModel::data(const QModelIndex &index, int role) const
     return item.tutorial;
   case PicturePathRole:
     return pictureOf(item);
+  case OpusRole:
+    return item.opus;
+  case MeasuresRole:
+    return item.measures;
+  case RhythmRole:
+    return item.rhythm;
+  case NotesRole:
+    return item.notes;
   default:
     return {};
   }
@@ -213,6 +343,10 @@ QHash<int, QByteArray> ScoreListModel::roleNames() const
       {UpdateAvailableRole, "updateAvailable"},
       {TutorialRole, "tutorial"},
       {PicturePathRole, "picturePath"},
+      {OpusRole, "opus"},
+      {MeasuresRole, "measures"},
+      {RhythmRole, "rhythm"},
+      {NotesRole, "notes"},
   };
 }
 
@@ -243,6 +377,9 @@ void ScoreListModel::setEntry(const QString &path,
       item.composer = entry.composer;
     }
     item.incipit = imageUrl(entry.imagePath);
+    // The index's, if it gave them.
+    if (!item.tutorial)
+      fillFromScore(item, entry);
     item.ready = true;
     item.searchText = searchText(item);
     found = true;
@@ -250,8 +387,8 @@ void ScoreListModel::setEntry(const QString &path,
   if (!found)
     return;
   // The real title may match the search where the file name didn't, or the
-  // other way round.
-  if (!m_query.isEmpty())
+  // other way round; and it may sort elsewhere.
+  if (!m_query.isEmpty() || dependsOnEntry(m_sortKey))
   {
     filter();
     return;
@@ -259,7 +396,8 @@ void ScoreListModel::setEntry(const QString &path,
   for (int row = 0; row < count(); ++row)
     if (pictureOf(shownItem(row)) == path)
       emit dataChanged(index(row), index(row),
-                       {TitleRole, ComposerRole, IncipitRole, ReadyRole});
+                       {TitleRole, ComposerRole, IncipitRole, ReadyRole,
+                        MeasuresRole, OpusRole, RhythmRole, NotesRole});
 }
 
 void ScoreListModel::setDownloadState(const QString &rollsId, bool downloading,
@@ -294,6 +432,15 @@ void ScoreListModel::setQuery(const QString &foldedQuery)
   filter();
 }
 
+void ScoreListModel::setSort(const QString &key, bool descending)
+{
+  if (key == m_sortKey && descending == m_sortDescending)
+    return;
+  m_sortKey = key;
+  m_sortDescending = descending;
+  filter();
+}
+
 void ScoreListModel::filter()
 {
   std::vector<std::pair<int, size_t>> matches; // (score, index)
@@ -308,9 +455,31 @@ void ScoreListModel::filter()
 
   beginResetModel();
   m_bestScore = matches.empty() ? 0 : matches.front().first;
+  m_best = matches.empty() ? std::nullopt
+                           : std::optional<size_t>{matches.front().second};
   m_shown.clear();
   for (const auto &[score, i] : matches)
     m_shown.push_back(i);
+  if (!m_sortKey.isEmpty())
+  {
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+    std::stable_sort(m_shown.begin(), m_shown.end(),
+                     [&](size_t i, size_t j)
+                     {
+                       const Item &a = m_items[i];
+                       const Item &b = m_items[j];
+                       const bool knownA = knownFor(m_sortKey, a);
+                       const bool knownB = knownFor(m_sortKey, b);
+                       if (knownA != knownB)
+                         return knownA;
+                       if (!knownA)
+                         return false;
+                       const int c = compareBy(m_sortKey, a, b, collator);
+                       return m_sortDescending ? c > 0 : c < 0;
+                     });
+  }
   endResetModel();
   emit countChanged();
 }
@@ -318,9 +487,9 @@ void ScoreListModel::filter()
 std::optional<std::pair<int, const ScoreListModel::Item *>>
 ScoreListModel::bestMatch() const
 {
-  if (m_shown.empty())
+  if (!m_best)
     return std::nullopt;
-  return std::make_pair(m_bestScore, &shownItem(0));
+  return std::make_pair(m_bestScore, &m_items[*m_best]);
 }
 
 ScoreSectionsModel::ScoreSectionsModel(QObject *parent)
@@ -351,6 +520,8 @@ QVariant ScoreSectionsModel::data(const QModelIndex &index, int role) const
       return QStringLiteral("folder");
     case Kind::Library:
       return QStringLiteral("library");
+    case Kind::Merged:
+      return QStringLiteral("merged");
     }
     return {};
   case TitleRole:
@@ -400,8 +571,8 @@ void ScoreSectionsModel::setSections(std::vector<Section> sections)
 ScoreShelfModel::ScoreShelfModel(QObject *parent)
     : QObject(parent), m_sections{new ScoreSectionsModel(this)},
       m_tutorialScores{makeList()}, m_recentScores{makeList()},
-      m_libraryScores{makeList()}, m_watcher{new QFileSystemWatcher(this)},
-      m_reloadTimer{new QTimer(this)}
+      m_libraryScores{makeList()}, m_mergedScores{makeList()},
+      m_watcher{new QFileSystemWatcher(this)}, m_reloadTimer{new QTimer(this)}
 {
   m_reloadTimer->setSingleShot(true);
   m_reloadTimer->setInterval(reloadDelayMs);
@@ -438,8 +609,9 @@ bool ScoreShelfModel::hasFolders() const { return !folders().isEmpty(); }
 int ScoreShelfModel::shownCount() const
 {
   int count = 0;
-  for (const ScoreListModel *list : lists())
-    count += list->count();
+  for (const ScoreSectionsModel::Section &section : m_sections->sections())
+    if (section.scores != m_tutorialScores)
+      count += section.scores->count();
   return count;
 }
 
@@ -472,6 +644,61 @@ void ScoreShelfModel::setQuery(const QString &query)
   for (ScoreListModel *list : lists())
     list->setQuery(folded);
   emit queryChanged();
+}
+
+QString ScoreShelfModel::sortKey() const { return m_sortKey; }
+
+bool ScoreShelfModel::sortDescending() const { return m_sortDescending; }
+
+void ScoreShelfModel::sortBy(const QString &key)
+{
+  if (key != m_sortKey)
+  {
+    m_sortKey = key;
+    m_sortDescending = false;
+  }
+  else if (!m_sortDescending)
+  {
+    m_sortDescending = true;
+  }
+  else
+  {
+    m_sortKey.clear();
+    m_sortDescending = false;
+  }
+  applySort();
+  // Sections or one list, as the sort comes or goes.
+  if (m_sortKey.isEmpty() == m_showsMerged)
+    showSections();
+  emit sortChanged();
+}
+
+void ScoreShelfModel::showSections()
+{
+  m_showsMerged = !m_sortKey.isEmpty();
+  if (!m_showsMerged)
+  {
+    m_sections->setSections(m_unsortedSections);
+  }
+  else
+  {
+    std::vector<ScoreSectionsModel::Section> sections;
+    for (const ScoreSectionsModel::Section &section : m_unsortedSections)
+      if (section.kind == ScoreSectionsModel::Kind::Tutorials)
+        sections.push_back(section);
+    sections.push_back({ScoreSectionsModel::Kind::Merged,
+                        muse::qtrc("orchestrion/shelf", "All scores"),
+                        QString{}, m_mergedScores});
+    m_sections->setSections(std::move(sections));
+  }
+  emit shownCountChanged();
+}
+
+void ScoreShelfModel::applySort()
+{
+  for (ScoreListModel *list : lists())
+    if (list != m_tutorialScores)
+      list->setSort(m_sortKey, m_sortDescending);
 }
 
 bool ScoreShelfModel::hasScore() const
@@ -508,14 +735,18 @@ bool ScoreShelfModel::open(const QString &path,
   return true;
 }
 
-bool ScoreShelfModel::openBestMatch()
+bool ScoreShelfModel::openBestMatch(bool tutorials)
 {
   // The first section's on a tie: it's the one listed first.
   std::optional<std::pair<int, const ScoreListModel::Item *>> best;
-  for (const ScoreListModel *list : lists())
-    if (const auto match = list->bestMatch();
+  for (const ScoreSectionsModel::Section &section : m_sections->sections())
+  {
+    if ((section.scores == m_tutorialScores) != tutorials)
+      continue;
+    if (const auto match = section.scores->bestMatch();
         match && (!best || match->first > best->first))
       best = match;
+  }
   if (!best)
     return false;
   if (best->second->tutorial)
@@ -568,7 +799,7 @@ void ScoreShelfModel::update(const QString &path)
       muse::trc("orchestrion/shelf",
                 "A newer version of this score is available. It replaces the "
                 "one on this computer, with any changes you saved to it, and "
-                "may differ from what you practised: the takes you recorded "
+                "may differ from what you practiced: the takes you recorded "
                 "were played on the version you have."),
       IInteractive::ButtonDatas{
           IInteractive::ButtonData{IInteractive::Button::Cancel,
@@ -730,6 +961,7 @@ ScoreShelfModel::makeItem(const QString &path,
     item.title = entry->title;
     item.composer = entry->composer;
     item.incipit = imageUrl(entry->imagePath);
+    fillFromScore(item, *entry);
     item.ready = true;
   }
   const auto id = rollsLibrary()->idOf(path);
@@ -740,6 +972,12 @@ ScoreShelfModel::makeItem(const QString &path,
   {
     item.title = score->title;
     item.composer = score->composer;
+    item.composerSort = score->composerSort;
+    item.opus = score->opus;
+    if (score->measures > 0)
+      item.measures = score->measures;
+    item.rhythm = score->rhythm;
+    item.notes = score->notes;
     item.titledByIndex = true;
   }
   item.downloaded = rollsLibrary()->isDownloaded(*id);
@@ -754,8 +992,9 @@ ScoreShelfModel::makeItem(const QString &path,
 std::vector<ScoreListModel *> ScoreShelfModel::lists() const
 {
   std::vector<ScoreListModel *> result;
-  for (const ScoreSectionsModel::Section &section : m_sections->sections())
+  for (const ScoreSectionsModel::Section &section : m_unsortedSections)
     result.push_back(section.scores);
+  result.push_back(m_mergedScores);
   return result;
 }
 
@@ -871,9 +1110,21 @@ void ScoreShelfModel::reload()
        site.host() + site.path().chopped(site.path().endsWith('/') ? 1 : 0),
        m_libraryScores});
 
+  // The merged list: the same scores, in the sections' order.
+  std::vector<ScoreListModel::Item> merged;
+  for (const ScoreSectionsModel::Section &section : sections)
+    if (section.kind != ScoreSectionsModel::Kind::Tutorials)
+      merged.insert(merged.end(), section.scores->items().begin(),
+                    section.scores->items().end());
+  m_mergedScores->setItems(std::move(merged));
+  m_mergedScores->setQuery(foldForSearch(m_query));
+
   for (const ScoreSectionsModel::Section &section : sections)
     section.scores->setCurrentPath(m_currentPath);
-  m_sections->setSections(std::move(sections));
+  m_mergedScores->setCurrentPath(m_currentPath);
+  m_unsortedSections = std::move(sections);
+  showSections();
+  applySort();
   emit shownCountChanged();
   scheduleRender();
 }
