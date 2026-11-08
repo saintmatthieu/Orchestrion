@@ -202,15 +202,35 @@ Item {
         function onCloseRequested() { root.shown = false }
     }
 
-    // A fresh search each time, typed straight away.
+    // The search is kept from one opening to the next, each view's its own
+    // (the scores', the tutorials'), but not one a tutorial typed: the user
+    // finds theirs. It is selected when the shelf opens, so that typing
+    // starts another while the arrows keep it.
+    property string scoresQuery: ""
+    property string tutorialsQuery: ""
+    property string queryBeforeTutorial: ""
+    function showQuery() {
+        searchField.text = root.tutorialsOnly ? root.tutorialsQuery : root.scoresQuery
+        searchField.selectAll()
+    }
+    onTutorialsOnlyChanged: {
+        if (shown)
+            showQuery()
+    }
     onShownChanged: {
-        openedByTutorial = shown && Tutorials.running
         if (shown) {
-            searchField.text = ""
+            openedByTutorial = Tutorials.running
+            if (openedByTutorial)
+                queryBeforeTutorial = scoresQuery
+            showQuery()
             flick.contentY = 0
             priorityTimer.restart()
             searchField.forceActiveFocus()
         } else {
+            if (openedByTutorial) {
+                scoresQuery = queryBeforeTutorial
+                openedByTutorial = false
+            }
             // Else the keys would keep going to an invisible text field
             // instead of playing.
             searchField.focus = false
@@ -1077,7 +1097,13 @@ Item {
                 selectedTextColor: Theme.backdrop
                 font.pixelSize: 14
                 verticalAlignment: TextInput.AlignVCenter
-                onTextChanged: root.model.query = text
+                onTextChanged: {
+                    root.model.query = text
+                    if (root.tutorialsOnly)
+                        root.tutorialsQuery = text
+                    else
+                        root.scoresQuery = text
+                }
                 Keys.onDownPressed: root.focusFirstCard()
                 onAccepted: {
                     if (root.model.openBestMatch(root.tutorialsOnly))
