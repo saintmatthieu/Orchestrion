@@ -48,7 +48,24 @@ namespace
  * Bumped whenever the rendering changes, so that the entries rendered before
  * are rendered again.
  */
-constexpr int renderVersion = 2;
+constexpr int renderVersion = 4;
+
+/** MusicXML's <work-number>, as MuseScore keeps it. */
+const QString workNumberTag = "workNumber";
+/**
+ * The <miscellaneous-field>s Rolls writes its difficulty levels in (its
+ * tools/build.py, DIFFICULTY_FIELDS); MuseScore keeps each as a tag.
+ */
+const QString rhythmTag = "orchestrion-difficulty-rhythm";
+const QString notesTag = "orchestrion-difficulty-notes";
+
+/** A difficulty level of the score, 1 to 9; 0 if it has none. */
+int level(const mu::project::ProjectMeta &meta, const QString &tag)
+{
+  bool ok = false;
+  const int value = meta.additionalTags.value(tag).toString().toInt(&ok);
+  return ok && value >= 1 && value <= 9 ? value : 0;
+}
 
 /**
  * How big a staff space is drawn, in logical pixels: a staff is four of
@@ -209,7 +226,12 @@ ScoreIncipitCache::cached(const QString &scorePath) const
   if (!file.open(QIODevice::ReadOnly))
     return std::nullopt;
   const QJsonObject json = QJsonDocument::fromJson(file.readAll()).object();
-  Entry entry{json.value("title").toString(), json.value("composer").toString(),
+  Entry entry{json.value("title").toString(),
+              json.value("composer").toString(),
+              json.value("measures").toInt(),
+              json.value("opus").toString(),
+              json.value("rhythm").toInt(),
+              json.value("notes").toInt(),
               QString{}};
   if (json.value("image").toBool() && QFileInfo::exists(stem + ".png"))
     entry.imagePath = stem + ".png";
@@ -219,16 +241,24 @@ ScoreIncipitCache::cached(const QString &scorePath) const
 ScoreIncipitCache::Entry ScoreIncipitCache::render(const QString &scorePath)
 {
   const muse::io::path_t path{scorePath};
-  Entry entry{titleFromFileName(path), QString{}, QString{}};
+  Entry entry;
+  entry.title = titleFromFileName(path);
   QImage image;
   if (const auto project = loadQuietly(*projectCreator(), scorePath))
   {
     const mu::project::ProjectMeta meta = project->metaInfo();
     entry.title = scoreTitle(meta, path);
     entry.composer = scoreComposer(meta);
+    entry.opus =
+        meta.additionalTags.value(workNumberTag).toString().simplified();
+    entry.rhythm = level(meta, rhythmTag);
+    entry.notes = level(meta, notesTag);
     if (mu::engraving::MasterScore *const score =
             project->masterNotation()->masterScore())
+    {
+      entry.measures = static_cast<int>(score->nmeasures());
       image = drawIncipit(*scoreRenderer(), *score);
+    }
   }
 
   QDir{}.mkpath(directory());
@@ -246,6 +276,10 @@ ScoreIncipitCache::Entry ScoreIncipitCache::render(const QString &scorePath)
         QJsonObject{
             {"title", entry.title},
             {"composer", entry.composer},
+            {"measures", entry.measures},
+            {"opus", entry.opus},
+            {"rhythm", entry.rhythm},
+            {"notes", entry.notes},
             {"image", !entry.imagePath.isEmpty()},
         }}.toJson());
   return entry;

@@ -58,6 +58,16 @@ public:
   {
     QString title;
     QString composer;
+    /** How many bars the score has; 0 if it couldn't be loaded. */
+    int measures = 0;
+    /** Its work number (MusicXML's), e.g. "Op. 68 No. 1"; may be empty. */
+    QString opus;
+    /**
+     * The difficulty of its rhythm and of its notes, 1 to 9, as Rolls writes
+     * it into its scores; 0 if the score doesn't say.
+     */
+    int rhythm = 0;
+    int notes = 0;
     /**
      * The incipit's PNG; empty if the score could not be drawn (it then
      * isn't tried again until the file changes).

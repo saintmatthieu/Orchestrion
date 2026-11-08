@@ -169,6 +169,12 @@ bool RollsLibrary::parseIndex(const QByteArray &json,
       continue;
     score.title = entry.value("title").toString();
     score.composer = entry.value("composer").toString();
+    score.composerSort = entry.value("composerSort").toString();
+    score.opus = entry.value("opus").toString();
+    score.measures = entry.value("measures").toInt();
+    const QJsonObject difficulty = entry.value("difficulty").toObject();
+    score.rhythm = difficulty.value("rhythm").toInt();
+    score.notes = difficulty.value("notes").toInt();
     const QJsonArray credits = entry.value("credits").toArray();
     score.credits = joined(credits, false);
     score.creditedNames = joined(credits, true);
