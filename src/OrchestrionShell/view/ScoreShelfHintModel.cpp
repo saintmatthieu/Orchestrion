@@ -28,7 +28,7 @@ namespace dgk
 namespace
 {
 // A moment to take in the end of the piece before the card comes up.
-constexpr auto delayAfterEnd = std::chrono::seconds{2};
+constexpr auto delayAfterEnd = std::chrono::seconds{1};
 
 const muse::Settings::Key
     SCORE_SHELF_HINT_DISMISSED("OrchestrionShell",
