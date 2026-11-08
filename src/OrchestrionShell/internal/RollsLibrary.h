@@ -71,6 +71,13 @@ private:
   QString directory() const;
   QString scoresDirectory() const;
   QString indexPath() const;
+  /**
+   * Beside the index: the address it was fetched from. An index from another
+   * one (Rolls' own, or another copy, --rolls-url) isn't this session's.
+   */
+  QString indexSourcePath() const;
+  /** Whether the index on disk was fetched from m_indexUrl. */
+  bool indexIsFromHere() const;
   QString downloadedPath() const;
 
   /** Reads what is on disk, the first time anything is asked. */

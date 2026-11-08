@@ -66,7 +66,6 @@ QUrl indexUrlFromEnvironment()
       url.setPath(url.path() + '/');
     url = url.resolved(QUrl{"index.json"});
   }
-  LOGI() << "Rolls index: " << url.toString();
   return url;
 }
 
@@ -126,6 +125,21 @@ QString RollsLibrary::scoresDirectory() const
 
 QString RollsLibrary::indexPath() const { return directory() + "/index.json"; }
 
+QString RollsLibrary::indexSourcePath() const
+{
+  return directory() + "/index-source.txt";
+}
+
+bool RollsLibrary::indexIsFromHere() const
+{
+  QFile source{indexSourcePath()};
+  // Written before the source was: Rolls' own.
+  const QString url = source.open(QIODevice::ReadOnly)
+                          ? QString::fromUtf8(source.readAll()).trimmed()
+                          : defaultIndexUrl;
+  return QUrl{url} == m_indexUrl;
+}
+
 QString RollsLibrary::downloadedPath() const
 {
   return directory() + "/downloaded.json";
@@ -137,7 +151,8 @@ void RollsLibrary::ensureLoaded() const
     return;
   m_loaded = true;
 
-  if (QFile index{indexPath()}; index.open(QIODevice::ReadOnly))
+  if (QFile index{indexPath()};
+      indexIsFromHere() && index.open(QIODevice::ReadOnly))
     parseIndex(index.readAll(), m_indexUrl);
 
   if (QFile downloaded{downloadedPath()}; downloaded.open(QIODevice::ReadOnly))
@@ -247,13 +262,15 @@ void RollsLibrary::refresh()
   const QDateTime now = QDateTime::currentDateTimeUtc();
   // Across sessions too: the index on disk says when it was fetched.
   const QDateTime fetched = QFileInfo{indexPath()}.lastModified().toUTC();
-  if (fetched.isValid() && fetched.secsTo(now) < refreshIntervalSecs)
+  if (indexIsFromHere() && fetched.isValid() &&
+      fetched.secsTo(now) < refreshIntervalSecs)
     return;
   if (m_lastAttempt.isValid() && m_lastAttempt.secsTo(now) < retryIntervalSecs)
     return;
 
   m_fetching = true;
   m_lastAttempt = now;
+  LOGI() << "Fetching the Rolls index from " << m_indexUrl.toString();
   QNetworkReply *const reply = network().get(makeRequest(m_indexUrl));
   QObject::connect(reply, &QNetworkReply::finished,
                    [this, reply] { onIndexFetched(reply); });
@@ -273,7 +290,8 @@ void RollsLibrary::onIndexFetched(QNetworkReply *reply)
   const QByteArray json = reply->readAll();
   if (!parseIndex(json, m_indexUrl))
     return;
-  writeFile(indexPath(), json);
+  if (writeFile(indexPath(), json))
+    writeFile(indexSourcePath(), m_indexUrl.toString().toUtf8());
   m_scoresChanged.notify();
 }
 
