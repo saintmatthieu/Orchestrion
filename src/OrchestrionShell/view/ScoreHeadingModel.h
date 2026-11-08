@@ -21,6 +21,7 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IRollsLibrary.h"
 #include "async/asyncable.h"
 #include "project/iprojectsession.h"
 
@@ -39,10 +40,13 @@ class ScoreHeadingModel : public QObject,
   Q_OBJECT
 
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
+  dgk::Inject<IRollsLibrary> rollsLibrary{this};
 
   //! The work's title as displayed on the score itself (not the window):
-  //! the score's "workTitle" meta tag, or the file's base name when there is
-  //! none.
+  //! for a score of Rolls, its index's, as the shelf shows it (the score's
+  //! own may be the whole work's: "Album pour la jeunesse" for each of its
+  //! pieces); else the score's "workTitle" meta tag, or the file's base name
+  //! when there is none.
   Q_PROPERTY(QString scoreTitle READ scoreTitle NOTIFY scoreTitleChanged)
   //! The score's "composer" meta tag, shown under the title; may be empty.
   Q_PROPERTY(

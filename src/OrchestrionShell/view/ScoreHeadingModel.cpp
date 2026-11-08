@@ -31,6 +31,8 @@ ScoreHeadingModel::ScoreHeadingModel(QObject *parent) : QObject(parent) {}
 void ScoreHeadingModel::load()
 {
   update();
+  // The index may come after the score: it is read when first needed.
+  rollsLibrary()->scoresChanged().onNotify(this, [this] { update(); });
 
   projectSession()->projectChanged().onNotify(
       this,
@@ -81,7 +83,12 @@ void ScoreHeadingModel::update()
 
   const mu::project::ProjectMeta meta = project->metaInfo();
   // Qualified: the members of the same names would hide them.
-  QString title = dgk::scoreTitle(meta, project->path());
+  QString title;
+  if (const auto id = rollsLibrary()->idOf(project->path().toQString()))
+    if (const RollsScore *const score = rollsLibrary()->score(*id))
+      title = score->title;
+  if (title.isEmpty())
+    title = dgk::scoreTitle(meta, project->path());
   if (title.isEmpty())
     title = project->displayName();
   setScoreTitle(title);
