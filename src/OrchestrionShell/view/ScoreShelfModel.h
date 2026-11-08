@@ -89,6 +89,8 @@ public:
     /** The difficulty of the rhythm and of the notes, 1 to 9; 0 if unknown. */
     RhythmRole,
     NotesRole,
+    /** A frame of its best video (IRollsLibrary::recordings); empty if none. */
+    VideoFrameRole,
   };
 
   struct Item
@@ -106,6 +108,7 @@ public:
     /** From Rolls' index; 0 for other scores. */
     int rhythm = 0;
     int notes = 0;
+    QUrl videoFrame;
     bool ready = false;
     /** Title, composer and file name, folded for search. */
     QString searchText;

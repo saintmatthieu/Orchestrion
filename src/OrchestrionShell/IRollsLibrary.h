@@ -104,6 +104,8 @@ public:
    * of Rolls, or the one `scores/attributions.json` gives a bundled score.
    */
   virtual std::vector<ScoreRecording> recordings(const QString &id) const = 0;
+  /** The id of the piece that score is, if it is one of Rolls or bundled. */
+  virtual std::optional<QString> pieceIdOf(const QString &path) const = 0;
   /** The scores or the recordings changed. */
   virtual muse::async::Notification scoresChanged() const = 0;
 

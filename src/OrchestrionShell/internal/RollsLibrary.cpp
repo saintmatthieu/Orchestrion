@@ -147,6 +147,18 @@ void RollsLibrary::ensureLoaded() const
     for (auto it = versions.begin(); it != versions.end(); ++it)
       m_downloaded.insert(it.key(), it.value().toString());
   }
+
+  if (QFile attributions{globalConfiguration()->appDataPath().toQString() +
+                         "scores/attributions.json"};
+      attributions.open(QIODevice::ReadOnly))
+  {
+    const QJsonObject scores =
+        QJsonDocument::fromJson(attributions.readAll()).object();
+    for (auto it = scores.begin(); it != scores.end(); ++it)
+      if (const QString id = it.value().toObject().value("id").toString();
+          !id.isEmpty())
+        m_bundledIds.insert(it.key(), id);
+  }
 }
 
 bool RollsLibrary::parseIndex(const QByteArray &json,
@@ -248,6 +260,17 @@ std::vector<ScoreRecording> RollsLibrary::recordings(const QString &id) const
 {
   ensureLoaded();
   return m_recordings.value(id);
+}
+
+std::optional<QString> RollsLibrary::pieceIdOf(const QString &path) const
+{
+  if (const auto id = idOf(path))
+    return id;
+  ensureLoaded();
+  if (const auto it = m_bundledIds.constFind(QFileInfo{path}.fileName());
+      it != m_bundledIds.constEnd())
+    return it.value();
+  return std::nullopt;
 }
 
 muse::async::Notification RollsLibrary::scoresChanged() const

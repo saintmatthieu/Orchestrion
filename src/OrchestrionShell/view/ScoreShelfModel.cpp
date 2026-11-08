@@ -21,6 +21,7 @@
 #include "OrchestrionCommon/BundledScores.h"
 #include "OrchestrionShell/internal/FuzzySearch.h"
 #include "OrchestrionShell/internal/ScoreTitles.h"
+#include "OrchestrionShell/internal/YouTubeLinks.h"
 
 #include <async/async.h>
 #include <global/settings.h>
@@ -321,6 +322,8 @@ QVariant ScoreListModel::data(const QModelIndex &index, int role) const
     return item.rhythm;
   case NotesRole:
     return item.notes;
+  case VideoFrameRole:
+    return item.videoFrame;
   default:
     return {};
   }
@@ -347,6 +350,7 @@ QHash<int, QByteArray> ScoreListModel::roleNames() const
       {MeasuresRole, "measures"},
       {RhythmRole, "rhythm"},
       {NotesRole, "notes"},
+      {VideoFrameRole, "videoFrame"},
   };
 }
 
@@ -964,6 +968,10 @@ ScoreShelfModel::makeItem(const QString &path,
     fillFromScore(item, *entry);
     item.ready = true;
   }
+  if (const auto piece = rollsLibrary()->pieceIdOf(path))
+    for (const ScoreRecording &recording : rollsLibrary()->recordings(*piece))
+      if (item.videoFrame = youTubeFrame(recording.url); !item.videoFrame.isEmpty())
+        break;
   const auto id = rollsLibrary()->idOf(path);
   if (!id)
     return item;

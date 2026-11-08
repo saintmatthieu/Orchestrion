@@ -33,6 +33,8 @@ set(MODULE_SRC
   internal/PerformanceEndWatcher.h
   internal/RollsLibrary.cpp
   internal/RollsLibrary.h
+  internal/YouTubeLinks.cpp
+  internal/YouTubeLinks.h
   internal/MuseScorePlaceholderMetaTags.h
   internal/FuzzySearch.cpp
   internal/FuzzySearch.h

@@ -18,53 +18,19 @@
  */
 #include "ScoreRecordingsModel.h"
 
+#include "OrchestrionShell/internal/YouTubeLinks.h"
+
 #include <project/inotationproject.h>
 
-#include <QFile>
-#include <QFileInfo>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QRegularExpression>
 #include <QUrlQuery>
 #include <optional>
 
 namespace dgk
 {
-namespace
-{
-/** What the player page needs of a YouTube link, if that's what it is. */
-struct YouTubeVideo
-{
-  QString id;
-  QString start;
-};
-
-std::optional<YouTubeVideo> youTubeVideo(const QUrl &url)
-{
-  const QString host = url.host().remove(QRegularExpression{"^(www|m)\\."});
-  const QUrlQuery query{url};
-  QString id;
-  if (host == "youtu.be")
-    id = url.path().mid(1);
-  else if (host == "youtube.com" && url.path() == "/watch")
-    id = query.queryItemValue("v");
-  if (!QRegularExpression{"^[A-Za-z0-9_-]+$"}.match(id).hasMatch())
-    return std::nullopt;
-  // t=412 or t=412s
-  QString start = query.queryItemValue("t");
-  start.remove(QRegularExpression{"s$"});
-  return YouTubeVideo{id, QRegularExpression{"^[0-9]+$"}.match(start).hasMatch()
-                              ? start
-                              : QString{}};
-}
-} // namespace
-
 ScoreRecordingsModel::ScoreRecordingsModel(QObject *parent) : QObject(parent) {}
 
 void ScoreRecordingsModel::load()
 {
-  loadBundledIds();
-
   projectSession()->projectChanged().onNotify(this,
                                               [this]
                                               {
@@ -92,31 +58,11 @@ void ScoreRecordingsModel::load()
   update();
 }
 
-void ScoreRecordingsModel::loadBundledIds()
-{
-  QFile file{globalConfiguration()->appDataPath().toQString() +
-             "scores/attributions.json"};
-  if (!file.open(QIODevice::ReadOnly))
-    return;
-  const QJsonObject scores = QJsonDocument::fromJson(file.readAll()).object();
-  for (auto it = scores.begin(); it != scores.end(); ++it)
-    if (const QString id = it.value().toObject().value("id").toString();
-        !id.isEmpty())
-      m_bundledIds.insert(it.key(), id);
-}
-
 void ScoreRecordingsModel::update()
 {
   std::optional<QString> id;
   if (const auto project = projectSession()->project())
-  {
-    const QString path = project->path().toQString();
-    id = rollsLibrary()->idOf(path);
-    if (!id)
-      if (const auto it = m_bundledIds.constFind(QFileInfo{path}.fileName());
-          it != m_bundledIds.constEnd())
-        id = it.value();
-  }
+    id = rollsLibrary()->pieceIdOf(project->path().toQString());
   m_recordings = id ? rollsLibrary()->recordings(*id)
                     : std::vector<ScoreRecording>{};
   emit recordingsChanged();

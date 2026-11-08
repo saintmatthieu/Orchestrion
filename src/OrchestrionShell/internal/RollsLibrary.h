@@ -55,6 +55,7 @@ public:
   const std::vector<RollsScore> &scores() const override;
   const RollsScore *score(const QString &id) const override;
   std::vector<ScoreRecording> recordings(const QString &id) const override;
+  std::optional<QString> pieceIdOf(const QString &path) const override;
   muse::async::Notification scoresChanged() const override;
 
   void refresh() override;
@@ -95,6 +96,8 @@ private:
   mutable QHash<QString, std::vector<ScoreRecording>> m_recordings;
   /** The version of each score downloaded, by id. */
   mutable QHash<QString, QString> m_downloaded;
+  /** The pieces' ids of the bundled scores, by file name. */
+  mutable QHash<QString, QString> m_bundledIds;
 
   bool m_fetching = false;
   /** When the index was last asked for, whether that worked or not. */

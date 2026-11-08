@@ -22,12 +22,10 @@
 #include "OrchestrionShell/IRollsLibrary.h"
 #include "OrchestrionShell/internal/PerformanceEndWatcher.h"
 #include "async/asyncable.h"
-#include "global/iglobalconfiguration.h"
 #include "interactive/iplatforminteractive.h"
 #include "modularity/ioc.h"
 #include "project/iprojectsession.h"
 
-#include <QHash>
 #include <QObject>
 #include <QUrl>
 #include <vector>
@@ -49,7 +47,6 @@ class ScoreRecordingsModel : public QObject,
   Q_OBJECT
 
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
-  dgk::Inject<muse::IGlobalConfiguration> globalConfiguration{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
   dgk::Inject<IRollsLibrary> rollsLibrary{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
@@ -88,12 +85,9 @@ signals:
   void pauseRequested();
 
 private:
-  void loadBundledIds();
   void update();
   void setOfferShown(bool);
 
-  /** The ids of the bundled scores, by file name. */
-  QHash<QString, QString> m_bundledIds;
   std::vector<ScoreRecording> m_recordings;
   int m_current = -1;
   bool m_offerClosed = false;

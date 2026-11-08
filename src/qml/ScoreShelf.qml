@@ -318,24 +318,30 @@ Item {
     readonly property int maxRowWidth: 1100
 
     // The table's columns, from the left of a row: the slip, the title over
-    // the composer (taking what is left), then the opus and the difficulty's
-    // two levels, each wide enough for its heading and the sort's arrow; the
-    // levels end at the row's right edge. Dents in the card's edges mark
+    // the composer (taking what is left), a frame of a video of the piece,
+    // then the opus and the difficulty's two levels, each wide enough for
+    // its heading and the sort's arrow; the levels end at the row's right
+    // edge. Dents in the card's edges mark
     // where a column starts (columnStarts()).
     readonly property int slipColumnWidth: stripWidth + 2 * cardPadding
     readonly property int cellPadding: 16
     readonly property int opusWidth: 140
+    // YouTube's 16:9, small: enough to recognise a piece by.
+    readonly property int videoFrameWidth: 128
+    readonly property int videoWidth: videoFrameWidth + 2 * cellPadding
     readonly property int levelWidth: 72
     readonly property int minTitleWidth: 220
     readonly property int titleX: slipColumnWidth
     // Too narrow a window: the title and composer only, unsorted.
     readonly property bool showsColumns: !tutorialsOnly
-        && flick.rowWidth >= titleX + minTitleWidth + opusWidth + 2 * levelWidth
+        && flick.rowWidth >= titleX + minTitleWidth + videoWidth + opusWidth
+                             + 2 * levelWidth
     readonly property int notesX: flick.rowWidth - levelWidth
     readonly property int rhythmX: notesX - levelWidth
     readonly property int opusX: rhythmX - opusWidth
+    readonly property int videoX: opusX - videoWidth
     readonly property int titleWidth:
-        (showsColumns ? opusX : flick.rowWidth) - titleX
+        (showsColumns ? videoX : flick.rowWidth) - titleX
 
     FontLoader {
         id: titleFont
@@ -635,6 +641,7 @@ Item {
         required property string opus
         required property int rhythm
         required property int notes
+        required property url videoFrame
         required property int index
         // The index of its section.
         property int section: 0
@@ -662,7 +669,8 @@ Item {
         DentedCard {
             anchors.fill: parent
             dents: root.showsColumns && !card.tutorial
-                   ? [root.titleX, root.opusX, root.rhythmX] : [root.titleX]
+                   ? [root.titleX, root.videoX, root.opusX, root.rhythmX]
+                   : [root.titleX]
             // Not lit for being the score that is open (its ◆ and "Now
             // playing" say it): it would look focused next to the row that is.
             ink: card.lit ? Theme.metalBright : Theme.metal
@@ -868,6 +876,29 @@ Item {
             visible: root.showsColumns && !card.tutorial
             anchors.fill: parent
 
+            // Fetched from YouTube: nothing shown till it is, or if it can't be.
+            Rectangle {
+                x: root.videoX + root.cellPadding
+                width: root.videoFrameWidth
+                height: Math.round(width * 9 / 16)
+                anchors.verticalCenter: parent.verticalCenter
+                radius: 3
+                color: "transparent"
+                border.color: Theme.metal
+                border.width: 1
+                visible: frameImage.status === Image.Ready
+                Image {
+                    id: frameImage
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    source: card.videoFrame
+                    sourceSize.width: root.videoFrameWidth * 2
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    smooth: true
+                    mipmap: true
+                }
+            }
             Text {
                 x: root.opusX + 8
                 width: root.opusWidth - 16
@@ -1284,7 +1315,7 @@ Item {
                 x: root.titleX
                 width: parent.width - x
                 height: parent.height
-                dents: [root.opusX - x, root.rhythmX - x]
+                dents: [root.videoX - x, root.opusX - x, root.rhythmX - x]
             }
 
             // Stacked as in the rows: the title over the composer.
@@ -1305,6 +1336,16 @@ Item {
                 key: "composer"
                 text: qsTr("Composer")
                 tip: qsTr("By surname")
+            }
+            // Not sorted by: a picture.
+            Text {
+                x: root.videoX
+                width: root.videoWidth
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Video")
+                color: Theme.inkMuted
+                font.pixelSize: 13
             }
             SortHeading {
                 x: root.opusX
