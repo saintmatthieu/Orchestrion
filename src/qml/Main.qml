@@ -396,6 +396,8 @@ ApplicationWindow {
 
                     // What takes room between the score and the lower rule
                     readonly property real underScoreHeight: demoBand.bandHeight
+                                                             + attributionBand.bandHeight
+                                                             + offerBand.bandHeight
                                                              + lowerBandHeight * lowerBandOpen
                     // As tall as the keyboard at its full size and the air
                     // under it, no more: the rest is the score's
@@ -443,18 +445,131 @@ ApplicationWindow {
                         Layout.preferredHeight: furniture.scoreBandRestingHeight
                     }
 
+                    // Between the parchment and what is under it, the rows of
+                    // a demo's caption and keys, of a score's credit and of
+                    // the tutorial's offer, centred together: each centred in
+                    // its share.
+                    readonly property real underParchmentTop:
+                        (notationPaintView.titleClearance + notationPaintView.height
+                         - notationPaintView.bottomClearance
+                         + notationPaintView.parchmentHeight) / 2
+                    readonly property real underParchmentBottom:
+                        furniture.lowerBandOpen > 0 ? lowerBand.y : bottomOrnament.y
+
                     // A demo's caption and number keys
                     DemoKeysBand {
                         id: demoBand
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
-                        spaceTop: (notationPaintView.titleClearance + notationPaintView.height
-                                   - notationPaintView.bottomClearance
-                                   + notationPaintView.parchmentHeight) / 2
-                        spaceBottom: furniture.lowerBandOpen > 0 ? lowerBand.y : bottomOrnament.y
+                        spaceTop: furniture.underParchmentTop
+                        spaceBottom: furniture.underParchmentBottom - attributionBand.bandHeight
+                                     - offerBand.bandHeight
                         // Till it has faded out, which is when the script takes
                         // its caption away
                         covered: scoreShelf.visible
+                    }
+
+                    // The credit a score must carry, for a few seconds once
+                    // opened
+                    AttributionToast {
+                        id: attributionBand
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: bandHeight
+                        spaceTop: furniture.underParchmentTop + demoBand.bandHeight
+                        spaceBottom: furniture.underParchmentBottom - offerBand.bandHeight
+                    }
+
+                    // A while after a score opens, until taken up or closed:
+                    // the Getting started tutorial, where its keys will show.
+                    // A row of its own, as the credit's.
+                    Item {
+                        id: offerBand
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: bandHeight
+                        readonly property int rowGap: 12
+                        property real spaceTop: furniture.underParchmentTop
+                                                + demoBand.bandHeight + attributionBand.bandHeight
+                        property real spaceBottom: furniture.underParchmentBottom
+                        property real open: tutorialOffer.shown && !scoreShelf.shown ? 1 : 0
+                        Behavior on open {
+                            NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                        }
+                        readonly property real bandHeight: (tutorialOfferCard.height + rowGap) * open
+
+                    Rectangle {
+                        id: tutorialOfferCard
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: (offerBand.spaceTop + offerBand.spaceBottom - offerBand.bandHeight
+                            + offerBand.rowGap) / 2 - offerBand.y
+                        width: tutorialOfferRow.implicitWidth + 28
+                        height: tutorialOfferRow.implicitHeight + 20
+                        radius: 8
+                        color: Theme.backdrop
+                        border.color: Theme.metal
+                        border.width: 1
+                        visible: opacity > 0
+                        opacity: offerBand.open
+
+                        Row {
+                            id: tutorialOfferRow
+                            anchors.centerIn: parent
+                            spacing: 12
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: qsTr("New here? Watch how to play.")
+                                color: Theme.metalBright
+                                font.pixelSize: 14
+                            }
+
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: tutorialOfferLabel.implicitWidth + 24
+                                height: tutorialOfferLabel.implicitHeight + 10
+                                radius: height / 2
+                                color: "transparent"
+                                border.color: tutorialOfferMouse.containsMouse ? Theme.metalBright
+                                                                               : Theme.metal
+                                Text {
+                                    id: tutorialOfferLabel
+                                    anchors.centerIn: parent
+                                    text: qsTr("Play")
+                                    color: tutorialOfferMouse.containsMouse ? Theme.metalBright
+                                                                            : Theme.metal
+                                    font.pixelSize: 13
+                                }
+                                MouseArea {
+                                    id: tutorialOfferMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: tutorialOffer.play()
+                                }
+                            }
+
+                            // Dismiss
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 22
+                                height: 22
+                                radius: 11
+                                color: tutorialOfferCloseMouse.containsMouse ? Theme.overlay
+                                                                             : "transparent"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "\u00D7"
+                                    color: Theme.inkMuted
+                                    font.pixelSize: 16
+                                }
+                                MouseArea {
+                                    id: tutorialOfferCloseMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: tutorialOffer.dismiss()
+                                }
+                            }
+                        }
+                    }
                     }
 
                     // While the virtual MIDI keyboard is the MIDI device in use
@@ -603,85 +718,6 @@ ApplicationWindow {
                 // Once the performer has played a score to its end: there are
                 // others, and the title is the way to them. Hung under the
                 // title's chevron, which it shows.
-                // A while after a score opens, until taken up or closed: the
-                // Getting started tutorial. Low in the view, where its keys
-                // will show.
-                Rectangle {
-                    id: tutorialOfferCard
-                    z: 100
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: parent.height * 0.72
-                    width: tutorialOfferRow.implicitWidth + 28
-                    height: tutorialOfferRow.implicitHeight + 20
-                    radius: 8
-                    color: Theme.backdrop
-                    border.color: Theme.metal
-                    border.width: 1
-                    visible: opacity > 0
-                    opacity: tutorialOffer.shown && !scoreShelf.shown ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 300 } }
-
-                    Row {
-                        id: tutorialOfferRow
-                        anchors.centerIn: parent
-                        spacing: 12
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("New here? Watch how to play.")
-                            color: Theme.metalBright
-                            font.pixelSize: 14
-                        }
-
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: tutorialOfferLabel.implicitWidth + 24
-                            height: tutorialOfferLabel.implicitHeight + 10
-                            radius: height / 2
-                            color: "transparent"
-                            border.color: tutorialOfferMouse.containsMouse ? Theme.metalBright
-                                                                           : Theme.metal
-                            Text {
-                                id: tutorialOfferLabel
-                                anchors.centerIn: parent
-                                text: qsTr("Play")
-                                color: tutorialOfferMouse.containsMouse ? Theme.metalBright
-                                                                        : Theme.metal
-                                font.pixelSize: 13
-                            }
-                            MouseArea {
-                                id: tutorialOfferMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: tutorialOffer.play()
-                            }
-                        }
-
-                        // Dismiss
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 22
-                            height: 22
-                            radius: 11
-                            color: tutorialOfferCloseMouse.containsMouse ? Theme.overlay
-                                                                         : "transparent"
-                            Text {
-                                anchors.centerIn: parent
-                                text: "\u00D7"
-                                color: Theme.inkMuted
-                                font.pixelSize: 16
-                            }
-                            MouseArea {
-                                id: tutorialOfferCloseMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: tutorialOffer.dismiss()
-                            }
-                        }
-                    }
-                }
-
                 Rectangle {
                     id: shelfHintCard
                     z: 100
@@ -762,13 +798,6 @@ ApplicationWindow {
                             }
                         }
                     }
-                }
-
-                // Transient credit shown when a score that must be attributed
-                // (e.g. a Creative-Commons transcription) is opened.
-                AttributionToast {
-                    anchors.fill: parent
-                    z: 101
                 }
 
                 // Debug aid: note info shown on hover, toggled from the

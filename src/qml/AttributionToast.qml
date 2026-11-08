@@ -22,26 +22,46 @@ import QtQuick.Layouts 1.15
 import Orchestrion 1.0
 import Orchestrion.OrchestrionShell 1.0
 
-// Transient "this score must be attributed" notification.
-// Instantiate with `anchors.fill: parent`; the toast places itself at the
-// bottom-centre of that area and fades itself away after a few seconds.
+// The credit a score must carry (e.g. a Creative-Commons transcription),
+// shown for a few seconds when it is opened, in a row of its own under the
+// score: it takes room in a layout, opening as it comes and closing as it
+// goes (bandHeight), and draws midway between spaceTop and spaceBottom, so
+// that it hides nothing. Stays while hovered, so that its link can be
+// clicked.
 Item {
     id: root
+
+    // Under it, as under a demo's caption
+    readonly property int rowGap: 12
+
+    /**
+     * What it stands between, from its parent's top: it takes room in a
+     * layout, and draws midway between them.
+     */
+    property real spaceTop: y
+    property real spaceBottom: y + height
+
+    property real open: 0
+    Behavior on open {
+        NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+    }
+
+    readonly property real bandHeight: (card.height + rowGap) * open
 
     ScoreAttributionModel {
         id: model
 
         onAttributionRequired: {
-            card.opacity = 1
+            root.open = 1
             dismissTimer.restart()
         }
 
         onAttributionChanged: {
-            // A score with no attribution was opened: dismiss any toast still
-            // showing for the previous score.
+            // A score with no attribution was opened: dismiss any credit
+            // still showing for the previous score.
             if (model.author.length === 0) {
                 dismissTimer.stop()
-                card.opacity = 0
+                root.open = 0
             }
         }
     }
@@ -52,26 +72,27 @@ Item {
         id: dismissTimer
         interval: 7000
         repeat: false
-        onTriggered: card.opacity = 0
+        onTriggered: root.open = 0
     }
 
+    // On the parchment: the backdrop's colour, framed in metal, as the other
+    // cards under the score.
     Rectangle {
         id: card
 
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 24
+        y: (root.spaceTop + root.spaceBottom - root.bandHeight + root.rowGap) / 2
+           - root.y
 
         width: layout.implicitWidth + 32
         height: layout.implicitHeight + 24
         radius: 8
-        color: Theme.toast
-        border.color: Theme.accent
+        color: Theme.backdrop
+        border.color: Theme.metal
         border.width: 1
 
-        opacity: 0
+        opacity: root.open
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: 300 } }
 
         // Pause auto-dismiss while the user is hovering, so the source link
         // stays clickable.
@@ -79,7 +100,7 @@ Item {
             onHoveredChanged: {
                 if (hovered)
                     dismissTimer.stop()
-                else if (card.opacity > 0)
+                else if (root.open > 0)
                     dismissTimer.restart()
             }
         }
@@ -94,9 +115,9 @@ Item {
 
                 Text {
                     text: qsTr("Sheet music by %1").arg(model.author)
-                    color: Theme.accent
+                    color: Theme.metalBright
                     font.pixelSize: 14
-                    font.bold: true
+                    font.weight: Font.DemiBold
                 }
 
                 Text {
@@ -110,12 +131,14 @@ Item {
             Text {
                 visible: model.url.length > 0
                 text: qsTr("View source")
-                color: Theme.accent
+                color: sourceMouse.containsMouse ? Theme.metalBright : Theme.metal
                 font.pixelSize: 12
                 font.underline: true
 
                 MouseArea {
+                    id: sourceMouse
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: model.openSourceUrl()
                 }

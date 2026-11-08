@@ -23,8 +23,8 @@ namespace dgk
 {
 OrchestrionTheme::OrchestrionTheme(QObject *parent) : QObject(parent)
 {
-  uiConfiguration()->currentThemeChanged().onNotify(
-      this, [this] { emit paletteChanged(); });
+  uiConfiguration()->currentThemeChanged().onNotify(this, [this]
+                                                    { emit paletteChanged(); });
 }
 
 QString OrchestrionTheme::name() const
@@ -35,8 +35,7 @@ QString OrchestrionTheme::name() const
 
 QColor OrchestrionTheme::backdrop() const
 {
-  return paletteColor(uiConfiguration()->currentTheme(),
-                      paletteKeys::backdrop);
+  return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::backdrop);
 }
 
 QColor OrchestrionTheme::accent() const
@@ -63,14 +62,12 @@ QColor OrchestrionTheme::metalBright() const
 
 QColor OrchestrionTheme::inkMuted() const
 {
-  return paletteColor(uiConfiguration()->currentTheme(),
-                      paletteKeys::inkMuted);
+  return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::inkMuted);
 }
 
 QColor OrchestrionTheme::inkFaint() const
 {
-  return paletteColor(uiConfiguration()->currentTheme(),
-                      paletteKeys::inkFaint);
+  return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::inkFaint);
 }
 
 QColor OrchestrionTheme::highlight() const
@@ -87,10 +84,5 @@ QColor OrchestrionTheme::overlay() const
 QColor OrchestrionTheme::popup() const
 {
   return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::popup);
-}
-
-QColor OrchestrionTheme::toast() const
-{
-  return paletteColor(uiConfiguration()->currentTheme(), paletteKeys::toast);
 }
 } // namespace dgk

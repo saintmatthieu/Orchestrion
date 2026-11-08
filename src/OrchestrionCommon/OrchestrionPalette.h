@@ -63,8 +63,6 @@ inline constexpr auto highlight = "orchestrion_highlight";
 //! settings popups (which sit a little more solidly still).
 inline constexpr auto overlay = "orchestrion_overlay";
 inline constexpr auto popup = "orchestrion_popup";
-//! The attribution toast's panel.
-inline constexpr auto toast = "orchestrion_toast";
 //! File name of the backdrop image, within the installed wallpapers/ folder.
 inline constexpr auto wallpaper = "orchestrion_wallpaper";
 } // namespace paletteKeys

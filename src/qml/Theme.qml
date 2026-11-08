@@ -51,6 +51,4 @@ QtObject {
     // settings popups (which sit a little more solidly still).
     readonly property color overlay: OrchestrionTheme.overlay
     readonly property color popup: OrchestrionTheme.popup
-    // The attribution toast's panel.
-    readonly property color toast: OrchestrionTheme.toast
 }

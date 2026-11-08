@@ -57,7 +57,6 @@ class OrchestrionTheme : public QObject,
   Q_PROPERTY(QColor highlight READ highlight NOTIFY paletteChanged)
   Q_PROPERTY(QColor overlay READ overlay NOTIFY paletteChanged)
   Q_PROPERTY(QColor popup READ popup NOTIFY paletteChanged)
-  Q_PROPERTY(QColor toast READ toast NOTIFY paletteChanged)
 
   dgk::Inject<muse::ui::IUiConfiguration> uiConfiguration{this};
 
@@ -76,7 +75,6 @@ public:
   QColor highlight() const;
   QColor overlay() const;
   QColor popup() const;
-  QColor toast() const;
 
 signals:
   void paletteChanged();
