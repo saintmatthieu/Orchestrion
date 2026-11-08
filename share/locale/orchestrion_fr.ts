@@ -1778,6 +1778,12 @@ sélectionne un autre contrôleur ou utilise le clavier de l&apos;ordinateur.</t
         <translation>Montre-moi</translation>
     </message>
     <message>
+        <location filename="../../src/qml/Main.qml" line="433"/>
+        <source>Next: %1</source>
+        <extracomment>The score after the one played, on the card shown at its end; %1 is its title.</extracomment>
+        <translation>Ensuite : %1</translation>
+    </message>
+    <message>
         <location filename="../../src/qml/Main.qml" line="390"/>
         <source>Tutorials (⌘?)</source>
         <translation>Tutoriels (⌘?)</translation>

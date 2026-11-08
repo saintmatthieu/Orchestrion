@@ -572,6 +572,7 @@ ScoreShelfModel::ScoreShelfModel(QObject *parent)
     : QObject(parent), m_sections{new ScoreSectionsModel(this)},
       m_tutorialScores{makeList()}, m_recentScores{makeList()},
       m_libraryScores{makeList()}, m_mergedScores{makeList()},
+      m_homeScores{makeList()}, m_allScores{makeList()},
       m_watcher{new QFileSystemWatcher(this)}, m_reloadTimer{new QTimer(this)}
 {
   m_reloadTimer->setSingleShot(true);
@@ -642,7 +643,9 @@ void ScoreShelfModel::setQuery(const QString &query)
   m_query = query;
   const QString folded = foldForSearch(query);
   for (ScoreListModel *list : lists())
-    list->setQuery(folded);
+    // "Next" goes through every score: the search is for finding one.
+    if (list != m_homeScores && list != m_allScores)
+      list->setQuery(folded);
   emit queryChanged();
 }
 
@@ -671,6 +674,7 @@ void ScoreShelfModel::sortBy(const QString &key)
   if (m_sortKey.isEmpty() == m_showsMerged)
     showSections();
   emit sortChanged();
+  emit nextChanged();
 }
 
 void ScoreShelfModel::showSections()
@@ -697,7 +701,7 @@ void ScoreShelfModel::showSections()
 void ScoreShelfModel::applySort()
 {
   for (ScoreListModel *list : lists())
-    if (list != m_tutorialScores)
+    if (list != m_tutorialScores && list != m_homeScores)
       list->setSort(m_sortKey, m_sortDescending);
 }
 
@@ -989,12 +993,57 @@ ScoreShelfModel::makeItem(const QString &path,
   return item;
 }
 
+QString ScoreShelfModel::identityOf(const QFileInfo &file) const
+{
+  if (const auto id = rollsLibrary()->idOf(file.absoluteFilePath()))
+    return "rolls:" + *id;
+  return file.fileName() + '|' + QString::number(file.size());
+}
+
+const ScoreListModel::Item *ScoreShelfModel::nextItem() const
+{
+  if (m_currentPath.isEmpty())
+    return nullptr;
+  // Not by path: the score open may be another copy of one on the shelf (a
+  // bundled score played from another build, say).
+  const QString current = identityOf(QFileInfo{m_currentPath});
+  const ScoreListModel *const list =
+      m_sortKey.isEmpty() ? m_homeScores : m_allScores;
+  const int count = list->count();
+  for (int row = 0; row + 1 < count; ++row)
+    if (identityOf(QFileInfo{list->shownItem(row).path}) == current)
+      return &list->shownItem(row + 1);
+  return nullptr;
+}
+
+QString ScoreShelfModel::nextTitle() const
+{
+  const ScoreListModel::Item *const item = nextItem();
+  if (!item)
+    return {};
+  return item->displayNameOverride.isEmpty() ? item->title
+                                             : item->displayNameOverride;
+}
+
+bool ScoreShelfModel::openNext()
+{
+  const ScoreListModel::Item *const item = nextItem();
+  if (!item)
+    return false;
+  // Copied: opening may reload the lists.
+  const QString path = item->path;
+  const QString displayName = item->displayNameOverride;
+  return open(path, displayName);
+}
+
 std::vector<ScoreListModel *> ScoreShelfModel::lists() const
 {
   std::vector<ScoreListModel *> result;
   for (const ScoreSectionsModel::Section &section : m_unsortedSections)
     result.push_back(section.scores);
   result.push_back(m_mergedScores);
+  result.push_back(m_homeScores);
+  result.push_back(m_allScores);
   return result;
 }
 
@@ -1015,22 +1064,25 @@ void ScoreShelfModel::reload()
   // a score copied into several folders is the same score. A score of Rolls
   // by its id: its file may not be there yet, or changed by a save.
   QSet<QString> seen;
-  QSet<QString> seenRolls;
   const auto firstSeen = [&](const QFileInfo &file)
   {
-    if (const auto id = rollsLibrary()->idOf(file.absoluteFilePath()))
-    {
-      if (seenRolls.contains(*id))
-        return false;
-      seenRolls.insert(*id);
-      return true;
-    }
-    const QString identity =
-        file.fileName() + '|' + QString::number(file.size());
+    const QString identity = identityOf(file);
     if (seen.contains(identity))
       return false;
     seen.insert(identity);
     return true;
+  };
+  // The order "next" goes by: that of the folders and the library, as if
+  // "Play again" had taken none of their scores.
+  QSet<QString> seenAtHome;
+  std::vector<ScoreListModel::Item> home;
+  const auto addHome = [&](const QFileInfo &file)
+  {
+    if (!seenAtHome.contains(identityOf(file)))
+    {
+      seenAtHome.insert(identityOf(file));
+      home.push_back(makeItem(file.absoluteFilePath(), QString{}));
+    }
   };
 
   std::vector<ScoreSectionsModel::Section> sections;
@@ -1078,8 +1130,11 @@ void ScoreShelfModel::reload()
     watched << scan.directories;
     std::vector<ScoreListModel::Item> items;
     for (const QFileInfo &file : scan.scores)
+    {
+      addHome(file);
       if (firstSeen(file))
         items.push_back(makeItem(file.absoluteFilePath(), QString{}));
+    }
     list->setItems(std::move(items));
     const QString name = QFileInfo{folder}.fileName();
     sections.push_back({ScoreSectionsModel::Kind::Folder,
@@ -1094,11 +1149,15 @@ void ScoreShelfModel::reload()
   std::vector<ScoreListModel::Item> library;
   for (const QFileInfo &file : bundledScores(
            globalConfiguration()->appDataPath().toQString() + "scores/"))
+  {
+    addHome(file);
     if (firstSeen(file))
       library.push_back(makeItem(file.absoluteFilePath(), QString{}));
+  }
   for (const RollsScore &score : rollsLibrary()->scores())
   {
     const QFileInfo file{rollsLibrary()->localPath(score.id)};
+    addHome(file);
     if (firstSeen(file))
       library.push_back(makeItem(file.absoluteFilePath(), QString{}));
   }
@@ -1116,6 +1175,7 @@ void ScoreShelfModel::reload()
     if (section.kind != ScoreSectionsModel::Kind::Tutorials)
       merged.insert(merged.end(), section.scores->items().begin(),
                     section.scores->items().end());
+  m_allScores->setItems(merged);
   m_mergedScores->setItems(std::move(merged));
   m_mergedScores->setQuery(foldForSearch(m_query));
 
@@ -1123,9 +1183,11 @@ void ScoreShelfModel::reload()
     section.scores->setCurrentPath(m_currentPath);
   m_mergedScores->setCurrentPath(m_currentPath);
   m_unsortedSections = std::move(sections);
+  m_homeScores->setItems(std::move(home));
   showSections();
   applySort();
   emit shownCountChanged();
+  emit nextChanged();
   scheduleRender();
 }
 
@@ -1139,6 +1201,7 @@ void ScoreShelfModel::onCurrentProjectChanged()
   reloadTutorials();
   scheduleRender();
   emit hasScoreChanged();
+  emit nextChanged();
 }
 
 void ScoreShelfModel::scheduleRender()
@@ -1193,6 +1256,8 @@ void ScoreShelfModel::renderNext()
   const ScoreIncipitCache::Entry entry = m_cache.render(path);
   for (ScoreListModel *list : all)
     list->setEntry(path, entry);
+  // Its title, or where it sorts, may have changed.
+  emit nextChanged();
   scheduleRender();
 }
 } // namespace dgk

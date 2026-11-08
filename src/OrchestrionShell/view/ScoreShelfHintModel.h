@@ -28,12 +28,12 @@
 namespace dgk
 {
 /**
- * Backs the hint that there are more scores than the one open: shown a few
- * seconds after the performer's own playing has reached the end of a score
- * (not the automatic player's, nor the "Show me!" demo's), until the user has
- * found the score shelf — by the hint, or any other way. The next note hides
- * it until the next end; closing it, or opening the shelf, puts it away for
- * good.
+ * Backs the card that comes up a few seconds after the performer's own
+ * playing has reached the end of a score (not the automatic player's, nor the
+ * "Show me!" demo's): the next score, and the way to all of them — with, until
+ * the user has found the score shelf (by the card, or any other way), a word
+ * on how to get there. The next note hides it until the next end, and so do
+ * closing it and opening the shelf, which also tell that the shelf is found.
  */
 class ScoreShelfHintModel : public QObject,
                             public dgk::Injectable,
@@ -41,7 +41,10 @@ class ScoreShelfHintModel : public QObject,
 {
   Q_OBJECT
 
+  /** Whether the end was reached, a moment ago, and not played on since. */
   Q_PROPERTY(bool shown READ shown NOTIFY shownChanged)
+  /** Whether the user has found the score shelf: no need to tell the way. */
+  Q_PROPERTY(bool shelfKnown READ shelfKnown NOTIFY shelfKnownChanged)
 
   dgk::Inject<IOrchestrion> orchestrion{this};
 
@@ -50,25 +53,27 @@ public:
 
   Q_INVOKABLE void load();
   /**
-   * The user has found the shelf, or doesn't want to hear of it: the hint
-   * won't show again.
+   * The card was closed or used, or the shelf opened: it hides until the next
+   * end, and won't tell the way to the shelf again.
    */
   Q_INVOKABLE void dismiss();
 
   bool shown() const;
+  bool shelfKnown() const;
 
 signals:
   void shownChanged();
+  void shelfKnownChanged();
 
 private:
   void followSequencer();
   void setShown(bool);
 
-  bool m_dismissed = false;
+  bool m_shelfKnown = false;
   bool m_shown = false;
   /** Whether the last note struck was the performer's. */
   bool m_performerStruck = false;
-  /** From the end of the piece to the hint. */
+  /** From the end of the piece to the card. */
   QTimer m_delay;
 };
 } // namespace dgk

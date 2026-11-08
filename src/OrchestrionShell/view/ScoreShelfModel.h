@@ -32,6 +32,7 @@
 #include <project/irecentfilescontroller.h>
 
 #include <QAbstractListModel>
+#include <QFileInfo>
 #include <QFileSystemWatcher>
 #include <QObject>
 #include <QTimer>
@@ -153,6 +154,8 @@ public:
   void setSort(const QString &key, bool descending);
   /** The first item shown and how well it matches the query, if any. */
   std::optional<std::pair<int, const Item *>> bestMatch() const;
+  /** The item shown at that row, 0 to count() - 1. */
+  const Item &shownItem(int row) const;
 
 signals:
   void countChanged();
@@ -160,7 +163,6 @@ signals:
 private:
   /** Recomputes which items are shown, and in what order. */
   void filter();
-  const Item &shownItem(int row) const;
 
   std::vector<Item> m_items;
   /** Indices into m_items of the items shown, in order. */
@@ -276,6 +278,13 @@ class ScoreShelfModel : public QObject,
    */
   Q_PROPERTY(QString sortKey READ sortKey NOTIFY sortChanged)
   Q_PROPERTY(bool sortDescending READ sortDescending NOTIFY sortChanged)
+  /**
+   * The title of the score after the one open, in the shelf's order: the
+   * sort's, if the scores are sorted, else that of the folders and the
+   * library ("Play again" only lists what was played before). Empty if the
+   * score open is the last, or isn't on the shelf. The search doesn't count.
+   */
+  Q_PROPERTY(QString nextTitle READ nextTitle NOTIFY nextChanged)
 
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
@@ -342,6 +351,11 @@ public:
    * a third time, back to the sections, each in its own order.
    */
   Q_INVOKABLE void sortBy(const QString &key);
+  /**
+   * Opens the score after the one open (nextTitle), as open() does. Returns
+   * false if there is none, or if it must be downloaded first.
+   */
+  Q_INVOKABLE bool openNext();
 
   QObject *sections() const;
   bool hasFolders() const;
@@ -354,6 +368,7 @@ public:
   void setQuery(const QString &query);
   QString sortKey() const;
   bool sortDescending() const;
+  QString nextTitle() const;
 
 signals:
   void openRequested();
@@ -367,6 +382,7 @@ signals:
   void hasScoreChanged();
   void queryChanged();
   void sortChanged();
+  void nextChanged();
 
 private:
   /** The folders the user added, as saved in the settings. */
@@ -396,6 +412,13 @@ private:
   void showSections();
   /** Every list, shown or not: the sections' and the merged one. */
   std::vector<ScoreListModel *> lists() const;
+  /**
+   * Which score a file is, as the shelf tells them apart: a score of Rolls
+   * by its id, any other by its name and size.
+   */
+  QString identityOf(const QFileInfo &file) const;
+  /** The score after the one open (nextTitle), if any. */
+  const ScoreListModel::Item *nextItem() const;
   /** Renders a card still missing, then schedules the next one. */
   void renderNext();
   void scheduleRender();
@@ -407,6 +430,17 @@ private:
   ScoreListModel *const m_libraryScores;
   /** The scores of all sections but the tutorials', shown while sorted. */
   ScoreListModel *const m_mergedScores;
+  /**
+   * The scores of the folders and the library, each where it is at home,
+   * whether "Play again" has it or not: the order nextTitle goes by while
+   * not sorted. Never shown, searched nor sorted.
+   */
+  ScoreListModel *const m_homeScores;
+  /**
+   * The merged list's scores, sorted as it is, but not searched: the order
+   * nextTitle goes by while sorted (ties as the shelf shows them).
+   */
+  ScoreListModel *const m_allScores;
   /** The sections as they are when not sorted, in order. */
   std::vector<ScoreSectionsModel::Section> m_unsortedSections;
   bool m_showsMerged = false;

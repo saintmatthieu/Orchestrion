@@ -147,6 +147,10 @@ ApplicationWindow {
         Component.onCompleted: load()
         // Tab, or an arrow between controls, shows them like the mouse does
         onNavigated: {
+            // Not for the card at a score's end, which takes the focus by
+            // itself
+            if (shelfHintCard.hasFocus)
+                return
             notationPaintView.controlsVisible = true
             hideControlsTimer.restart()
         }
@@ -395,7 +399,8 @@ ApplicationWindow {
                     }
 
                     // What takes room between the score and the lower rule
-                    readonly property real underScoreHeight: demoBand.bandHeight
+                    readonly property real underScoreHeight: nextBand.bandHeight
+                                                             + demoBand.bandHeight
                                                              + attributionBand.bandHeight
                                                              + offerBand.bandHeight
                                                              + lowerBandHeight * lowerBandOpen
@@ -428,10 +433,11 @@ ApplicationWindow {
                         viewHeight: furniture.height
                         title: scoreHeading.scoreTitle
                         subtitle: scoreHeading.scoreComposer
-                        // The way to the other scores.
+                        // The way to the other scores, which the card at a
+                        // score's end points at till the shelf is found.
                         titleClickable: true
                         titleHintShown: notationPaintView.controlsVisible
-                                        || scoreShelfHint.shown
+                                        || nextBand.wanted && !scoreShelfHint.shelfKnown
                         onTitleClicked: scoreShelf.open()
                     }
 
@@ -445,10 +451,11 @@ ApplicationWindow {
                         Layout.preferredHeight: furniture.scoreBandRestingHeight
                     }
 
-                    // Between the parchment and what is under it, the rows of
-                    // a demo's caption and keys, of a score's credit and of
-                    // the tutorial's offer, centred together: each centred in
-                    // its share.
+                    // Between the parchment and what is under it: the card at
+                    // a score's end, hung from the right cylinder, then the
+                    // rows of a demo's caption and keys, of a score's credit
+                    // and of the tutorial's offer, centred together: each
+                    // centred in its share.
                     readonly property real underParchmentTop:
                         (notationPaintView.titleClearance + notationPaintView.height
                          - notationPaintView.bottomClearance
@@ -456,12 +463,267 @@ ApplicationWindow {
                     readonly property real underParchmentBottom:
                         furniture.lowerBandOpen > 0 ? lowerBand.y : bottomOrnament.y
 
+                    // Once the performer has played a score to its end: the
+                    // next one, in the shelf's order — with, till the shelf is
+                    // found, a word on how to get to all of them. Right under
+                    // the score's right cylinder: a row of its own, as the
+                    // credit's, but hung from the cylinder.
+                    Item {
+                        id: nextBand
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: bandHeight
+                        // Between the cylinder's foot and the card: the rows'
+                        // gap
+                        readonly property int barrelGap: 12
+                        // The cylinders' foot, a little under the parchment's
+                        readonly property real barrelBottom: furniture.underParchmentTop
+                                                             + notationPaintView.rollerOverhang
+                        // Wanted, whether or not the shelf covers it
+                        readonly property bool wanted: scoreShelfHint.shown
+                            && (scoreShelfModel.nextTitle !== "" || !scoreShelfHint.shelfKnown)
+                        property real open: wanted && !scoreShelf.shown ? 1 : 0
+                        // Whether the card fits under the cylinder as things
+                        // are, clear of the lower rule (or the keyboard) and of
+                        // the other rows: it then takes no room, and the score
+                        // stays where it is. Else its row pushes it up. Judged
+                        // as the card comes, while its row is still closed:
+                        // the room depends on the row.
+                        property bool overlays: false
+                        onWantedChanged: {
+                            if (!wanted)
+                                return
+                            const others = demoBand.bandHeight + attributionBand.bandHeight
+                                           + offerBand.bandHeight
+                            // The other rows, centred under the score
+                            const clearBelow = others > 0
+                                ? (furniture.underParchmentTop + furniture.underParchmentBottom
+                                   - others + offerBand.rowGap) / 2
+                                : furniture.underParchmentBottom
+                            overlays = barrelBottom + barrelGap + shelfHintCard.height
+                                       + barrelGap <= clearBelow
+                        }
+                        Behavior on open {
+                            NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                        }
+                        // Down to the card's foot: the other rows are centred
+                        // under it
+                        readonly property real bandHeight: overlays ? 0 :
+                            (notationPaintView.rollerOverhang + barrelGap
+                             + shelfHintCard.height) * open
+
+                    Rectangle {
+                        id: shelfHintCard
+                        // Flush with the right cylinder's outer edge, where the
+                        // belt goes edge-on
+                        x: parent.width - notationPaintView.rollMargin - width
+                        // Hung from the cylinder, not centred in the room under
+                        // the score as the other rows are
+                        y: Math.round(nextBand.barrelBottom + nextBand.barrelGap) - nextBand.y
+                        // Whole pixels, so that the right edge lands on the
+                        // cylinder's
+                        width: Math.ceil(shelfHintRow.implicitWidth) + 28
+                        height: Math.ceil(shelfHintRow.implicitHeight) + 20
+                        radius: 8
+                        // On the parchment: the backdrop's colour, framed in metal.
+                        color: Theme.backdrop
+                        border.color: Theme.metal
+                        border.width: 1
+                        visible: opacity > 0
+                        opacity: nextBand.open
+
+                        // Shown: the keys are its, Left and Right going from
+                        // Next to the cross (Return or Space presses, Esc
+                        // leaves, as anywhere in keyboard navigation).
+                        readonly property bool shown: nextBand.wanted && !scoreShelf.shown
+                        readonly property bool hasFocus: nextNavCtrl.active || closeNavCtrl.active
+                        onShownChanged: {
+                            if (shown) {
+                                Qt.callLater(function() {
+                                    if (!shelfHintCard.shown)
+                                        return
+                                    if (scoreShelfModel.nextTitle !== "")
+                                        nextNavCtrl.requestActive(true)
+                                    else
+                                        closeNavCtrl.requestActive(true)
+                                })
+                            } else if (hasFocus) {
+                                // Gone (played on, closed, a score opened):
+                                // the arrows are the score's again.
+                                keyboardNavigation.release()
+                            }
+                        }
+
+                        MUI.NavigationPanel {
+                            id: endNavPanel
+                            name: "ScoreEnd"
+                            section: controlsNavSection
+                            // After the transport's and the full-screen
+                            // button's
+                            order: 3
+                            direction: MUI.NavigationPanel.Horizontal
+                            enabled: shelfHintCard.shown
+                            accessible.name: qsTr("End of the score")
+                        }
+
+                        Row {
+                            id: shelfHintRow
+                            anchors.centerIn: parent
+                            spacing: 12
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: !scoreShelfHint.shelfKnown
+                                // The hand pointing up at the title is drawn
+                                // larger than the text: at its size it is a smudge.
+                                textFormat: Text.StyledText
+                                text: qsTr("More scores to play: click the title %2, or press %1.")
+                                      .arg(root.isMac ? "\u2318O" : "Ctrl+O")
+                                      .arg("<font size=\"5\">\u261D\uFE0E</font>")
+                                color: Theme.metalBright
+                                font.pixelSize: 14
+                            }
+
+                            // A link, brightening under the mouse, its arrow
+                            // drawn: the font's ▸ sits low and close.
+                            Item {
+                                id: nextLink
+                                objectName: "demo:NextScore"
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: scoreShelfModel.nextTitle !== ""
+                                readonly property color ink: nextScoreMouse.containsMouse
+                                                             || nextNavCtrl.highlight
+                                                             ? Theme.metalBright : Theme.metal
+                                // Between the title and the arrow: a little more
+                                // than a word space
+                                readonly property int arrowGap: 7
+                                // The capitals' height, the arrow centred on it
+                                readonly property real capHeight:
+                                    nextMetrics.tightBoundingRect("H").height
+                                implicitWidth: nextLabel.width + arrowGap + arrow.width
+                                implicitHeight: nextLabel.implicitHeight
+
+                                FontMetrics {
+                                    id: nextMetrics
+                                    font: nextLabel.font
+                                }
+
+                                Text {
+                                    id: nextLabel
+                                    width: Math.min(implicitWidth, 460)
+                                    elide: Text.ElideRight
+                                    //: The score after the one played, on the card shown at
+                                    //: its end; %1 is its title.
+                                    text: qsTr("Next: %1").arg(scoreShelfModel.nextTitle)
+                                    color: nextLink.ink
+                                    font.pixelSize: 14
+                                }
+
+                                // Pointing right, three quarters of the capitals'
+                                // height, its middle on theirs
+                                Canvas {
+                                    id: arrow
+                                    readonly property color ink: nextLink.ink
+                                    x: nextLabel.width + nextLink.arrowGap
+                                    height: Math.round(nextLink.capHeight * 0.75)
+                                    width: Math.round(height * 0.8)
+                                    y: Math.round(nextLabel.baselineOffset
+                                                  - nextLink.capHeight / 2 - height / 2)
+                                    onInkChanged: requestPaint()
+                                    onPaint: {
+                                        const ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.fillStyle = ink
+                                        ctx.beginPath()
+                                        ctx.moveTo(0, 0)
+                                        ctx.lineTo(width, height / 2)
+                                        ctx.lineTo(0, height)
+                                        ctx.closePath()
+                                        ctx.fill()
+                                    }
+                                }
+
+                                function activate() {
+                                    scoreShelfHint.dismiss()
+                                    scoreShelfModel.openNext()
+                                }
+
+                                // The keyboard's focus: underlined, as a link
+                                Rectangle {
+                                    visible: nextNavCtrl.highlight
+                                    x: 0
+                                    y: Math.round(nextLabel.baselineOffset + nextMetrics.underlinePosition)
+                                    width: nextLabel.width
+                                    height: Math.max(1, Math.round(nextMetrics.lineWidth))
+                                    color: nextLink.ink
+                                }
+
+                                MouseArea {
+                                    id: nextScoreMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: nextLink.activate()
+                                }
+
+                                MUI.NavigationControl {
+                                    id: nextNavCtrl
+                                    name: "Next"
+                                    panel: endNavPanel
+                                    order: 1
+                                    enabled: scoreShelfModel.nextTitle !== ""
+                                             && shelfHintCard.shown
+                                    accessible.role: MUI.MUAccessible.Button
+                                    accessible.name: nextLabel.text
+                                    accessible.visualItem: nextLink
+                                    accessible.enabled: enabled
+                                    onTriggered: nextLink.activate()
+                                }
+                            }
+
+                            // Dismiss
+                            Rectangle {
+                                id: shelfHintClose
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 22
+                                height: 22
+                                radius: 11
+                                color: shelfHintCloseMouse.containsMouse || closeNavCtrl.highlight
+                                       ? Theme.overlay : "transparent"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "\u00D7"
+                                    color: Theme.inkMuted
+                                    font.pixelSize: 16
+                                }
+                                MouseArea {
+                                    id: shelfHintCloseMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: scoreShelfHint.dismiss()
+                                }
+                                MUI.NavigationControl {
+                                    id: closeNavCtrl
+                                    name: "Close"
+                                    panel: endNavPanel
+                                    order: 2
+                                    enabled: shelfHintCard.shown
+                                    accessible.role: MUI.MUAccessible.Button
+                                    accessible.name: qsTr("Close")
+                                    accessible.visualItem: shelfHintClose
+                                    accessible.enabled: enabled
+                                    onTriggered: scoreShelfHint.dismiss()
+                                }
+                            }
+                        }
+                    }
+                    }
+
                     // A demo's caption and number keys
                     DemoKeysBand {
                         id: demoBand
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
-                        spaceTop: furniture.underParchmentTop
+                        spaceTop: furniture.underParchmentTop + nextBand.bandHeight
                         spaceBottom: furniture.underParchmentBottom - attributionBand.bandHeight
                                      - offerBand.bandHeight
                         // Till it has faded out, which is when the script takes
@@ -475,7 +737,8 @@ ApplicationWindow {
                         id: attributionBand
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
-                        spaceTop: furniture.underParchmentTop + demoBand.bandHeight
+                        spaceTop: furniture.underParchmentTop + nextBand.bandHeight
+                                  + demoBand.bandHeight
                         spaceBottom: furniture.underParchmentBottom - offerBand.bandHeight
                     }
 
@@ -487,7 +750,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.preferredHeight: bandHeight
                         readonly property int rowGap: 12
-                        property real spaceTop: furniture.underParchmentTop
+                        property real spaceTop: furniture.underParchmentTop + nextBand.bandHeight
                                                 + demoBand.bandHeight + attributionBand.bandHeight
                         property real spaceBottom: furniture.underParchmentBottom
                         property real open: tutorialOffer.shown && !scoreShelf.shown ? 1 : 0
@@ -712,91 +975,6 @@ ApplicationWindow {
                     GradingButton {
                         model: gradingModel
                         visible: gradingModel.exposed
-                    }
-                }
-
-                // Once the performer has played a score to its end: there are
-                // others, and the title is the way to them. Hung under the
-                // title's chevron, which it shows.
-                Rectangle {
-                    id: shelfHintCard
-                    z: 100
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: topOrnament.y + topOrnament.chevronBottom + 8
-                    width: shelfHintRow.implicitWidth + 28
-                    height: shelfHintRow.implicitHeight + 20
-                    radius: 8
-                    // On the parchment: the backdrop's colour, framed in metal.
-                    color: Theme.backdrop
-                    border.color: Theme.metal
-                    border.width: 1
-                    visible: opacity > 0
-                    opacity: scoreShelfHint.shown && !scoreShelf.shown ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 300 } }
-
-                    Row {
-                        id: shelfHintRow
-                        anchors.centerIn: parent
-                        spacing: 12
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            // The hand pointing up at the title is drawn
-                            // larger than the text: at its size it is a smudge.
-                            textFormat: Text.StyledText
-                            text: qsTr("More scores to play: click the title %2, or press %1.")
-                                  .arg(root.isMac ? "\u2318O" : "Ctrl+O")
-                                  .arg("<font size=\"5\">\u261D\uFE0E</font>")
-                            color: Theme.metalBright
-                            font.pixelSize: 14
-                        }
-
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: showShelfLabel.implicitWidth + 24
-                            height: showShelfLabel.implicitHeight + 10
-                            radius: height / 2
-                            color: "transparent"
-                            border.color: showShelfMouse.containsMouse ? Theme.metalBright
-                                                                       : Theme.metal
-                            Text {
-                                id: showShelfLabel
-                                anchors.centerIn: parent
-                                text: qsTr("Show me")
-                                color: showShelfMouse.containsMouse ? Theme.metalBright
-                                                                    : Theme.metal
-                                font.pixelSize: 13
-                            }
-                            MouseArea {
-                                id: showShelfMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: scoreShelf.open()
-                            }
-                        }
-
-                        // Dismiss
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 22
-                            height: 22
-                            radius: 11
-                            color: shelfHintCloseMouse.containsMouse ? Theme.overlay
-                                                                     : "transparent"
-                            Text {
-                                anchors.centerIn: parent
-                                text: "\u00D7"
-                                color: Theme.inkMuted
-                                font.pixelSize: 16
-                            }
-                            MouseArea {
-                                id: shelfHintCloseMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: scoreShelfHint.dismiss()
-                            }
-                        }
                     }
                 }
 

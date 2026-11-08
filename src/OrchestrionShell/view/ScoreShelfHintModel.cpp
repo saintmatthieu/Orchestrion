@@ -27,8 +27,8 @@ namespace dgk
 {
 namespace
 {
-// A moment to take in the end of the piece before the hint comes up.
-constexpr auto delayAfterEnd = std::chrono::seconds{3};
+// A moment to take in the end of the piece before the card comes up.
+constexpr auto delayAfterEnd = std::chrono::seconds{2};
 
 const muse::Settings::Key
     SCORE_SHELF_HINT_DISMISSED("OrchestrionShell",
@@ -46,9 +46,9 @@ void ScoreShelfHintModel::load()
 {
   muse::settings()->setDefaultValue(SCORE_SHELF_HINT_DISMISSED,
                                     muse::Val{false});
-  m_dismissed = muse::settings()->value(SCORE_SHELF_HINT_DISMISSED).toBool();
-  if (m_dismissed)
-    return;
+  m_shelfKnown = muse::settings()->value(SCORE_SHELF_HINT_DISMISSED).toBool();
+  if (m_shelfKnown)
+    emit shelfKnownChanged();
   orchestrion()->sequencerChanged().onNotify(this,
                                              [this] { followSequencer(); });
   followSequencer();
@@ -78,13 +78,18 @@ void ScoreShelfHintModel::followSequencer()
         setShown(false);
       },
       muse::async::Asyncable::Mode::SetReplace);
+  // A jump (to the end, say) isn't playing there: the end it reaches only
+  // counts once the performer has struck a note since.
+  sequencer->AboutToJumpPosition().onReceive(
+      this, [this](int, JumpReason) { m_performerStruck = false; },
+      muse::async::Asyncable::Mode::SetReplace);
   // The end, as for the final score: the last notes released, nothing is
   // sounding and nothing is to come on any voice.
   sequencer->ChordTransitions().onReceive(
       this,
       [this](const std::map<TrackIndex, ChordTransition> &)
       {
-        if (m_dismissed || !m_performerStruck || m_shown || m_delay.isActive())
+        if (!m_performerStruck || m_shown || m_delay.isActive())
           return;
         const auto sequencer = orchestrion()->sequencer();
         if (!sequencer)
@@ -106,13 +111,16 @@ void ScoreShelfHintModel::dismiss()
 {
   m_delay.stop();
   setShown(false);
-  if (m_dismissed)
+  if (m_shelfKnown)
     return;
-  m_dismissed = true;
+  m_shelfKnown = true;
   muse::settings()->setSharedValue(SCORE_SHELF_HINT_DISMISSED, muse::Val{true});
+  emit shelfKnownChanged();
 }
 
 bool ScoreShelfHintModel::shown() const { return m_shown; }
+
+bool ScoreShelfHintModel::shelfKnown() const { return m_shelfKnown; }
 
 void ScoreShelfHintModel::setShown(bool shown)
 {
