@@ -117,14 +117,22 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
 
 void Orchestrion::setSequencer(IOrchestrionSequencerPtr sequencer)
 {
-  if (sequencer == m_sequencer)
-    return;
-  m_sequencer = std::move(sequencer);
+  {
+    std::scoped_lock lock{m_sequencerMutex};
+    if (sequencer == m_sequencer)
+      return;
+    // The old one is let go of out of the lock (by `sequencer`, swapped).
+    std::swap(m_sequencer, sequencer);
+  }
 
   m_sequencerChanged.notify();
 }
 
-IOrchestrionSequencerPtr Orchestrion::sequencer() { return m_sequencer; }
+IOrchestrionSequencerPtr Orchestrion::sequencer()
+{
+  std::scoped_lock lock{m_sequencerMutex};
+  return m_sequencer;
+}
 
 muse::async::Notification Orchestrion::sequencerChanged() const
 {

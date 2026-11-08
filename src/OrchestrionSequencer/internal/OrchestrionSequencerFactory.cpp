@@ -43,6 +43,8 @@
 #include "engraving/dom/tie.h"
 #include "engraving/dom/tremolotwochord.h"
 #include "notation/imasternotation.h"
+#include <QCoreApplication>
+#include <QThread>
 #include <algorithm>
 #include <cassert>
 #include <cctype>
@@ -506,13 +508,30 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   Staff rightHandCopy = rightHand;
   Staff leftHandCopy = leftHand;
 
-  auto sequencer = std::make_shared<OrchestrionSequencer>(
-      mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
-      MakeHand(staff + 1, leftHand), std::move(pedalSequence),
-      std::move(staffEvents),
-      std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
-                                            GetScoreNotes({&leftHandCopy})},
-      nominalTicksPerMs);
+  // Destroyed on the main thread, whichever lets go of it last: the audio
+  // engine's thread holds it too, a moment, when it is replaced (the
+  // synthesizers follow it from there). What it subscribed to on the main
+  // thread (the visible part of the score, ...) is only let go of there at
+  // once; from another thread, later, and a notification in between called
+  // into it destroyed.
+  const auto destroyOnMainThread = [](OrchestrionSequencer *sequencer)
+  {
+    QCoreApplication *const app = QCoreApplication::instance();
+    if (!app || QThread::currentThread() == app->thread())
+      delete sequencer;
+    else
+      QMetaObject::invokeMethod(
+          app, [sequencer] { delete sequencer; }, Qt::QueuedConnection);
+  };
+  auto sequencer = std::shared_ptr<OrchestrionSequencer>(
+      new OrchestrionSequencer(
+          mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
+          MakeHand(staff + 1, leftHand), std::move(pedalSequence),
+          std::move(staffEvents),
+          std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
+                                                GetScoreNotes({&leftHandCopy})},
+          nominalTicksPerMs),
+      destroyOnMainThread);
 
   return {sequencer, modifiableItems, std::move(rightHandCopy),
           std::move(leftHandCopy)};

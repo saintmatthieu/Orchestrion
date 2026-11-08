@@ -27,6 +27,7 @@
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
+#include <mutex>
 #include <optional>
 #include <project/iprojectsession.h>
 
@@ -68,6 +69,11 @@ private:
 
 private:
   IOrchestrionSequencerPtr m_sequencer;
+  /**
+   * The audio engine's and the input devices' threads ask for the sequencer
+   * too (sequencer()), while the main thread replaces it.
+   */
+  mutable std::mutex m_sequencerMutex;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
   std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   std::unique_ptr<FollowPlayer> m_followPlayer;
