@@ -112,6 +112,8 @@ muse::ui::UiActionList makeActions(
       muse::ui::UiAction("prev", muse::ui::UiCtxAny, muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("next", muse::ui::UiCtxAny, muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("rewind", muse::ui::UiCtxAny,
+                         muse::shortcuts::CTX_ANY),
+      muse::ui::UiAction("go-to-end", muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY)};
 
   for (const auto &[_, menuId] : actionIds::chooseDevicesSubmenu)

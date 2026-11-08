@@ -315,6 +315,11 @@ void OrchestrionNotationPaintView::subscribe(
                                               // resumes (readable until then).
                                               m_timingStatsStale = true;
                                               endTake();
+                                              // Past the last chord there is
+                                              // nothing for the follower to
+                                              // frame: the end is shown here.
+                                              if (reason == JumpReason::End)
+                                                showEnd();
                                               update();
                                             });
 }
@@ -1033,6 +1038,16 @@ double OrchestrionNotationPaintView::anchorX() const
   // The inverse of centerOn()'s placement (short of its clamping).
   return viewport().left() +
          ScoreFollower::anchorFrac * width() / currentScaling();
+}
+
+void OrchestrionNotationPaintView::showEnd()
+{
+  const auto extent = scoreExtent();
+  if (!extent)
+    return;
+  // As far right as scrolling goes (centerOn clamps).
+  centerOn(extent->right());
+  m_atStart = false;
 }
 
 void OrchestrionNotationPaintView::centerOn(double logicalX)

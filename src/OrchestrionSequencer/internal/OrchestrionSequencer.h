@@ -97,6 +97,7 @@ public:
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
+  void GoToEnd() override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
   void SkipHandTo(bool isLeftHand, int tickWithRepeats) override;
   void GoToPrevNoteonTick() override;
@@ -110,6 +111,15 @@ private:
     HandVoices voices;
     std::optional<int> pressedKey;
   };
+
+  /**
+   * Jumps to `tick` (without repeats; `tickWithRepeats` with them), each
+   * playing voice moved by `move`.
+   */
+  void
+  Jump(int tick, int tickWithRepeats, JumpReason reason,
+       const std::function<std::optional<ChordTransition>(VoiceSequencer &)>
+           &move);
 
   /**
    * What a track has sounding and is to sound: the schedule of the chord

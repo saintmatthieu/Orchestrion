@@ -159,14 +159,26 @@ const IMelodySegment *VoiceSequencer::GetPresentThing() const
 
 std::optional<ChordTransition> VoiceSequencer::GoToTick(int tick)
 {
+  return GoToFirstChord([tick](const Tick &begin)
+                        { return begin.withoutRepeats >= tick; });
+}
+
+std::optional<ChordTransition> VoiceSequencer::GoToTickWithRepeats(int tick)
+{
+  return GoToFirstChord([tick](const Tick &begin)
+                        { return begin.withRepeats >= tick; });
+}
+
+std::optional<ChordTransition> VoiceSequencer::GoToFirstChord(
+    const std::function<bool(const Tick &begin)> &reached)
+{
   const IChord *const past = m_onImplicitRest || m_index >= m_numGestures
                                  ? nullptr
                                  : m_gestures[m_index]->AsChord();
   m_onImplicitRest = true;
 
   for (auto i = 0; i < m_gestures.size(); ++i)
-    if (m_gestures[i]->AsChord() &&
-        m_gestures[i]->GetBeginTick().withoutRepeats >= tick)
+    if (m_gestures[i]->AsChord() && reached(m_gestures[i]->GetBeginTick()))
     {
       m_index = i;
       break;
@@ -181,6 +193,19 @@ std::optional<ChordTransition> VoiceSequencer::GoToTick(int tick)
     return PastChordAndFutureChord{past, future};
   else
     return std::nullopt;
+}
+
+std::optional<ChordTransition> VoiceSequencer::GoToEnd()
+{
+  const IChord *const past = m_onImplicitRest || m_index >= m_numGestures
+                                 ? nullptr
+                                 : m_gestures[m_index]->AsChord();
+  // As the last chord's release leaves it (OnInputEvent).
+  m_index = m_numGestures;
+  m_onImplicitRest = true;
+  if (past)
+    return PastChord{past};
+  return std::nullopt;
 }
 
 std::optional<ChordTransition> VoiceSequencer::FollowTo(int tick)

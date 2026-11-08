@@ -562,6 +562,10 @@ private:
   //! Back to the ideal (notated) spacing — a fresh take is starting.
   void clearPerformanceWarp();
   void updateNotation();
+  /**
+   * Scrolls the score's end into view, as far as scrolling goes.
+   */
+  void showEnd();
 
   // ScoreFollower::Canvas
   double viewWidth() const override { return width(); }

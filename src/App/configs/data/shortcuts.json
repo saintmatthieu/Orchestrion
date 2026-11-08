@@ -25,6 +25,7 @@
       "shortcuts": [
         {"command": "command://orchestrion/play-toggle",  "sequences": ["Space"], "autorepeat": false},
         {"command": "command://orchestrion/rewind",  "sequences": ["Home"], "autorepeat": false},
+        {"command": "command://orchestrion/go-to-end",  "sequences": ["End"], "autorepeat": false},
         {"command": "command://orchestrion/prev",  "sequences": ["Left"]},
         {"command": "command://orchestrion/next",  "sequences": ["Right"]},
         {"command": "command://playback/loop-toggle",  "sequences": ["Ctrl+L"], "autorepeat": false},

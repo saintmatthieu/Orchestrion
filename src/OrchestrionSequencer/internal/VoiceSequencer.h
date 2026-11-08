@@ -20,6 +20,7 @@
 
 #include "ChordTransitionUtil.h"
 #include "OrchestrionTypes.h"
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -34,7 +35,18 @@ public:
 
   std::optional<ChordTransition> OnInputEvent(NoteEventType,
                                               const dgk::Tick &cursorTick);
+  /** To the first chord at or after `tick`, without repeats. */
   std::optional<ChordTransition> GoToTick(int tick);
+  /**
+   * To the first chord at or after `tick`, with repeats: which of a repeated
+   * passage's passes it is in tells.
+   */
+  std::optional<ChordTransition> GoToTickWithRepeats(int tick);
+  /**
+   * Moves past the last gesture, where playing it through leaves the voice:
+   * nothing is to come.
+   */
+  std::optional<ChordTransition> GoToEnd();
 
   /**
    * Moves, without a gesture, to where the performer is found to be at
@@ -81,6 +93,9 @@ public:
   const IChord *GetFutureChord(unsigned offset = 0u) const;
 
 private:
+  /** To the first chord `reached` says yes to; nowhere if none does. */
+  std::optional<ChordTransition>
+  GoToFirstChord(const std::function<bool(const Tick &begin)> &reached);
   static VoiceEvent GetVoiceEvent(const std::vector<ChordRestPtr> &chords,
                                   int index);
   ChordTransitionType GetNextTransition(NoteEventType event,

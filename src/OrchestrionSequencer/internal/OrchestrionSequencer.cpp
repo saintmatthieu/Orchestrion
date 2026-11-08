@@ -1004,6 +1004,27 @@ void OrchestrionSequencer::UpdatePedal()
 
 void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
 {
+  Jump(tick, tick, reason,
+       [tick](VoiceSequencer &voice) { return voice.GoToTick(tick); });
+}
+
+void OrchestrionSequencer::GoToEnd()
+{
+  // Where the automatic player would be, done: the end of the voice that
+  // ends last.
+  Tick end{0, 0};
+  for (const bool left : {false, true})
+    for (const auto &voice : (left ? m_leftHand : m_rightHand).voices)
+      if (voice->GetFinalTick().withRepeats > end.withRepeats)
+        end = voice->GetFinalTick();
+  Jump(end.withoutRepeats, end.withRepeats, JumpReason::End,
+       [](VoiceSequencer &voice) { return voice.GoToEnd(); });
+}
+
+void OrchestrionSequencer::Jump(
+    int tick, int tickWithRepeats, JumpReason reason,
+    const std::function<std::optional<ChordTransition>(VoiceSequencer &)> &move)
+{
   m_aboutToJumpPosition.send(tick, reason);
   // The position jumps: the tempo estimate starts over — but for a loop's
   // wrap, which the performance carries on through (see WrapLoop) — and
@@ -1021,12 +1042,11 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
     for (const bool left : {false, true})
       if (Mode(left) != StaffMode::mute)
         transitions.merge(PrepareStaffTransitions(
-            (left ? m_leftHand : m_rightHand).voices,
-            [&](VoiceSequencer &voice) { return voice.GoToTick(tick); }));
+            (left ? m_leftHand : m_rightHand).voices, move));
     SendTransitions(std::move(transitions));
   }
   CutPedal();
-  m_autoPlayTick = tick;
+  m_autoPlayTick = tickWithRepeats;
   // A click, a rewind, ...: the performer is to be followed from there.
   ResetFollower();
 }
@@ -1109,7 +1129,13 @@ void OrchestrionSequencer::GoToPrevNoteonTick()
     if (tick && (!latest || *tick > *latest))
       latest = tick;
   }
-  GoToTick(latest ? latest->withoutRepeats : 0, JumpReason::Step);
+  if (!latest)
+    return GoToTick(0, JumpReason::Step);
+  // By the tick with repeats: in a repeat's second pass, the previous chord
+  // is the second pass's, not the first's of the same tick.
+  const int to = latest->withRepeats;
+  Jump(latest->withoutRepeats, to, JumpReason::Step,
+       [to](VoiceSequencer &voice) { return voice.GoToTickWithRepeats(to); });
 }
 
 void OrchestrionSequencer::GoToNextNoteonTick()
@@ -1121,8 +1147,11 @@ void OrchestrionSequencer::GoToNextNoteonTick()
     if (tick && (!earliest || *tick < *earliest))
       earliest = tick;
   }
-  if (earliest)
-    GoToTick(earliest->withoutRepeats, JumpReason::Step);
+  if (!earliest)
+    return;
+  const int to = earliest->withRepeats;
+  Jump(earliest->withoutRepeats, to, JumpReason::Step,
+       [to](VoiceSequencer &voice) { return voice.GoToTickWithRepeats(to); });
 }
 
 std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()

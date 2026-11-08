@@ -149,6 +149,8 @@ const std::vector<ActionCommand> &actionCommands()
        muse::TranslatableString("orchestrion", "Play")},
       {muse::rcommand::Command("command://orchestrion/rewind"), "rewind",
        muse::TranslatableString("orchestrion", "Rewind")},
+      {muse::rcommand::Command("command://orchestrion/go-to-end"), "go-to-end",
+       muse::TranslatableString("orchestrion", "Go to the end")},
       {muse::rcommand::Command("command://orchestrion/prev"), "prev",
        muse::TranslatableString("orchestrion", "Previous chord")},
       {muse::rcommand::Command("command://orchestrion/next"), "next",

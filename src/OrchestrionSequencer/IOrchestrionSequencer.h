@@ -86,6 +86,7 @@ enum class JumpReason
   Click,    // the user clicked an element on the page
   LoopWrap, // the loop's end was reached: back to its start
   ScoreEnd, // the last event was played: back to the start
+  End,      // the go-to-end action: past the last event
   Replay,   // the replay rewinds to the take's start
   Realign,  // the staves changed modes: back where the playing ones were
 };
@@ -159,6 +160,11 @@ public:
   virtual muse::async::Channel<int /*tick*/, JumpReason>
   AboutToJumpPosition() const = 0;
   virtual void GoToTick(int tick, JumpReason reason) = 0;
+  /**
+   * Goes past the last event (JumpReason::End), where playing the score
+   * through leaves it: nothing is to come, and the next note starts it over.
+   */
+  virtual void GoToEnd() = 0;
   /**
    * Moves the hand on, silently, to the first of its chords at or after the
    * tick (with repeats), letting go of what it holds: what a Follow staff
