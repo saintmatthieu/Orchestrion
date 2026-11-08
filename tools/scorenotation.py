@@ -308,7 +308,9 @@ def ending_xml(ending, location):
     return ""
 
 
-def score_xml(title, composer, fifths, mode, beats, measures, implicit_pickup=False, rights="Public domain (CC0 1.0)", beat_type=4):
+def score_xml(title, composer, fifths, mode, beats, measures, implicit_pickup=False, rights="Public domain (CC0 1.0)", beat_type=4, opus=None):
+    """The score as MusicXML; `opus` is its catalogue number ("K. 265"), the work number
+    Orchestrion's score shelf shows in its Opus column."""
     parts = []
     tied_in = {}
     for i, measure in enumerate(measures):
@@ -381,7 +383,9 @@ def score_xml(title, composer, fifths, mode, beats, measures, implicit_pickup=Fa
         '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" '
         '"http://www.musicxml.org/dtds/partwise.dtd">\n'
         '<score-partwise version="4.0">'
-        f"<work><work-title>{escape(title)}</work-title></work>"
+        "<work>"
+        + (f"<work-number>{escape(opus)}</work-number>" if opus else "")
+        + f"<work-title>{escape(title)}</work-title></work>"
         f'<identification><creator type="composer">{escape(composer)}</creator>'
         f"<rights>{escape(rights)}</rights></identification>"
         '<part-list><score-part id="P1"><part-name>Piano</part-name><part-abbreviation>Pno.</part-abbreviation>'
