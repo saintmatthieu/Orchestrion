@@ -19,8 +19,9 @@
 
 /*
  * Automatic accompaniment: the staves' modes, which the left cylinder
- * uncovers; the lower staff stepped through them to Follow, then the upper
- * one played, which the lower follows.
+ * uncovers; the lower staff stepped through them (Rhythm, Notes, Mute) to
+ * Follow, each captioned with what it does, then the upper one played, which
+ * the lower follows.
  *
  * @testflow record-from The staves' modes
  */
@@ -30,6 +31,14 @@ var Orchestrion = require("steps/Orchestrion.js")
 // The staff that accompanies: the lower one, the left hand's
 var FOLLOWER = 1
 var SELECTOR = "Score/StaffMode/" + FOLLOWER + "/"
+
+// What each mode does, as the lower staff is stepped through them
+var CAPTIONS = {
+    rhythm: "Rhythm is the default: just play the rhythm",
+    notes: "Notes: play the staff normally with a piano keyboard",
+    mute: "Mute: ignore this staff",
+    follow: "Automatic: follows the other staff. Let's try it now!",
+}
 
 // The modes this script changed, to be given back
 var edits = 0
@@ -48,13 +57,18 @@ var testCase = {
             api.testflow.sleep(1500)
         }},
         {name: "Follow", func: function() {
-            Orchestrion.caption("Set one to Follow")
-            // Round the modes, as many as there are
-            for (var i = 0; i < 4 && Orchestrion.staffMode(FOLLOWER) !== "follow"; ++i) {
-                Orchestrion.click(SELECTOR + "next")
+            // Round the modes, upwards (Rhythm, Notes, Mute, Follow), each
+            // with what it does, to Follow
+            for (var i = 0; i < 4; ++i) {
+                var mode = Orchestrion.staffMode(FOLLOWER)
+                Orchestrion.caption(CAPTIONS[mode])
+                api.testflow.sleep(mode === "follow" ? 2500 : 3000)
+                if (mode === "follow") {
+                    break
+                }
+                Orchestrion.click(SELECTOR + "previous")
                 ++edits
                 Orchestrion.moveTo(SELECTOR + "mode")
-                api.testflow.sleep(1000)
             }
             if (Orchestrion.staffMode(FOLLOWER) !== "follow") {
                 api.testflow.fatal("the lower staff isn't in the Follow mode")
@@ -62,7 +76,7 @@ var testCase = {
         }},
         {name: "Play the other staff", func: function() {
             Orchestrion.hideCursor()
-            Orchestrion.caption("Play the other: it follows you")
+            Orchestrion.caption("Only the right hand plays - the left hand follows")
             Orchestrion.showKeys()
             // From the top: the hands are ahead of where the player would
             // start, which it would first wait to catch up with.
