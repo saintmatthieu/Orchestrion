@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" data-culture="en-US" data-opening="Opening “%1” in Orchestrion…" data-invalid="This link doesn’t name a score." data-mobile="Orchestrion is a desktop app. Open this page on a Windows, macOS or Linux computer to play this score.">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Play in Orchestrion</title>
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../play/play.css">
+</head>
+<body>
+  <main>
+    <img class="logo" src="../assets/icon.png" alt="">
+    <h1 id="heading">Opening this score in Orchestrion…</h1>
+    <p id="browse" hidden><a href="https://rolls.orchestrion.app/">Browse the scores on Rolls</a></p>
+    <div id="fallback" hidden>
+      <div class="actions"><button type="button" id="again">Try again</button></div>
+      <p>Don’t have Orchestrion yet? Get it, install it, then try again:</p>
+      <div class="downloads">
+        <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Windows</strong><small>installer (.msi)</small></a>
+        <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>macOS</strong><small>signed &amp; notarized (.dmg)</small></a>
+        <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Linux</strong><small>AppImage</small></a>
+      </div>
+      <p>Already have Orchestrion? Update it, or open its Library and search for <strong id="library-title">this score</strong>.</p>
+    </div>
+    <p id="back-row" hidden><a id="back" href="https://rolls.orchestrion.app/">Back to the score’s page</a></p>
+  </main>
+  <script src="../play/play.js"></script>
+</body>
+</html>

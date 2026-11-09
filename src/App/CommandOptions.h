@@ -125,6 +125,8 @@ struct CommandOptions : public muse::CmdOptions
   {
     std::optional<std::string> type;
     std::optional<QUrl> scoreUrl;
+    /** An orchestrion:// link given instead of a score, valid or not. */
+    std::optional<QString> link;
     std::optional<QString> scoreDisplayNameOverride;
     /** --full-screen: the window starts in full screen (recordings). */
     bool fullScreen = false;

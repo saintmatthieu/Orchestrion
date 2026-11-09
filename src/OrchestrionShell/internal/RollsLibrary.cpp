@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "RollsLibrary.h"
+#include "OrchestrionShell/RollsLink.h"
 
 #include <log.h>
 
@@ -50,8 +51,6 @@ constexpr qint64 refreshIntervalSecs = 3 * 60 * 60;
 constexpr qint64 retryIntervalSecs = 10 * 60;
 
 constexpr int transferTimeoutMs = 30000;
-
-const QRegularExpression idPattern{"^[a-z0-9]+(-[a-z0-9]+)*$"};
 
 QUrl indexUrlFromEnvironment()
 {
@@ -191,7 +190,7 @@ bool RollsLibrary::parseIndex(const QByteArray &json,
     score.id = entry.value("id").toString();
     const QString musicxml = entry.value("musicxml").toString();
     // The id names a file: nothing else than what the index promises.
-    if (!idPattern.match(score.id).hasMatch() || musicxml.isEmpty())
+    if (!isRollsId(score.id) || musicxml.isEmpty())
       continue;
     score.title = entry.value("title").toString();
     score.composer = entry.value("composer").toString();
@@ -267,9 +266,16 @@ void RollsLibrary::refresh()
     return;
   if (m_lastAttempt.isValid() && m_lastAttempt.secsTo(now) < retryIntervalSecs)
     return;
+  fetchIndex();
+}
 
+void RollsLibrary::fetchIndex()
+{
+  ensureLoaded();
+  if (m_fetching)
+    return;
   m_fetching = true;
-  m_lastAttempt = now;
+  m_lastAttempt = QDateTime::currentDateTimeUtc();
   LOGI() << "Fetching the Rolls index from " << m_indexUrl.toString();
   QNetworkReply *const reply = network().get(makeRequest(m_indexUrl));
   QObject::connect(reply, &QNetworkReply::finished,
@@ -285,14 +291,24 @@ void RollsLibrary::onIndexFetched(QNetworkReply *reply)
     // Offline, most likely: the scores stay as they were.
     LOGI() << "Could not fetch the Rolls index: "
            << reply->errorString().toStdString();
+    m_indexFetched.send(false);
     return;
   }
   const QByteArray json = reply->readAll();
   if (!parseIndex(json, m_indexUrl))
+  {
+    m_indexFetched.send(false);
     return;
+  }
   if (writeFile(indexPath(), json))
     writeFile(indexSourcePath(), m_indexUrl.toString().toUtf8());
   m_scoresChanged.notify();
+  m_indexFetched.send(true);
+}
+
+muse::async::Channel<bool> RollsLibrary::indexFetched() const
+{
+  return m_indexFetched;
 }
 
 QString RollsLibrary::localPath(const QString &id) const
@@ -307,7 +323,7 @@ std::optional<QString> RollsLibrary::idOf(const QString &path) const
                                     QDir::cleanPath(scoresDirectory()))
     return std::nullopt;
   const QString id = file.completeBaseName();
-  if (!idPattern.match(id).hasMatch())
+  if (!isRollsId(id))
     return std::nullopt;
   return id;
 }

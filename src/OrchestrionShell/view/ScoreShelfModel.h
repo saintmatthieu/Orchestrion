@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "OrchestrionShell/IOpenRequests.h"
 #include "OrchestrionShell/IRollsLibrary.h"
 #include "OrchestrionShell/ITutorials.h"
 #include "OrchestrionShell/internal/ScoreIncipitCache.h"
@@ -301,6 +302,10 @@ class ScoreShelfModel : public QObject,
   Q_PROPERTY(QString nextTitle READ nextTitle NOTIFY nextChanged)
   /** The same for the score before the one open; empty if it is the first. */
   Q_PROPERTY(QString previousTitle READ previousTitle NOTIFY nextChanged)
+  /** What became of the last link that asked for a score; empty if nothing. */
+  Q_PROPERTY(QString linkMessage READ linkMessage NOTIFY linkMessageChanged)
+  /** Whether that link's score is still being fetched. */
+  Q_PROPERTY(bool linkBusy READ linkBusy NOTIFY linkMessageChanged)
 
   dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
@@ -309,12 +314,14 @@ class ScoreShelfModel : public QObject,
   dgk::Inject<muse::IInteractive> interactive{this};
   dgk::Inject<muse::IPlatformInteractive> platformInteractive{this};
   dgk::Inject<IRollsLibrary> rollsLibrary{this};
+  dgk::Inject<IOpenRequests> openRequests{this};
   dgk::Inject<ITutorials> tutorials{this};
 
 public:
   explicit ScoreShelfModel(QObject *parent = nullptr);
 
   Q_INVOKABLE void load();
+  Q_INVOKABLE void dismissLinkMessage();
 
   /**
    * Opens that score (in place of the current one). Returns false if it must
@@ -392,6 +399,11 @@ public:
   void setRecentOnly(bool recentOnly);
 
 signals:
+  /** A link or a file asks for a score from outside: the window comes up. */
+  void openFromOutsideRequested();
+  /** A link's score can't be opened, which leaves what was open as it was. */
+  void linkFailed();
+  void linkMessageChanged();
   void openRequested();
   /** Help ▸ Tutorials…: the shelf, showing the tutorials only. */
   void tutorialsRequested();
@@ -422,6 +434,14 @@ private:
   void watch(const QStringList &directories);
   void onCurrentProjectChanged();
   void onDownloadFinished(const QString &id, bool ok);
+  /** Handles what was asked of Orchestrion from outside, if anything. */
+  void takeOpenRequest();
+  void openLinkedScore(const QString &id);
+  void onIndexFetched(bool ok);
+  void failLink(const QString &message);
+  void setLinkMessage(const QString &message, bool busy);
+  QString linkMessage() const { return m_linkMessage; }
+  bool linkBusy() const { return m_linkBusy; }
   ScoreListModel *makeList();
   ScoreListModel::Item makeItem(const QString &path,
                                 const QString &displayNameOverride) const;
@@ -487,6 +507,11 @@ private:
   /** The score of Rolls to open once downloaded. */
   QString m_pendingOpen;
   QString m_pendingDisplayName;
+  /** The score of Rolls a link asked for, while it is being fetched. */
+  QString m_linkedRollsId;
+  bool m_linkAwaitsIndex = false;
+  QString m_linkMessage;
+  bool m_linkBusy = false;
   bool m_active = false;
   bool m_renderScheduled = false;
 };

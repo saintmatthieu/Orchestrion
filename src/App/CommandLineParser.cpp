@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "CommandLineParser.h"
+#include "OrchestrionShell/RollsLink.h"
 
 #include <QDir>
 
@@ -693,8 +694,12 @@ void CommandLineParser::parse(int argc, char **argv)
   {
     if (!scorefiles.isEmpty())
     {
-      m_options->startup.scoreUrl = QUrl::fromUserInput(
-          scorefiles[0], QDir::currentPath(), QUrl::AssumeLocalFile);
+      if (const QString argument = m_parser.positionalArguments().front();
+          isOrchestrionLink(argument))
+        m_options->startup.link = argument;
+      else
+        m_options->startup.scoreUrl = QUrl::fromUserInput(
+            scorefiles[0], QDir::currentPath(), QUrl::AssumeLocalFile);
     }
 
     if (m_parser.isSet("score-display-name-override"))

@@ -1740,6 +1740,26 @@ wähle einen anderen Controller oder verwende die Computertastatur.</translation
 <context>
     <name>orchestrion/shelf</name>
     <message>
+        <source>A tutorial is running. Stop it, then try again.</source>
+        <translation>Ein Tutorial läuft. Beende es und versuche es dann noch einmal.</translation>
+    </message>
+    <message>
+        <source>Downloading “%1”…</source>
+        <translation>„%1“ wird heruntergeladen…</translation>
+    </message>
+    <message>
+        <source>Looking for this score in the Library…</source>
+        <translation>Diese Partitur wird in der Bibliothek gesucht…</translation>
+    </message>
+    <message>
+        <source>This score isn't in the Library yet. Try updating Orchestrion.</source>
+        <translation>Diese Partitur ist noch nicht in der Bibliothek. Versuche, Orchestrion zu aktualisieren.</translation>
+    </message>
+    <message>
+        <source>Couldn't reach the Library. Check your connection and try again.</source>
+        <translation>Die Bibliothek ist nicht erreichbar. Prüfe deine Verbindung und versuche es noch einmal.</translation>
+    </message>
+    <message>
         <location filename="../../src/OrchestrionShell/view/ScoreShelfModel.cpp" line="513"/>
         <source>Update “%1”?</source>
         <translation>„%1“ aktualisieren?</translation>

@@ -97,6 +97,11 @@ public:
    * under way. A failure keeps the scores as they were.
    */
   virtual void refresh() = 0;
+  /** Fetches the index now, whenever it last was, unless a fetch is under way.
+   */
+  virtual void fetchIndex() = 0;
+  /** A fetch of the index ended, and whether it succeeded. */
+  virtual muse::async::Channel<bool> indexFetched() const = 0;
 
   /** Where the score is (or will be) downloaded. */
   virtual QString localPath(const QString &id) const = 0;
