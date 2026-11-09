@@ -17,16 +17,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "App/CommandLineParser.h"
+#include "App/OpenRequestReceiver.h"
+#include "OrchestrionShell/IOpenRequests.h"
 #ifdef Q_OS_LINUX
+#include "App/AppImageIntegration.h"
 #include "App/OfflineRenderer.h"
 #endif
 #include "App/OrchestrionAppFactory.h"
 
 #include "global/iapplication.h"
+#include "global/modularity/ioc.h"
 #include "log.h"
 #include "muse_framework_config.h"
 
 #include <csignal>
+#include <memory>
 
 #if (defined(_MSCVER) || defined(_MSC_VER))
 #include <algorithm>
@@ -62,6 +67,20 @@ static void crashCallback(int signum)
 }
 
 #endif
+
+/**
+ * What this launch asks of a running instance: a link or a local file, or
+ * nothing for the launches that are to carry on by themselves.
+ */
+static QString requestForRunningInstance(const dgk::CommandOptions &options)
+{
+  if (options.startup.link)
+    return *options.startup.link;
+  if (options.startup.scoreUrl && options.startup.scoreUrl->isLocalFile() &&
+      !options.startup.scoreDisplayNameOverride)
+    return options.startup.scoreUrl->toLocalFile();
+  return {};
+}
 
 static void app_init_qrc()
 {
@@ -219,6 +238,29 @@ int main(int argc, char **argv)
 
   std::shared_ptr<dgk::CommandOptions> opt = commandLineParser.options();
 
+  std::unique_ptr<dgk::OpenRequestReceiver> openRequestReceiver;
+  if (runMode == muse::IApplication::RunMode::GuiApp)
+  {
+    openRequestReceiver = std::make_unique<dgk::OpenRequestReceiver>();
+    // Scripted runs stay out of the user's session.
+    if (opt->testflow.testCaseNameOrFile.isEmpty() &&
+        opt->testflow.renderPath.isEmpty())
+    {
+      if (const QString request = requestForRunningInstance(*opt);
+          !request.isEmpty() &&
+          openRequestReceiver->forwardToRunningInstance(request))
+      {
+        openRequestReceiver.reset();
+        delete qapp;
+        return 0;
+      }
+      openRequestReceiver->listen();
+#ifdef Q_OS_LINUX
+      dgk::registerAppImageWithDesktop();
+#endif
+    }
+  }
+
   // ====================================================
   // Setup application
   // ====================================================
@@ -228,7 +270,7 @@ int main(int argc, char **argv)
   std::shared_ptr<muse::IApplication> app;
   QMetaObject::invokeMethod(
       qapp,
-      [qapp, &app, &opt]()
+      [qapp, &app, &opt, &openRequestReceiver]()
       {
         dgk::OrchestrionAppFactory f;
         app = f.newApp(opt);
@@ -236,9 +278,16 @@ int main(int argc, char **argv)
         app->showSplash();
         QMetaObject::invokeMethod(
             qapp,
-            [qapp, &app]()
+            [qapp, &app, &openRequestReceiver]()
             {
               app->setup();
+              if (openRequestReceiver)
+                openRequestReceiver->setHandler(
+                    [](const QString &request)
+                    {
+                      muse::GlobalInject<dgk::IOpenRequests> requests;
+                      requests()->submit(request);
+                    });
               QMetaObject::invokeMethod(
                   qapp, [&app]() { app->setupNewContext(); },
                   Qt::QueuedConnection);
@@ -251,6 +300,7 @@ int main(int argc, char **argv)
   // Run main loop
   // ====================================================
   int code = qapp->exec();
+  openRequestReceiver.reset();
 
   // ====================================================
   // Quit

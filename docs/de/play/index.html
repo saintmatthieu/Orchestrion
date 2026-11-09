@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de" data-culture="de-DE" data-opening="„%1“ wird in Orchestrion geöffnet…" data-invalid="Dieser Link verweist auf keine Partitur." data-mobile="Orchestrion ist eine Desktop-App. Öffne diese Seite auf einem Windows-, macOS- oder Linux-Computer, um diese Partitur zu spielen.">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>In Orchestrion spielen</title>
+  <link rel="icon" type="image/png" href="../../assets/favicon.png">
+  <link rel="stylesheet" href="../../play/play.css">
+</head>
+<body>
+  <main>
+    <img class="logo" src="../../assets/icon.png" alt="">
+    <h1 id="heading">Diese Partitur wird in Orchestrion geöffnet…</h1>
+    <p id="browse" hidden><a href="https://rolls.orchestrion.app/">Partituren auf Rolls ansehen</a></p>
+    <div id="fallback" hidden>
+      <div class="actions"><button type="button" id="again">Noch einmal versuchen</button></div>
+      <p>Hast du Orchestrion noch nicht? Lade es herunter, installiere es und versuche es noch einmal:</p>
+      <div class="downloads">
+        <a class="dl" id="dl-win" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Windows</strong><small>Installer (.msi)</small></a>
+        <a class="dl" id="dl-mac" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>macOS</strong><small>signiert und notarisiert (.dmg)</small></a>
+        <a class="dl" id="dl-linux" href="https://github.com/saintmatthieu/Orchestrion/releases/latest"><strong>Linux</strong><small>AppImage</small></a>
+      </div>
+      <p>Hast du Orchestrion schon? Aktualisiere es, oder öffne seine Bibliothek und suche nach <strong id="library-title">dieser Partitur</strong>.</p>
+    </div>
+    <p id="back-row" hidden><a id="back" href="https://rolls.orchestrion.app/">Zurück zur Seite der Partitur</a></p>
+  </main>
+  <script src="../../play/play.js"></script>
+</body>
+</html>

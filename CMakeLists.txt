@@ -87,12 +87,16 @@ qt_add_executable(Orchestrion WIN32 MACOSX_BUNDLE
     src/App/OrchestrionAppFactory.h
     src/App/OrchestrionConsoleApp.cpp
     src/App/OrchestrionConsoleApp.h
+    src/App/OpenRequestReceiver.cpp
+    src/App/OpenRequestReceiver.h
 )
 
 if (OS_IS_LIN)
     target_sources(Orchestrion PRIVATE
         src/App/OfflineRenderer.cpp
         src/App/OfflineRenderer.h
+        src/App/AppImageIntegration.cpp
+        src/App/AppImageIntegration.h
     )
     # The offline renderer's event dispatcher wraps Qt's
     find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
@@ -103,6 +107,13 @@ if (MUSE_MODULE_TESTFLOW)
     target_sources(Orchestrion PRIVATE
         src/App/TestflowRunner.cpp
         src/App/TestflowRunner.h
+    )
+endif()
+
+if (OS_IS_MAC)
+    # Qt's default, plus the orchestrion:// scheme and MusicXML files.
+    set_target_properties(Orchestrion PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/buildscripts/packaging/macOS/Info.plist.in"
     )
 endif()
 
@@ -266,6 +277,7 @@ qt_add_qml_module(Orchestrion
         QML_FILES "src/qml/DemoCursorOverlay.qml"
     QML_FILES "src/qml/DemoKeysOverlay.qml"
     QML_FILES "src/qml/DemoKeysBand.qml"
+    QML_FILES "src/qml/LinkToast.qml"
     QML_FILES "src/qml/DemoCaption.qml"
     QML_FILES "src/qml/TransportButton.qml"
     QML_FILES "src/qml/TransportGlow.qml"

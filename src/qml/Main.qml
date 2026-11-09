@@ -215,6 +215,16 @@ ApplicationWindow {
         Component.onCompleted: load()
         onOpenRequested: scoreShelf.open()
         onTutorialsRequested: scoreShelf.open(true)
+        onOpenFromOutsideRequested: {
+            if (root.visibility === Window.Minimized)
+                root.showNormal()
+            root.raise()
+            root.requestActivate()
+        }
+        onLinkFailed: {
+            if (!hasScore)
+                onboardingModel.startOnboarding()
+        }
     }
 
     TutorialOfferModel {
@@ -1266,6 +1276,16 @@ ApplicationWindow {
                 }
 
                 // Every score one can open, over everything else in the view.
+                LinkToast {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 48
+                    z: 200
+                    message: scoreShelfModel.linkMessage
+                    busy: scoreShelfModel.linkBusy
+                    onDismissed: scoreShelfModel.dismissLinkMessage()
+                }
+
                 ScoreShelf {
                     id: scoreShelf
                     anchors.fill: parent

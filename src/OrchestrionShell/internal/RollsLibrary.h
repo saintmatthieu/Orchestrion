@@ -57,6 +57,8 @@ public:
   muse::async::Notification scoresChanged() const override;
 
   void refresh() override;
+  void fetchIndex() override;
+  muse::async::Channel<bool> indexFetched() const override;
 
   QString localPath(const QString &id) const override;
   std::optional<QString> idOf(const QString &path) const override;
@@ -107,6 +109,7 @@ private:
   QSet<QString> m_downloading;
 
   muse::async::Notification m_scoresChanged;
+  muse::async::Channel<bool> m_indexFetched;
   muse::async::Channel<QString, bool> m_downloadFinished;
 };
 } // namespace dgk

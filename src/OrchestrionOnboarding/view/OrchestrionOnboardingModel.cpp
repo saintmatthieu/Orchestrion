@@ -62,6 +62,10 @@ OrchestrionOnboardingModel::getFileOpenArgs(
 
 void OrchestrionOnboardingModel::startOnboarding()
 {
+  // That score, then, rather than this one (see ScoreShelfModel, and
+  // Main.qml if it can't be had).
+  if (openRequests()->hasPending())
+    return;
   if (const auto args =
           getFileOpenArgs(startupScenario()->startupProjectFile());
       args)

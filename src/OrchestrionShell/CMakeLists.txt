@@ -25,6 +25,8 @@ set(MODULE_SRC
   internal/OrchestrionUiContextResolver.cpp
   internal/OrchestrionUiContextResolver.h
   internal/OrchestrionUiActions.h
+  internal/OpenRequests.cpp
+  internal/OpenRequests.h
   internal/OrchestrionStartupScenario.cpp
   internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
@@ -78,6 +80,8 @@ set(MODULE_SRC
   IOrchestrionUiActions.h
   ITutorials.h
   IRollsLibrary.h
+  IOpenRequests.h
+  RollsLink.h
   OrchestrionShellModule.cpp
   OrchestrionShellModule.h
   OrchestrionShellTypes.h

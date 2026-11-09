@@ -28,6 +28,7 @@
         <file>src/qml/DemoCursorOverlay.qml</file>
     <file>src/qml/DemoKeysOverlay.qml</file>
     <file>src/qml/DemoKeysBand.qml</file>
+    <file>src/qml/LinkToast.qml</file>
     <file>src/qml/DemoCaption.qml</file>
     <file>src/qml/TransportButton.qml</file>
     <file>src/qml/TransportGlow.qml</file>

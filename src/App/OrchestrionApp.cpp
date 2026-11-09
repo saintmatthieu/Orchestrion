@@ -54,6 +54,8 @@ void OrchestrionApp::applyCommandLineOptions(
         options->startup.scoreDisplayNameOverride.value_or("")};
     startupScenario()->setStartupScoreFile(file);
   }
+  if (options->startup.link.has_value())
+    openRequests()->submit(*options->startup.link);
 
   // Migration options: keep everything false by default: we don't want to
   // modify a user's score, and we don't want conversion to happen on every
@@ -119,6 +121,8 @@ void OrchestrionApp::doStartupScenario(const muse::modularity::ContextPtr &ctx)
     registerAudioPluginsScenario()->updatePluginsRegistry();
     qApp->setQuitLockEnabled(true);
   }
+
+  openRequests()->setReady();
 
   const auto options =
       std::dynamic_pointer_cast<CommandOptions>(contextData(ctx).options);

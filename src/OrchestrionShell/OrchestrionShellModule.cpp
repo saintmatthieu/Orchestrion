@@ -22,6 +22,7 @@
 #include "internal/ControllerMenuManager.h"
 #include "internal/DemoCursor.h"
 #include "internal/DemoKeys.h"
+#include "internal/OpenRequests.h"
 #include "internal/OrchestrionActionController.h"
 #include "internal/OrchestrionCommands.h"
 #include "internal/OrchestrionEventProcessor.h"
@@ -95,6 +96,8 @@ void OrchestrionShellModule::registerExports()
   globalIoc()->registerExport<IOrchestrionStartupScenario>(
       moduleName(), m_orchestrionStartupScenario);
   globalIoc()->registerExport<IRollsLibrary>(moduleName(), m_rollsLibrary);
+  globalIoc()->registerExport<IOpenRequests>(moduleName(),
+                                             std::make_shared<OpenRequests>());
   globalIoc()->registerExport<ITutorials>(moduleName(), m_tutorials);
 }
 

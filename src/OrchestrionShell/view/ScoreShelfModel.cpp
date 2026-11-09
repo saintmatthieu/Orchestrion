@@ -605,6 +605,15 @@ void ScoreShelfModel::load()
   rollsLibrary()->scoresChanged().onNotify(this, [this] { reload(); });
   rollsLibrary()->downloadFinished().onReceive(
       this, [this](const QString &id, bool ok) { onDownloadFinished(id, ok); });
+  rollsLibrary()->indexFetched().onReceive(this, [this](bool ok)
+                                           { onIndexFetched(ok); });
+
+  // By Qt, not by Async::call, for the same reason as in open(). The first
+  // one also lets the window finish coming up.
+  const auto takeLater = [this]
+  { QTimer::singleShot(0, this, [this] { takeOpenRequest(); }); };
+  openRequests()->requested().onNotify(this, takeLater);
+  takeLater();
 
   dispatcher()->reg(this, actionIds::browseScores,
                     [this] { emit openRequested(); });
@@ -852,17 +861,114 @@ void ScoreShelfModel::openRollsSite()
   platformInteractive()->openUrl(rollsLibrary()->siteUrl());
 }
 
+void ScoreShelfModel::takeOpenRequest()
+{
+  const std::optional<OpenRequest> request = openRequests()->take();
+  if (!request)
+    return;
+  emit openFromOutsideRequested();
+  if (tutorials()->running())
+  {
+    // It may give the user's score back when it ends, over this one.
+    setLinkMessage(
+        muse::qtrc("orchestrion/shelf",
+                   "A tutorial is running. Stop it, then try again."),
+        false);
+    return;
+  }
+  m_linkedRollsId.clear();
+  m_linkAwaitsIndex = false;
+  if (!request->rollsId.isEmpty())
+  {
+    openLinkedScore(request->rollsId);
+    return;
+  }
+  setLinkMessage({}, false);
+  open(request->filePath, QString{});
+  emit closeRequested();
+}
+
+void ScoreShelfModel::openLinkedScore(const QString &id)
+{
+  const QString path = rollsLibrary()->localPath(id);
+  if (rollsLibrary()->isDownloaded(id))
+  {
+    // As found, even with an update available, as from the shelf.
+    setLinkMessage({}, false);
+    open(path, QString{});
+    emit closeRequested();
+    return;
+  }
+  m_linkedRollsId = id;
+  if (const RollsScore *const score = rollsLibrary()->score(id))
+  {
+    setLinkMessage(
+        muse::qtrc("orchestrion/shelf", "Downloading “%1”…").arg(score->title),
+        true);
+    open(path, QString{});
+    return;
+  }
+  // Not in the index here, which may be older than the link.
+  m_linkAwaitsIndex = true;
+  setLinkMessage(
+      muse::qtrc("orchestrion/shelf", "Looking for this score in the Library…"),
+      true);
+  rollsLibrary()->fetchIndex();
+}
+
+void ScoreShelfModel::onIndexFetched(bool ok)
+{
+  if (!m_linkAwaitsIndex)
+    return;
+  m_linkAwaitsIndex = false;
+  const QString id = std::exchange(m_linkedRollsId, QString{});
+  if (rollsLibrary()->score(id))
+    openLinkedScore(id);
+  else if (ok)
+    failLink(muse::qtrc(
+        "orchestrion/shelf",
+        "This score isn't in the Library yet. Try updating Orchestrion."));
+  else
+    failLink(muse::qtrc(
+        "orchestrion/shelf",
+        "Couldn't reach the Library. Check your connection and try again."));
+}
+
+void ScoreShelfModel::failLink(const QString &message)
+{
+  setLinkMessage(message, false);
+  emit linkFailed();
+}
+
+void ScoreShelfModel::setLinkMessage(const QString &message, bool busy)
+{
+  m_linkMessage = message;
+  m_linkBusy = busy;
+  emit linkMessageChanged();
+}
+
+void ScoreShelfModel::dismissLinkMessage() { setLinkMessage({}, false); }
+
 void ScoreShelfModel::onDownloadFinished(const QString &id, bool ok)
 {
   const QString path = rollsLibrary()->localPath(id);
+  const bool linked = id == m_linkedRollsId;
+  if (linked)
+    m_linkedRollsId.clear();
   if (!ok)
   {
     if (m_pendingOpen == path)
       m_pendingOpen.clear();
     for (ScoreListModel *list : lists())
       list->setDownloadState(id, false, true);
+    if (linked)
+      failLink(muse::qtrc(
+          "orchestrion/shelf",
+          "Couldn't reach the Library. Check your connection and try again."));
     return;
   }
+  if (linked)
+    setLinkMessage({}, false);
   // The card now has its music to draw, or a new version of it.
   reload();
   if (m_pendingOpen == path)
