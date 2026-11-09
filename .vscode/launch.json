@@ -43,6 +43,23 @@
       }
     },
     {
+      // Serves docs/ (orchestrion.app) at http://localhost:8001 and opens it in the
+      // browser. Not port 8000, which "Launch (Linux)" expects Rolls on. The
+      // videos aren't in the repository: render into docs/assets/videos/ to see them.
+      "name": "Serve orchestrion.app",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "http.server",
+      "args": ["8001", "--bind", "127.0.0.1", "--directory", "${workspaceFolder}/docs"],
+      "env": { "PYTHONUNBUFFERED": "1" },
+      "console": "internalConsole",
+      "serverReadyAction": {
+        "pattern": "Serving HTTP on .* port ([0-9]+)",
+        "uriFormat": "http://localhost:%s",
+        "action": "openExternally"
+      }
+    },
+    {
       "name": "Launch (MacOS)",
       "type": "cppdbg",
       "request": "launch",
