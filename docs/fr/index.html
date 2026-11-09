@@ -510,6 +510,7 @@
       video.controls = false;
     }
     function select(item) {
+      clearTimeout(afterEnd);
       selected.removeAttribute("aria-current");
       selected = item;
       selected.setAttribute("aria-current", "true");
@@ -541,10 +542,20 @@
     });
     video.addEventListener("play", function () { frame.classList.add("playing"); });
     video.addEventListener("pause", function () { frame.classList.remove("playing"); });
+    // Fini : une seconde après, le tiroir s'ouvre, le tutoriel suivant
+    // sélectionné, sa couverture affichée ; pas s'il est relancé entre-temps
+    var afterEnd = null;
+    video.addEventListener("play", function () {
+      clearTimeout(afterEnd);
+    });
     video.addEventListener("ended", function () {
-      reset();
-      video.load(); // retour à la couverture
-      play.focus();
+      afterEnd = setTimeout(function () {
+        // Après le dernier, le premier
+        var next = (Array.prototype.indexOf.call(items, selected) + 1) % items.length;
+        select(items[next]);
+        setDrawer(true);
+        play.focus();
+      }, 1000);
     });
     narrow.addEventListener("change", function () {
       setDrawer(frame.classList.contains("drawer-open"));

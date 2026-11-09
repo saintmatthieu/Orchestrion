@@ -510,6 +510,7 @@
       video.controls = false;
     }
     function select(item) {
+      clearTimeout(afterEnd);
       selected.removeAttribute("aria-current");
       selected = item;
       selected.setAttribute("aria-current", "true");
@@ -541,10 +542,21 @@
     });
     video.addEventListener("play", function () { frame.classList.add("playing"); });
     video.addEventListener("pause", function () { frame.classList.remove("playing"); });
+    // Zu Ende: eine Sekunde später öffnet sich die Schublade, das nächste
+    // Tutorial ausgewählt, sein Titelbild gezeigt; nicht, wenn es inzwischen
+    // wieder abgespielt wird
+    var afterEnd = null;
+    video.addEventListener("play", function () {
+      clearTimeout(afterEnd);
+    });
     video.addEventListener("ended", function () {
-      reset();
-      video.load(); // zurück zum Titelbild
-      play.focus();
+      afterEnd = setTimeout(function () {
+        // Nach dem letzten das erste
+        var next = (Array.prototype.indexOf.call(items, selected) + 1) % items.length;
+        select(items[next]);
+        setDrawer(true);
+        play.focus();
+      }, 1000);
     });
     narrow.addEventListener("change", function () {
       setDrawer(frame.classList.contains("drawer-open"));
