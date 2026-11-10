@@ -45,12 +45,20 @@
 
   var mobile = /Android|iPhone|iPad|iPod|Mobi/.test(navigator.userAgent) ||
     (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  // What came of it, in Plausible (Plausible drops the query, so the score
+  // goes with the event): "Play on mobile", or "Play fallback" when the app
+  // seems not to have opened (not installed, too old, or a prompt said "no").
+  function count(name) {
+    if (window.plausible) window.plausible(name, { props: { score: id } });
+  }
+
   if (mobile) {
     setState("mobile");
+    count("Play on mobile");
     return;
   }
 
-  var left = false, timer = null;
+  var left = false, timer = null, counted = false;
   function offer() {
     show("fallback");
     loadDownloads();
@@ -60,7 +68,12 @@
     setState("opening");
     clearTimeout(timer);
     location.href = "orchestrion://rolls/" + id;
-    timer = setTimeout(function () { if (!left) offer(); }, 1500);
+    timer = setTimeout(function () {
+      if (left) return;
+      if (!counted) count("Play fallback");
+      counted = true;
+      offer();
+    }, 1500);
   }
   function leave() { left = true; clearTimeout(timer); }
   // Back from the app, or from a browser's prompt answered with "no".
