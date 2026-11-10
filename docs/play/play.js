@@ -20,12 +20,25 @@
   element("back").href = scorePage;
   show("back-row");
 
+  // The heading: "opening", "opened" (back from the app, which may well have
+  // opened the score: browsers don't say) or "mobile"; with the score's title
+  // once known.
+  var state = "opening", title = null;
+  function setState(newState) { state = newState; render(); }
+  function render() {
+    var heading = state === "mobile" ? page.mobile
+                : title ? page[state].replace("%1", title)
+                : page[state + "Any"];
+    element("heading").textContent = heading;
+  }
+
   fetch("https://rolls.orchestrion.app/index.json")
     .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
     .then(function (index) {
       var score = (index.scores || []).find(function (s) { return s.id === id; });
       if (!score || !score.title) return;
-      element("heading").textContent = page.opening.replace("%1", score.title);
+      title = score.title;
+      render();
       element("library-title").textContent = score.title;
     })
     .catch(function () { /* the page says "this score" */ });
@@ -33,7 +46,7 @@
   var mobile = /Android|iPhone|iPad|iPod|Mobi/.test(navigator.userAgent) ||
     (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   if (mobile) {
-    element("heading").textContent = page.mobile;
+    setState("mobile");
     return;
   }
 
@@ -44,13 +57,18 @@
   }
   function open() {
     left = false;
+    setState("opening");
     clearTimeout(timer);
     location.href = "orchestrion://rolls/" + id;
     timer = setTimeout(function () { if (!left) offer(); }, 1500);
   }
   function leave() { left = true; clearTimeout(timer); }
   // Back from the app, or from a browser's prompt answered with "no".
-  function back() { if (left) offer(); }
+  function back() {
+    if (!left) return;
+    setState("opened");
+    offer();
+  }
 
   window.addEventListener("blur", leave);
   window.addEventListener("focus", back);
