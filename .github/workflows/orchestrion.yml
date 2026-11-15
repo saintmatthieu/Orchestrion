@@ -284,6 +284,8 @@ jobs:
             libxcb-xfixes0-dev \
             libxcb-shape0-dev \
             libxcb-xkb-dev \
+            libx11-dev \
+            libxi-dev \
             libgtkmm-3.0-dev \
             libsqlite3-dev \
             fuse \
@@ -388,6 +390,7 @@ jobs:
             ffmpeg \
             libgl1 libglx0 libopengl0 libegl1 \
             libx11-6 libx11-xcb1 libxcb1 libxcb-cursor0 libxkbcommon-x11-0 \
+            libxi6 \
             libfontconfig1 libfreetype6 libasound2t64
 
       - name: Download AppImage

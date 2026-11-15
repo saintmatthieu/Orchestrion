@@ -53,7 +53,7 @@ private:
    */
   const std::shared_ptr<IComputerKeyboard> m_keyboard;
   const Dispatch m_dispatch;
-  /** Keys may come from another thread than the main one. */
+  /** Keys may come from the main thread and the raw keyboard's. */
   std::mutex m_mutex;
   std::unordered_set<char> m_pressedLetters;
   const std::unordered_map<char, int> m_noteMap{

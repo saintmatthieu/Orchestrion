@@ -54,7 +54,10 @@ private:
    * time is virtual on the main thread only, and all of it happens there.
    */
   std::unique_ptr<InputThread> m_inputThread;
-  /** Its gestures come from the thread the keys come from. */
+  /**
+   * Its gestures come from the main thread, or the raw keyboard's (see
+   * IComputerKeyboard).
+   */
   std::unique_ptr<ComputerKeyboardGestureController> m_keyboard;
   /**
    * Listens on the input thread, if there is one, and is destroyed there.

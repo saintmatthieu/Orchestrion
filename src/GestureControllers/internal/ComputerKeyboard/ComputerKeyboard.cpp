@@ -17,12 +17,17 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ComputerKeyboard.h"
+#ifdef Q_OS_LINUX
+#include "RawKeyboard.h"
+#endif
 #include <QApplication>
 #include <QInputMethod>
 #include <QKeyEvent>
 #include <QLocale>
 #include <QQuickItem>
+#include <QThread>
 #include <global/settings.h>
+#include <log.h>
 
 namespace dgk
 {
@@ -52,7 +57,28 @@ ComputerKeyboardImpl::ComputerKeyboardImpl(ComputerKeyboard &owner)
 {
 }
 
-void ComputerKeyboardImpl::init() { qApp->installEventFilter(this); }
+void ComputerKeyboardImpl::init()
+{
+  qApp->installEventFilter(this);
+  if (!m_owner.raw())
+    return;
+  connect(qApp, &QGuiApplication::focusObjectChanged, this,
+          [this] { updatePlayable(); });
+  connect(qApp, &QGuiApplication::applicationStateChanged, this,
+          [this] { updatePlayable(); });
+  m_playableTimer.callOnTimeout(this, [this] { updatePlayable(); });
+  m_playableTimer.start(100);
+  updatePlayable();
+}
+
+void ComputerKeyboardImpl::updatePlayable()
+{
+#ifdef Q_OS_LINUX
+  m_owner.raw()->SetPlayable(QGuiApplication::applicationState() ==
+                                 Qt::ApplicationActive &&
+                             !keysAreForSomethingElse());
+#endif
+}
 
 bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
 {
@@ -61,7 +87,10 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
       modifiers & Qt::KeyboardModifier::ControlModifier ||
       modifiers & Qt::KeyboardModifier::AltModifier ||
       modifiers & Qt::KeyboardModifier::ShiftModifier;
-  if (!isKeyModifierPressed)
+  // Those of the keyboard itself are read by the raw keyboard, if there is
+  // one: only the synthesized ones (a demo's) are left to this.
+  const bool handledElsewhere = m_owner.raw() && event->spontaneous();
+  if (!isKeyModifierPressed && !handledElsewhere)
   {
     // Only the presses: a key held when the focus moved must still be
     // released.
@@ -88,7 +117,30 @@ ComputerKeyboard::ComputerKeyboard()
 {
 }
 
-void ComputerKeyboard::preInit() { m_impl->init(); }
+ComputerKeyboard::~ComputerKeyboard()
+{
+  // First: until its thread is joined, it calls onKey(), which uses the
+  // members declared after it.
+  m_raw.reset();
+}
+
+void ComputerKeyboard::preInit()
+{
+#ifdef Q_OS_LINUX
+  // Not rendering offline, on the offscreen platform: there, all happens on
+  // the main thread, whose clock is virtual.
+  if (QGuiApplication::platformName() == QLatin1String("xcb"))
+  {
+    m_raw = RawKeyboard::Create([this](char key, bool pressed)
+                                { onKey(key, pressed); });
+    if (m_raw)
+      LOGI() << "Keys read from X11's raw events, off the GUI thread";
+    else
+      LOGW() << "No XInput 2.1: keys read from Qt's events";
+  }
+#endif
+  m_impl->init();
+}
 
 void ComputerKeyboard::onKey(char letter, bool pressed)
 {
@@ -97,7 +149,12 @@ void ComputerKeyboard::onKey(char letter, bool pressed)
     if (m_receiver)
       m_receiver(letter, pressed);
   }
-  (pressed ? m_keyPressed : m_keyReleased).send(letter);
+  const auto send = [this, letter, pressed]
+  { (pressed ? m_keyPressed : m_keyReleased).send(letter); };
+  if (QThread::currentThread() == m_mainThreadContext.thread())
+    send();
+  else
+    QMetaObject::invokeMethod(&m_mainThreadContext, send, Qt::QueuedConnection);
 }
 
 void ComputerKeyboard::setReceiver(Receiver receiver)

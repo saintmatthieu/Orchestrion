@@ -32,7 +32,9 @@ class IComputerKeyboard : MODULE_GLOBAL_EXPORT_INTERFACE
 
 public:
   /**
-   * The keys pressed and released, as QKeyEvent::key() has them.
+   * The keys pressed and released, as QKeyEvent::key() has them: from the
+   * main thread, or, on X11, from a thread of the keyboard's own (see
+   * RawKeyboard).
    */
   virtual muse::async::Channel<char> keyPressed() const = 0;
   virtual muse::async::Channel<char> keyReleased() const = 0;
