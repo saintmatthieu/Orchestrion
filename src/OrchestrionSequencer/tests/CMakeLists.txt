@@ -1,8 +1,8 @@
 set(MODULE_TEST orchestrionsequencer_tests)
 
 # The scheduler, the performance follower and what it follows are pure (no
-# Qt, no MuseScore): compiled straight into the test rather than linking the
-# whole module.
+# Qt, no MuseScore; the play thread needs only QtCore): compiled straight into
+# the test rather than linking the whole module.
 set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/OrnamentScheduleTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentSchedule.cpp
@@ -16,6 +16,8 @@ set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/../internal/TiedVoices.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/SplitChord.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/VoiceBlank.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/PlayThreadTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/PlayThread.cpp
 )
 
 set(MODULE_TEST_LINK

@@ -38,6 +38,8 @@ set(MODULE_SRC
     internal/OrnamentSchedule.h
     internal/PerformanceFollower.cpp
     internal/PerformanceFollower.h
+    internal/PlayThread.cpp
+    internal/PlayThread.h
     internal/ScoreEvents.cpp
     internal/ScoreEvents.h
     internal/SplitChord.cpp
