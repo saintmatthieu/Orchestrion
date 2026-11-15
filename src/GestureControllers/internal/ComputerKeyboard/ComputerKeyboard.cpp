@@ -25,6 +25,7 @@
 #include <QKeyEvent>
 #include <QLocale>
 #include <QQuickItem>
+#include <QThread>
 #include <global/settings.h>
 #include <log.h>
 
@@ -143,7 +144,12 @@ void ComputerKeyboard::onKey(char letter, bool pressed)
     if (m_receiver)
       m_receiver(letter, pressed);
   }
-  (pressed ? m_keyPressed : m_keyReleased).send(letter);
+  const auto send = [this, letter, pressed]
+  { (pressed ? m_keyPressed : m_keyReleased).send(letter); };
+  if (QThread::currentThread() == m_mainThreadContext.thread())
+    send();
+  else
+    QMetaObject::invokeMethod(&m_mainThreadContext, send, Qt::QueuedConnection);
 }
 
 void ComputerKeyboard::setReceiver(Receiver receiver)

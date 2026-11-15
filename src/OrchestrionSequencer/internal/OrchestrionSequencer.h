@@ -98,6 +98,14 @@ public:
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
+  /** OutputEvent: it is the SequencerProxy's to relay it. */
+  muse::async::Channel<EventVariant> MainThreadOutputEvent() const override;
+  /**
+   * Told of each OutputEvent, on the thread that sends it (the sequencer's
+   * own threads); none from now on if empty. For the SequencerProxy, which
+   * relays them to the main thread.
+   */
+  void SetOutputObserver(std::function<void(const EventVariant &)>);
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
@@ -396,6 +404,8 @@ private:
   void CancelOrnaments();
   /** Sends TempoChanged. */
   void PublishTempo();
+  /** Sends OutputEvent, and tells the observer. */
+  void SendOutput(EventVariant);
   bool HandIn(const Modes &, bool isLeftHand, StaffMode) const;
   bool IsNotesKey(const Modes &, int pitch) const;
   std::optional<bool> PerformerHand(const Modes &, int pitch) const;
@@ -480,6 +490,8 @@ private:
   /** Those the hands were last moved for (see OnStaffModesChanged). */
   Modes m_modes;
   mu::notation::LoopBoundaries m_loop;
+  std::mutex m_outputObserverMutex;
+  std::function<void(const EventVariant &)> m_outputObserver;
   muse::async::Channel<std::shared_ptr<const PositionTracker>> m_tempoChanged;
 
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */

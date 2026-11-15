@@ -21,6 +21,9 @@
 #include "MidiDevice/MidiDeviceGestureController.h"
 #include "OrchestrionCommon/OfflineRendering.h"
 
+#include <QMetaObject>
+#include <QThread>
+
 namespace dgk
 {
 GestureInput::~GestureInput()
@@ -86,6 +89,16 @@ void GestureInput::Dispatch(const Gesture &gesture)
     if (m_receiver)
       m_receiver(gesture);
   }
+  if (QThread::currentThread() == m_mainThreadContext.thread())
+    SendChannels(gesture);
+  else
+    QMetaObject::invokeMethod(
+        &m_mainThreadContext, [this, gesture] { SendChannels(gesture); },
+        Qt::QueuedConnection);
+}
+
+void GestureInput::SendChannels(const Gesture &gesture)
+{
   switch (gesture.kind)
   {
   case Gesture::Kind::noteOn:

@@ -67,8 +67,8 @@ void OrchestrionEventProcessor::init()
 
 void OrchestrionEventProcessor::setupCallback(IOrchestrionSequencer &sequencer)
 {
-  sequencer.OutputEvent().onReceive(this, [this](EventVariant event)
-                                    { onOrchestrionEvent(event); });
+  sequencer.MainThreadOutputEvent().onReceive(this, [this](EventVariant event)
+                                              { onOrchestrionEvent(event); });
 }
 
 void OrchestrionEventProcessor::onOrchestrionEvent(EventVariant event)

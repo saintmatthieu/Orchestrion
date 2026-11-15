@@ -177,12 +177,12 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_allVoices{MakeAllVoices(m_rightHand.voices, m_leftHand.voices)},
       m_finalTick{GetFinalTick(m_allVoices)},
       m_pedalSequence{std::move(pedalSequence)},
-      m_pedalThread{MakeThread<EventVariant>(*this, m_pedalThreadMembers,
-                                             [this](EventVariant event)
-                                             { m_outputEvent.send(event); })},
-      m_noteThread{MakeThread<NoteEvent>(
-          *this, m_noteThreadMembers,
-          [this](NoteEvent event) { m_outputEvent.send(NoteEvents{event}); })},
+      m_pedalThread{MakeThread<EventVariant>(
+          *this, m_pedalThreadMembers,
+          [this](EventVariant event) { SendOutput(std::move(event)); })},
+      m_noteThread{MakeThread<NoteEvent>(*this, m_noteThreadMembers,
+                                         [this](NoteEvent event)
+                                         { SendOutput(NoteEvents{event}); })},
       m_ornamentThread{MakeThread<OrnamentStepDue>(
           *this, m_ornamentThreadMembers,
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
@@ -386,6 +386,29 @@ OrchestrionSequencer::ChordTransitions() const
 muse::async::Channel<AutoPlayEvent> OrchestrionSequencer::HandNoteEvents() const
 {
   return m_handNoteEvent;
+}
+
+void OrchestrionSequencer::SendOutput(EventVariant event)
+{
+  {
+    std::scoped_lock lock{m_outputObserverMutex};
+    if (m_outputObserver)
+      m_outputObserver(event);
+  }
+  m_outputEvent.send(std::move(event));
+}
+
+void OrchestrionSequencer::SetOutputObserver(
+    std::function<void(const EventVariant &)> observer)
+{
+  std::scoped_lock lock{m_outputObserverMutex};
+  m_outputObserver = std::move(observer);
+}
+
+muse::async::Channel<EventVariant>
+OrchestrionSequencer::MainThreadOutputEvent() const
+{
+  return m_outputEvent;
 }
 
 muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
@@ -1034,6 +1057,9 @@ void OrchestrionSequencer::Jump(
     const std::function<std::optional<ChordTransition>(VoiceSequencer &)> &move)
 {
   m_aboutToJumpPosition.send(tick, reason);
+  // The synthesizers cut what sounds, before the notes struck from here on:
+  // sent from this thread, as the unstrummed ones are.
+  SendOutput(AllNotesOffEvent{});
   // The position jumps: the tempo estimate starts over — but for a loop's
   // wrap, which the performance carries on through (see WrapLoop) — and
   // whatever ornament was under way is cut.
@@ -1481,7 +1507,7 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum,
                     { return event.type == NoteEventType::noteOn; });
   if (numNoteons < 2 || !strum)
   {
-    m_outputEvent.send(std::move(events));
+    SendOutput(std::move(events));
     return;
   }
 
@@ -1775,7 +1801,7 @@ void OrchestrionSequencer::OnOrnamentStepDue(OrnamentStepDue due)
 
   // Sent under the lock: a gesture arriving now must find these sounding, not
   // silence them before they sound.
-  m_outputEvent.send(std::move(events));
+  SendOutput(std::move(events));
 }
 
 void OrchestrionSequencer::CancelOrnaments()

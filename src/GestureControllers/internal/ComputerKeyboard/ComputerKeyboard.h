@@ -72,6 +72,12 @@ private:
   std::shared_ptr<RawKeyboard> m_raw;
   std::mutex m_receiverMutex;
   Receiver m_receiver;
+  /**
+   * The main thread's: the channels are sent in it, through a queued call
+   * from the raw keyboard's thread, which mustn't wait for the main thread,
+   * as kors could make it.
+   */
+  QObject m_mainThreadContext;
   muse::async::Channel<char> m_keyPressed;
   muse::async::Channel<char> m_keyReleased;
 };

@@ -68,6 +68,11 @@ SequencerProxy::SequencerProxy(std::shared_ptr<OrchestrionSequencer> sequencer,
             { Relay([this, tempo] { m_tempo.emplace(*tempo); }); });
       });
 
+  // What is to sound, sent from the sequencer's threads, relayed too
+  m_sequencer->SetOutputObserver(
+      [this](const EventVariant &event)
+      { Relay([this, event] { m_mainThreadOutputEvent.send(event); }); });
+
   // The main thread's settings, told to the play thread
   staffModes()->modesChanged().onNotify(this, [this] { PostStaffModes(); });
   configuration()->velocityRecordingEnabledChanged().onNotify(
@@ -110,6 +115,7 @@ SequencerProxy::~SequencerProxy()
   // Nothing relayed any more: the subscriptions go where they were made.
   // What was relayed and not run yet goes with m_mainThreadContext.
   m_thread->Wait([this] { m_playThreadSubscriptions.reset(); });
+  m_sequencer->SetOutputObserver(nullptr);
 }
 
 void SequencerProxy::Post(std::function<void(OrchestrionSequencer &)> task)
@@ -211,6 +217,11 @@ muse::async::Channel<EventVariant> SequencerProxy::OutputEvent() const
 {
   // Sent from the sequencer's note and pedal threads already
   return m_sequencer->OutputEvent();
+}
+
+muse::async::Channel<EventVariant> SequencerProxy::MainThreadOutputEvent() const
+{
+  return m_mainThreadOutputEvent;
 }
 
 muse::async::Channel<std::vector<const IChord *>>

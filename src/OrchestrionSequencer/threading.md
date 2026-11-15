@@ -67,8 +67,13 @@ implemented by a proxy:
     under a mutex after each onset and extrapolated by the reader.
   - `GetAllVoices` and `RoleOfKey` only read what never changes, plus the
     staff modes, which the main thread owns.
-- **`OutputEvent`** is unchanged: it already comes from the note and pedal
-  threads.
+- **`OutputEvent`** comes from the sequencer's threads (play, note, pedal,
+  ornament) and goes to the audio engine only. The main thread's observers
+  (the pedal indicator, MIDI out) use `MainThreadOutputEvent`, which the proxy
+  relays as queued Qt calls (`OrchestrionSequencer::SetOutputObserver`): none
+  of those threads sends kors messages to the main thread. A jump's cut
+  (`AllNotesOffEvent`) goes down `OutputEvent` from the play thread, in line
+  with the unstrummed notes struck after it.
 
 ### What the sequencer reads from the main thread today
 

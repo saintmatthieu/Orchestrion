@@ -57,10 +57,7 @@ void PedalIndicatorModel::followSequencer()
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     return;
-  // The sequencer sends from its own threads; the channel delivers on the
-  // thread that subscribed (this one, the GUI's), whose queue the framework
-  // drains from its ticker.
-  sequencer->OutputEvent().onReceive(
+  sequencer->MainThreadOutputEvent().onReceive(
       this,
       [this](const EventVariant &event)
       {

@@ -81,6 +81,7 @@ public:
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
+  muse::async::Channel<EventVariant> MainThreadOutputEvent() const override;
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   void GoToTick(int tick, JumpReason reason) override;
@@ -97,8 +98,8 @@ private:
   /** Runs `task` on the sequencer, on the play thread. */
   void Post(std::function<void(OrchestrionSequencer &)> task);
   /**
-   * On the play thread: runs `task` on the main thread, after what was
-   * relayed before.
+   * On the sequencer's threads: runs `task` on the main thread, after what
+   * was relayed before (from the same thread).
    */
   void Relay(std::function<void()> task);
   /** On the play thread: each track's next chord. */
@@ -126,5 +127,6 @@ private:
   muse::async::Channel<AutoPlayEvent> m_handNoteEvents;
   muse::async::Channel<std::vector<const IChord *>> m_wrongNotes;
   muse::async::Channel<int, JumpReason> m_aboutToJumpPosition;
+  muse::async::Channel<EventVariant> m_mainThreadOutputEvent;
 };
 } // namespace dgk

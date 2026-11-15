@@ -222,7 +222,15 @@ struct PedalEvent
   bool on;
 };
 
-using EventVariant = std::variant<NoteEvents, PedalEvent>;
+/**
+ * Silences everything: the position jumped. Sent in line with the notes, so
+ * that it doesn't silence those struck right after it.
+ */
+struct AllNotesOffEvent
+{
+};
+
+using EventVariant = std::variant<NoteEvents, PedalEvent, AllNotesOffEvent>;
 
 struct Tick
 {
