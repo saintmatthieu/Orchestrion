@@ -102,14 +102,22 @@ looked at when we get there.
   doesn't wait for that thread (but to start and stop it), so the gestures may
   go from there to the main thread's observers (the take recorder) by kors.
   Rendering offline, all of it stays on the main thread.
-- **Computer keyboard, Linux/X11:** a thread with its own X connection reads
-  XInput2 raw key events on the root window. Raw events are delivered in
-  addition to the normal ones, so Qt keeps its keys. (Selecting `XI_KeyPress`
-  on Qt's window instead steals its keys.) Raw events don't say which window
-  they are for, so the main thread tells the thread, through an atomic,
-  whether keys play: the window is active and `keysAreForSomethingElse()` is
-  false. Key codes are mapped to letters with the XKB keymap. Qt's key filter
-  stops sending the letters the raw thread handles.
+- **Computer keyboard, Linux/X11:** `RawKeyboard` reads XInput2 raw key
+  events on the root window, on a thread with an X connection of its own.
+  Raw events are delivered in addition to the normal ones, so Qt keeps its
+  keys. (Selecting `XI_KeyPress` on Qt's window instead steals its keys.)
+  Raw events don't say which window they are for, so the main thread tells
+  the thread, through an atomic, whether presses play: the application is
+  active and `keysAreForSomethingElse()` is false. It recomputes that when the
+  focus or the application's state changes, and every 100 ms, since what the
+  keys are for can change without the focus moving (the score shelf being
+  shown). Releases always count. Key codes become characters with the XKB
+  keymap (`XkbLookupKeySym`), as `QKeyEvent::key()` has them. A key goes from
+  that thread to the gesture input through direct calls
+  (`IComputerKeyboard::setReceiver`), not kors. Qt's key filter leaves the
+  spontaneous key events to the raw keyboard and still plays synthesized ones
+  (the tutorials' `DemoKeys`). Not on the offscreen platform (offline
+  rendering).
 - **Other platforms** keep Qt's key events for now. Candidates are a
   `CGEventTap` on macOS and Raw Input on Windows.
 

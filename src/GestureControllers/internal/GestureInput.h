@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "ComputerKeyboard/ComputerKeyboardGestureController.h"
 #include "IGestureController.h"
 #include "IGestureInput.h"
 #include "InputThread.h"
@@ -56,8 +57,11 @@ private:
    * time is virtual on the main thread only, and all of it happens there.
    */
   std::unique_ptr<InputThread> m_inputThread;
-  /** The main thread's. */
-  std::unique_ptr<IGestureController> m_keyboard;
+  /**
+   * Its gestures come from the main thread, or the raw keyboard's (see
+   * IComputerKeyboard).
+   */
+  std::unique_ptr<ComputerKeyboardGestureController> m_keyboard;
   /**
    * Listens on the input thread, if there is one, and is destroyed there.
    */

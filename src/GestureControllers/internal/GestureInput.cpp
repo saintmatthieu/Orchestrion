@@ -36,8 +36,8 @@ GestureInput::~GestureInput()
 
 void GestureInput::init()
 {
-  m_keyboard = std::make_unique<ComputerKeyboardGestureController>();
-  Listen(*m_keyboard);
+  m_keyboard = std::make_unique<ComputerKeyboardGestureController>(
+      [this](const Gesture &gesture) { Dispatch(gesture); });
 
   m_midiDevice = std::make_unique<MidiDeviceGestureController>();
   const auto listenToMidiDevice = [this]
@@ -57,11 +57,9 @@ void GestureInput::init()
 
 void GestureInput::Listen(IGestureController &controller)
 {
-  // The keyboard's subscriptions are this object's, the MIDI device's those
-  // made where it lives.
+  // Made where it lives
   const muse::async::Asyncable *const subscriber =
-      &controller == m_midiDevice.get() ? m_midiDeviceSubscriptions.get()
-                                        : this;
+      m_midiDeviceSubscriptions.get();
   controller.noteOn().onReceive(
       subscriber, [this](int pitch, std::optional<float> velocity)
       { Dispatch({Gesture::Kind::noteOn, pitch, velocity, false}); });

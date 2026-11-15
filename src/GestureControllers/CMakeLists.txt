@@ -24,6 +24,15 @@ set(MODULE_SRC
 set(MODULE_USE_PCH OFF)
 set(MODULE_USE_UNITY OFF)
 set(MODULE_LINK muse_audio)
+
+if (OS_IS_LIN)
+  # The keys read off the GUI thread, from X11 (XInput2's raw events)
+  list(APPEND MODULE_SRC
+    internal/ComputerKeyboard/RawKeyboard.cpp
+    internal/ComputerKeyboard/RawKeyboard.h
+  )
+  list(APPEND MODULE_LINK X11 Xi)
+endif()
 set(MODULE_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 setup_module()
