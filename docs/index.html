@@ -20,7 +20,7 @@
       for (var i = 0; i < prefs.length; i++) {
         var l = (prefs[i] || "").toLowerCase().slice(0, 2);
         if (l === "en") return;
-        if (l === "fr" || l === "de") {
+        if (l === "fr" || l === "de" || l === "es") {
           location.replace(l + "/" + location.search + location.hash);
           return;
         }
@@ -41,6 +41,7 @@
   <link rel="alternate" hreflang="en" href="https://orchestrion.app/">
   <link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/">
   <link rel="alternate" hreflang="de" href="https://orchestrion.app/de/">
+  <link rel="alternate" hreflang="es" href="https://orchestrion.app/es/">
   <link rel="alternate" hreflang="x-default" href="https://orchestrion.app/">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <meta name="theme-color" content="#2e1a12">
@@ -407,6 +408,7 @@
         <span class="lang">EN</span>
         <a class="lang" href="fr/" hreflang="fr" lang="fr">FR</a>
         <a class="lang" href="de/" hreflang="de" lang="de">DE</a>
+        <a class="lang" href="es/" hreflang="es" lang="es">ES</a>
       </span>
     </nav>
   </div>
@@ -466,6 +468,7 @@
           <span class="lang">EN</span>
           <a class="lang" href="fr/" hreflang="fr" lang="fr">FR</a>
           <a class="lang" href="de/" hreflang="de" lang="de">DE</a>
+          <a class="lang" href="es/" hreflang="es" lang="es">ES</a>
         </p>
       </footer>
     </div>
@@ -593,6 +596,7 @@
     var lang = (navigator.language || "").toLowerCase();
     if (lang.indexOf("fr") === 0) culture = "fr-FR";
     else if (lang.indexOf("de") === 0) culture = "de-DE";
+    else if (lang.indexOf("es") === 0) culture = "es-ES";
 
     fetch("https://api.github.com/repos/saintmatthieu/Orchestrion/releases/latest")
       .then(function (r) { return r.ok ? r.json() : Promise.reject(); })

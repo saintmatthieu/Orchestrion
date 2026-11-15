@@ -6,6 +6,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://orchestrion.app/"/>
     <xhtml:link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://orchestrion.app/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://orchestrion.app/es/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://orchestrion.app/"/>
   </url>
   <url>
@@ -13,6 +14,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://orchestrion.app/"/>
     <xhtml:link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://orchestrion.app/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://orchestrion.app/es/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://orchestrion.app/"/>
   </url>
   <url>
@@ -20,6 +22,15 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://orchestrion.app/"/>
     <xhtml:link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://orchestrion.app/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://orchestrion.app/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://orchestrion.app/"/>
+  </url>
+  <url>
+    <loc>https://orchestrion.app/es/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://orchestrion.app/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://orchestrion.app/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://orchestrion.app/de/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://orchestrion.app/es/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://orchestrion.app/"/>
   </url>
   <url>
