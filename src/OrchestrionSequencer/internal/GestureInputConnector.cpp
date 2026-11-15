@@ -28,9 +28,16 @@ GestureInputConnector::GestureInputConnector(Orchestrion &orchestrion)
 {
 }
 
+GestureInputConnector::~GestureInputConnector()
+{
+  if (m_gestureInput)
+    m_gestureInput->setReceiver(nullptr);
+}
+
 void GestureInputConnector::init()
 {
-  gestureInput()->setReceiver(
+  m_gestureInput = gestureInput();
+  m_gestureInput->setReceiver(
       [this](const IGestureInput::Gesture &gesture)
       {
         m_orchestrion.GetPlayThread().Post([this, gesture]

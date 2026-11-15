@@ -49,6 +49,7 @@ class GestureInputConnector : public dgk::Injectable,
 
 public:
   explicit GestureInputConnector(Orchestrion &);
+  ~GestureInputConnector() override;
 
   /** On the main thread, once the Orchestrion is. */
   void init();
@@ -65,6 +66,11 @@ private:
   void updateFootPedalling();
 
   Orchestrion &m_orchestrion;
+  /**
+   * Kept to let go of it as it is destroyed: by then, quitting, the injected
+   * services read null. Its gestures keep coming until it is gone.
+   */
+  std::shared_ptr<IGestureInput> m_gestureInput;
   /** Where the foot has the pedal; empty until a pedal has been used. */
   std::optional<bool> m_sustainDown;
   bool m_footPedalling = false;

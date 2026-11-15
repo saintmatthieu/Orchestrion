@@ -25,16 +25,17 @@ namespace dgk
 {
 ComputerKeyboardGestureController::ComputerKeyboardGestureController(
     Dispatch dispatch)
-    : m_dispatch{std::move(dispatch)}
+    : m_keyboard{keyboard()}, m_dispatch{std::move(dispatch)}
 {
-  keyboard()->setReceiver(
+  m_keyboard->setReceiver(
       [this](char letter, bool pressed)
       { pressed ? keyPressed(letter) : keyReleased(letter); });
 }
 
 ComputerKeyboardGestureController::~ComputerKeyboardGestureController()
 {
-  keyboard()->setReceiver(nullptr);
+  // The keys keep coming until the keyboard is gone.
+  m_keyboard->setReceiver(nullptr);
 }
 
 void ComputerKeyboardGestureController::keyPressed(char letter)

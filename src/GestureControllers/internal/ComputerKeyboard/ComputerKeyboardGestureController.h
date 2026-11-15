@@ -47,6 +47,11 @@ private:
 
   dgk::Inject<IComputerKeyboard> keyboard{this};
 
+  /**
+   * Kept to let go of it as it is destroyed: by then, quitting, the injected
+   * services read null.
+   */
+  const std::shared_ptr<IComputerKeyboard> m_keyboard;
   const Dispatch m_dispatch;
   /** Keys may come from the main thread and the raw keyboard's. */
   std::mutex m_mutex;
