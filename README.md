@@ -2,24 +2,19 @@
   <img src="icons/orchestrion.png" width="120" alt="Orchestrion icon">
 </p>
 <h1 align="center">Orchestrion</h1>
-<p align="center"><em>Play what you can, Orchestrion plays the rest.</em></p>
+<p align="center"><em>What you don't play, Orchestrion plays for you.</em></p>
 
 ![Orchestrion showing the score of Mozart's Rondo alla Turca](docs/assets/hero.png)
 
-Orchestrion turns any score into an instrument. Play what you can — just the
-rhythm, just the right hand — on a MIDI keyboard or the computer keyboard, and
-Orchestrion plays the rest, at your own pulse. Tap only the rhythm and pitch
-accuracy is taken out of the equation; what remains is the music itself — a secure
-rhythm and real nuance still make all the difference.
+Plug your MIDI keyboard and play everything. Or just use your computer keyboard to play the rhythm.
+Whatever you <em>don't play</em> - pitch, nuances, or even rhythm - Orchestrion plays for you.
 
 One idea, many ways to play it: rhythm-focused practice in the music lesson, kids
 getting familiar with notation while having fun, music lovers discovering
 repertoire from the inside, covering that keyboard part your band can't do
 without, or karaoke-like sing-song around the computer.
 
-It opens MuseScore (`.mscz`) and MusicXML (`.mxl`, `.musicxml`) files and ships
-with a handful of pieces, from *Frère Jacques* to a Chopin nocturne. Built on
-[MuseScore](https://musescore.org)'s engraving and playback engine.
+Built on [MuseScore](https://musescore.org)'s engraving and playback engine, wired to [Mutopia](https://www.mutopiaproject.org)'s score library.
 
 **Website: <https://orchestrion.app/>**
 
