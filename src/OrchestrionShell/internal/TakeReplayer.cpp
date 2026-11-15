@@ -135,13 +135,16 @@ void TakeReplayer::Fire()
   switch (e.kind)
   {
   case Take::Event::Kind::noteOn:
-    gestureInput()->noteOn().send(e.pitch, e.velocity);
+    gestureInput()->send(
+        {IGestureInput::Gesture::Kind::noteOn, e.pitch, e.velocity, false});
     break;
   case Take::Event::Kind::noteOff:
-    gestureInput()->noteOff().send(e.pitch);
+    gestureInput()->send(
+        {IGestureInput::Gesture::Kind::noteOff, e.pitch, std::nullopt, false});
     break;
   case Take::Event::Kind::sustainPedal:
-    gestureInput()->sustainPedal().send(e.pedalDown);
+    gestureInput()->send({IGestureInput::Gesture::Kind::sustainPedal, 0,
+                          std::nullopt, e.pedalDown});
     break;
   case Take::Event::Kind::playbackStarted:
     if (!orchestrion()->player()->IsPlaying())

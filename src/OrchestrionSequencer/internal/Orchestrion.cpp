@@ -35,7 +35,12 @@ Orchestrion::~Orchestrion()
 {
   // Where it lives
   if (m_playThread)
-    m_playThread->Wait([this] { m_followPlayer.reset(); });
+    m_playThread->Wait(
+        [this]
+        {
+          m_followPlayer.reset();
+          m_playThreadSequencer.reset();
+        });
 }
 
 void Orchestrion::init()
@@ -86,6 +91,7 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
   const auto masterNotation = projectSession()->masterNotation();
   if (!masterNotation)
   {
+    m_playThread->Wait([this] { m_playThreadSequencer.reset(); });
     setSequencer(nullptr);
     return;
   }
@@ -111,7 +117,12 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
 
   m_modifiableItemRegistry = products.modifiableItemRegistry;
   // It plays on the sequencer and the player it follows: gone before them.
-  m_playThread->Wait([this] { m_followPlayer.reset(); });
+  m_playThread->Wait(
+      [this]
+      {
+        m_followPlayer.reset();
+        m_playThreadSequencer.reset();
+      });
   IOrchestrionSequencerPtr proxy;
   if (products.sequencer)
   {
@@ -125,6 +136,7 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
         {
           m_followPlayer = std::make_unique<FollowPlayer>(
               *sequencer, *m_autoPlayer, *m_playThread);
+          m_playThreadSequencer = sequencer;
         });
   }
   else

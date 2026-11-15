@@ -29,15 +29,19 @@ delay of 0.5 ms median and 1 ms max.
 
 `PlayThread` (`internal/PlayThread.h`) is a thread with a queue of tasks, each
 run as soon as possible or at a given `steady_clock` time. It doesn't process kors
-queues yet: the objects living on it are told of the main thread's changes by
+queues: the objects living on it are told of the main thread's changes by
 posted tasks, and their own channels reach the receivers on the play thread
-synchronously. Step 3 (MIDI) will need it to, since kors has no wake-up hook:
-by polling, as the main thread does every millisecond.
+synchronously.
 
 - The sequencer, the `FollowPlayer` and the automatic player's scheduling live
   on it. Their timers become play-thread timers instead of `QTimer`s.
 - **It never waits for the main thread**, it only posts to it. The main thread
   may therefore wait for it, e.g. to let go of a sequencer (see Lifetime).
+- **It never sends kors messages to the main thread**, only queued Qt calls:
+  the first message of a channel from one thread to another registers a
+  queue under a lock that the main thread holds while it processes its kors
+  queues. If that main thread is waiting for the play thread meanwhile, they
+  deadlock.
 - **Offline rendering:** time is virtual on the main thread only. Under
   `--test-case-render`, the play thread is the main thread itself, with tasks
   posted as queued Qt calls and timers as `QTimer`s, so renders stay identical
@@ -85,9 +89,19 @@ looked at when we get there.
 
 ### Input
 
-- **MIDI:** the play thread subscribes to `IMidiInPort::eventReceived`
-  itself, so notes go from the MIDI thread straight to the sequencer. The GUI
-  (virtual keyboard lights, pedal indicator) still gets them as now.
+- **All gestures** reach the sequencer through `GestureInputConnector`, on the
+  play thread. `IGestureInput` hands each one to it (`setReceiver`) on the
+  thread the gesture comes from, before telling its channels. The connector
+  posts it to the play thread. A take's replay sends through
+  `IGestureInput::send`.
+- **MIDI:** `GestureInput` listens to the MIDI device on an `InputThread` of
+  its own, which processes its kors queue every millisecond (kors has no
+  wake-up hook). `VirtualMidiInPort::eventReceived` is the device's own
+  channel, so the events reach it from the MIDI thread directly, as they reach
+  the GUI's subscribers (the virtual keyboard's lights). The main thread
+  doesn't wait for that thread (but to start and stop it), so the gestures may
+  go from there to the main thread's observers (the take recorder) by kors.
+  Rendering offline, all of it stays on the main thread.
 - **Computer keyboard, Linux/X11:** a thread with its own X connection reads
   XInput2 raw key events on the root window. Raw events are delivered in
   addition to the normal ones, so Qt keeps its keys. (Selecting `XI_KeyPress`
@@ -116,3 +130,12 @@ thread, as `10a24a1` requires.
 3. MIDI input straight to the play thread.
 4. The Linux raw keyboard thread.
 5. macOS and Windows keyboards.
+6. Priorities: the play thread and the sequencer's note, ornament and pedal
+   threads (and the input thread) above normal. On Linux that takes
+   `SCHED_FIFO`, at a low priority (~10, below PipeWire's 88), asked for
+   directly (an `audio` group member's `RLIMIT_RTPRIO`) or through rtkit,
+   staying at normal priority otherwise: `nice` can't be lowered without
+   privilege, and MuseScore's `setThreadPriority` is a no-op under
+   `SCHED_OTHER`. `THREAD_PRIORITY_ABOVE_NORMAL` on Windows, the
+   user-interactive QoS class on macOS. Not the follower thread, whose work
+   grows with the score's length.

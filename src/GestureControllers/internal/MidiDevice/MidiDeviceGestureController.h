@@ -33,12 +33,22 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
+/**
+ * The MIDI device's gestures, from the thread it is listened to on (see
+ * GestureInput).
+ */
 class MidiDeviceGestureController : public IGestureController,
                                     public dgk::Injectable,
                                     public muse::async::Asyncable
 {
 public:
+  /** On the main thread: finds the services it uses. */
   MidiDeviceGestureController();
+  /**
+   * Listens to the MIDI device from now on, on the calling thread, which it
+   * is to be destroyed on.
+   */
+  void Listen();
 
 private:
   void onMidiEventReceived(const muse::midi::Event &event);

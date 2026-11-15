@@ -53,6 +53,14 @@ public:
   ~Orchestrion();
   void init();
 
+  /** What the sequencer plays on (see ../threading.md); from init() on. */
+  PlayThread &GetPlayThread() { return *m_playThread; }
+  /** On the play thread: the sequencer, none if there is none. */
+  OrchestrionSequencer *PlayThreadSequencer() const
+  {
+    return m_playThreadSequencer.get();
+  }
+
 private:
   IOrchestrionSequencerPtr sequencer() override;
   muse::async::Notification sequencerChanged() const override;
@@ -83,6 +91,8 @@ private:
   std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
   /** Created and destroyed on the play thread, where it lives. */
   std::unique_ptr<FollowPlayer> m_followPlayer;
+  /** The play thread's (see PlayThreadSequencer). */
+  std::shared_ptr<OrchestrionSequencer> m_playThreadSequencer;
   muse::async::Notification m_sequencerChanged;
   // The master score whose unroll decision was already taken: the choice is
   // made once per loaded score (mid-session unrolling would pull engraved

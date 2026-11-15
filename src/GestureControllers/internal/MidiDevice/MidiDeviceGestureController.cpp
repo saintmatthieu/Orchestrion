@@ -22,6 +22,13 @@ namespace dgk
 {
 MidiDeviceGestureController::MidiDeviceGestureController()
 {
+  // Resolved here, on the main thread, and kept
+  midiInPort();
+  virtualKeyboard();
+}
+
+void MidiDeviceGestureController::Listen()
+{
   midiInPort()->eventReceived().onReceive(
       this, [this](const muse::midi::tick_t, const muse::midi::Event &event)
       { onMidiEventReceived(event); });
