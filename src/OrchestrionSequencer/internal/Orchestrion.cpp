@@ -18,8 +18,10 @@
  */
 #include "Orchestrion.h"
 #include "IChord.h"
+#include "OrchestrionCommon/OfflineRendering.h"
 #include "OrchestrionPlayerStub.h"
 #include "OrchestrionSequencerFactory.h" // NotationProducts
+#include "SequencerProxy.h"
 #include <async/async.h>
 #include <cassert>
 #include <climits>
@@ -29,8 +31,20 @@
 
 namespace dgk
 {
+Orchestrion::~Orchestrion()
+{
+  // Where it lives
+  if (m_playThread)
+    m_playThread->Wait([this] { m_followPlayer.reset(); });
+}
+
 void Orchestrion::init()
 {
+  // Rendering offline, time is virtual on the main thread only: the play
+  // thread is the main thread.
+  m_playThread =
+      std::make_shared<PlayThread>(!offlineRendering.audioPath.empty());
+
   // Unrolling repeats only serves the grading visuals (ribbon, beat grid,
   // layout warp), so for now it is not a choice of its own: it follows the
   // grading switch. The setting survives as the place to make it
@@ -90,25 +104,34 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
   }
 
   const NotationProducts products =
-      OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation);
+      OrchestrionSequencerFactory{}.CreateSequencer(*masterNotation,
+                                                    *m_playThread);
   m_ornamentsWrittenOut =
       sequencerConfig()->ornamentMode() == OrnamentMode::manual;
 
   m_modifiableItemRegistry = products.modifiableItemRegistry;
   // It plays on the sequencer and the player it follows: gone before them.
-  m_followPlayer.reset();
+  m_playThread->Wait([this] { m_followPlayer.reset(); });
+  IOrchestrionSequencerPtr proxy;
   if (products.sequencer)
   {
-    m_autoPlayer =
-        std::make_shared<AutomaticOrchestrionPlayer>(*products.sequencer);
-    m_followPlayer =
-        std::make_unique<FollowPlayer>(*products.sequencer, *m_autoPlayer);
+    // Before the sequencer is used on the play thread
+    proxy = DestroyedOnMainThread(
+        new SequencerProxy(products.sequencer, m_playThread));
+    m_autoPlayer = std::make_shared<AutomaticOrchestrionPlayer>(
+        products.sequencer, m_playThread);
+    m_playThread->Wait(
+        [this, sequencer = products.sequencer]
+        {
+          m_followPlayer = std::make_unique<FollowPlayer>(
+              *sequencer, *m_autoPlayer, *m_playThread);
+        });
   }
   else
     m_autoPlayer.reset();
-  if (products.sequencer && resumeTick)
-    products.sequencer->GoToTick(*resumeTick, JumpReason::Rewind);
-  setSequencer(products.sequencer);
+  if (proxy && resumeTick)
+    proxy->GoToTick(*resumeTick, JumpReason::Rewind);
+  setSequencer(proxy);
 
   // Unrolling the repeats is not a modification of the user's score.
   if (const auto notation = projectSession()->masterNotation())

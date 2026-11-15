@@ -166,8 +166,8 @@ Merge(const std::vector<const std::vector<ScoreEvent> *> &staves)
 } // namespace
 
 OrchestrionSequencer::OrchestrionSequencer(
-    InstrumentIndex instrument, HandVoices rightHand, HandVoices leftHand,
-    PedalSequence pedalSequence,
+    PlayThread &playThread, InstrumentIndex instrument, HandVoices rightHand,
+    HandVoices leftHand, PedalSequence pedalSequence,
     std::array<std::vector<ScoreEvent>, 2> staffEvents,
     std::array<std::vector<ScoreNote>, 2> staffNotes, double nominalTicksPerMs)
     : m_instrument{std::move(instrument)},
@@ -187,41 +187,25 @@ OrchestrionSequencer::OrchestrionSequencer(
           *this, m_ornamentThreadMembers,
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
       m_notation{projectSession()->masterNotation().get()},
-      m_modes{Mode(false), Mode(true)}, m_staffEvents{std::move(staffEvents)},
+      m_staffModes{staffModes()->mode(0), staffModes()->mode(1)},
+      m_modes{m_staffModes},
+      m_loop{m_notation ? m_notation->playback()->loopBoundaries()
+                        : mu::notation::LoopBoundaries{}},
+      m_staffEvents{std::move(staffEvents)},
       m_staffNotes{std::move(staffNotes)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
       m_nominalTicksPerMs{nominalTicksPerMs},
-      m_follower{[this](const FollowerThread::Followed &followed)
+      m_follower{playThread, [this](const FollowerThread::Followed &followed)
                  { OnFollowed(followed); }}
 {
 #ifdef OS_IS_WIN
   SetThreadPriority(m_noteThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
 #endif
 
+  // Their changes are told by the SequencerProxy.
   m_velocityRecordingEnabled = configuration()->velocityRecordingEnabled();
-  configuration()->velocityRecordingEnabledChanged().onNotify(
-      this,
-      [this] {
-        m_velocityRecordingEnabled =
-            configuration()->velocityRecordingEnabled();
-      });
-
-  const auto readOrnamentMode = [this]
-  {
-    m_ornamentsEnabled =
-        configuration()->ornamentMode() == OrnamentMode::automatic;
-  };
-  readOrnamentMode();
-  configuration()->ornamentModeChanged().onNotify(this, readOrnamentMode);
-
-  staffModes()->modesChanged().onNotify(this,
-                                        [this] { OnStaffModesChanged(); });
-
-  dispatcher()->reg(this, "nav-first-control",
-                    [this] { GoToTick(0, JumpReason::Rewind); });
-  interactionProcessor()->itemClicked().onReceive(
-      this, [this](const mu::engraving::EngravingItem *item)
-      { GoToTick(item->tick().ticks(), JumpReason::Click); });
+  m_ornamentsEnabled =
+      configuration()->ornamentMode() == OrnamentMode::automatic;
   RebuildFollower();
   GoToTick(0, JumpReason::Rewind);
 }
@@ -435,6 +419,8 @@ OrchestrionSequencer::AboutToJumpPosition() const
 
 OrchestrionSequencer::~OrchestrionSequencer()
 {
+  // Before anything goes: it tells the play thread what it finds.
+  m_follower.Stop();
   if (m_pedalDown)
   {
     PostPedalEvent(PedalEvent{m_instrument, false});
@@ -514,7 +500,7 @@ void OrchestrionSequencer::OnHandInputEvent(NoteEventType type, bool isLeftHand,
 
 StaffMode OrchestrionSequencer::Mode(bool isLeftHand) const
 {
-  return staffModes()->mode(isLeftHand ? 1 : 0);
+  return m_staffModes[isLeftHand ? 1 : 0];
 }
 
 bool OrchestrionSequencer::IsPerformed(bool isLeftHand) const
@@ -525,18 +511,29 @@ bool OrchestrionSequencer::IsPerformed(bool isLeftHand) const
 
 bool OrchestrionSequencer::HandIn(bool isLeftHand, StaffMode mode) const
 {
+  return HandIn(m_staffModes, isLeftHand, mode);
+}
+
+bool OrchestrionSequencer::HandIn(const Modes &modes, bool isLeftHand,
+                                  StaffMode mode) const
+{
   return !(isLeftHand ? m_leftHand : m_rightHand).voices.empty() &&
-         Mode(isLeftHand) == mode;
+         modes[isLeftHand ? 1 : 0] == mode;
 }
 
 bool OrchestrionSequencer::IsNotesKey(int pitch) const
 {
-  const bool rightNotes = HandIn(false, StaffMode::notes);
-  const bool leftNotes = HandIn(true, StaffMode::notes);
+  return IsNotesKey(m_staffModes, pitch);
+}
+
+bool OrchestrionSequencer::IsNotesKey(const Modes &modes, int pitch) const
+{
+  const bool rightNotes = HandIn(modes, false, StaffMode::notes);
+  const bool leftNotes = HandIn(modes, true, StaffMode::notes);
   if (!rightNotes && !leftNotes)
     return false;
-  const bool rightRhythm = HandIn(false, StaffMode::rhythm);
-  const bool leftRhythm = HandIn(true, StaffMode::rhythm);
+  const bool rightRhythm = HandIn(modes, false, StaffMode::rhythm);
+  const bool leftRhythm = HandIn(modes, true, StaffMode::rhythm);
   constexpr int minorThird = 3;
   if (leftRhythm)
     // Below the right hand's notes.
@@ -549,18 +546,30 @@ bool OrchestrionSequencer::IsNotesKey(int pitch) const
 
 IOrchestrionSequencer::KeyRole OrchestrionSequencer::RoleOfKey(int pitch) const
 {
+  return RoleOfKey(m_staffModes, pitch);
+}
+
+IOrchestrionSequencer::KeyRole
+OrchestrionSequencer::RoleOfKey(const Modes &modes, int pitch) const
+{
   // As OnInputEvent routes a key struck
-  if (IsNotesKey(pitch))
+  if (IsNotesKey(modes, pitch))
     return KeyRole::notes;
-  if (const auto isLeftHand = PerformerHand(pitch))
+  if (const auto isLeftHand = PerformerHand(modes, pitch))
     return *isLeftHand ? KeyRole::leftHand : KeyRole::rightHand;
   return KeyRole::none;
 }
 
 std::optional<bool> OrchestrionSequencer::PerformerHand(int pitch) const
 {
-  const auto plays = [this](bool isLeftHand)
-  { return HandIn(isLeftHand, StaffMode::rhythm); };
+  return PerformerHand(m_staffModes, pitch);
+}
+
+std::optional<bool> OrchestrionSequencer::PerformerHand(const Modes &modes,
+                                                        int pitch) const
+{
+  const auto plays = [this, &modes](bool isLeftHand)
+  { return HandIn(modes, isLeftHand, StaffMode::rhythm); };
   const bool right = plays(false);
   const bool left = plays(true);
   if (right && left)
@@ -574,8 +583,7 @@ void OrchestrionSequencer::OnGesture(NoteEventType type, bool isLeftHand,
                                      int key, std::optional<float> velocity,
                                      bool byPerformer)
 {
-  const auto loopEnabled =
-      projectSession()->masterNotation()->playback()->loopBoundaries().enabled;
+  const auto loopEnabled = m_loop.enabled;
   OnInputEventRecursive(type, isLeftHand, key, std::move(velocity), loopEnabled,
                         byPerformer);
 
@@ -615,6 +623,7 @@ void OrchestrionSequencer::AllNotesOff()
   // follower expects the next note where the staves stopped.
   m_tempo.reset();
   m_tempoTick.reset();
+  PublishTempo();
   ResetFollower();
 }
 
@@ -887,8 +896,7 @@ void OrchestrionSequencer::OnInputEventRecursive(NoteEventType type,
   const auto cursorTick =
       GetCursorTick(hand.voices, type).value_or(m_finalTick);
 
-  const auto &loopBoundaries =
-      projectSession()->masterNotation()->playback()->loopBoundaries();
+  const auto &loopBoundaries = m_loop;
 
   if (loop && type == NoteEventType::noteOn &&
       loopBoundaries.loopOutTick.ticks() > 0 &&
@@ -1033,6 +1041,7 @@ void OrchestrionSequencer::Jump(
   {
     m_tempo.reset();
     m_tempoTick.reset();
+    PublishTempo();
   }
   CancelOrnaments();
   {
@@ -1077,12 +1086,14 @@ void OrchestrionSequencer::WrapLoop(
   {
     m_tempo.reset();
     m_tempoTick.reset();
+    PublishTempo();
     return;
   }
   const int delta = after->withRepeats - before.withRepeats;
   m_tempo.shift(delta);
   if (m_tempoTick)
     *m_tempoTick += delta;
+  PublishTempo();
 }
 
 std::vector<const VoiceSequencer *> OrchestrionSequencer::PlayingVoices() const
@@ -1095,12 +1106,31 @@ std::vector<const VoiceSequencer *> OrchestrionSequencer::PlayingVoices() const
   return voices;
 }
 
+void OrchestrionSequencer::SetStaffModes(const Modes &modes)
+{
+  m_staffModes = modes;
+  OnStaffModesChanged();
+}
+
+void OrchestrionSequencer::SetLoopBoundaries(
+    const mu::notation::LoopBoundaries &loop)
+{
+  m_loop = loop;
+}
+
+void OrchestrionSequencer::SetVelocityRecordingEnabled(bool enabled)
+{
+  m_velocityRecordingEnabled = enabled;
+}
+
+void OrchestrionSequencer::SetOrnamentsEnabled(bool enabled)
+{
+  m_ornamentsEnabled = enabled;
+}
+
 void OrchestrionSequencer::OnStaffModesChanged()
 {
-  if (projectSession()->masterNotation().get() != m_notation)
-    // Another score's: this sequencer is on its way out.
-    return;
-  const std::array<StaffMode, 2> modes{Mode(false), Mode(true)};
+  const Modes modes = m_staffModes;
   if (modes == m_modes)
     return;
 
@@ -1290,7 +1320,7 @@ int OrchestrionSequencer::AutoPlayStrikeTick(const Hand &hand,
   return std::max(due, m_autoPlayTick);
 }
 
-const std::map<TrackIndex, ChordTransition> &
+std::map<TrackIndex, ChordTransition>
 OrchestrionSequencer::GetCurrentTransitions() const
 {
   return m_transitions.val;
@@ -1526,10 +1556,23 @@ void OrchestrionSequencer::ObserveTick(int tick, double nowMs)
   }
   // Not before the onset fed last: the other hand's half of a chord struck
   // by both, or a hand lagging the other, tells the tempo nothing new.
-  if (m_tempoTick && tick <= *m_tempoTick)
-    return;
-  m_tempoTick = tick;
-  m_tempo.addObservation(nowMs, tick);
+  if (!m_tempoTick || tick > *m_tempoTick)
+  {
+    m_tempoTick = tick;
+    m_tempo.addObservation(nowMs, tick);
+  }
+  PublishTempo();
+}
+
+void OrchestrionSequencer::PublishTempo()
+{
+  m_tempoChanged.send(std::make_shared<const PositionTracker>(m_tempo));
+}
+
+muse::async::Channel<std::shared_ptr<const PositionTracker>>
+OrchestrionSequencer::TempoChanged() const
+{
+  return m_tempoChanged;
 }
 
 double OrchestrionSequencer::TicksPerMs(const IChord &chord) const

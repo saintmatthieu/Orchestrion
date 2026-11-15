@@ -21,16 +21,14 @@
 #include "IOrchestrionSequencer.h"
 #include "IOrchestrionSequencerConfiguration.h"
 #include "IStaffModes.h"
-#include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/FollowerThread.h"
 #include "internal/OrnamentSchedule.h"
+#include "internal/PlayThread.h"
 #include "internal/ScoreEvents.h"
 #include "internal/VoiceSequencer.h"
 
-#include <actions/actionable.h>
-#include <actions/iactionsdispatcher.h>
 #include <array>
 #include <async/asyncable.h>
 #include <chrono>
@@ -42,6 +40,7 @@
 #include <modularity/ioc.h>
 #include <mutex>
 #include <notation/imasternotation.h>
+#include <notation/types/loopboundaries.h>
 #include <project/iprojectsession.h>
 #include <random>
 #include <thread>
@@ -51,19 +50,25 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
+/**
+ * Plays the score: lives on the play thread (see ../threading.md), but for
+ * its construction and destruction, on the main thread, and for what says
+ * so. The main thread uses it through a SequencerProxy, which tells it of
+ * the settings it reads (staff modes, loop, ...) when they change.
+ */
 class OrchestrionSequencer : public IOrchestrionSequencer,
                              public dgk::Injectable,
-                             public muse::async::Asyncable,
-                             public muse::actions::Actionable
+                             public muse::async::Asyncable
 {
+  // Read once, on the main thread, as it is constructed
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
-  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
-  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
-      this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
   dgk::Inject<IStaffModes> staffModes{this};
 
 public:
+  /** The staff modes, right hand first. */
+  using Modes = std::array<StaffMode, 2>;
+
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
   /**
@@ -71,7 +76,7 @@ public:
    * by staff — right hand first — (see GetScoreEvents), at first at
    * `nominalTicksPerMs`.
    */
-  OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
+  OrchestrionSequencer(PlayThread &, InstrumentIndex, HandVoices rightHand,
                        HandVoices leftHand, PedalSequence,
                        std::array<std::vector<ScoreEvent>, 2> staffEvents,
                        std::array<std::vector<ScoreNote>, 2> staffNotes,
@@ -86,8 +91,7 @@ public:
   void SetFootPedalling(bool) override;
   void AllNotesOff() override;
 
-  const std::map<TrackIndex, ChordTransition> &
-  GetCurrentTransitions() const override;
+  std::map<TrackIndex, ChordTransition> GetCurrentTransitions() const override;
   std::vector<TrackIndex> GetAllVoices() const override;
   const IChord *GetNextChord(TrackIndex) const override;
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
@@ -104,6 +108,35 @@ public:
   void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
   KeyRole RoleOfKey(int pitch) const override;
+
+  /**
+   * What a key plays (see RoleOfKey) with the staves in these modes. Reads
+   * nothing that changes: callable from any thread.
+   */
+  KeyRole RoleOfKey(const Modes &, int pitch) const;
+  /** The notation it plays. Any thread. */
+  const mu::notation::IMasterNotation *Notation() const { return m_notation; }
+  /** The time its tempo estimate goes by, in ms. Any thread. */
+  double NowMs() const;
+  /** A staff's mode (0: right hand, 1: left), as last told. */
+  StaffMode ModeOf(int staff) const { return m_staffModes[staff]; }
+
+  /**
+   * The settings of the main thread's that it reads, copied when they
+   * change. SetStaffModes moves the hands as a change of modes does.
+   */
+  void SetStaffModes(const Modes &);
+  void SetLoopBoundaries(const mu::notation::LoopBoundaries &);
+  void SetVelocityRecordingEnabled(bool);
+  void SetOrnamentsEnabled(bool);
+
+  /**
+   * The tempo estimate (see PerformedTempoNow), sent whenever an onset, a
+   * jump or a stop changes it — not as it glides between them. A copy (a
+   * channel's payload must be assignable, which a PositionTracker isn't).
+   */
+  muse::async::Channel<std::shared_ptr<const PositionTracker>>
+  TempoChanged() const;
 
 private:
   struct Hand
@@ -361,7 +394,11 @@ private:
                                 OrnamentStepDue);
   /** Silences and forgets every track's schedule: a jump. */
   void CancelOrnaments();
-  double NowMs() const;
+  /** Sends TempoChanged. */
+  void PublishTempo();
+  bool HandIn(const Modes &, bool isLeftHand, StaffMode) const;
+  bool IsNotesKey(const Modes &, int pitch) const;
+  std::optional<bool> PerformerHand(const Modes &, int pitch) const;
 
   const InstrumentIndex m_instrument;
 
@@ -438,7 +475,12 @@ private:
    * found in: the staff modes notify of another score's, too.
    */
   const mu::notation::IMasterNotation *const m_notation;
-  std::array<StaffMode, 2> m_modes; // [0]=right, [1]=left
+  /** The staff modes, as last told (see SetStaffModes). */
+  Modes m_staffModes;
+  /** Those the hands were last moved for (see OnStaffModesChanged). */
+  Modes m_modes;
+  mu::notation::LoopBoundaries m_loop;
+  muse::async::Channel<std::shared_ptr<const PositionTracker>> m_tempoChanged;
 
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
   const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;

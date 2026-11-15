@@ -24,6 +24,7 @@
 #include "IOrchestrion.h"
 #include "IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSequencer.h"
+#include "PlayThread.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
 #include "playback/iplaybackcontroller.h"
 #include <async/asyncable.h>
@@ -49,6 +50,7 @@ class Orchestrion : public IOrchestrion,
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
 
 public:
+  ~Orchestrion();
   void init();
 
 private:
@@ -68,6 +70,9 @@ private:
   void rebuildSequencer(std::optional<int> resumeTick = std::nullopt);
 
 private:
+  /** What the sequencer and its players play on (see ../threading.md). */
+  std::shared_ptr<PlayThread> m_playThread;
+  /** The sequencer's proxy, the main thread's way to it. */
   IOrchestrionSequencerPtr m_sequencer;
   /**
    * The audio engine's and the input devices' threads ask for the sequencer
@@ -76,6 +81,7 @@ private:
   mutable std::mutex m_sequencerMutex;
   IModifiableItemRegistryPtr m_modifiableItemRegistry;
   std::shared_ptr<AutomaticOrchestrionPlayer> m_autoPlayer;
+  /** Created and destroyed on the play thread, where it lives. */
   std::unique_ptr<FollowPlayer> m_followPlayer;
   muse::async::Notification m_sequencerChanged;
   // The master score whose unroll decision was already taken: the choice is

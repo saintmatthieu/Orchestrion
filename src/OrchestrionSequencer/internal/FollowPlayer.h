@@ -19,13 +19,12 @@
 #pragma once
 
 #include "IOrchestrionPlayer.h"
-#include "IOrchestrionSequencer.h"
-#include "IStaffModes.h"
-#include "OrchestrionCommon/OrchestrionIoc.h"
+#include "internal/OrchestrionSequencer.h"
+#include "internal/PlayThread.h"
 
-#include <QTimer>
 #include <async/asyncable.h>
 #include <map>
+#include <memory>
 #include <optional>
 
 namespace dgk
@@ -38,14 +37,14 @@ namespace dgk
  * performer stops, the estimate coasts to a halt and the Follow staves halt
  * with it.
  *
- * Created and destroyed with the sequencer and the automatic player.
+ * Created and destroyed with the sequencer and the automatic player, on the
+ * play thread, where it lives (see ../threading.md).
  */
-class FollowPlayer : public muse::async::Asyncable, public dgk::Injectable
+class FollowPlayer : public muse::async::Asyncable
 {
-  dgk::Inject<IStaffModes> staffModes{this};
-
 public:
-  FollowPlayer(IOrchestrionSequencer &, const IOrchestrionPlayer &);
+  FollowPlayer(OrchestrionSequencer &, const IOrchestrionPlayer &,
+               PlayThread &);
 
 private:
   struct Targets
@@ -75,18 +74,28 @@ private:
    */
   bool Join(double performedTick);
   void Fire(int staff, bool noteOn);
+  /** Polls in a while, and so on, while m_polling. */
+  void SchedulePoll();
+  /** Runs the task on the play thread, unless it is gone by then. */
+  void Post(std::function<void()>,
+            std::optional<PlayThread::Clock::time_point> time = std::nullopt);
 
-  IOrchestrionSequencer &m_sequencer;
+  OrchestrionSequencer &m_sequencer;
   const IOrchestrionPlayer &m_player;
+  PlayThread &m_thread;
   std::map<TrackIndex, Targets> m_trackTargets;
   std::map<int /*staff*/, Targets> m_staffTargets;
   /** There was no estimate to follow last time the targets were polled. */
   bool m_awaitsTempo = true;
   /**
-   * Polls the targets against the estimate, while there is anything to
-   * fire. A driver of its own: the performer may stop, the estimate then
-   * coasting to a halt between gestures.
+   * Whether it polls the targets against the estimate, which it does while
+   * there is anything to fire. A driver of its own: the performer may stop,
+   * the estimate then coasting to a halt between gestures.
    */
-  QTimer m_timer;
+  bool m_polling = false;
+  /** Tells the polls scheduled from those superseded. */
+  unsigned m_pollGeneration = 0;
+  /** Its tasks posted are dropped once it is gone. */
+  const std::shared_ptr<int> m_alive = std::make_shared<int>(0);
 };
 } // namespace dgk

@@ -20,19 +20,20 @@
 #include "IChord.h"
 
 #include <algorithm>
-#include <async/async.h>
 #include <cmath>
 #include <vector>
 
 namespace dgk
 {
-FollowPlayer::FollowPlayer(IOrchestrionSequencer &sequencer,
-                           const IOrchestrionPlayer &player)
-    : m_sequencer{sequencer}, m_player{player}
+namespace
 {
-  m_timer.setInterval(16); // ~60 Hz
-  m_timer.callOnTimeout([this] { Poll(); });
+constexpr auto pollInterval = std::chrono::milliseconds{16}; // ~60 Hz
+} // namespace
 
+FollowPlayer::FollowPlayer(OrchestrionSequencer &sequencer,
+                           const IOrchestrionPlayer &player, PlayThread &thread)
+    : m_sequencer{sequencer}, m_player{player}, m_thread{thread}
+{
   m_sequencer.ChordTransitions().onReceive(
       this, [this](const std::map<TrackIndex, ChordTransition> &transitions)
       { OnTransitions(transitions); });
@@ -45,7 +46,7 @@ FollowPlayer::FollowPlayer(IOrchestrionSequencer &sequencer,
 
 bool FollowPlayer::IsFollowStaff(int staff) const
 {
-  return staffModes()->mode(staff) == StaffMode::follow;
+  return m_sequencer.ModeOf(staff) == StaffMode::follow;
 }
 
 void FollowPlayer::OnTransitions(
@@ -56,7 +57,7 @@ void FollowPlayer::OnTransitions(
     // The recorded take already contains the Follow staves' events: keep
     // quiet, so they don't sound twice.
     m_staffTargets.clear();
-    m_timer.stop();
+    m_polling = false;
     return;
   }
 
@@ -110,9 +111,41 @@ void FollowPlayer::Aggregate()
       m_staffTargets.begin(), m_staffTargets.end(), [](const auto &entry)
       { return entry.second.offTick || entry.second.onTick; });
   if (!due)
-    m_timer.stop();
-  else if (!m_timer.isActive())
-    m_timer.start();
+    m_polling = false;
+  else if (!m_polling)
+  {
+    m_polling = true;
+    ++m_pollGeneration;
+    SchedulePoll();
+  }
+}
+
+void FollowPlayer::SchedulePoll()
+{
+  Post(
+      [this, generation = m_pollGeneration]
+      {
+        if (!m_polling || generation != m_pollGeneration)
+          return;
+        Poll();
+        if (m_polling && generation == m_pollGeneration)
+          SchedulePoll();
+      },
+      PlayThread::Clock::now() + pollInterval);
+}
+
+void FollowPlayer::Post(std::function<void()> task,
+                        std::optional<PlayThread::Clock::time_point> time)
+{
+  auto guarded = [alive = std::weak_ptr<int>{m_alive}, task = std::move(task)]
+  {
+    if (!alive.expired())
+      task();
+  };
+  if (time)
+    m_thread.PostAt(*time, std::move(guarded));
+  else
+    m_thread.Post(std::move(guarded));
 }
 
 void FollowPlayer::Poll()
@@ -185,15 +218,14 @@ void FollowPlayer::Fire(int staff, bool noteOn)
 {
   // Deferred out of the poll: the gesture's transitions come back here with
   // fresh targets.
-  muse::async::Async::call(this,
-                           [this, staff, noteOn]
-                           {
-                             if (!IsFollowStaff(staff))
-                               return;
-                             m_sequencer.OnHandInputEvent(
-                                 noteOn ? NoteEventType::noteOn
-                                        : NoteEventType::noteOff,
-                                 staff > 0, std::nullopt);
-                           });
+  Post(
+      [this, staff, noteOn]
+      {
+        if (!IsFollowStaff(staff))
+          return;
+        m_sequencer.OnHandInputEvent(noteOn ? NoteEventType::noteOn
+                                            : NoteEventType::noteOff,
+                                     staff > 0, std::nullopt);
+      });
 }
 } // namespace dgk
