@@ -146,10 +146,10 @@ See threading.md, step 6. For the other platforms:
 
 ## Known gaps
 
-- **Velocity recording:** `MuseChord::SetVelocity` runs on the play thread,
-  and saving reads it on the main thread (a race if saving mid-performance).
-- **MIDI out** (`OrchestrionEventProcessor`) and the take recorder's
-  timestamps are still the main thread's (relayed), as late as it is busy.
+- **MIDI out** (`OrchestrionEventProcessor`) is still the main thread's
+  (relayed), as late as it is busy.
+- **Velocity recording** (`fb38e02`: posted to the main thread, atomics in
+  `MuseChord`) was only compiled, not run.
 - **`SequencerProxy::WhatToPlayNext`** waits for the play thread. Nothing on
   the main thread calls it; keep it that way.
 - **Untested on Linux:** a real MIDI keyboard; holding a key while the
