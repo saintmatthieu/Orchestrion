@@ -30,8 +30,21 @@ GestureInputConnector::GestureInputConnector(Orchestrion &orchestrion)
 
 GestureInputConnector::~GestureInputConnector()
 {
+  // No more gestures posted (one under way is waited for), then none of
+  // those posted runs: the token goes on the play thread, where they run.
   if (m_gestureInput)
     m_gestureInput->setReceiver(nullptr);
+  m_orchestrion.GetPlayThread().Wait([this] { m_alive.reset(); });
+}
+
+void GestureInputConnector::Post(std::function<void()> task)
+{
+  m_orchestrion.GetPlayThread().Post(
+      [alive = std::weak_ptr<int>{m_alive}, task = std::move(task)]
+      {
+        if (!alive.expired())
+          task();
+      });
 }
 
 void GestureInputConnector::init()
@@ -39,10 +52,7 @@ void GestureInputConnector::init()
   m_gestureInput = gestureInput();
   m_gestureInput->setReceiver(
       [this](const IGestureInput::Gesture &gesture)
-      {
-        m_orchestrion.GetPlayThread().Post([this, gesture]
-                                           { onGesture(gesture); });
-      });
+      { Post([this, gesture] { onGesture(gesture); }); });
   static_cast<IOrchestrion &>(m_orchestrion)
       .sequencerChanged()
       .onNotify(this, [this] { onSequencerChanged(); });
@@ -57,19 +67,21 @@ void GestureInputConnector::onSequencerChanged()
       this,
       [this]
       {
-        m_orchestrion.GetPlayThread().Post(
-            [this, playing = static_cast<IOrchestrion &>(m_orchestrion)
-                                 .player()
-                                 ->IsPlaying()] { setPlayerPlaying(playing); });
+        Post([this, playing = static_cast<IOrchestrion &>(m_orchestrion)
+                                  .player()
+                                  ->IsPlaying()]
+             { setPlayerPlaying(playing); });
       },
       muse::async::Asyncable::Mode::SetReplace);
-  m_orchestrion.GetPlayThread().Post([this, playing = player->IsPlaying()]
-                                     { reset(playing); });
+  Post([this, playing = player->IsPlaying()] { reset(playing); });
 }
 
 void GestureInputConnector::onGesture(const IGestureInput::Gesture &gesture)
 {
   OrchestrionSequencer *const sequencer = m_orchestrion.PlayThreadSequencer();
+  if (sequencer)
+    // Before it plays it: told in order with what it causes
+    sequencer->ObserveGesture(gesture);
   switch (gesture.kind)
   {
   case IGestureInput::Gesture::Kind::noteOn:

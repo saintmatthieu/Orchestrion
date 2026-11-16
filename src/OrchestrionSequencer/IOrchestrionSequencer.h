@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "GestureControllers/IGestureInput.h"
 #include "OrchestrionTypes.h"
 #include <async/channel.h>
 #include <async/notification.h>
@@ -171,6 +172,12 @@ public:
    */
   virtual muse::async::Channel<int /*tick*/, JumpReason>
   AboutToJumpPosition() const = 0;
+  /**
+   * The performer's gestures (see IGestureInput), each told before what it
+   * causes (transitions, ...): so that a take records where it began, and
+   * when each gesture was made rather than when the main thread heard of it.
+   */
+  virtual muse::async::Channel<IGestureInput::Gesture> Gestures() const = 0;
   virtual void GoToTick(int tick, JumpReason reason) = 0;
   /**
    * Goes past the last event (JumpReason::End), where playing the score

@@ -106,8 +106,18 @@ public:
    * relays them to the main thread.
    */
   void SetOutputObserver(std::function<void(const EventVariant &)>);
+  using MainThreadPoster = std::function<void(std::function<void()>)>;
+  /**
+   * What runs tasks on the main thread for it, in order (recording a chord's
+   * velocity marks the score); none from now on if empty, and the tasks are
+   * dropped. For the SequencerProxy.
+   */
+  void SetMainThreadPoster(MainThreadPoster);
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
+  muse::async::Channel<IGestureInput::Gesture> Gestures() const override;
+  /** Sends Gestures: a gesture it is about to be given. */
+  void ObserveGesture(const IGestureInput::Gesture &);
   void GoToTick(int tick, JumpReason reason) override;
   void GoToEnd() override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
@@ -478,6 +488,7 @@ private:
   muse::async::Channel<AutoPlayEvent> m_handNoteEvent;
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
+  muse::async::Channel<IGestureInput::Gesture> m_gestures;
   int m_autoPlayTick = 0;
 
   /**
@@ -492,6 +503,7 @@ private:
   mu::notation::LoopBoundaries m_loop;
   std::mutex m_outputObserverMutex;
   std::function<void(const EventVariant &)> m_outputObserver;
+  MainThreadPoster m_mainThreadPoster;
   muse::async::Channel<std::shared_ptr<const PositionTracker>> m_tempoChanged;
 
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */

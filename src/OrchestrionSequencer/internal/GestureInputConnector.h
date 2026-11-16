@@ -23,6 +23,8 @@
 #include "async/asyncable.h"
 #include "modularity/ioc.h"
 
+#include <functional>
+#include <memory>
 #include <optional>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
@@ -57,6 +59,11 @@ public:
 private:
   /** On the main thread. */
   void onSequencerChanged();
+  /**
+   * Runs the task on the play thread, unless the connector is gone by then.
+   * From any thread.
+   */
+  void Post(std::function<void()>);
 
   void onGesture(const IGestureInput::Gesture &);
   /** Another sequencer: the foot's state goes to it. */
@@ -71,6 +78,8 @@ private:
    * services read null. Its gestures keep coming until it is gone.
    */
   std::shared_ptr<IGestureInput> m_gestureInput;
+  /** Let go of on the play thread as it is destroyed (see Post). */
+  std::shared_ptr<int> m_alive = std::make_shared<int>(0);
   /** Where the foot has the pedal; empty until a pedal has been used. */
   std::optional<bool> m_sustainDown;
   bool m_footPedalling = false;

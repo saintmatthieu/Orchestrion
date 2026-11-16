@@ -59,6 +59,9 @@ SequencerProxy::SequencerProxy(std::shared_ptr<OrchestrionSequencer> sequencer,
         sequencer.HandNoteEvents().onReceive(
             subscriber, [this](const AutoPlayEvent &event)
             { Relay([this, event] { m_handNoteEvents.send(event); }); });
+        sequencer.Gestures().onReceive(
+            subscriber, [this](const IGestureInput::Gesture &gesture)
+            { Relay([this, gesture] { m_gestures.send(gesture); }); });
         sequencer.WrongNotes().onReceive(
             subscriber, [this](const std::vector<const IChord *> &chords)
             { Relay([this, chords] { m_wrongNotes.send(chords); }); });
@@ -72,6 +75,8 @@ SequencerProxy::SequencerProxy(std::shared_ptr<OrchestrionSequencer> sequencer,
   m_sequencer->SetOutputObserver(
       [this](const EventVariant &event)
       { Relay([this, event] { m_mainThreadOutputEvent.send(event); }); });
+  m_sequencer->SetMainThreadPoster([this](std::function<void()> task)
+                                   { Relay(std::move(task)); });
 
   // The main thread's settings, told to the play thread
   staffModes()->modesChanged().onNotify(this, [this] { PostStaffModes(); });
@@ -116,6 +121,7 @@ SequencerProxy::~SequencerProxy()
   // What was relayed and not run yet goes with m_mainThreadContext.
   m_thread->Wait([this] { m_playThreadSubscriptions.reset(); });
   m_sequencer->SetOutputObserver(nullptr);
+  m_sequencer->SetMainThreadPoster(nullptr);
 }
 
 void SequencerProxy::Post(std::function<void(OrchestrionSequencer &)> task)
@@ -217,6 +223,11 @@ muse::async::Channel<EventVariant> SequencerProxy::OutputEvent() const
 {
   // Sent from the sequencer's note and pedal threads already
   return m_sequencer->OutputEvent();
+}
+
+muse::async::Channel<IGestureInput::Gesture> SequencerProxy::Gestures() const
+{
+  return m_gestures;
 }
 
 muse::async::Channel<EventVariant> SequencerProxy::MainThreadOutputEvent() const

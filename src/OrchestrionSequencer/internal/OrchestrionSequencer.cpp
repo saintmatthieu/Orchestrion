@@ -324,7 +324,13 @@ void OrchestrionSequencer::SendTransitions(
         }
       }
       else if (m_velocityRecordingEnabled)
-        present->SetVelocity(*velocity);
+      {
+        // The score is the main thread's.
+        std::scoped_lock lock{m_outputObserverMutex};
+        if (m_mainThreadPoster)
+          m_mainThreadPoster([present, velocity = *velocity]
+                             { present->SetVelocity(velocity); });
+      }
 
       strike = ScheduleChord(*present);
     }
@@ -403,6 +409,23 @@ void OrchestrionSequencer::SetOutputObserver(
 {
   std::scoped_lock lock{m_outputObserverMutex};
   m_outputObserver = std::move(observer);
+}
+
+muse::async::Channel<IGestureInput::Gesture>
+OrchestrionSequencer::Gestures() const
+{
+  return m_gestures;
+}
+
+void OrchestrionSequencer::ObserveGesture(const IGestureInput::Gesture &gesture)
+{
+  m_gestures.send(gesture);
+}
+
+void OrchestrionSequencer::SetMainThreadPoster(MainThreadPoster poster)
+{
+  std::scoped_lock lock{m_outputObserverMutex};
+  m_mainThreadPoster = std::move(poster);
 }
 
 muse::async::Channel<EventVariant>

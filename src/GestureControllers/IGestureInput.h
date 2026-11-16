@@ -20,6 +20,7 @@
 
 #include "IGestureController.h"
 
+#include <chrono>
 #include <functional>
 #include <modularity/imoduleinterface.h>
 #include <optional>
@@ -56,6 +57,8 @@ public:
     std::optional<float> velocity;
     /** A sustain pedal's. */
     bool down = false;
+    /** When it was made: stamped as it comes in, if not before. */
+    std::chrono::steady_clock::time_point time{};
   };
   using Receiver = std::function<void(const Gesture &)>;
 

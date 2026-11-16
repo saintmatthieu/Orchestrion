@@ -28,6 +28,10 @@ namespace dgk
 {
 GestureInput::~GestureInput()
 {
+  // The producers first: they call Dispatch(), which uses the members
+  // declared after them. The keyboard's controller lets go of the keyboard's
+  // receiver, waiting for a key under way.
+  m_keyboard.reset();
   if (m_inputThread)
     m_inputThread->Wait(
         [this]
@@ -82,8 +86,11 @@ void GestureInput::setReceiver(Receiver receiver)
 
 void GestureInput::send(const Gesture &gesture) { Dispatch(gesture); }
 
-void GestureInput::Dispatch(const Gesture &gesture)
+void GestureInput::Dispatch(const Gesture &received)
 {
+  Gesture gesture = received;
+  if (gesture.time == std::chrono::steady_clock::time_point{})
+    gesture.time = std::chrono::steady_clock::now();
   {
     std::scoped_lock lock{m_receiverMutex};
     if (m_receiver)

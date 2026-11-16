@@ -84,6 +84,7 @@ public:
   muse::async::Channel<EventVariant> MainThreadOutputEvent() const override;
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
+  muse::async::Channel<IGestureInput::Gesture> Gestures() const override;
   void GoToTick(int tick, JumpReason reason) override;
   void GoToEnd() override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
@@ -128,5 +129,6 @@ private:
   muse::async::Channel<std::vector<const IChord *>> m_wrongNotes;
   muse::async::Channel<int, JumpReason> m_aboutToJumpPosition;
   muse::async::Channel<EventVariant> m_mainThreadOutputEvent;
+  muse::async::Channel<IGestureInput::Gesture> m_gestures;
 };
 } // namespace dgk

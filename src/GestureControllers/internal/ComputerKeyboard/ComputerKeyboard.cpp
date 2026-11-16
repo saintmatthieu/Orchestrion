@@ -118,7 +118,12 @@ ComputerKeyboard::ComputerKeyboard()
 {
 }
 
-ComputerKeyboard::~ComputerKeyboard() = default;
+ComputerKeyboard::~ComputerKeyboard()
+{
+  // First: until its thread is joined, it calls onKey(), which uses the
+  // members declared after it.
+  m_raw.reset();
+}
 
 void ComputerKeyboard::preInit()
 {
