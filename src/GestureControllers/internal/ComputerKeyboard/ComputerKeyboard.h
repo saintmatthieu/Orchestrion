@@ -68,7 +68,7 @@ private:
   void setReceiver(Receiver) override;
 
   const std::unique_ptr<ComputerKeyboardImpl> m_impl;
-  /** X11 only: its implementation is Linux's (see preInit). */
+  /** X11 and Windows only (see preInit). */
   std::shared_ptr<RawKeyboard> m_raw;
   std::mutex m_receiverMutex;
   Receiver m_receiver;

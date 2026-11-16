@@ -17,7 +17,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "ComputerKeyboard.h"
-#ifdef Q_OS_LINUX
+#if defined(Q_OS_LINUX) || defined(Q_OS_WIN)
+#define ORCHESTRION_RAW_KEYBOARD
 #include "RawKeyboard.h"
 #endif
 #include <QApplication>
@@ -73,7 +74,7 @@ void ComputerKeyboardImpl::init()
 
 void ComputerKeyboardImpl::updatePlayable()
 {
-#ifdef Q_OS_LINUX
+#ifdef ORCHESTRION_RAW_KEYBOARD
   m_owner.raw()->SetPlayable(QGuiApplication::applicationState() ==
                                  Qt::ApplicationActive &&
                              !keysAreForSomethingElse());
@@ -126,17 +127,19 @@ ComputerKeyboard::~ComputerKeyboard()
 
 void ComputerKeyboard::preInit()
 {
-#ifdef Q_OS_LINUX
+#ifdef ORCHESTRION_RAW_KEYBOARD
   // Not rendering offline, on the offscreen platform: there, all happens on
-  // the main thread, whose clock is virtual.
-  if (QGuiApplication::platformName() == QLatin1String("xcb"))
+  // the main thread, whose clock is virtual. (macOS has no raw keyboard: one
+  // would need the Input Monitoring permission.)
+  const QString platform = QGuiApplication::platformName();
+  if (platform == QLatin1String("xcb") || platform == QLatin1String("windows"))
   {
     m_raw = RawKeyboard::Create([this](char key, bool pressed)
                                 { onKey(key, pressed); });
     if (m_raw)
-      LOGI() << "Keys read from X11's raw events, off the GUI thread";
+      LOGI() << "Keys read from raw input events, off the GUI thread";
     else
-      LOGW() << "No XInput 2.1: keys read from Qt's events";
+      LOGW() << "No raw keyboard input: keys read from Qt's events";
   }
 #endif
   m_impl->init();

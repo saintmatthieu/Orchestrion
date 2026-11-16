@@ -28,10 +28,10 @@ namespace dgk
 /**
  * The computer keyboard's keys, read on a thread of its own rather than from
  * Qt's key events, which come on the main thread, as late as it is busy (see
- * OrchestrionSequencer/threading.md). X11 only: XInput2's raw key events, on
- * a connection of its own. Raw events come in addition to the window's
- * ordinary ones, which Qt still gets; selecting XI_KeyPress on Qt's window
- * instead would take them from it.
+ * OrchestrionSequencer/threading.md). On X11, XInput2's raw key events, on a
+ * connection of its own (RawKeyboard_lin.cpp); on Windows, Raw Input, to a
+ * message-only window of its thread's (RawKeyboard_win.cpp). Raw events come
+ * in addition to the window's ordinary ones, which Qt still gets.
  *
  * Raw events don't say which window they are for: the main thread tells
  * whether keys play (SetPlayable), which a press must be for to count. A
@@ -46,7 +46,7 @@ public:
 
   /**
    * Reads the keys from now on, calling `callback` on its thread; none if
-   * there's no X display with XInput 2.1 (Qt on another platform, ...).
+   * they can't be (no X display with XInput 2.1, ...). Main thread.
    */
   static std::shared_ptr<RawKeyboard> Create(Callback callback);
   ~RawKeyboard();
@@ -58,6 +58,7 @@ public:
   void SetPlayable(bool playable) { m_playable = playable; }
 
 private:
+  /** The platform's: what the thread reads from, and how it's stopped. */
   struct Connection;
   RawKeyboard(std::unique_ptr<Connection>, Callback);
   void Run();
@@ -65,8 +66,6 @@ private:
   const std::unique_ptr<Connection> m_connection;
   const Callback m_callback;
   std::atomic<bool> m_playable = false;
-  /** Written to stop the thread. */
-  int m_stopFd = -1;
   std::thread m_thread;
 };
 } // namespace dgk
