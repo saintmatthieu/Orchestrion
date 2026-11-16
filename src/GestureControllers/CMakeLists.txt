@@ -28,10 +28,16 @@ set(MODULE_LINK muse_audio)
 if (OS_IS_LIN)
   # The keys read off the GUI thread, from X11 (XInput2's raw events)
   list(APPEND MODULE_SRC
-    internal/ComputerKeyboard/RawKeyboard.cpp
+    internal/ComputerKeyboard/RawKeyboard_lin.cpp
     internal/ComputerKeyboard/RawKeyboard.h
   )
   list(APPEND MODULE_LINK X11 Xi)
+elseif (OS_IS_WIN)
+  # The keys read off the GUI thread, from Raw Input
+  list(APPEND MODULE_SRC
+    internal/ComputerKeyboard/RawKeyboard_win.cpp
+    internal/ComputerKeyboard/RawKeyboard.h
+  )
 endif()
 set(MODULE_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 

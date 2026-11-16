@@ -35,9 +35,13 @@ struct RawKeyboard::Connection
 {
   Display *display = nullptr;
   int xinputOpcode = 0;
+  /** Written to stop the thread. */
+  int stopFd = -1;
 
   ~Connection()
   {
+    if (stopFd >= 0)
+      close(stopFd);
     if (display)
       XCloseDisplay(display);
   }
@@ -65,6 +69,7 @@ std::shared_ptr<RawKeyboard> RawKeyboard::Create(Callback callback)
   XISelectEvents(connection->display, DefaultRootWindow(connection->display),
                  &mask, 1);
   XSync(connection->display, False);
+  connection->stopFd = eventfd(0, EFD_CLOEXEC);
   return std::shared_ptr<RawKeyboard>(
       new RawKeyboard(std::move(connection), std::move(callback)));
 }
@@ -72,16 +77,16 @@ std::shared_ptr<RawKeyboard> RawKeyboard::Create(Callback callback)
 RawKeyboard::RawKeyboard(std::unique_ptr<Connection> connection,
                          Callback callback)
     : m_connection{std::move(connection)}, m_callback{std::move(callback)},
-      m_stopFd{eventfd(0, EFD_CLOEXEC)}, m_thread{[this] { Run(); }}
+      m_thread{[this] { Run(); }}
 {
 }
 
 RawKeyboard::~RawKeyboard()
 {
   const uint64_t one = 1;
-  [[maybe_unused]] const auto written = write(m_stopFd, &one, sizeof one);
+  [[maybe_unused]] const auto written =
+      write(m_connection->stopFd, &one, sizeof one);
   m_thread.join();
-  close(m_stopFd);
 }
 
 namespace
@@ -115,7 +120,7 @@ void RawKeyboard::Run()
 {
   Display *const display = m_connection->display;
   pollfd fds[2] = {{ConnectionNumber(display), POLLIN, 0},
-                   {m_stopFd, POLLIN, 0}};
+                   {m_connection->stopFd, POLLIN, 0}};
   while (true)
   {
     if (!XPending(display))

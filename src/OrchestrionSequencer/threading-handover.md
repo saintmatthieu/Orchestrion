@@ -61,7 +61,7 @@ Nothing was compiled on Windows or macOS. Likely spots:
   `Q_OS_LINUX`, and `m_raw` is a `std::shared_ptr<RawKeyboard>` (forward
   declared) so the other platforms needn't define it. `raw()` returns null
   there, and Qt's key path works as before.
-- `GestureControllers/CMakeLists.txt`: `RawKeyboard.cpp` and `X11 Xi` under
+- `GestureControllers/CMakeLists.txt`: `RawKeyboard_lin.cpp` and `X11 Xi` under
   `OS_IS_LIN` only.
 - `OrchestrionSequencer.cpp`: `SetThreadPriority(m_noteThread...)` under
   `OS_IS_WIN` was there before; untouched.
@@ -94,7 +94,10 @@ The callback's contract, as the X11 one keeps it:
 - **The character** comes from the current layout, as Qt would report it.
   With AZERTY, the digit row gives `&é"'...` both ways; keep that consistent.
 
-### Windows: Raw Input
+### Windows: Raw Input — done
+
+`RawKeyboard_win.cpp`, as below; played by hand on Windows. The X11 one is
+now `RawKeyboard_lin.cpp`, its stop fd in its `Connection`.
 
 - A thread with a message-only window (`HWND_MESSAGE`) and
   `RegisterRawInputDevices` for the keyboard (usage page 1, usage 6) with
