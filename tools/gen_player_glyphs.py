@@ -10,9 +10,12 @@ The constants below were measured off the font's lower-case o, which is its
 capital with the swash removed:
 
   - the silhouette is a superellipse of exponent 2.13, a shade squarer than an
-    ellipse, 769 units wide by 728 tall;
+    ellipse;
   - the stress axis stands upright, about 5 degrees off vertical;
   - the contrast is 2.65:1, flank to crown.
+
+The ring's proportions are the italic O's of the app's icon instead: a little
+taller than wide, where the font's o is a little wider (769 by 728 units).
 
 The weights are lighter than the letter's own. A 36 px icon is a small optical
 size and the family ships no light cut to borrow, so the ring is re-cut on the
@@ -60,7 +63,7 @@ BOX = 36.0          # the icon's box, and the size the buttons run at
 CX = CY = BOX / 2
 
 RING_H = 27.0       # the letter's height inside that box
-RING_AR = 769 / 728  # it is a little wider than tall
+RING_AR = 0.945     # wide to tall, as the icon's O: a little taller than wide
 RING_N = 2.13       # superellipse exponent of its silhouette
 AXIS = 5.0          # stress axis, degrees off vertical
 CONTRAST = 2.65     # the font's own thick-to-thin ratio
@@ -448,9 +451,9 @@ def roman_x(h):
 
 def close():
     """The score shelf's way out, as tall as the row it stands in (BOX, as it
-    happens): a bigger letter, at the same pen as the others. Wider than tall
-    like the letter, so it needs a wider box than they do."""
-    width = BOX * RING_AR
+    happens): a bigger letter, at the same pen as the others. Its box is no
+    narrower than tall, nor than the letter."""
+    width = max(BOX, BOX * RING_AR)
     mark_h = MARK_H * 0.9 * BOX / RING_H
     return (f'<g transform="translate({fmt((width - BOX) / 2)},0)">'
             f'{ring(height=BOX)}{roman_x(mark_h)}</g>'), width
