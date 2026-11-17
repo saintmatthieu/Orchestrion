@@ -41,10 +41,11 @@ public:
   using Task = std::function<void()>;
 
   /**
-   * A thread of its own, or, `onMainThread`, the main thread, which must
-   * then be the one creating it.
+   * A thread of its own, which runs `setUp` first (its name, its
+   * priority), or, `onMainThread`, the main thread, which must then be the
+   * one creating it.
    */
-  explicit PlayThread(bool onMainThread = false);
+  explicit PlayThread(bool onMainThread = false, Task setUp = nullptr);
   /**
    * Waits for the task under way, if any; those not run yet are dropped.
    */

@@ -27,6 +27,8 @@
 #include <cctype>
 #include <future>
 
+#include "OrchestrionCommon/TimingThread.h"
+
 namespace dgk
 {
 /**
@@ -97,6 +99,7 @@ bool IsDown(int virtualKey) { return GetAsyncKeyState(virtualKey) & 0x8000; }
 
 void RawKeyboard::Run()
 {
+  SetUpTimingThread("orch-keys");
   Connection &connection = *m_connection;
   // "Message" is the system's class for message-only windows.
   const HWND window = CreateWindowExW(0, L"Message", nullptr, 0, 0, 0, 0, 0,

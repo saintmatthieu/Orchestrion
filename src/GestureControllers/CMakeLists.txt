@@ -41,4 +41,10 @@ elseif (OS_IS_WIN)
 endif()
 set(MODULE_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
+if (OS_IS_LIN)
+  # RealtimeKit, for the threads' priority (OrchestrionCommon/TimingThread.h)
+  find_package(Qt6 REQUIRED COMPONENTS DBus)
+  list(APPEND MODULE_LINK Qt6::DBus)
+endif()
+
 setup_module()

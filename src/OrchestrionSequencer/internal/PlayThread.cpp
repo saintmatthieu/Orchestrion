@@ -50,7 +50,15 @@ public:
 class PlayThread::OwnThread : public PlayThread::Impl
 {
 public:
-  OwnThread() : m_thread{[this] { Run(); }} {}
+  explicit OwnThread(Task setUp)
+      : m_thread{[this, setUp = std::move(setUp)]
+                 {
+                   if (setUp)
+                     setUp();
+                   Run();
+                 }}
+  {
+  }
 
   ~OwnThread() override
   {
@@ -163,10 +171,10 @@ private:
   QObject m_context;
 };
 
-PlayThread::PlayThread(bool onMainThread)
+PlayThread::PlayThread(bool onMainThread, Task setUp)
     : m_impl{onMainThread
                  ? std::unique_ptr<Impl>{std::make_unique<MainThread>()}
-                 : std::make_unique<OwnThread>()}
+                 : std::make_unique<OwnThread>(std::move(setUp))}
 {
 }
 

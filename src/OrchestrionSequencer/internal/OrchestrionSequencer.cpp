@@ -33,9 +33,7 @@
 #include <numeric>
 #include <optional>
 
-#ifdef OS_IS_WIN
-#include <windows.h>
-#endif
+#include "OrchestrionCommon/TimingThread.h" // last: <windows.h>
 
 namespace dgk
 {
@@ -85,13 +83,15 @@ auto GetFinalTick(const std::vector<const VoiceSequencer *> &voices)
 } // namespace
 
 template <typename EventType>
-std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
+std::thread OrchestrionSequencer::MakeThread(const char *name,
+                                             OrchestrionSequencer &self,
                                              ThreadMembers<EventType> &m,
                                              std::function<void(EventType)> cb)
 {
   return std::thread{
-      [&, cb = cb]
+      [&, name, cb = cb]
       {
+        SetUpTimingThread(name);
         std::unique_lock lock{m.mutex};
         while (true)
         {
@@ -179,10 +179,10 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_finalTick{GetFinalTick(m_allVoices)},
       m_pedalSequence{std::move(pedalSequence)},
       m_pedalThread{MakeThread<EventVariant>(
-          *this, m_pedalThreadMembers,
+          "orch-pedal", *this, m_pedalThreadMembers,
           [this](EventVariant event) { QueueOutput(std::move(event)); })},
       m_ornamentThread{MakeThread<OrnamentStepDue>(
-          *this, m_ornamentThreadMembers,
+          "orch-ornament", *this, m_ornamentThreadMembers,
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
       m_notation{projectSession()->masterNotation().get()},
       m_staffModes{staffModes()->mode(0), staffModes()->mode(1)},
@@ -198,7 +198,8 @@ OrchestrionSequencer::OrchestrionSequencer(
 {
   // Before anything is played
   m_outputThread =
-      std::make_unique<PlayThread>(!offlineRendering.audioPath.empty());
+      std::make_unique<PlayThread>(!offlineRendering.audioPath.empty(),
+                                   [] { SetUpTimingThread("orch-output"); });
 
   // Their changes are told by the SequencerProxy.
   m_velocityRecordingEnabled = configuration()->velocityRecordingEnabled();

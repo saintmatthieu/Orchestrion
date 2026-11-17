@@ -29,6 +29,8 @@
 #include <engraving/editing/transaction/undostack.h>
 #include <notation/imasternotation.h>
 
+#include "OrchestrionCommon/TimingThread.h" // last: <windows.h>
+
 namespace dgk
 {
 Orchestrion::~Orchestrion()
@@ -48,7 +50,8 @@ void Orchestrion::init()
   // Rendering offline, time is virtual on the main thread only: the play
   // thread is the main thread.
   m_playThread =
-      std::make_shared<PlayThread>(!offlineRendering.audioPath.empty());
+      std::make_shared<PlayThread>(!offlineRendering.audioPath.empty(),
+                                   [] { SetUpTimingThread("orch-play"); });
 
   // Unrolling repeats only serves the grading visuals (ribbon, beat grid,
   // layout warp), so for now it is not a choice of its own: it follows the

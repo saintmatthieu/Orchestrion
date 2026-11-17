@@ -22,6 +22,8 @@
 #include <chrono>
 #include <future>
 
+#include "OrchestrionCommon/TimingThread.h" // last: <windows.h>
+
 namespace dgk
 {
 InputThread::InputThread() : m_thread{[this] { Run(); }} {}
@@ -60,6 +62,7 @@ void InputThread::Wait(std::function<void()> task)
 
 void InputThread::Run()
 {
+  SetUpTimingThread("orch-midi-in");
   const std::thread::id self = std::this_thread::get_id();
   std::unique_lock lock{m_mutex};
   while (!m_stopping)

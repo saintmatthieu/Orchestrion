@@ -137,6 +137,25 @@ velocities from atomics, the saved one read at construction.
   the keys off it (a `CGEventTap`, an `IOHIDManager`) needs the Input
   Monitoring permission: see What's left.
 
+### Priorities
+
+The threads that time what is played run before the ordinary ones when a core
+is contended: the play, output, pedal and ornament threads, the MIDI input
+thread and the raw keyboard's. Each calls `SetUpTimingThread`
+(`OrchestrionCommon/TimingThread.h`) first thing, which also names it
+(`orch-play`, `orch-output`, ...: see `ps -L -o cls,rtprio,comm`). Not the
+follower thread, whose work grows with the score's length.
+
+- Linux: `SCHED_FIFO` at priority 10, below the audio server's (PipeWire's
+  data loop: 88 by default), set directly if `RLIMIT_RTPRIO` allows; else
+  asked of RealtimeKit over the system bus, which gives `SCHED_RR` and has
+  the kernel stop a thread that runs too long without blocking
+  (`RLIMIT_RTTIME`); else an ordinary thread. The log says which. (`nice`
+  can't be lowered without privilege, and MuseScore's `setThreadPriority` is
+  a no-op under `SCHED_OTHER`.)
+- Windows: `THREAD_PRIORITY_ABOVE_NORMAL`.
+- macOS: the user-interactive quality of service.
+
 ### Lifetime
 
 The sequencer is created on the main thread, which reads the score, and handed
@@ -179,18 +198,8 @@ Break one and it deadlocks, races, or renders differ from one run to the next.
 
 ## What's left
 
-- **Thread priorities.** The play, output, ornament and pedal threads, the
-  input thread and the raw keyboard's, above normal; not the follower thread,
-  whose work grows with the score's length. `PlayThread` needs a way to set
-  its own.
-  - Linux: `SCHED_FIFO` at a low priority (~10, below PipeWire's 88), asked
-    for directly (an `audio` group member's `RLIMIT_RTPRIO`) or through
-    rtkit, staying at normal priority otherwise. `nice` can't be lowered
-    without privilege, and MuseScore's `setThreadPriority` is a no-op under
-    `SCHED_OTHER`.
-  - Windows: `THREAD_PRIORITY_ABOVE_NORMAL`, maybe MMCSS for the play thread.
-  - macOS: `pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0)`,
-    called by each thread itself.
+- **Thread priorities on Windows and macOS** are written, not measured: see
+  whether above-normal is enough on Windows (else MMCSS for the play thread).
 - **The macOS keyboard** off the main thread needs the Input Monitoring
   permission (a system prompt, granted in System Settings). Measure first
   how much the main thread waits there (Metal, no XWayland throttling); if it

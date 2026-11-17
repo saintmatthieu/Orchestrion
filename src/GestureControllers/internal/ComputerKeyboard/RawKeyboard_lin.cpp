@@ -18,6 +18,9 @@
  */
 #include "RawKeyboard.h"
 
+// Before X11's headers, whose macros break Qt's
+#include "OrchestrionCommon/TimingThread.h"
+
 #include <X11/XKBlib.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
@@ -119,6 +122,7 @@ char KeyOf(Display *display, unsigned keycode, const XkbStateRec &state)
 
 void RawKeyboard::Run()
 {
+  SetUpTimingThread("orch-keys");
   Display *const display = m_connection->display;
   pollfd fds[2] = {{ConnectionNumber(display), POLLIN, 0},
                    {m_connection->stopFd, POLLIN, 0}};

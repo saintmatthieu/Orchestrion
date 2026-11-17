@@ -271,7 +271,7 @@ private:
   };
 
   template <typename EventType>
-  static std::thread MakeThread(OrchestrionSequencer &self,
+  static std::thread MakeThread(const char *name, OrchestrionSequencer &self,
                                 ThreadMembers<EventType> &members,
                                 std::function<void(EventType)> cb);
 
