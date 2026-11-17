@@ -62,8 +62,9 @@ OrchestrionSynthesizerWrapper::OrchestrionSynthesizerWrapper(
 void OrchestrionSynthesizerWrapper::setupCallback(
     const IOrchestrionSequencer &sequencer)
 {
-  sequencer.OutputEvent().onReceive(this, [this](EventVariant event)
-                                    { processEvent(event); }, Asyncable::Mode::SetReplace);
+  sequencer.OutputEvent().onReceive(
+      this, [this](EventVariant event) { processEvent(event); },
+      Asyncable::Mode::SetReplace);
 }
 
 void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
@@ -92,6 +93,9 @@ void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
     const auto &pedalEvent = std::get<PedalEvent>(event);
     m_synthesizer->onPedal(pedalEvent.on);
   }
+  else if (std::holds_alternative<AllNotesOffEvent>(event))
+    // A jump
+    m_synthesizer->allNotesOff();
 }
 
 void OrchestrionSynthesizerWrapper::sendNoteoffs(const NoteEvent *noteoffs,
@@ -177,8 +181,9 @@ void OrchestrionSynthesizerWrapper::setOutputSpec(
   if (!m_synthesizer || sampleRateChanged)
   {
     m_synthesizer = m_synthFactory(spec);
-    LOGI() << "Orchestrion synthesizer " << (m_synthesizer ? "created" : "not available")
-           << " (sample rate " << spec.sampleRate << ")";
+    LOGI() << "Orchestrion synthesizer "
+           << (m_synthesizer ? "created" : "not available") << " (sample rate "
+           << spec.sampleRate << ")";
   }
 }
 
@@ -207,7 +212,8 @@ OrchestrionSynthesizerWrapper::paramsChanged() const
   return m_paramsChanged;
 }
 
-muse::audio::TimePosition OrchestrionSynthesizerWrapper::playbackPosition() const
+muse::audio::TimePosition
+OrchestrionSynthesizerWrapper::playbackPosition() const
 {
   return m_playbackPosition;
 }

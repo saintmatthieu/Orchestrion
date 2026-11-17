@@ -70,14 +70,14 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
       auto keyEvent = static_cast<const QKeyEvent *>(event);
       if (keyEvent->isAutoRepeat())
         return false;
-      m_owner.onKeyPressed(keyEvent->key());
+      m_owner.onKey(keyEvent->key(), true);
     }
     else if (event->type() == QEvent::KeyRelease)
     {
       auto keyEvent = static_cast<const QKeyEvent *>(event);
       if (keyEvent->isAutoRepeat())
         return false;
-      m_owner.onKeyReleased(keyEvent->key());
+      m_owner.onKey(keyEvent->key(), false);
     }
   }
   return QObject::eventFilter(watched, event);
@@ -90,11 +90,20 @@ ComputerKeyboard::ComputerKeyboard()
 
 void ComputerKeyboard::preInit() { m_impl->init(); }
 
-void ComputerKeyboard::onKeyPressed(char letter) { m_keyPressed.send(letter); }
-
-void ComputerKeyboard::onKeyReleased(char letter)
+void ComputerKeyboard::onKey(char letter, bool pressed)
 {
-  m_keyReleased.send(letter);
+  {
+    std::scoped_lock lock{m_receiverMutex};
+    if (m_receiver)
+      m_receiver(letter, pressed);
+  }
+  (pressed ? m_keyPressed : m_keyReleased).send(letter);
+}
+
+void ComputerKeyboard::setReceiver(Receiver receiver)
+{
+  std::scoped_lock lock{m_receiverMutex};
+  m_receiver = std::move(receiver);
 }
 
 muse::async::Channel<char> ComputerKeyboard::keyPressed() const

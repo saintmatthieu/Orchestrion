@@ -36,7 +36,12 @@ class IChord : public IMelodySegment
 public:
   virtual ~IChord() = default;
   virtual std::vector<int> GetPitches() const = 0;
+  /** Any thread: the sequencer's reads it. */
   virtual float GetVelocity() const = 0;
+  /**
+   * On the main thread: it marks the score's notes as modified (see
+   * IModifiableItem).
+   */
   virtual void SetVelocity(float) = 0;
 
   //! The playback velocity (0..1) implied by the score's dynamic markings

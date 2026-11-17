@@ -21,16 +21,14 @@
 #include "IOrchestrionSequencer.h"
 #include "IOrchestrionSequencerConfiguration.h"
 #include "IStaffModes.h"
-#include "OrchestrionNotation/IOrchestrionNotationInteractionProcessor.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/FollowerThread.h"
 #include "internal/OrnamentSchedule.h"
+#include "internal/PlayThread.h"
 #include "internal/ScoreEvents.h"
 #include "internal/VoiceSequencer.h"
 
-#include <actions/actionable.h>
-#include <actions/iactionsdispatcher.h>
 #include <array>
 #include <async/asyncable.h>
 #include <chrono>
@@ -42,6 +40,7 @@
 #include <modularity/ioc.h>
 #include <mutex>
 #include <notation/imasternotation.h>
+#include <notation/types/loopboundaries.h>
 #include <project/iprojectsession.h>
 #include <random>
 #include <thread>
@@ -51,19 +50,25 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
+/**
+ * Plays the score: lives on the play thread (see ../threading.md), but for
+ * its construction and destruction, on the main thread, and for what says
+ * so. The main thread uses it through a SequencerProxy, which tells it of
+ * the settings it reads (staff modes, loop, ...) when they change.
+ */
 class OrchestrionSequencer : public IOrchestrionSequencer,
                              public dgk::Injectable,
-                             public muse::async::Asyncable,
-                             public muse::actions::Actionable
+                             public muse::async::Asyncable
 {
+  // Read once, on the main thread, as it is constructed
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
-  dgk::Inject<muse::actions::IActionsDispatcher> dispatcher{this};
-  dgk::Inject<IOrchestrionNotationInteractionProcessor> interactionProcessor{
-      this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
   dgk::Inject<IStaffModes> staffModes{this};
 
 public:
+  /** The staff modes, right hand first. */
+  using Modes = std::array<StaffMode, 2>;
+
   using HandVoices = std::vector<std::unique_ptr<VoiceSequencer>>;
 
   /**
@@ -71,7 +76,7 @@ public:
    * by staff — right hand first — (see GetScoreEvents), at first at
    * `nominalTicksPerMs`.
    */
-  OrchestrionSequencer(InstrumentIndex, HandVoices rightHand,
+  OrchestrionSequencer(PlayThread &, InstrumentIndex, HandVoices rightHand,
                        HandVoices leftHand, PedalSequence,
                        std::array<std::vector<ScoreEvent>, 2> staffEvents,
                        std::array<std::vector<ScoreNote>, 2> staffNotes,
@@ -86,16 +91,35 @@ public:
   void SetFootPedalling(bool) override;
   void AllNotesOff() override;
 
-  const std::map<TrackIndex, ChordTransition> &
-  GetCurrentTransitions() const override;
+  std::map<TrackIndex, ChordTransition> GetCurrentTransitions() const override;
   std::vector<TrackIndex> GetAllVoices() const override;
   const IChord *GetNextChord(TrackIndex) const override;
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
   muse::async::Channel<EventVariant> OutputEvent() const override;
+  /** OutputEvent: it is the SequencerProxy's to relay it. */
+  muse::async::Channel<EventVariant> MainThreadOutputEvent() const override;
+  /**
+   * Told of each OutputEvent, on the thread that sends it (the sequencer's
+   * own threads); none from now on if empty. For the SequencerProxy, which
+   * relays them to the main thread.
+   */
+  void SetOutputObserver(std::function<void(const EventVariant &)>);
+  using MainThreadPoster = std::function<void(std::function<void()>)>;
+  /**
+   * What runs tasks on the main thread for it, in order (recording a chord's
+   * velocity marks the score); none from now on if empty, and the tasks are
+   * dropped. For the SequencerProxy.
+   */
+  void SetMainThreadPoster(MainThreadPoster);
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
+  muse::async::Channel<IGestureInput::Gesture> Gestures() const override;
+  /** Now: it tells as things happen. */
+  std::chrono::steady_clock::time_point EventTime() const override;
+  /** Sends Gestures: a gesture it is about to be given. */
+  void ObserveGesture(const IGestureInput::Gesture &);
   void GoToTick(int tick, JumpReason reason) override;
   void GoToEnd() override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
@@ -104,6 +128,35 @@ public:
   void GoToNextNoteonTick() override;
   std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
   KeyRole RoleOfKey(int pitch) const override;
+
+  /**
+   * What a key plays (see RoleOfKey) with the staves in these modes. Reads
+   * nothing that changes: callable from any thread.
+   */
+  KeyRole RoleOfKey(const Modes &, int pitch) const;
+  /** The notation it plays. Any thread. */
+  const mu::notation::IMasterNotation *Notation() const { return m_notation; }
+  /** The time its tempo estimate goes by, in ms. Any thread. */
+  double NowMs() const;
+  /** A staff's mode (0: right hand, 1: left), as last told. */
+  StaffMode ModeOf(int staff) const { return m_staffModes[staff]; }
+
+  /**
+   * The settings of the main thread's that it reads, copied when they
+   * change. SetStaffModes moves the hands as a change of modes does.
+   */
+  void SetStaffModes(const Modes &);
+  void SetLoopBoundaries(const mu::notation::LoopBoundaries &);
+  void SetVelocityRecordingEnabled(bool);
+  void SetOrnamentsEnabled(bool);
+
+  /**
+   * The tempo estimate (see PerformedTempoNow), sent whenever an onset, a
+   * jump or a stop changes it — not as it glides between them. A copy (a
+   * channel's payload must be assignable, which a PositionTracker isn't).
+   */
+  muse::async::Channel<std::shared_ptr<const PositionTracker>>
+  TempoChanged() const;
 
 private:
   struct Hand
@@ -361,7 +414,33 @@ private:
                                 OrnamentStepDue);
   /** Silences and forgets every track's schedule: a jump. */
   void CancelOrnaments();
-  double NowMs() const;
+  /** Sends TempoChanged. */
+  void PublishTempo();
+  /**
+   * Output thread: sends OutputEvent, and tells the observer. The only
+   * sender of OutputEvent, so that what is sent stays in order (see
+   * QueueOutput).
+   */
+  void SendOutput(EventVariant);
+  /** Output thread: sends what is queued and due. */
+  void SendDueOutput();
+  /**
+   * Queues the events for the output thread to send when due (now if not
+   * given: before those timed), in order of due time, after those due at the
+   * same time: the
+   * other threads' output goes through it, so that a jump's cut comes after
+   * all that was sent before and before all that is sent after it.
+   */
+  void QueueOutput(std::vector<QueueEntry<EventVariant>>);
+  void QueueOutput(EventVariant);
+  /**
+   * A jump: what is queued for the output thread and not sent yet is dropped,
+   * and the synthesizers cut what sounds (AllNotesOffEvent).
+   */
+  void CutOutput();
+  bool HandIn(const Modes &, bool isLeftHand, StaffMode) const;
+  bool IsNotesKey(const Modes &, int pitch) const;
+  std::optional<bool> PerformerHand(const Modes &, int pitch) const;
 
   const InstrumentIndex m_instrument;
 
@@ -383,7 +462,13 @@ private:
   //! press still pending, held back until the press so that the pedal catches
   //! them.
   ThreadMembers<EventVariant> m_pedalThreadMembers;
-  ThreadMembers<NoteEvent> m_noteThreadMembers;
+  /** What the output thread is to send, sorted by due time (QueueOutput). */
+  struct OutputQueue
+  {
+    std::deque<QueueEntry<EventVariant>> queue;
+    std::mutex mutex;
+  };
+  OutputQueue m_output;
   //! Its queue is kept sorted by due time. Its mutex also guards m_tracks
   //! and m_ornamentGeneration.
   ThreadMembers<OrnamentStepDue> m_ornamentThreadMembers;
@@ -392,8 +477,13 @@ private:
   std::map<TrackIndex, TrackSchedule> m_tracks;
   unsigned m_ornamentGeneration = 0;
   std::thread m_pedalThread;
-  std::thread m_noteThread;
   std::thread m_ornamentThread;
+  /**
+   * Sends OutputEvent (SendDueOutput). Rendering offline, the main thread,
+   * on its virtual clock, as the play thread is: what sounds when stays the
+   * same from one render to the next.
+   */
+  std::unique_ptr<PlayThread> m_outputThread;
   const std::chrono::steady_clock::time_point m_epoch =
       std::chrono::steady_clock::now();
 
@@ -431,6 +521,7 @@ private:
   muse::async::Channel<AutoPlayEvent> m_handNoteEvent;
   muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
+  muse::async::Channel<IGestureInput::Gesture> m_gestures;
   int m_autoPlayTick = 0;
 
   /**
@@ -438,7 +529,15 @@ private:
    * found in: the staff modes notify of another score's, too.
    */
   const mu::notation::IMasterNotation *const m_notation;
-  std::array<StaffMode, 2> m_modes; // [0]=right, [1]=left
+  /** The staff modes, as last told (see SetStaffModes). */
+  Modes m_staffModes;
+  /** Those the hands were last moved for (see OnStaffModesChanged). */
+  Modes m_modes;
+  mu::notation::LoopBoundaries m_loop;
+  std::mutex m_outputObserverMutex;
+  std::function<void(const EventVariant &)> m_outputObserver;
+  MainThreadPoster m_mainThreadPoster;
+  muse::async::Channel<std::shared_ptr<const PositionTracker>> m_tempoChanged;
 
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
   const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;

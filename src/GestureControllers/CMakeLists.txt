@@ -11,6 +11,8 @@ set(MODULE_SRC
 
     internal/GestureInput.cpp
     internal/GestureInput.h
+    internal/InputThread.cpp
+    internal/InputThread.h
 
     GestureControllersModule.cpp
     GestureControllersModule.h

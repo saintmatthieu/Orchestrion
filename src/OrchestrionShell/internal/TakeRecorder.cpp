@@ -19,6 +19,8 @@
 #include "TakeRecorder.h"
 #include "OrchestrionSequencer/IChord.h"
 
+#include <algorithm>
+
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/measure.h>
 #include <notation/imasternotation.h>
@@ -29,33 +31,6 @@ namespace dgk
 {
 void TakeRecorder::init()
 {
-  gestureInput()->noteOn().onReceive(
-      this,
-      [this](int pitch, std::optional<float> velocity)
-      {
-        Take::Event e;
-        e.kind = Take::Event::Kind::noteOn;
-        e.pitch = pitch;
-        e.velocity = velocity;
-        Add(e);
-      });
-  gestureInput()->noteOff().onReceive(this,
-                                      [this](int pitch)
-                                      {
-                                        Take::Event e;
-                                        e.kind = Take::Event::Kind::noteOff;
-                                        e.pitch = pitch;
-                                        Add(e);
-                                      });
-  gestureInput()->sustainPedal().onReceive(
-      this,
-      [this](bool down)
-      {
-        Take::Event e;
-        e.kind = Take::Event::Kind::sustainPedal;
-        e.pedalDown = down;
-        Add(e);
-      });
   orchestrion()->sequencerChanged().onNotify(this,
                                              [this] { OnSequencerChanged(); });
   sequencerConfiguration()->ornamentModeChanged().onNotify(
@@ -72,6 +47,34 @@ void TakeRecorder::OnSequencerChanged()
   const auto sequencer = orchestrion()->sequencer();
   if (!sequencer)
     return;
+  // In order with what they cause: the take begins at the chord the first
+  // one strikes, and each is timed when it was made.
+  sequencer->Gestures().onReceive(
+      this,
+      [this](const IGestureInput::Gesture &gesture)
+      {
+        if (gesture.replayed)
+          return;
+        Take::Event e;
+        switch (gesture.kind)
+        {
+        case IGestureInput::Gesture::Kind::noteOn:
+          e.kind = Take::Event::Kind::noteOn;
+          e.pitch = gesture.pitch;
+          e.velocity = gesture.velocity;
+          break;
+        case IGestureInput::Gesture::Kind::noteOff:
+          e.kind = Take::Event::Kind::noteOff;
+          e.pitch = gesture.pitch;
+          break;
+        case IGestureInput::Gesture::Kind::sustainPedal:
+          e.kind = Take::Event::Kind::sustainPedal;
+          e.pedalDown = gesture.down;
+          break;
+        }
+        Add(e, gesture.time);
+      },
+      muse::async::Asyncable::Mode::SetReplace);
   // Every jump ends the take: those the performer makes, and the realigning
   // a change of the staff modes makes. A loop's wrap and the score's end are
   // part of the playing.
@@ -93,7 +96,7 @@ void TakeRecorder::OnSequencerChanged()
                      : Take::Event::Kind::playbackStopped;
         // Playback alone is no take: only within one already under way.
         if (m_take)
-          Add(e);
+          Add(e, std::chrono::steady_clock::now());
       },
       muse::async::Asyncable::Mode::SetReplace);
 }
@@ -141,7 +144,8 @@ void TakeRecorder::EndTake(std::optional<int> tick)
   m_nextStartTick = tick;
 }
 
-void TakeRecorder::Add(Take::Event e)
+void TakeRecorder::Add(Take::Event e,
+                       std::chrono::steady_clock::time_point time)
 {
   if (!Recording())
     return;
@@ -167,10 +171,15 @@ void TakeRecorder::Add(Take::Event e)
       take.loopOutTick = loop.loopOutTick.ticks();
     }
     m_take = std::move(take);
-    m_clock.start();
+    m_takeStart = time;
   }
-  e.ms = static_cast<double>(m_clock.nsecsElapsed()) / 1e6;
-  m_take->events.push_back(e);
+  e.ms = std::chrono::duration<double, std::milli>(time - m_takeStart).count();
+  // In time order: a gesture is heard of later than playback's start or stop
+  // made after it (see IOrchestrionSequencer::Gestures).
+  const auto pos = std::upper_bound(
+      m_take->events.begin(), m_take->events.end(), e.ms,
+      [](double ms, const Take::Event &event) { return ms < event.ms; });
+  m_take->events.insert(pos, e);
 }
 
 std::optional<int> TakeRecorder::NextChordTick() const

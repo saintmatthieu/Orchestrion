@@ -18,14 +18,24 @@
  */
 #include "ComputerKeyboardGestureController.h"
 
+#include <algorithm>
+#include <cctype>
+
 namespace dgk
 {
-ComputerKeyboardGestureController::ComputerKeyboardGestureController()
+ComputerKeyboardGestureController::ComputerKeyboardGestureController(
+    Dispatch dispatch)
+    : m_keyboard{keyboard()}, m_dispatch{std::move(dispatch)}
 {
-  keyboard()->keyPressed().onReceive(this, [this](char letter)
-                                     { keyPressed(letter); });
-  keyboard()->keyReleased().onReceive(this, [this](char letter)
-                                      { keyReleased(letter); });
+  m_keyboard->setReceiver(
+      [this](char letter, bool pressed)
+      { pressed ? keyPressed(letter) : keyReleased(letter); });
+}
+
+ComputerKeyboardGestureController::~ComputerKeyboardGestureController()
+{
+  // The keys keep coming until the keyboard is gone.
+  m_keyboard->setReceiver(nullptr);
 }
 
 void ComputerKeyboardGestureController::keyPressed(char letter)
@@ -37,13 +47,15 @@ void ComputerKeyboardGestureController::keyPressed(char letter)
                    { return note.first == letter; }) == m_noteMap.end())
     return;
 
-  if (m_pressedLetters.count(letter) > 0)
-    // An auto-repeat event probably, the user keeping the finger pressed on
-    // a key.
-    return;
-
-  m_pressedLetters.insert(letter);
-  m_noteOn.send(m_noteMap.at(letter), std::optional<float>{});
+  {
+    std::scoped_lock lock{m_mutex};
+    if (!m_pressedLetters.insert(letter).second)
+      // An auto-repeat event probably, the user keeping the finger pressed on
+      // a key.
+      return;
+  }
+  m_dispatch({IGestureInput::Gesture::Kind::noteOn, m_noteMap.at(letter),
+              std::nullopt, false});
 }
 
 void ComputerKeyboardGestureController::keyReleased(char letter)
@@ -55,24 +67,11 @@ void ComputerKeyboardGestureController::keyReleased(char letter)
                    { return note.first == letter; }) == m_noteMap.end())
     return;
 
-  m_pressedLetters.erase(letter);
-  m_noteOff.send(m_noteMap.at(letter));
-}
-
-muse::async::Channel<int, std::optional<float>>
-ComputerKeyboardGestureController::noteOn() const
-{
-  return m_noteOn;
-}
-
-muse::async::Channel<int> ComputerKeyboardGestureController::noteOff() const
-{
-  return m_noteOff;
-}
-
-muse::async::Channel<bool>
-ComputerKeyboardGestureController::sustainPedal() const
-{
-  return m_sustainPedal;
+  {
+    std::scoped_lock lock{m_mutex};
+    m_pressedLetters.erase(letter);
+  }
+  m_dispatch({IGestureInput::Gesture::Kind::noteOff, m_noteMap.at(letter),
+              std::nullopt, false});
 }
 } // namespace dgk

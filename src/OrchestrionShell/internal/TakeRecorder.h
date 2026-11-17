@@ -25,8 +25,8 @@
 #include "OrchestrionSequencer/IStaffModes.h"
 #include "Take.h"
 
-#include <QElapsedTimer>
 #include <async/asyncable.h>
+#include <chrono>
 #include <optional>
 #include <project/iprojectsession.h>
 #include <vector>
@@ -43,7 +43,6 @@ namespace dgk
  */
 class TakeRecorder : public muse::async::Asyncable, public dgk::Injectable
 {
-  dgk::Inject<IGestureInput> gestureInput{this};
   dgk::Inject<IOrchestrion> orchestrion{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfiguration{this};
   dgk::Inject<IStaffModes> staffModes{this};
@@ -63,7 +62,8 @@ private:
   bool Recording() const;
   /** The take under way, if any, ends; the next starts at `tick`. */
   void EndTake(std::optional<int> tick);
-  void Add(Take::Event);
+  /** `time`: when it happened, on the steady clock. */
+  void Add(Take::Event, std::chrono::steady_clock::time_point time);
   void OnSequencerChanged();
   void OnNotationChanged();
   /** Where the hands strike next: the earliest of the voices' next chords. */
@@ -74,7 +74,8 @@ private:
   std::optional<Take> m_take;
   /** Where the next take starts, if known otherwise than from the hands. */
   std::optional<int> m_nextStartTick;
-  QElapsedTimer m_clock;
+  /** When the take's first event happened. */
+  std::chrono::steady_clock::time_point m_takeStart;
   bool m_paused = false;
 };
 } // namespace dgk

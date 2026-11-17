@@ -18,22 +18,64 @@
  */
 #pragma once
 
-#include "IGestureController.h"
-
+#include <chrono>
+#include <functional>
 #include <modularity/imoduleinterface.h>
+#include <optional>
 
 namespace dgk
 {
-//! The note events of every gesture controller, merged into one stream: the
+//! The gestures of every gesture controller, merged into one stream: the
 //! computer keyboard, always, and the MIDI device chosen in the Audio/MIDI
 //! menu, whenever one is connected. There is nothing to select — whatever can
 //! produce notes does. The same goes for the sustain pedal plugged into the
 //! MIDI keyboard, if any.
-class IGestureInput : public IGestureController, MODULE_GLOBAL_EXPORT_INTERFACE
+//!
+//! The MIDI device's come from a thread of its own (see InputThread), the
+//! computer keyboard's from the main thread.
+class IGestureInput : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IGestureInput);
 
 public:
   virtual ~IGestureInput() = default;
+
+  /** A gesture, as the channels tell it. */
+  struct Gesture
+  {
+    enum class Kind
+    {
+      noteOn,
+      noteOff,
+      sustainPedal,
+    };
+    Kind kind = Kind::noteOn;
+    int pitch = 0;
+    /** A note-on's, if the controller measures it. */
+    std::optional<float> velocity;
+    /** A sustain pedal's. */
+    bool down = false;
+    /** When it was made: stamped as it comes in, if not before. */
+    std::chrono::steady_clock::time_point time{};
+    /**
+     * Not the performer's but a recorded take's, replayed (see send): no
+     * new take.
+     */
+    bool replayed = false;
+  };
+  using Receiver = std::function<void(const Gesture &)>;
+
+  /**
+   * Told of every gesture, on the thread it comes from, which needn't be the
+   * main thread: for the sequencer, which takes
+   * them on a thread of its own. Must be quick, and safe from any thread.
+   */
+  virtual void setReceiver(Receiver) = 0;
+
+  /**
+   * A gesture from elsewhere (a take's replay), as if a controller had made
+   * it. From the main thread.
+   */
+  virtual void send(const Gesture &) = 0;
 };
 } // namespace dgk

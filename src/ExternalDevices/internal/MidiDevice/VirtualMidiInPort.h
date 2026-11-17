@@ -23,6 +23,7 @@
 #include <async/asyncable.h>
 #include <midi/imidiinport.h>
 
+#include <atomic>
 #include <memory>
 
 namespace dgk
@@ -64,9 +65,9 @@ private:
   void send(unsigned char status, unsigned char data1, unsigned char data2);
 
   const std::shared_ptr<muse::midi::IMidiInPort> m_port;
-  bool m_inUse = false;
+  /** Read from the gesture input's thread too. */
+  std::atomic<bool> m_inUse = false;
   muse::async::Notification m_deviceChanged;
   muse::async::Notification m_inUseChanged;
-  muse::async::Channel<muse::midi::tick_t, muse::midi::Event> m_eventReceived;
 };
 } // namespace dgk

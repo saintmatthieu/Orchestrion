@@ -411,6 +411,8 @@ MuseChord::MuseChord(const me::Segment &segment, TrackIndex track,
                            return chord ? SoundingFraction(*chord) : 1.0;
                          }()}
 {
+  if (const auto notes = GetNotes(); !notes.empty())
+    m_savedVelocity = static_cast<float>(notes.front()->userVelocity()) / 127.f;
 }
 
 std::vector<const me::Chord *> MuseChord::GetGatheredChords() const
@@ -432,12 +434,8 @@ dgk::Tick MuseChord::GetEndTick() const
 
 float MuseChord::GetVelocity() const
 {
-  if (m_unsavedVelocity.has_value())
-    return *m_unsavedVelocity;
-  const auto notes = GetNotes();
-  if (notes.empty())
-    return 0.f;
-  return static_cast<float>(notes.front()->userVelocity()) / 127.f;
+  const float unsaved = m_unsavedVelocity;
+  return unsaved != noVelocity ? unsaved : m_savedVelocity.load();
 }
 
 std::optional<float> MuseChord::GetDynamicVelocity() const
@@ -461,8 +459,7 @@ const me::Chord *MuseChord::GetEngravingChord() const
 
 void MuseChord::SetVelocity(float velocity)
 {
-  const auto wasModified = m_unsavedVelocity.has_value();
-  m_unsavedVelocity = velocity;
+  const auto wasModified = m_unsavedVelocity.exchange(velocity) != noVelocity;
   if (!wasModified)
     SetModified();
 }
@@ -475,12 +472,13 @@ void MuseChord::Save()
 
   ResetNoteColors(notes);
 
-  if (m_unsavedVelocity.has_value())
+  if (const float unsaved = m_unsavedVelocity; unsaved != noVelocity)
   {
-    const auto midiVelocity = static_cast<int>(*m_unsavedVelocity * 127);
+    const auto midiVelocity = static_cast<int>(unsaved * 127);
     for (const auto note : notes)
       note->setUserVelocity(midiVelocity);
-    m_unsavedVelocity.reset();
+    m_savedVelocity = static_cast<float>(midiVelocity) / 127.f;
+    m_unsavedVelocity = noVelocity;
   }
 }
 
@@ -496,14 +494,14 @@ void MuseChord::SetModified()
   m_modifiedChanged.notify();
 }
 
-bool MuseChord::Modified() const { return m_unsavedVelocity.has_value(); }
+bool MuseChord::Modified() const { return m_unsavedVelocity != noVelocity; }
 
 void MuseChord::RevertChanges()
 {
   if (!Modified())
     return;
   ResetNoteColors(GetNotes());
-  m_unsavedVelocity.reset();
+  m_unsavedVelocity = noVelocity;
 }
 
 void MuseChord::ResetNoteColors(const std::vector<mu::engraving::Note *> &notes)

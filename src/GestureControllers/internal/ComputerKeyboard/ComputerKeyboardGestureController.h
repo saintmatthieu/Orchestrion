@@ -19,43 +19,47 @@
 #pragma once
 
 #include "IComputerKeyboard.h"
-#include "IGestureController.h"
-#include <async/asyncable.h>
+#include "IGestureInput.h"
+#include <functional>
 #include <memory>
 #include <modularity/ioc.h>
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
-class ComputerKeyboardGestureController : public IGestureController,
-                                          public dgk::Injectable,
-                                          public muse::async::Asyncable
+/**
+ * The number keys' gestures, told to `dispatch` on the thread the keys come
+ * from (see IComputerKeyboard).
+ */
+class ComputerKeyboardGestureController : public dgk::Injectable
 {
 public:
-  ComputerKeyboardGestureController();
+  using Dispatch = std::function<void(const IGestureInput::Gesture &)>;
+  explicit ComputerKeyboardGestureController(Dispatch);
+  ~ComputerKeyboardGestureController();
 
 private:
   void keyPressed(char);
   void keyReleased(char);
 
-  muse::async::Channel<int, std::optional<float>> noteOn() const override;
-  muse::async::Channel<int> noteOff() const override;
-  muse::async::Channel<bool> sustainPedal() const override;
-
   dgk::Inject<IComputerKeyboard> keyboard{this};
 
+  /**
+   * Kept to let go of it as it is destroyed: by then, quitting, the injected
+   * services read null.
+   */
+  const std::shared_ptr<IComputerKeyboard> m_keyboard;
+  const Dispatch m_dispatch;
+  /** Keys may come from another thread than the main one. */
+  std::mutex m_mutex;
   std::unordered_set<char> m_pressedLetters;
   const std::unordered_map<char, int> m_noteMap{
       {'1', 0},  {'2', 1},  {'3', 3},  {'4', 4},  {'5', 5},
       {'6', 60}, {'7', 61}, {'8', 62}, {'9', 63}, {'0', 64},
   };
-
-  muse::async::Channel<int, std::optional<float>> m_noteOn;
-  muse::async::Channel<int> m_noteOff;
-  /** Never sent: the computer keyboard has no pedal. */
-  muse::async::Channel<bool> m_sustainPedal;
 };
 
 } // namespace dgk

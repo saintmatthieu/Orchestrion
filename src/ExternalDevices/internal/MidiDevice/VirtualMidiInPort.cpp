@@ -49,13 +49,6 @@ VirtualMidiInPort::VirtualMidiInPort(
                                        setInUse(false);
                                      m_deviceChanged.notify();
                                    });
-  m_port->eventReceived().onReceive(
-      this,
-      [this](muse::midi::tick_t tick, const muse::midi::Event &event)
-      {
-        if (!m_inUse)
-          m_eventReceived.send(tick, event);
-      });
 }
 
 muse::midi::MidiDeviceList VirtualMidiInPort::availableDevices() const
@@ -119,7 +112,10 @@ muse::async::Notification VirtualMidiInPort::deviceChanged() const
 muse::async::Channel<muse::midi::tick_t, muse::midi::Event>
 VirtualMidiInPort::eventReceived() const
 {
-  return m_eventReceived;
+  // The device's own: its events reach each subscriber from the MIDI input's
+  // thread, not through the main thread. The virtual keyboard's are sent on
+  // it too, from the main thread; the device is disconnected meanwhile.
+  return m_port->eventReceived();
 }
 
 std::string VirtualMidiInPort::deviceId() const { return virtualDeviceId; }
@@ -162,6 +158,6 @@ void VirtualMidiInPort::send(unsigned char status, unsigned char data1,
   if (!m_inUse)
     return;
   const unsigned char bytes[] = {status, data1, data2};
-  m_eventReceived.send(0, muse::midi::Event::fromMidi10Bytes(bytes, 3));
+  m_port->eventReceived().send(0, muse::midi::Event::fromMidi10Bytes(bytes, 3));
 }
 } // namespace dgk

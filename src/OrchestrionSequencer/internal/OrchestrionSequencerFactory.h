@@ -24,7 +24,12 @@
 #include "OrchestrionSynthesis/ITrackChannelMapper.h"
 #include "OrchestrionTypes.h"
 #include "ScoreAnimation/ISegmentRegistry.h"
+#include "internal/OrchestrionSequencer.h"
+#include "internal/PlayThread.h"
 #include "playback/iplaybackcontroller.h"
+#include <QCoreApplication>
+#include <QMetaObject>
+#include <QThread>
 #include <memory>
 #include <modularity/ioc.h>
 #include <vector>
@@ -37,9 +42,28 @@ class IMasterNotation;
 
 namespace dgk
 {
+/**
+ * Owns `object`, which is destroyed on the main thread, whichever thread lets
+ * go of it last.
+ */
+template <typename T> std::shared_ptr<T> DestroyedOnMainThread(T *object)
+{
+  return std::shared_ptr<T>(
+      object,
+      [](T *object)
+      {
+        QCoreApplication *const app = QCoreApplication::instance();
+        if (!app || QThread::currentThread() == app->thread())
+          delete object;
+        else
+          QMetaObject::invokeMethod(
+              app, [object] { delete object; }, Qt::QueuedConnection);
+      });
+}
+
 struct NotationProducts
 {
-  const IOrchestrionSequencerPtr sequencer;
+  const std::shared_ptr<OrchestrionSequencer> sequencer;
   const IModifiableItemRegistryPtr modifiableItemRegistry;
   const Staff rightHand;
   const Staff leftHand;
@@ -52,7 +76,9 @@ class OrchestrionSequencerFactory : public dgk::Injectable
   dgk::Inject<IOrchestrionSequencerConfiguration> sequencerConfig{this};
 
 public:
+  /** The sequencer is to play on `playThread`. */
   NotationProducts
-  CreateSequencer(mu::notation::IMasterNotation &masterNotation);
+  CreateSequencer(mu::notation::IMasterNotation &masterNotation,
+                  PlayThread &playThread);
 };
 } // namespace dgk

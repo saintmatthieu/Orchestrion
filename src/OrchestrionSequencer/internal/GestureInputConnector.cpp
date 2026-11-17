@@ -17,50 +17,118 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "GestureInputConnector.h"
+#include "Orchestrion.h"
 
 #include <log.h>
 
 namespace dgk
 {
+GestureInputConnector::GestureInputConnector(Orchestrion &orchestrion)
+    : m_orchestrion{orchestrion}
+{
+}
+
+GestureInputConnector::~GestureInputConnector()
+{
+  // No more gestures posted (one under way is waited for), then none of
+  // those posted runs: the token goes on the play thread, where they run.
+  // (Never initialized, if the application quit as it started: nothing to
+  // let go of, and no play thread.)
+  if (!m_gestureInput)
+    return;
+  m_gestureInput->setReceiver(nullptr);
+  m_orchestrion.GetPlayThread().Wait([this] { m_alive.reset(); });
+}
+
+void GestureInputConnector::Post(std::function<void()> task)
+{
+  m_orchestrion.GetPlayThread().Post(
+      [alive = std::weak_ptr<int>{m_alive}, task = std::move(task)]
+      {
+        if (!alive.expired())
+          task();
+      });
+}
+
 void GestureInputConnector::init()
 {
-  gestureInput()->noteOn().onReceive(
-      this, [this](int pitch, std::optional<float> velocity)
-      { onNoteOn(pitch, std::move(velocity)); });
-  gestureInput()->noteOff().onReceive(this,
-                                      [this](int pitch) { onNoteOff(pitch); });
-  gestureInput()->sustainPedal().onReceive(this, [this](bool down)
-                                           { onSustainPedal(down); });
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this] { onSequencerChanged(); });
+  m_gestureInput = gestureInput();
+  m_gestureInput->setReceiver(
+      [this](const IGestureInput::Gesture &gesture)
+      { Post([this, gesture] { onGesture(gesture); }); });
+  static_cast<IOrchestrion &>(m_orchestrion)
+      .sequencerChanged()
+      .onNotify(this, [this] { onSequencerChanged(); });
+  onSequencerChanged();
 }
 
 void GestureInputConnector::onSequencerChanged()
 {
   // The player comes and goes with the sequencer.
-  orchestrion()->player()->PlayingChanged().onNotify(
-      this, [this] { updateFootPedalling(); },
+  const auto player = static_cast<IOrchestrion &>(m_orchestrion).player();
+  player->PlayingChanged().onNotify(
+      this,
+      [this]
+      {
+        Post([this, playing = static_cast<IOrchestrion &>(m_orchestrion)
+                                  .player()
+                                  ->IsPlaying()]
+             { setPlayerPlaying(playing); });
+      },
       muse::async::Asyncable::Mode::SetReplace);
+  Post([this, playing = player->IsPlaying()] { reset(playing); });
+}
+
+void GestureInputConnector::onGesture(const IGestureInput::Gesture &gesture)
+{
+  OrchestrionSequencer *const sequencer = m_orchestrion.PlayThreadSequencer();
+  if (sequencer)
+    // Before it plays it: told in order with what it causes
+    sequencer->ObserveGesture(gesture);
+  switch (gesture.kind)
+  {
+  case IGestureInput::Gesture::Kind::noteOn:
+    if (sequencer)
+      sequencer->OnInputEvent(NoteEventType::noteOn, gesture.pitch,
+                              gesture.velocity);
+    // else things don't look ready yet
+    break;
+  case IGestureInput::Gesture::Kind::noteOff:
+    // No sequencer: a key released before a score is loaded (a MIDI
+    // keyboard's events arrive from startup on); nothing to release.
+    if (sequencer)
+      sequencer->OnInputEvent(NoteEventType::noteOff, gesture.pitch, 0.0f);
+    break;
+  case IGestureInput::Gesture::Kind::sustainPedal:
+    m_sustainDown = gesture.down;
+    if (sequencer)
+      sequencer->OnSustainPedal(gesture.down);
+    updateFootPedalling();
+    break;
+  }
+}
+
+void GestureInputConnector::reset(bool playerPlaying)
+{
+  m_playerPlaying = playerPlaying;
   m_footPedalling = false;
-  const auto sequencer = orchestrion()->sequencer();
+  OrchestrionSequencer *const sequencer = m_orchestrion.PlayThreadSequencer();
   if (sequencer && m_sustainDown)
     sequencer->OnSustainPedal(*m_sustainDown);
   updateFootPedalling();
 }
 
-void GestureInputConnector::onSustainPedal(bool down)
+void GestureInputConnector::setPlayerPlaying(bool playing)
 {
-  m_sustainDown = down;
-  if (const auto sequencer = orchestrion()->sequencer())
-    sequencer->OnSustainPedal(down);
+  m_playerPlaying = playing;
   updateFootPedalling();
 }
 
 void GestureInputConnector::updateFootPedalling()
 {
-  const auto sequencer = orchestrion()->sequencer();
-  const bool footPedalling = sequencer && m_sustainDown.has_value() &&
-                             !orchestrion()->player()->IsPlaying();
+  OrchestrionSequencer *const sequencer = m_orchestrion.PlayThreadSequencer();
+  const bool footPedalling =
+      sequencer && m_sustainDown.has_value() && !m_playerPlaying;
   if (footPedalling == m_footPedalling)
     return;
   m_footPedalling = footPedalling;
@@ -69,24 +137,5 @@ void GestureInputConnector::updateFootPedalling()
   if (footPedalling)
     LOGI() << "Following the sustain pedal rather than the score's pedalling";
   sequencer->SetFootPedalling(footPedalling);
-}
-
-void GestureInputConnector::onNoteOn(int pitch, std::optional<float> velocity)
-{
-  const auto sequencer = orchestrion()->sequencer();
-  if (!sequencer)
-    // Things don't look ready yet
-    return;
-  sequencer->OnInputEvent(NoteEventType::noteOn, pitch, std::move(velocity));
-}
-
-void GestureInputConnector::onNoteOff(int pitch)
-{
-  const auto sequencer = orchestrion()->sequencer();
-  if (!sequencer)
-    // A key released before a score is loaded (a MIDI keyboard's events
-    // arrive from startup on); nothing to release.
-    return;
-  sequencer->OnInputEvent(NoteEventType::noteOff, pitch, 0.0f);
 }
 } // namespace dgk

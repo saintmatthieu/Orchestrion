@@ -41,6 +41,8 @@ set(MODULE_SRC
     internal/PlayThread.cpp
     internal/PlayThread.h
     internal/ScoreEvents.cpp
+    internal/SequencerProxy.cpp
+    internal/SequencerProxy.h
     internal/ScoreEvents.h
     internal/SplitChord.cpp
     internal/SplitChord.h

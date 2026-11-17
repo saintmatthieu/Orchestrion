@@ -18,12 +18,16 @@
  */
 #pragma once
 
+#include "ComputerKeyboard/ComputerKeyboardGestureController.h"
 #include "IGestureController.h"
 #include "IGestureInput.h"
+#include "InputThread.h"
+#include "MidiDevice/MidiDeviceGestureController.h"
 
 #include <async/asyncable.h>
 
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace dgk
@@ -31,17 +35,35 @@ namespace dgk
 class GestureInput : public IGestureInput, public muse::async::Asyncable
 {
 public:
+  ~GestureInput() override;
+
   //! Creates the controllers; needs the IoC container populated (module init).
   void init();
 
-  muse::async::Channel<int, std::optional<float>> noteOn() const override;
-  muse::async::Channel<int> noteOff() const override;
-  muse::async::Channel<bool> sustainPedal() const override;
+  void setReceiver(Receiver) override;
+  void send(const Gesture &) override;
 
 private:
-  std::vector<std::unique_ptr<IGestureController>> m_controllers;
-  muse::async::Channel<int, std::optional<float>> m_noteOn;
-  muse::async::Channel<int> m_noteOff;
-  muse::async::Channel<bool> m_sustainPedal;
+  /** Merges the controller's gestures in, from the thread they come from. */
+  void Listen(IGestureController &);
+  /** Stamps the gesture and tells the receiver, on the caller's thread. */
+  void Dispatch(const Gesture &);
+
+  /**
+   * Where the MIDI device is listened to; none rendering offline, where
+   * time is virtual on the main thread only, and all of it happens there.
+   */
+  std::unique_ptr<InputThread> m_inputThread;
+  /** Its gestures come from the thread the keys come from. */
+  std::unique_ptr<ComputerKeyboardGestureController> m_keyboard;
+  /**
+   * Listens on the input thread, if there is one, and is destroyed there.
+   */
+  std::unique_ptr<MidiDeviceGestureController> m_midiDevice;
+  /** Its subscriptions to the MIDI device, made and let go of there too. */
+  std::unique_ptr<muse::async::Asyncable> m_midiDeviceSubscriptions;
+
+  std::mutex m_receiverMutex;
+  Receiver m_receiver;
 };
 } // namespace dgk

@@ -20,6 +20,8 @@
 
 #include "IComputerKeyboard.h"
 #include <QObject>
+#include <memory>
+#include <mutex>
 
 namespace dgk
 {
@@ -44,14 +46,16 @@ public:
   ComputerKeyboard();
   void preInit();
 
-  void onKeyPressed(char letter);
-  void onKeyReleased(char letter);
+  void onKey(char letter, bool pressed);
 
 private:
   muse::async::Channel<char> keyPressed() const override;
   muse::async::Channel<char> keyReleased() const override;
+  void setReceiver(Receiver) override;
 
   const std::unique_ptr<ComputerKeyboardImpl> m_impl;
+  std::mutex m_receiverMutex;
+  Receiver m_receiver;
   muse::async::Channel<char> m_keyPressed;
   muse::async::Channel<char> m_keyReleased;
 };

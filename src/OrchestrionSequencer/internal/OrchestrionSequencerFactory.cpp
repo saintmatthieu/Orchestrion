@@ -464,7 +464,7 @@ auto MakeHand(size_t staffIdx, const Staff &staff)
 } // namespace
 
 NotationProducts OrchestrionSequencerFactory::CreateSequencer(
-    mu::notation::IMasterNotation &masterNotation)
+    mu::notation::IMasterNotation &masterNotation, PlayThread &playThread)
 {
   auto &score = *masterNotation.masterScore();
   const auto nStaves = static_cast<int>(score.nstaves());
@@ -514,24 +514,13 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   // thread (the visible part of the score, ...) is only let go of there at
   // once; from another thread, later, and a notification in between called
   // into it destroyed.
-  const auto destroyOnMainThread = [](OrchestrionSequencer *sequencer)
-  {
-    QCoreApplication *const app = QCoreApplication::instance();
-    if (!app || QThread::currentThread() == app->thread())
-      delete sequencer;
-    else
-      QMetaObject::invokeMethod(
-          app, [sequencer] { delete sequencer; }, Qt::QueuedConnection);
-  };
-  auto sequencer = std::shared_ptr<OrchestrionSequencer>(
-      new OrchestrionSequencer(
-          mapper()->instrumentForStaff(staff), MakeHand(staff, rightHand),
-          MakeHand(staff + 1, leftHand), std::move(pedalSequence),
-          std::move(staffEvents),
-          std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
-                                                GetScoreNotes({&leftHandCopy})},
-          nominalTicksPerMs),
-      destroyOnMainThread);
+  auto sequencer = DestroyedOnMainThread(new OrchestrionSequencer(
+      playThread, mapper()->instrumentForStaff(staff),
+      MakeHand(staff, rightHand), MakeHand(staff + 1, leftHand),
+      std::move(pedalSequence), std::move(staffEvents),
+      std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
+                                            GetScoreNotes({&leftHandCopy})},
+      nominalTicksPerMs));
 
   return {sequencer, modifiableItems, std::move(rightHandCopy),
           std::move(leftHandCopy)};

@@ -20,6 +20,7 @@
 
 #include <async/channel.h>
 #include <async/notification.h>
+#include <functional>
 #include <modularity/imoduleinterface.h>
 #include <optional>
 
@@ -30,7 +31,18 @@ class IComputerKeyboard : MODULE_GLOBAL_EXPORT_INTERFACE
   INTERFACE_ID(IComputerKeyboard);
 
 public:
+  /**
+   * The keys pressed and released, as QKeyEvent::key() has them.
+   */
   virtual muse::async::Channel<char> keyPressed() const = 0;
   virtual muse::async::Channel<char> keyReleased() const = 0;
+
+  using Receiver = std::function<void(char key, bool pressed)>;
+  /**
+   * Told of each key before the channels are, on the thread it comes from:
+   * for the gesture input, which hands it on without the main thread. Must
+   * be quick, and safe from any thread.
+   */
+  virtual void setReceiver(Receiver) = 0;
 };
 } // namespace dgk

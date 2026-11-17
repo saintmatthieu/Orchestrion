@@ -18,9 +18,11 @@
  */
 #pragma once
 
+#include "GestureControllers/IGestureInput.h"
 #include "OrchestrionTypes.h"
 #include <async/channel.h>
 #include <async/notification.h>
+#include <chrono>
 #include <map>
 #include <optional>
 
@@ -137,7 +139,7 @@ public:
   //! carrying the event type and which hand it belongs to. Used by the beginner
   //! help animation to press the matching key.
   virtual muse::async::Channel<AutoPlayEvent> HandNoteEvents() const = 0;
-  virtual const std::map<TrackIndex, ChordTransition> &
+  virtual std::map<TrackIndex, ChordTransition>
   GetCurrentTransitions() const = 0;
   virtual std::vector<TrackIndex> GetAllVoices() const = 0;
   /**
@@ -145,7 +147,19 @@ public:
    * a transition leaves out when the track moves onto a rest.
    */
   virtual const IChord *GetNextChord(TrackIndex) const = 0;
+  /**
+   * What is to sound, sent from the sequencer's threads: for the audio
+   * engine, which is never waited for. Not for the main thread: see
+   * MainThreadOutputEvent.
+   */
   virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
+  /**
+   * The same, sent on the main thread, for what shows it or sends it out
+   * from there (the pedal indicator, MIDI out): the sequencer's threads send
+   * nothing to the main thread through kors, which may make the sender wait
+   * for it.
+   */
+  virtual muse::async::Channel<EventVariant> MainThreadOutputEvent() const = 0;
   /**
    * The chords the performer is playing a wrong note against: those of the
    * keys held that aren't one of the notes where the performer is. Sent
@@ -159,6 +173,19 @@ public:
    */
   virtual muse::async::Channel<int /*tick*/, JumpReason>
   AboutToJumpPosition() const = 0;
+  /**
+   * The performer's gestures (see IGestureInput), each told before what it
+   * causes (transitions, ...): so that a take records where it began, and
+   * when each gesture was made rather than when the main thread heard of it.
+   */
+  virtual muse::async::Channel<IGestureInput::Gesture> Gestures() const = 0;
+  /**
+   * When what is being told on the channels above happened, on the steady
+   * clock. What reaches the main thread comes as late as it is busy: what
+   * goes by time (judging the timing of onsets) goes by this rather than by
+   * when it is told. Meant to be asked while being told.
+   */
+  virtual std::chrono::steady_clock::time_point EventTime() const = 0;
   virtual void GoToTick(int tick, JumpReason reason) = 0;
   /**
    * Goes past the last event (JumpReason::End), where playing the score

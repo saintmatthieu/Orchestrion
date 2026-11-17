@@ -59,21 +59,21 @@ using Staff = std::map<int /*voice*/, std::vector<ChordRestPtr>>;
 struct PastChord
 {
   explicit PastChord(const IChord *chord) : chord{chord} { assert(chord); }
-  const IChord *const chord;
+  const IChord *chord;
   const IChord *operator->() const { return chord; }
 };
 
 struct PresentChord
 {
   explicit PresentChord(const IChord *chord) : chord{chord} { assert(chord); }
-  const IChord *const chord;
+  const IChord *chord;
   const IChord *operator->() const { return chord; }
 };
 
 struct FutureChord
 {
   explicit FutureChord(const IChord *chord) : chord{chord} { assert(chord); }
-  const IChord *const chord;
+  const IChord *chord;
   const IChord *operator->() const { return chord; }
 };
 
@@ -85,8 +85,8 @@ struct PastChordAndPresentChord
     assert(pastChord);
     assert(presentChord);
   }
-  const IChord *const pastChord;
-  const IChord *const presentChord;
+  const IChord *pastChord;
+  const IChord *presentChord;
 };
 
 struct PastChordAndPresentRest
@@ -97,8 +97,8 @@ struct PastChordAndPresentRest
     assert(pastChord);
     assert(presentRest);
   }
-  const IChord *const pastChord;
-  const IRest *const presentRest;
+  const IChord *pastChord;
+  const IRest *presentRest;
 };
 
 struct PastChordAndFutureChord
@@ -109,8 +109,8 @@ struct PastChordAndFutureChord
     assert(pastChord);
     assert(futureChord);
   }
-  const IChord *const pastChord;
-  const IChord *const futureChord;
+  const IChord *pastChord;
+  const IChord *futureChord;
 };
 
 using ChordTransition = std::variant<PastChord,                //
@@ -222,7 +222,15 @@ struct PedalEvent
   bool on;
 };
 
-using EventVariant = std::variant<NoteEvents, PedalEvent>;
+/**
+ * Silences everything: the position jumped. Sent in line with the notes, so
+ * that it doesn't silence those struck right after it.
+ */
+struct AllNotesOffEvent
+{
+};
+
+using EventVariant = std::variant<NoteEvents, PedalEvent, AllNotesOffEvent>;
 
 struct Tick
 {

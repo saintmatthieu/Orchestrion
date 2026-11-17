@@ -217,9 +217,9 @@ void OrchestrionNotationPaintView::subscribe(
 {
   sequencer.ChordTransitions().onReceive(
       this,
-      [this](std::map<TrackIndex, ChordTransition> transitions)
+      [this, &sequencer](std::map<TrackIndex, ChordTransition> transitions)
       {
-        OnTransitions(transitions);
+        handleAged(sequencer, [&] { OnTransitions(transitions); });
         m_stripsDirty = true;
         update();
       });
@@ -240,42 +240,53 @@ void OrchestrionNotationPaintView::subscribe(
   // the event precedes the transitions batch the gesture causes.
   sequencer.HandNoteEvents().onReceive(
       this,
-      [this](const AutoPlayEvent &event)
+      [this, &sequencer](const AutoPlayEvent &event)
       {
-        if (event.type == NoteEventType::noteOn)
-          m_pendingHandVelocity[event.isLeftHand ? 1 : 0] = event.velocity;
+        handleAged(
+            sequencer,
+            [&]
+            {
+              if (event.type == NoteEventType::noteOn)
+                m_pendingHandVelocity[event.isLeftHand ? 1 : 0] =
+                    event.velocity;
 
-        // Record the take's raw events, for the post-take replay — part of
-        // the grading apparatus (without it, the play button is
-        // plain metronomic playback).
-        if (!sequencerConfiguration()->gradingEnabled())
-          return;
-        // A note-on while the previous take's stats are stale begins a new
-        // take (this event precedes the transitions batch that restarts the
-        // stats).
-        if (orchestrion()->player()->IsReplaying())
-          return; // the replay's own events aren't a new performance
-        const bool newTake = event.type == NoteEventType::noteOn &&
-                             (m_timingStatsStale || m_replayEvents.empty());
-        if (newTake)
-        {
-          m_replayEvents.clear();
-          m_replayClock.restart();
-          m_replayStartTick = std::numeric_limits<int>::max();
-          m_takeOver = false;
-          // From here on, the play button is the metronomic playback again —
-          // until this take, in turn, is over.
-          orchestrion()->player()->SetReplayTake(std::nullopt);
-        }
-        else if (m_replayEvents.empty())
-          return; // a stray release before any take began
-        m_replayEvents.push_back(
-            {newTake ? 0 : static_cast<int>(m_replayClock.elapsed()),
-             event.type, event.isLeftHand, event.velocity});
-        // A release arriving after the take ended still belongs to it: keep
-        // the pushed copy complete, so replayed notes don't ring forever.
-        if (m_timingStatsStale && !newTake)
-          pushReplayTake();
+              // Record the take's raw events, for the post-take replay — part
+              // of the grading apparatus (without it, the play button is plain
+              // metronomic playback).
+              if (!sequencerConfiguration()->gradingEnabled())
+                return;
+              // A note-on while the previous take's stats are stale begins a
+              // new take (this event precedes the transitions batch that
+              // restarts the stats).
+              if (orchestrion()->player()->IsReplaying())
+                return; // the replay's own events aren't a new performance
+              const bool newTake =
+                  event.type == NoteEventType::noteOn &&
+                  (m_timingStatsStale || m_replayEvents.empty());
+              if (newTake)
+              {
+                m_replayEvents.clear();
+                m_replayClock.restart();
+                m_replayStartTick = std::numeric_limits<int>::max();
+                m_takeOver = false;
+                // From here on, the play button is the metronomic playback
+                // again — until this take, in turn, is over.
+                orchestrion()->player()->SetReplayTake(std::nullopt);
+              }
+              else if (m_replayEvents.empty())
+                return; // a stray release before any take began
+              m_replayEvents.push_back(
+                  {newTake ? 0
+                           : static_cast<int>(
+                                 static_cast<double>(m_replayClock.elapsed()) -
+                                 m_eventAgeMs),
+                   event.type, event.isLeftHand, event.velocity});
+              // A release arriving after the take ended still belongs to it:
+              // keep the pushed copy complete, so replayed notes don't ring
+              // forever.
+              if (m_timingStatsStale && !newTake)
+                pushReplayTake();
+            });
       });
 
   if (const auto &transitions = sequencer.GetCurrentTransitions();
@@ -322,6 +333,17 @@ void OrchestrionNotationPaintView::subscribe(
                                                 showEnd();
                                               update();
                                             });
+}
+
+void OrchestrionNotationPaintView::handleAged(
+    const IOrchestrionSequencer &sequencer, const std::function<void()> &handle)
+{
+  using namespace std::chrono;
+  m_eventAgeMs = std::max(0.0, duration<double, std::milli>(
+                                   steady_clock::now() - sequencer.EventTime())
+                                   .count());
+  handle();
+  m_eventAgeMs = 0.0;
 }
 
 void OrchestrionNotationPaintView::OnTransitions(
@@ -510,7 +532,8 @@ void OrchestrionNotationPaintView::OnTransitions(
     if (m_estimator.isCoasting(staff))
       resumingHands.push_back(staff);
 
-  const double nowMs = static_cast<double>(m_clock.elapsed());
+  // When the onsets were played, not when this thread got to them
+  const double nowMs = static_cast<double>(m_clock.elapsed()) - m_eventAgeMs;
   const PositionEstimator::Feedback feedback =
       m_estimator.onOnsets(nowMs, soundingTicks);
   const auto dynamicsJudgments =
@@ -595,7 +618,7 @@ void OrchestrionNotationPaintView::OnTransitions(
           tickIt != presentScoreTicks.end())
         m_takeOnsetRecords.push_back(
             {staff, tMs, tickIt->second, soundingTicks.at(staff),
-             static_cast<double>(m_replayClock.elapsed()),
+             static_cast<double>(m_replayClock.elapsed()) - m_eventAgeMs,
              presentAnchors.at(staff)});
     }
     for (const auto &[staff, window] : feedback.judgments)

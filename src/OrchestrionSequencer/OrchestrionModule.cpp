@@ -30,7 +30,8 @@ namespace dgk
 {
 OrchestrionModule::OrchestrionModule()
     : m_orchestrion(std::make_shared<Orchestrion>()),
-      m_gestureInputConnector(std::make_shared<GestureInputConnector>()),
+      m_gestureInputConnector(
+          std::make_shared<GestureInputConnector>(*m_orchestrion)),
       m_sequencerConfiguration(
           std::make_shared<OrchestrionSequencerConfiguration>()),
       m_staffModes(std::make_shared<StaffModes>()),
@@ -49,12 +50,10 @@ void OrchestrionModule::registerExports()
   globalIoc()->registerExport<IVisibleScore>(moduleName(), m_visibleScore);
 }
 
-void OrchestrionModule::registerUiTypes()
-{
-}
+void OrchestrionModule::registerUiTypes() {}
 
-muse::modularity::IContextSetup *OrchestrionModule::newContext(
-    const muse::modularity::ContextPtr &ctx) const
+muse::modularity::IContextSetup *
+OrchestrionModule::newContext(const muse::modularity::ContextPtr &ctx) const
 {
   ModuleContextSetup::Hooks hooks;
   hooks.onInit = [this](const muse::IApplication::RunMode &mode)
@@ -62,8 +61,7 @@ muse::modularity::IContextSetup *OrchestrionModule::newContext(
   return new ModuleContextSetup(ctx, std::move(hooks));
 }
 
-void OrchestrionModule::onContextInit(
-    const muse::IApplication::RunMode &) const
+void OrchestrionModule::onContextInit(const muse::IApplication::RunMode &) const
 {
   m_orchestrion->init();
   m_gestureInputConnector->init();

@@ -21,8 +21,13 @@
 namespace dgk
 {
 MidiDeviceGestureController::MidiDeviceGestureController()
+    : m_port{midiInPort()}, m_virtualKeyboard{virtualKeyboard()}
 {
-  midiInPort()->eventReceived().onReceive(
+}
+
+void MidiDeviceGestureController::Listen()
+{
+  m_port->eventReceived().onReceive(
       this, [this](const muse::midi::tick_t, const muse::midi::Event &event)
       { onMidiEventReceived(event); });
 }
@@ -57,7 +62,7 @@ void MidiDeviceGestureController::onMidiEventReceived(
     const auto velocity = event.velocity7() / 128.0f;
     // Not the virtual keyboard's, struck where it is clicked: compressed, it
     // couldn't play softer than pp
-    m_noteOn.send(event.note(), virtualKeyboard()->inUse()
+    m_noteOn.send(event.note(), m_virtualKeyboard->inUse()
                                     ? velocity
                                     : compressVelocity(velocity));
   }

@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include <atomic>
+
 #include "IChord.h"
 #include "IModifiableItem.h"
 #include "MuseMelodySegment.h"
@@ -93,7 +95,12 @@ private:
   const std::optional<RollDirection> m_roll;
   // How much of its written value the chord sounds for as articulated.
   const double m_soundingFraction;
-  std::optional<float> m_unsavedVelocity;
+  // Velocities (0..1), read by the sequencer's thread, written on the main
+  // thread: the recorded one not saved yet (noVelocity if none), and the
+  // score's notes' (read at construction, and as saved).
+  static constexpr float noVelocity = -1.f;
+  std::atomic<float> m_unsavedVelocity = noVelocity;
+  std::atomic<float> m_savedVelocity = 0.f;
   muse::async::Notification m_modifiedChanged;
 };
 } // namespace dgk

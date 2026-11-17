@@ -517,6 +517,12 @@ private:
   getRelevantItems(TrackIndex track, const mu::engraving::Segment *segment,
                    const IChord *played = nullptr) const;
   void OnTransitions(const std::map<TrackIndex, ChordTransition> &transitions);
+  /**
+   * Runs `handle` with m_eventAgeMs telling how long ago what the sequencer
+   * tells happened (see IOrchestrionSequencer::EventTime).
+   */
+  void handleAged(const IOrchestrionSequencer &,
+                  const std::function<void()> &handle);
   //! Per rendered frame: advance the scroll and the estimate, and sample the
   //! debug tempo strip.
   void onFrameTick();
@@ -630,6 +636,11 @@ private:
   // replay rewinds to.
   std::vector<ReplayEvent> m_replayEvents;
   QElapsedTimer m_replayClock;
+  /**
+   * While handling what the sequencer tells (see handleAged): how long ago it
+   * happened, in ms, to be taken off the clocks' times; 0 otherwise.
+   */
+  double m_eventAgeMs = 0.0;
   int m_replayStartTick = std::numeric_limits<int>::max();
   // Whether the recorded take is finished (armed for replay): a play-mode
   // change may then re-arm it, but never a half-recorded one.

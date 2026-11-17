@@ -33,12 +33,22 @@
 #include "OrchestrionCommon/OrchestrionIoc.h"
 namespace dgk
 {
+/**
+ * The MIDI device's gestures, from the thread it is listened to on (see
+ * GestureInput).
+ */
 class MidiDeviceGestureController : public IGestureController,
                                     public dgk::Injectable,
                                     public muse::async::Asyncable
 {
 public:
+  /** On the main thread: finds the services it uses. */
   MidiDeviceGestureController();
+  /**
+   * Listens to the MIDI device from now on, on the calling thread, which it
+   * is to be destroyed on.
+   */
+  void Listen();
 
 private:
   void onMidiEventReceived(const muse::midi::Event &event);
@@ -48,6 +58,12 @@ private:
 
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
   dgk::Inject<IVirtualMidiKeyboard> virtualKeyboard{this};
+  /**
+   * Found on the main thread and kept: quitting, the injected services are
+   * set to null there, while this still reads them on its thread.
+   */
+  const std::shared_ptr<muse::midi::IMidiInPort> m_port;
+  const std::shared_ptr<IVirtualMidiKeyboard> m_virtualKeyboard;
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
   muse::async::Channel<bool> m_sustainPedal;
