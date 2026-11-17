@@ -161,6 +161,18 @@ void RollsLibrary::ensureLoaded() const
     for (auto it = versions.begin(); it != versions.end(); ++it)
       m_downloaded.insert(it.key(), it.value().toString());
   }
+
+  if (QFile attributions{globalConfiguration()->appDataPath().toQString() +
+                         "scores/attributions.json"};
+      attributions.open(QIODevice::ReadOnly))
+  {
+    const QJsonObject scores =
+        QJsonDocument::fromJson(attributions.readAll()).object();
+    for (auto it = scores.begin(); it != scores.end(); ++it)
+      if (const QString id = it.value().toObject().value("id").toString();
+          !id.isEmpty())
+        m_bundledIds.insert(it.key(), id);
+  }
 }
 
 bool RollsLibrary::parseIndex(const QByteArray &json,
@@ -213,6 +225,23 @@ bool RollsLibrary::parseIndex(const QByteArray &json,
     scores.push_back(std::move(score));
   }
   m_scores = std::move(scores);
+
+  // Not in the scores: a bundled score's recordings are here too.
+  QHash<QString, std::vector<ScoreRecording>> recordings;
+  const QJsonObject pieces = root.value("recordings").toObject();
+  for (auto piece = pieces.begin(); piece != pieces.end(); ++piece)
+    for (const QJsonValue &value : piece.value().toArray())
+    {
+      const QJsonObject entry = value.toObject();
+      const QString performer = entry.value("performer").toString();
+      const QUrl url{entry.value("url").toString()};
+      // It comes off the network and is given to the system to open.
+      if (performer.isEmpty() || !url.isValid() || url.scheme() != "https" ||
+          url.host().isEmpty())
+        continue;
+      recordings[piece.key()].push_back({performer, url});
+    }
+  m_recordings = std::move(recordings);
   return true;
 }
 
@@ -239,6 +268,23 @@ const RollsScore *RollsLibrary::score(const QString &id) const
       std::find_if(m_scores.begin(), m_scores.end(),
                    [&id](const RollsScore &score) { return score.id == id; });
   return it == m_scores.end() ? nullptr : &*it;
+}
+
+std::vector<ScoreRecording> RollsLibrary::recordings(const QString &id) const
+{
+  ensureLoaded();
+  return m_recordings.value(id);
+}
+
+std::optional<QString> RollsLibrary::pieceIdOf(const QString &path) const
+{
+  if (const auto id = idOf(path))
+    return id;
+  ensureLoaded();
+  if (const auto it = m_bundledIds.constFind(QFileInfo{path}.fileName());
+      it != m_bundledIds.constEnd())
+    return it.value();
+  return std::nullopt;
 }
 
 muse::async::Notification RollsLibrary::scoresChanged() const

@@ -347,6 +347,71 @@ def keyboard(keys=None, start=None):
     return "".join(out)
 
 
+def screen_segments(w, h, r, bulge):
+    """A screen as online videos have it, its sides bowed out a little and its
+    corners round: its outline's quadratic segments, (start, control, end)."""
+    x0, y0, x1, y1 = CX - w / 2, CY - h / 2, CX + w / 2, CY + h / 2
+    return [((x0 + r, y0), (CX, y0 - bulge), (x1 - r, y0)),
+            ((x1 - r, y0), (x1, y0), (x1, y0 + r)),
+            ((x1, y0 + r), (x1 + bulge, CY), (x1, y1 - r)),
+            ((x1, y1 - r), (x1, y1), (x1 - r, y1)),
+            ((x1 - r, y1), (CX, y1 + bulge), (x0 + r, y1)),
+            ((x0 + r, y1), (x0, y1), (x0, y1 - r)),
+            ((x0, y1 - r), (x0 - bulge, CY), (x0, y0 + r)),
+            ((x0, y0 + r), (x0, y0), (x0 + r, y0))]
+
+
+def screen_outline(w, h, r, bulge, steps=24):
+    """The screen's outline as points."""
+    out = []
+    for p0, c, p1 in screen_segments(w, h, r, bulge):
+        for k in range(steps):
+            t = k / steps
+            out.append(((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * c[0] + t * t * p1[0],
+                        (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * c[1] + t * t * p1[1]))
+    return out
+
+
+def band_margin(outline, n=360):
+    """How much more than the letter's stroke there is between the screen and
+    the letter's edge, where there is least: the screen fits the letter's
+    counter when it is 0. The stroke is the one the ring has at the edge's
+    nearest point."""
+    a, b = RING_H * RING_AR / 2, RING_H / 2
+    edge = []
+    for i in range(n):
+        (px, py), (tx, ty) = se_point(2 * math.pi * i / n, a, b)
+        edge.append((px, py, stroke_w(math.degrees(math.atan2(ty, tx)),
+                                      RING_W, RING_FLOOR)))
+    least = math.inf
+    for x, y in outline:
+        ex, ey, stroke = min(edge, key=lambda e: math.hypot(e[0] - x, e[1] - y))
+        least = min(least, math.hypot(ex - x, ey - y) - stroke)
+    return least
+
+
+def video(w=20.5, h=14.6, r=4.4, bulge=0.35, play_w=6.8, play_h=7.8):
+    """The letter, solid, with a video's screen cut out of it and the play mark
+    standing in the hole: the screen's round outline is the letter's own
+    counter, so the two don't fight. The proportions are the screen's; it is
+    grown till what is left of the letter is, where thinnest, the ring's
+    stroke."""
+    lo, hi = 0.5, 2.0
+    for _ in range(30):
+        mid = (lo + hi) / 2
+        if band_margin(screen_outline(w * mid, h * mid, r * mid, bulge * mid)) > 0:
+            lo = mid
+        else:
+            hi = mid
+    scale = lo
+    a, b = RING_H * RING_AR / 2, RING_H / 2
+    disc = [se_point(2 * math.pi * i / 144, a, b)[0] for i in range(144)]
+    hole = screen_outline(w * scale, h * scale, r * scale, bulge * scale)
+    mark = play_poly(cx=CX + 0.3 * scale, w=play_w * scale, h=play_h * scale)
+    return (f'<path fill-rule="evenodd" d="M{pts(disc)} Z M{pts(hole)} Z"/>'
+            f'<path d="{cupped(mark, 0.3)}"/>')
+
+
 def fullscreen():
     """Four corners. The square they imply is given the letter's area, so the
     two marks cover the same ground even though one is round."""
@@ -413,6 +478,8 @@ def build(font):
         "fullscreen": fullscreen(),
         # Nor is help, but a bare question mark reads as punctuation.
         "help": band + font_glyph(font, "?", MARK_H, CX, CY),
+        # Unringed too: a score's videos, here and in the score shelf.
+        "video": video(),
     }
 
 

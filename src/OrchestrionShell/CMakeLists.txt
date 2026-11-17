@@ -31,8 +31,12 @@ set(MODULE_SRC
   internal/OrchestrionStartupScenario.h
   internal/PlaybackDeviceMenuManager.cpp
   internal/PlaybackDeviceMenuManager.h
+  internal/PerformanceEndWatcher.cpp
+  internal/PerformanceEndWatcher.h
   internal/RollsLibrary.cpp
   internal/RollsLibrary.h
+  internal/YouTubeLinks.cpp
+  internal/YouTubeLinks.h
   internal/MuseScorePlaceholderMetaTags.h
   internal/FuzzySearch.cpp
   internal/FuzzySearch.h
@@ -74,6 +78,8 @@ set(MODULE_SRC
   view/TutorialOfferModel.h
   view/ScoreShelfHintModel.cpp
   view/ScoreShelfHintModel.h
+  view/ScoreRecordingsModel.cpp
+  view/ScoreRecordingsModel.h
   view/ScoreShelfModel.cpp
   view/ScoreShelfModel.h
   IOrchestrionStartupScenario.h
