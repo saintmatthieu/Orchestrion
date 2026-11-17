@@ -147,10 +147,15 @@ void ComputerKeyboard::preInit()
   {
     m_raw = RawKeyboard::Create([this](char key, bool pressed)
                                 { onKey(key, pressed); });
+    // (Braces: LOGI is an `if` statement, which the `else` would attach to.)
     if (m_raw)
+    {
       LOGI() << "Keys read from raw input events, off the GUI thread";
+    }
     else
+    {
       LOGW() << "No raw keyboard input: keys read from Qt's events";
+    }
   }
 #endif
   m_impl->init();

@@ -55,10 +55,16 @@ void ensureFluidSynthSupport()
   {
     const auto log = [](int level, const char *message, void *)
     {
+      // (Braces: LOGW is an `if` statement, which the `else` would attach
+      // to, and the errors weren't logged.)
       if (level == FLUID_WARN)
+      {
         LOGW() << "fluidsynth: " << message;
+      }
       else
+      {
         LOGE() << "fluidsynth: " << message;
+      }
     };
     fluid_set_log_function(FLUID_PANIC, log, nullptr);
     fluid_set_log_function(FLUID_ERR, log, nullptr);
@@ -114,7 +120,6 @@ FluidSynthesizer::FluidSynthesizer(int sampleRate) : m_sampleRate{sampleRate}
   }
 
   fluid_synth_activate_key_tuning(m_fluidSynth, 0, 0, "standard", NULL, true);
-
 
   PolyphonicSynthesizerImpl::Initialize();
 }
@@ -187,8 +192,8 @@ void FluidSynthesizer::onNoteOffs(size_t numNoteoffs,
         fluid_synth_noteoff(m_fluidSynth, GetChannel(channels[i]),
                             pitches[i]) == FLUID_OK;
     if (!success)
-      LOGE() << "fluid_synth_noteoff failed (channel " << GetChannel(channels[i])
-             << ", pitch " << pitches[i] << ")";
+      LOGE() << "fluid_synth_noteoff failed (channel "
+             << GetChannel(channels[i]) << ", pitch " << pitches[i] << ")";
   }
 }
 
