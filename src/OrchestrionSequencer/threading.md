@@ -196,10 +196,6 @@ Break one and it deadlocks, races, or renders differ from one run to the next.
   how much the main thread waits there (Metal, no XWayland throttling); if it
   is worth it, make it opt-in (`IOHIDRequestAccess`), falling back to Qt's
   keys while denied.
-- **Grading's timing** still has a bias of up to a frame: an onset comes
-  with its own time (`EventTime`), but the position estimate has been
-  advanced past it by the frame ticks since, which `PositionTracker` ignores
-  (`advanceTo` with a time in the past).
 - **The pedal and ornament threads** are real threads in offline renders
   too: their timing there goes by the wall clock. Queued on the output
   thread's `PlayThread` instead, they would go by the virtual one.

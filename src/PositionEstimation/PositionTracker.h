@@ -49,6 +49,8 @@ public:
 
   //! Record that at \p realTime the performance reached musical position
   //! \p musicalPos: predict to that time, then correct the state.
+  //! \p realTime may be earlier than the last heartbeat's: an onset is told
+  //! with when it was played, by a thread that may get to it frames later.
   void addObservation(double realTime, double musicalPos);
 
   //! Advance the state to \p realTime without an onset (call each frame).
@@ -93,7 +95,10 @@ public:
   void shift(double delta) { _p += delta; }
 
 private:
-  //! Constant-velocity prediction of the state up to \p realTime (no damping).
+  /**
+   * Constant-velocity prediction of the state at \p realTime (no damping),
+   * which may be before the time it is at.
+   */
   void advanceTo(double realTime);
   //! Filter prediction before the continuity offset is applied.
   double baseAt(double realTime) const;

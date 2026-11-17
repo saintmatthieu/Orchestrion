@@ -54,10 +54,9 @@ PositionTracker::PositionTracker(double memory)
 
 void PositionTracker::advanceTo(double realTime)
 {
-  const double dt = realTime - _lastTime;
-  if (dt <= 0.0)
-    return;
-  _p += _v * dt;
+  // Back, too: an onset comes with the time it was played at, which the
+  // heartbeats since may have passed.
+  _p += _v * (realTime - _lastTime);
   _lastTime = realTime;
 }
 

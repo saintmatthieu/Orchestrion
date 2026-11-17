@@ -122,4 +122,28 @@ TEST(PositionTrackerTests, OnsetsStruckTogetherDontMakeTheTempo)
   EXPECT_NEAR(tracker.positionAt(ms + 100.0),
               tick + ticksPerQuarter / 4 + 100.0 * before, ticksPerQuarter / 4);
 }
+/**
+ * An onset is told with the time it was played at, possibly frames after:
+ * the heartbeats in between mustn't change what is made of it.
+ */
+TEST(PositionTrackerTests, OnsetsToldLateCountAsOfWhenTheyWerePlayed)
+{
+  constexpr double stepMs = 500.0;
+  constexpr double tickStep = 480.0;
+  constexpr double lateMs = 40.0;
+  PositionTracker onTime, late;
+  for (int i = 0; i < 20; ++i)
+  {
+    const double t = i * stepMs;
+    // The third one off the beat, for there to be something to correct
+    const double position = i * tickStep + (i == 2 ? 100.0 : 0.0);
+    onTime.addObservation(t, position);
+    late.heartbeat(t + lateMs / 2);
+    late.heartbeat(t + lateMs);
+    late.addObservation(t, position);
+    const double ask = t + stepMs / 2;
+    EXPECT_NEAR(late.positionAt(ask), onTime.positionAt(ask), 1e-6);
+    EXPECT_NEAR(late.speed(), onTime.speed(), 1e-9);
+  }
+}
 } // namespace dgk
