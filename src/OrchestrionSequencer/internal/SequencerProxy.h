@@ -66,14 +66,6 @@ public:
                  std::shared_ptr<PlayThread>);
   ~SequencerProxy() override;
 
-  void OnInputEvent(NoteEventType, int pitch,
-                    std::optional<float> velocity) override;
-  void OnHandInputEvent(NoteEventType, bool isLeftHand,
-                        std::optional<float> velocity) override;
-  void OnSustainPedal(bool down) override;
-  void SetFootPedalling(bool) override;
-  void AllNotesOff() override;
-
   std::map<TrackIndex, ChordTransition> GetCurrentTransitions() const override;
   std::vector<TrackIndex> GetAllVoices() const override;
   const IChord *GetNextChord(TrackIndex) const override;
@@ -89,11 +81,8 @@ public:
   void GoToTick(int tick, JumpReason reason) override;
   void GoToEnd() override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
-  void SkipHandTo(bool isLeftHand, int tickWithRepeats) override;
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
-  /** Waits for the play thread: meant for the automatic player, there. */
-  std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
   KeyRole RoleOfKey(int pitch) const override;
 
 private:

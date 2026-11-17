@@ -53,11 +53,11 @@ namespace dgk
 /**
  * Plays the score: lives on the play thread (see ../threading.md), but for
  * its construction and destruction, on the main thread, and for what says
- * so. The main thread uses it through a SequencerProxy, which tells it of
- * the settings it reads (staff modes, loop, ...) when they change.
+ * so. The main thread uses it through a SequencerProxy (the
+ * IOrchestrionSequencer), which tells it of the settings it reads (staff
+ * modes, loop, ...) when they change.
  */
-class OrchestrionSequencer : public IOrchestrionSequencer,
-                             public dgk::Injectable,
+class OrchestrionSequencer : public dgk::Injectable,
                              public muse::async::Asyncable
 {
   // Read once, on the main thread, as it is constructed
@@ -66,6 +66,7 @@ class OrchestrionSequencer : public IOrchestrionSequencer,
   dgk::Inject<IStaffModes> staffModes{this};
 
 public:
+  using KeyRole = IOrchestrionSequencer::KeyRole;
   /** The staff modes, right hand first. */
   using Modes = std::array<StaffMode, 2>;
 
@@ -83,23 +84,48 @@ public:
                        double nominalTicksPerMs);
   ~OrchestrionSequencer();
 
-  void OnInputEvent(NoteEventType, int pitch,
-                    std::optional<float> velocity) override;
-  void OnHandInputEvent(NoteEventType, bool isLeftHand,
-                        std::optional<float> velocity) override;
-  void OnSustainPedal(bool down) override;
-  void SetFootPedalling(bool) override;
-  void AllNotesOff() override;
+  /**
+   * A key the performer played. It goes to the staff it is for, going by the
+   * staff modes (see IStaffModes). A key of a Notes staff sounds as it is,
+   * and the performer is followed in the score from it; one of a Rhythm
+   * staff strikes its next chord. With a staff of each, the Rhythm one gets
+   * the keys past the Notes one's range, a minor third clear of it; with two
+   * Rhythm staves, they are split at middle C. If a note-on comes from a
+   * controller that doesn't carry velocity, such as a computer keyboard, set
+   * velocity to std::nullopt.
+   */
+  void OnInputEvent(NoteEventType, int pitch, std::optional<float> velocity);
 
-  std::map<TrackIndex, ChordTransition> GetCurrentTransitions() const override;
-  std::vector<TrackIndex> GetAllVoices() const override;
-  const IChord *GetNextChord(TrackIndex) const override;
+  void OnSustainPedal(bool down);
+  /**
+   * Whether the pedal follows the player's foot rather than the score's pedal
+   * markings — which it does by default, for there is no telling whether a
+   * pedal is plugged in until it is used.
+   */
+  void SetFootPedalling(bool);
+
+  /**
+   * A gesture the machine makes on a hand's staff — the automatic player's,
+   * the Follow mode's — whatever the staff's mode, but for a Mute one.
+   */
+  void OnHandInputEvent(NoteEventType, bool isLeftHand,
+                        std::optional<float> velocity);
+
+  /**
+   * Releases whatever is sounding — the hands' held keys and the sustain
+   * pedal — as if the player had lifted hands and foot. Called when playback
+   * is stopped, so the notes don't ring on. The performance's tempo estimate
+   * goes with it (see PerformedTempoNow), so the Follow staves stop too.
+   */
+  void AllNotesOff();
+
+  std::map<TrackIndex, ChordTransition> GetCurrentTransitions() const;
+  std::vector<TrackIndex> GetAllVoices() const;
+  const IChord *GetNextChord(TrackIndex) const;
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
-  ChordTransitions() const override;
-  muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
-  muse::async::Channel<EventVariant> OutputEvent() const override;
-  /** OutputEvent: it is the SequencerProxy's to relay it. */
-  muse::async::Channel<EventVariant> MainThreadOutputEvent() const override;
+  ChordTransitions() const;
+  muse::async::Channel<AutoPlayEvent> HandNoteEvents() const;
+  muse::async::Channel<EventVariant> OutputEvent() const;
   /**
    * Told of each OutputEvent, on the thread that sends it (the sequencer's
    * own threads); none from now on if empty. For the SequencerProxy, which
@@ -113,21 +139,32 @@ public:
    * dropped. For the SequencerProxy.
    */
   void SetMainThreadPoster(MainThreadPoster);
-  muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
-  muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
-  muse::async::Channel<IGestureInput::Gesture> Gestures() const override;
-  /** Now: it tells as things happen. */
-  std::chrono::steady_clock::time_point EventTime() const override;
+  muse::async::Channel<std::vector<const IChord *>> WrongNotes() const;
+  muse::async::Channel<int, JumpReason> AboutToJumpPosition() const;
+  muse::async::Channel<IGestureInput::Gesture> Gestures() const;
   /** Sends Gestures: a gesture it is about to be given. */
   void ObserveGesture(const IGestureInput::Gesture &);
-  void GoToTick(int tick, JumpReason reason) override;
-  void GoToEnd() override;
-  std::optional<PerformedTempo> PerformedTempoNow() override;
-  void SkipHandTo(bool isLeftHand, int tickWithRepeats) override;
-  void GoToPrevNoteonTick() override;
-  void GoToNextNoteonTick() override;
-  std::optional<NextAutoPlayEvents> WhatToPlayNext() override;
-  KeyRole RoleOfKey(int pitch) const override;
+  void GoToTick(int tick, JumpReason reason);
+  void GoToEnd();
+  std::optional<PerformedTempo> PerformedTempoNow();
+  /**
+   * Moves the hand on, silently, to the first of its chords at or after the
+   * tick (with repeats), letting go of what it holds: what a Follow staff
+   * leaves out while there is no tempo to follow.
+   */
+  void SkipHandTo(bool isLeftHand, int tickWithRepeats);
+  void GoToPrevNoteonTick();
+  void GoToNextNoteonTick();
+  /**
+   * Returns the next batch of input events to play, with a delta tick count
+   * relative to the previous call (0 at the start of the score). A chord with
+   * grace notes before it is due early by their length, as a performer plays
+   * it, so that the chord itself falls on its beat. Only the staves the
+   * performer would play: not the Follow ones, which follow the player, nor
+   * the Mute ones. Returns std::nullopt when there is nothing left to play.
+   */
+  std::optional<NextAutoPlayEvents> WhatToPlayNext();
+  KeyRole RoleOfKey(int pitch) const;
 
   /**
    * What a key plays (see RoleOfKey) with the staves in these modes. Reads

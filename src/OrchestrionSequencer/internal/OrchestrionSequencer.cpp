@@ -473,11 +473,6 @@ OrchestrionSequencer::Gestures() const
   return m_gestures;
 }
 
-std::chrono::steady_clock::time_point OrchestrionSequencer::EventTime() const
-{
-  return std::chrono::steady_clock::now();
-}
-
 void OrchestrionSequencer::ObserveGesture(const IGestureInput::Gesture &gesture)
 {
   m_gestures.send(gesture);
@@ -487,12 +482,6 @@ void OrchestrionSequencer::SetMainThreadPoster(MainThreadPoster poster)
 {
   std::scoped_lock lock{m_outputObserverMutex};
   m_mainThreadPoster = std::move(poster);
-}
-
-muse::async::Channel<EventVariant>
-OrchestrionSequencer::MainThreadOutputEvent() const
-{
-  return m_outputEvent;
 }
 
 muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const

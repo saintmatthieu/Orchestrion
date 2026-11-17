@@ -47,7 +47,7 @@ struct NextAutoPlayEvents
   std::optional<NoteEventType> rightHandEvent;
   /**
    * The notes of the staves in the Notes mode, played as keys are (see
-   * IOrchestrionSequencer::OnInputEvent): followed, as the performer is.
+   * OrchestrionSequencer::OnInputEvent): followed, as the performer is.
    */
   std::vector<std::pair<NoteEventType, int /*pitch*/>> notes;
 };
@@ -93,46 +93,17 @@ enum class JumpReason
   Realign,  // the staves changed modes: back where the playing ones were
 };
 
+/**
+ * The sequencer as the main thread and the audio engine see it (see
+ * internal/SequencerProxy.h): where it is and what it tells, and going
+ * elsewhere in the score. Playing it (gestures, the pedal) is for what
+ * lives on the play thread with it: see internal/OrchestrionSequencer.h.
+ */
 class IOrchestrionSequencer
 {
 public:
   virtual ~IOrchestrionSequencer() = default;
 
-  /**
-   * A key the performer played. It goes to the staff it is for, going by the
-   * staff modes (see IStaffModes). A key of a Notes staff sounds as it is,
-   * and the performer is followed in the score from it; one of a Rhythm
-   * staff strikes its next chord. With a staff of each, the Rhythm one gets
-   * the keys past the Notes one's range, a minor third clear of it; with two
-   * Rhythm staves, they are split at middle C. If a note-on comes from a
-   * controller that doesn't carry velocity, such as a computer keyboard, set
-   * velocity to std::nullopt.
-   */
-  virtual void OnInputEvent(NoteEventType, int pitch,
-                            std::optional<float> velocity) = 0;
-
-  virtual void OnSustainPedal(bool down) = 0;
-  /**
-   * Whether the pedal follows the player's foot rather than the score's pedal
-   * markings — which it does by default, for there is no telling whether a
-   * pedal is plugged in until it is used.
-   */
-  virtual void SetFootPedalling(bool) = 0;
-
-  /**
-   * A gesture the machine makes on a hand's staff — the automatic player's,
-   * the Follow mode's — whatever the staff's mode, but for a Mute one.
-   */
-  virtual void OnHandInputEvent(NoteEventType, bool isLeftHand,
-                                std::optional<float> velocity) = 0;
-
-  /**
-   * Releases whatever is sounding — the hands' held keys and the sustain
-   * pedal — as if the player had lifted hands and foot. Called when playback
-   * is stopped, so the notes don't ring on. The performance's tempo estimate
-   * goes with it (see PerformedTempoNow), so the Follow staves stop too.
-   */
-  virtual void AllNotesOff() = 0;
   virtual muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const = 0;
   //! Fires once per processed hand note event (both manual and automatic play),
@@ -193,13 +164,6 @@ public:
    */
   virtual void GoToEnd() = 0;
   /**
-   * Moves the hand on, silently, to the first of its chords at or after the
-   * tick (with repeats), letting go of what it holds: what a Follow staff
-   * leaves out while there is no tempo to follow.
-   */
-  virtual void SkipHandTo(bool isLeftHand, int tickWithRepeats) = 0;
-
-  /**
    * The performance now, estimated from the onsets of the staves the
    * performer plays (not the Follow ones): one estimate for them all, which
    * the Follow staves play to and the ornaments are timed with. Empty until
@@ -209,17 +173,8 @@ public:
   virtual void GoToPrevNoteonTick() = 0;
   virtual void GoToNextNoteonTick() = 0;
 
-  /**
-   * Returns the next batch of input events to play, with a delta tick count
-   * relative to the previous call (0 at the start of the score). A chord with
-   * grace notes before it is due early by their length, as a performer plays
-   * it, so that the chord itself falls on its beat. Only the staves the
-   * performer would play: not the Follow ones, which follow the player, nor
-   * the Mute ones. Returns std::nullopt when there is nothing left to play.
-   */
-  virtual std::optional<NextAutoPlayEvents> WhatToPlayNext() = 0;
-
-  /** What a key of a MIDI keyboard plays (see OnInputEvent). */
+  /** What a key of a MIDI keyboard plays (see
+   * OrchestrionSequencer::OnInputEvent). */
   enum class KeyRole
   {
     /** Nothing */
