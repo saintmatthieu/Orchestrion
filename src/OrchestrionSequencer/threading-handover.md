@@ -63,7 +63,9 @@ cleanly; loop wraps keep the loop's first chord.
 
 ## First thing on each platform: does it build and play?
 
-Nothing was compiled on Windows or macOS. Likely spots:
+The macOS build is verified (2026-11-17; it keeps Qt's keys). Windows built
+and played as of `3e71a06`, which added its raw keyboard; the commits after
+that are untested there. Likely spots:
 
 - `ComputerKeyboard.cpp`: `RawKeyboard.h` is included only under
   `Q_OS_LINUX`, and `m_raw` is a `std::shared_ptr<RawKeyboard>` (forward
@@ -158,8 +160,6 @@ See threading.md, step 6. For the other platforms:
   (relayed), as late as it is busy.
 - **Velocity recording** (`fb38e02`: posted to the main thread, atomics in
   `MuseChord`) was only compiled, not run.
-- **`SequencerProxy::WhatToPlayNext`** waits for the play thread. Nothing on
-  the main thread calls it; keep it that way.
 - **Untested on Linux:** a real MIDI keyboard; holding a key while the
   window loses focus (the release must still come); a native Wayland session
   (`main.cpp` forces xcb, so XWayland).

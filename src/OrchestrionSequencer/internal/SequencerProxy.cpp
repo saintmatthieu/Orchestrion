@@ -174,37 +174,6 @@ void SequencerProxy::PostStaffModes()
        { sequencer.SetStaffModes(modes); });
 }
 
-void SequencerProxy::OnInputEvent(NoteEventType type, int pitch,
-                                  std::optional<float> velocity)
-{
-  Post([=](OrchestrionSequencer &sequencer)
-       { sequencer.OnInputEvent(type, pitch, velocity); });
-}
-
-void SequencerProxy::OnHandInputEvent(NoteEventType type, bool isLeftHand,
-                                      std::optional<float> velocity)
-{
-  Post([=](OrchestrionSequencer &sequencer)
-       { sequencer.OnHandInputEvent(type, isLeftHand, velocity); });
-}
-
-void SequencerProxy::OnSustainPedal(bool down)
-{
-  Post([=](OrchestrionSequencer &sequencer)
-       { sequencer.OnSustainPedal(down); });
-}
-
-void SequencerProxy::SetFootPedalling(bool on)
-{
-  Post([=](OrchestrionSequencer &sequencer)
-       { sequencer.SetFootPedalling(on); });
-}
-
-void SequencerProxy::AllNotesOff()
-{
-  Post([](OrchestrionSequencer &sequencer) { sequencer.AllNotesOff(); });
-}
-
 std::map<TrackIndex, ChordTransition>
 SequencerProxy::GetCurrentTransitions() const
 {
@@ -286,12 +255,6 @@ std::optional<PerformedTempo> SequencerProxy::PerformedTempoNow()
                         m_tempo->isCoasting()};
 }
 
-void SequencerProxy::SkipHandTo(bool isLeftHand, int tickWithRepeats)
-{
-  Post([=](OrchestrionSequencer &sequencer)
-       { sequencer.SkipHandTo(isLeftHand, tickWithRepeats); });
-}
-
 void SequencerProxy::GoToPrevNoteonTick()
 {
   Post([](OrchestrionSequencer &sequencer) { sequencer.GoToPrevNoteonTick(); });
@@ -300,13 +263,6 @@ void SequencerProxy::GoToPrevNoteonTick()
 void SequencerProxy::GoToNextNoteonTick()
 {
   Post([](OrchestrionSequencer &sequencer) { sequencer.GoToNextNoteonTick(); });
-}
-
-std::optional<NextAutoPlayEvents> SequencerProxy::WhatToPlayNext()
-{
-  std::optional<NextAutoPlayEvents> next;
-  m_thread->Wait([&] { next = m_sequencer->WhatToPlayNext(); });
-  return next;
 }
 
 IOrchestrionSequencer::KeyRole SequencerProxy::RoleOfKey(int pitch) const

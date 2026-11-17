@@ -49,11 +49,13 @@ synchronously.
 
 ### The sequencer's front, on the main thread
 
-GUI code keeps an `IOrchestrionSequencer` with the same interface, now
-implemented by a proxy:
+GUI code keeps an `IOrchestrionSequencer`, implemented by a proxy
+(`SequencerProxy`), and by it only: the interface is what the main thread and
+the audio engine see of the sequencer. Playing it (`OnInputEvent`,
+`OnSustainPedal`, `AllNotesOff`, ...) is `OrchestrionSequencer`'s own, for what
+lives on the play thread with it (the players, the gesture connector).
 
-- **Commands** (`GoToTick`, `GoToEnd`, `AllNotesOff`, `OnInputEvent`, ...)
-  are posted to the play thread.
+- **Commands** (`GoToTick`, `GoToEnd`, ...) are posted to the play thread.
 - **Notifications** (transitions, about-to-jump, hand note events, wrong
   notes, gestures) are relayed to the main thread as one ordered stream.
   Separate kors channels crossing threads don't keep their order relative to
