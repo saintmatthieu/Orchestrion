@@ -382,6 +382,9 @@ Item {
     readonly property int slipColumnWidth: stripWidth + 2 * cardPadding
     readonly property int cellPadding: 16
     readonly property int opusWidth: 140
+    // A score with a video has a video glyph at the end of its title's cell,
+    // which shows a frame of it when hovered.
+    readonly property int videoGlyphSize: 26
     readonly property int levelWidth: 72
     readonly property int minTitleWidth: 220
     readonly property int titleX: slipColumnWidth
@@ -702,6 +705,7 @@ Item {
         required property string opus
         required property int rhythm
         required property int notes
+        required property url videoFrame
         required property int index
         // The index of its section.
         property int section: 0
@@ -904,6 +908,7 @@ Item {
             // may run over them.
             width: (card.tutorial ? card.width - root.titleX : root.titleWidth)
                    - 2 * root.cellPadding
+                   - (card.tutorial ? 0 : root.videoGlyphSize + 8)
             spacing: 4
 
             Text {
@@ -988,6 +993,7 @@ Item {
         }
         OrchestrionToolTip {
             visible: cardMouse.containsMouse && !updateMouse.containsMouse
+                     && !videoHover.hovered
             text: card.downloaded ? card.nativePath
                                   : qsTr("From Rolls: downloaded when you open it")
         }
@@ -1033,6 +1039,53 @@ Item {
                 text: card.current
                       ? qsTr("A newer version is available: open another score to update this one")
                       : qsTr("A newer version is available: click to update")
+            }
+        }
+
+        // Someone plays it on video: a frame of it while hovered, fetched
+        // from YouTube only then. A click opens the score, as on the rest
+        // of the card.
+        MetalGlyph {
+            id: videoGlyph
+            visible: card.videoFrame.toString().length > 0 && !card.tutorial
+            x: root.titleX + root.titleWidth - root.cellPadding - width
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.videoGlyphSize
+            height: width
+            source: "qrc:/icons/player/video.svg"
+            hovered: videoHover.hovered
+            // Not in the card's way: it stays lit, and clicks go to it.
+            HoverHandler {
+                id: videoHover
+            }
+
+            Popup {
+                // Over the glyph, its right edge at the glyph's, kept in the
+                // window.
+                x: videoGlyph.width - width
+                y: -height - 6
+                margins: 8
+                padding: 1
+                // YouTube's thumbnail's own size
+                contentWidth: 320
+                contentHeight: 180
+                visible: videoHover.hovered && frame.status !== Image.Error
+                closePolicy: Popup.NoAutoClose
+                background: Rectangle {
+                    radius: 4
+                    color: Theme.backdrop
+                    border.color: Theme.metal
+                    border.width: 1
+                }
+                contentItem: Image {
+                    id: frame
+                    source: videoHover.hovered || status === Image.Ready
+                            ? card.videoFrame : ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    opacity: status === Image.Ready ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
             }
         }
     }

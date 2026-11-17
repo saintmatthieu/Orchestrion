@@ -232,6 +232,11 @@ ApplicationWindow {
         Component.onCompleted: load()
     }
 
+    ScoreRecordingsModel {
+        id: scoreRecordings
+        Component.onCompleted: load()
+    }
+
     ScoreShelfHintModel {
         id: scoreShelfHint
         Component.onCompleted: load()
@@ -359,8 +364,9 @@ ApplicationWindow {
                 rollerOverhang: 6
                 // The parchment keeps as much air from the composer's name as
                 // the heading puts between the title and the composer.
-                titleClearance: topOrnament.y + topOrnament.inkBottom
-                                + furniture.titleGap
+                titleClearance: Math.max(topOrnament.y + topOrnament.inkBottom
+                                         + furniture.titleGap,
+                                         videoRow.y + videoRow.height + furniture.scoreGap)
                 // The score's band (see furniture, below)
                 bottomClearance: height - (scoreBand.y + scoreBand.height)
                                  + furniture.scoreGap
@@ -469,6 +475,7 @@ ApplicationWindow {
                                                              - topOrnament.height + scoreGap
                     readonly property real scoreBandRestingHeight: furniture.height * 0.7
                                                                    - topOrnament.height / 2
+                                                                   - videoRow.height
                                                                    - bottomOrnament.height / 2
                                                                    - underScoreHeight
                     readonly property real topRowHeight: 44
@@ -505,6 +512,16 @@ ApplicationWindow {
                     // As tall as the keyboard at its full size and the air
                     // under it, no more: the rest is the score's
                     readonly property real lowerBandBottomGap: 2
+                    // How far the band over the score is open: wholly while a
+                    // recording is watched
+                    property real videoBandOpen: scoreRecordings.currentIndex >= 0 ? 1 : 0
+                    Behavior on videoBandOpen {
+                        NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                    }
+                    // The composer's name hangs into it
+                    readonly property real videoBandHeight: Math.min(
+                        furniture.height * 0.42, (furniture.width - 300) * 9 / 16)
+                        + topOrnament.inkBottom - topOrnament.height + titleGap
                     readonly property real lowerBandHeight:
                         Math.min(20, (furniture.width - 96) / 52) * 3.6
                         + virtualKeyboard.rangesHeight + lowerBandBottomGap
@@ -537,6 +554,15 @@ ApplicationWindow {
                         titleHintShown: notationPaintView.controlsVisible
                                         || nextBand.atEnd && !scoreShelfHint.shelfKnown
                         onTitleClicked: scoreShelf.open()
+                    }
+
+                    // While a recording of the score is watched: room for
+                    // it (VideoBand, over the furniture)
+                    Item {
+                        id: videoRow
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: furniture.videoBandHeight
+                                                * furniture.videoBandOpen
                     }
 
                     Item {
@@ -1006,6 +1032,27 @@ ApplicationWindow {
                         Layout.preferredHeight: furniture.underPedals
                     }
                 }
+
+                // The score's recordings: a thumbnail tucked behind the
+                // parchment, growing in place as the band under the title
+                // opens.
+                VideoBand {
+                    id: videoBand
+                    anchors.fill: furniture
+                    z: 50
+                    model: scoreRecordings
+                    fullScreenHost: videoFullScreen
+                    progress: furniture.videoBandOpen
+                    controlsVisible: notationPaintView.controlsVisible
+                    // Under the title's chevron, which shows when it does
+                    titleBottom: topOrnament.y + topOrnament.chevronBottom
+                    parchmentTop: notationPaintView.parchmentTop
+                    leftBarrelRight: notationPaintView.leftBarrelRight
+                    // The composer's name hangs into the band's room
+                    openHeight: furniture.videoBandHeight
+                                - (topOrnament.inkBottom - topOrnament.height
+                                   + furniture.titleGap)
+                }
                 // Stays up while hovered (its panel is read there), even
                 // though hovering isn't mouse activity for the overlay.
                 MidiKeyboardIcon {
@@ -1033,6 +1080,7 @@ ApplicationWindow {
 
                 // Beside it, at the transport row's spacing
                 TransportButton {
+                    id: tutorialsButton
                     icon: "help.svg"
                     tooltip: Qt.platform.os === "osx" ? qsTr("Tutorials (⌘?)")
                                                       : qsTr("Tutorials (F1)")
@@ -1062,6 +1110,89 @@ ApplicationWindow {
                     GradingButton {
                         model: gradingModel
                         visible: gradingModel.exposed
+                    }
+                }
+
+                // Once the performer has played a score that has videos to its
+                // end, graded or not. At the foot of the score's band, so that
+                // it stays off the virtual keyboard.
+                Rectangle {
+                    id: recordingsOfferCard
+                    z: 100
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: furniture.y + scoreBand.y + scoreBand.height - height - 8
+                    width: recordingsOfferRow.implicitWidth + 28
+                    height: recordingsOfferRow.implicitHeight + 20
+                    radius: 8
+                    color: Theme.backdrop
+                    border.color: Theme.metal
+                    border.width: 1
+                    visible: opacity > 0
+                    opacity: scoreRecordings.offerShown && !tutorialOffer.shown
+                             && !scoreShelf.shown ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                    Row {
+                        id: recordingsOfferRow
+                        anchors.centerIn: parent
+                        spacing: 12
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: scoreRecordings.performers.length === 1
+                                  ? qsTr("Watch %1 play this.").arg(scoreRecordings.performers[0])
+                                  : qsTr("See how others play this.")
+                            color: Theme.metalBright
+                            font.pixelSize: 14
+                        }
+
+                        Rectangle {
+                            id: recordingsOfferWatch
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: recordingsOfferLabel.implicitWidth + 24
+                            height: recordingsOfferLabel.implicitHeight + 10
+                            radius: height / 2
+                            color: "transparent"
+                            border.color: recordingsOfferMouse.containsMouse ? Theme.metalBright
+                                                                             : Theme.metal
+                            Text {
+                                id: recordingsOfferLabel
+                                anchors.centerIn: parent
+                                text: qsTr("Watch")
+                                color: recordingsOfferMouse.containsMouse ? Theme.metalBright
+                                                                          : Theme.metal
+                                font.pixelSize: 13
+                            }
+                            MouseArea {
+                                id: recordingsOfferMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: scoreRecordings.watch(0)
+                            }
+                        }
+
+                        // Dismiss
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 22
+                            height: 22
+                            radius: 11
+                            color: recordingsOfferCloseMouse.containsMouse ? Theme.overlay
+                                                                           : "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u00D7"
+                                color: Theme.inkMuted
+                                font.pixelSize: 16
+                            }
+                            MouseArea {
+                                id: recordingsOfferCloseMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: scoreRecordings.closeOffer()
+                            }
+                        }
                     }
                 }
 
@@ -1357,6 +1488,29 @@ ApplicationWindow {
             Layout.margins: visible ? 8 : 0
             visible: notationPaintView.tempoVisualizationEnabled
             model: notationPaintView.tempoVizModel
+        }
+    }
+
+    // A video gone full screen, from its player's own button
+    property int visibilityBeforeVideo: Window.Windowed
+    Item {
+        id: videoFullScreen
+        anchors.fill: parent
+        z: 900
+        visible: videoBand.fullScreen
+        Rectangle { anchors.fill: parent; color: "black" }
+    }
+    Connections {
+        target: videoBand
+        function onFullScreenChanged() {
+            if (videoBand.fullScreen) {
+                root.visibilityBeforeVideo = root.visibility
+                root.showFullScreen()
+            } else if (root.visibilityBeforeVideo === Window.Maximized) {
+                root.showMaximized()
+            } else if (root.visibilityBeforeVideo !== Window.FullScreen) {
+                root.showNormal()
+            }
         }
     }
 

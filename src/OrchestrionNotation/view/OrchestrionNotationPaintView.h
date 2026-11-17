@@ -148,6 +148,12 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // The parchment's height in the view, for QML to make room for it.
   Q_PROPERTY(
       double parchmentHeight READ parchmentHeight NOTIFY parchmentHeightChanged)
+  // Where the parchment's top edge is in the view, and the right edge of the
+  // left cylinder, wherever it has rolled to: for what is set by them (a
+  // recording's thumbnail tucked behind the parchment).
+  Q_PROPERTY(double parchmentTop READ parchmentTop NOTIFY parchmentGeometryChanged)
+  Q_PROPERTY(double leftBarrelRight READ leftBarrelRight NOTIFY
+                 parchmentGeometryChanged)
   // The staves' mode arrows, for keyboard navigation and screen readers (see
   // Main.qml): per played staff, upper first, {staff, mode (its name),
   // previous, next (their rectangles in the view)}.
@@ -215,6 +221,8 @@ public:
   double restingParchmentHeight() const { return m_restingParchmentHeight; }
   void setRestingParchmentHeight(double height);
   double parchmentHeight() const { return m_parchmentHeight; }
+  double parchmentTop() const { return m_parchmentTop; }
+  double leftBarrelRight() const { return m_leftBarrelRight; }
   double rollMargin() const { return m_rollMargin; }
   void setRollMargin(double margin);
   double rollShadePower() const { return m_rollShadePower; }
@@ -247,6 +255,7 @@ signals:
   void tightestBottomClearanceChanged();
   void restingParchmentHeightChanged();
   void parchmentHeightChanged();
+  void parchmentGeometryChanged();
   void rollMarginChanged();
   void staffModeControlsChanged();
   void rollShadePowerChanged();
@@ -745,6 +754,8 @@ private:
   double m_tightestBottomClearance = 0.0;
   double m_restingParchmentHeight = 0.0;
   double m_parchmentHeight = 0.0;
+  double m_parchmentTop = 0.0;
+  double m_leftBarrelRight = 0.0;
   /** bottomClearance, or the title's when it is 0. */
   double effectiveBottomClearance() const;
   double m_rollMargin = 0.0;

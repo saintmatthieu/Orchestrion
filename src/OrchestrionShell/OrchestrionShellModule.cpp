@@ -53,6 +53,7 @@
 #include "view/ScoreHeadingModel.h"
 #include "view/ScoreShelfHintModel.h"
 #include "view/ScoreShelfModel.h"
+#include "view/ScoreRecordingsModel.h"
 #include "view/TutorialOfferModel.h"
 #include "view/VirtualKeyboardModel.h"
 
@@ -133,6 +134,8 @@ void OrchestrionShellModule::registerUiTypes()
                                            "KeyboardNavigationModel");
   qmlRegisterType<TutorialOfferModel>("Orchestrion.OrchestrionShell", 1, 0,
                                       "TutorialOfferModel");
+  qmlRegisterType<ScoreRecordingsModel>("Orchestrion.OrchestrionShell", 1, 0,
+                                        "ScoreRecordingsModel");
   qmlRegisterType<ScoreShelfHintModel>("Orchestrion.OrchestrionShell", 1, 0,
                                        "ScoreShelfHintModel");
   // The palette, which the `Theme` QML singleton forwards to. A singleton

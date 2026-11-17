@@ -2496,13 +2496,24 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
       this,
       [this, parchmentHeight = belt.valid ? belt.viewY(belt.paper.bottom()) -
                                                 belt.viewY(belt.paper.top())
-                                          : m_parchmentHeight]
+                                          : m_parchmentHeight,
+       parchmentTop = belt.valid ? belt.viewY(belt.paper.top()) : m_parchmentTop,
+       // Its axis, where the flat run starts, and its radius (paintRollers)
+       leftBarrelRight =
+           belt.valid ? belt.tangent(true) + belt.core : m_leftBarrelRight]
       {
         updateStaffModeControls();
         if (!qFuzzyCompare(parchmentHeight, m_parchmentHeight))
         {
           m_parchmentHeight = parchmentHeight;
           emit parchmentHeightChanged();
+        }
+        if (parchmentTop != m_parchmentTop ||
+            leftBarrelRight != m_leftBarrelRight)
+        {
+          m_parchmentTop = parchmentTop;
+          m_leftBarrelRight = leftBarrelRight;
+          emit parchmentGeometryChanged();
         }
       },
       Qt::QueuedConnection);
