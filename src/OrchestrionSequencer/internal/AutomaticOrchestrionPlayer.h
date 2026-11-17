@@ -56,7 +56,7 @@ public:
   // IOrchestrionPlayer
   void SetReplayTake(std::optional<ReplayTake> take) override;
   /** Any thread. */
-  bool IsReplaying() const override { return m_replayActive; }
+  bool IsReplaying() const override { return m_activeReplay != 0; }
   bool IsPlaying() const override { return m_playing; }
   muse::async::Notification PlayingChanged() const override
   {
@@ -93,10 +93,12 @@ private:
   std::atomic<bool> m_playing = false;
   muse::async::Notification m_playingChanged;
   /**
-   * The play thread starts it, the main thread stops it — after the
-   * releases the stop sends, so that those aren't recorded as take events.
+   * The replay under way, by its serial number; 0 if none. The play thread
+   * starts it, the main thread ends it — after the releases the stop sends,
+   * so that those aren't recorded as take events — and only that one: by
+   * then, another may have started.
    */
-  std::atomic<bool> m_replayActive = false;
+  std::atomic<unsigned> m_activeReplay = 0;
   /** What the main thread is told things in, by the play thread. */
   QObject m_mainThreadContext;
   /**
@@ -126,6 +128,7 @@ private:
   double m_nextMs = 0.0;
   std::optional<ReplayTake> m_replayTake;
   std::size_t m_replayIndex = 0;
+  unsigned m_replaySerial = 0;
   PlayThread::Clock::time_point m_replayClockStart;
 };
 } // namespace dgk

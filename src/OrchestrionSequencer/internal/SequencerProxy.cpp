@@ -236,7 +236,7 @@ muse::async::Channel<AutoPlayEvent> SequencerProxy::HandNoteEvents() const
 
 muse::async::Channel<EventVariant> SequencerProxy::OutputEvent() const
 {
-  // Sent from the sequencer's note and pedal threads already
+  // Sent from the sequencer's output thread, to the audio engine
   return m_sequencer->OutputEvent();
 }
 

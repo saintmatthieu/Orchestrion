@@ -102,17 +102,16 @@ velocities from atomics, the saved one read at construction.
 
 - **All gestures** reach the sequencer through `GestureInputConnector`, on the
   play thread. `IGestureInput` hands each one to it (`setReceiver`) on the
-  thread the gesture comes from, before telling its channels. The connector
-  posts it to the play thread. A take's replay sends through
-  `IGestureInput::send`.
+  thread the gesture comes from, and the connector posts it to the play
+  thread. A take's replay sends through `IGestureInput::send`. What observes
+  gestures on the main thread (the take recorder) listens to the sequencer's
+  `Gestures`, relayed in order with what they cause.
 - **MIDI:** `GestureInput` listens to the MIDI device on an `InputThread` of
   its own, which processes its kors queue every millisecond (kors has no
   wake-up hook). `VirtualMidiInPort::eventReceived` is the device's own
   channel, so the events reach it from the MIDI thread directly, as they reach
-  the GUI's subscribers (the virtual keyboard's lights). The main thread
-  doesn't wait for that thread (but to start and stop it), so the gestures may
-  go from there to the main thread's observers (the take recorder) by kors.
-  Rendering offline, all of it stays on the main thread.
+  the GUI's subscribers (the virtual keyboard's lights). Rendering offline,
+  all of it stays on the main thread.
 - **Computer keyboard, Linux/X11:** `RawKeyboard` reads XInput2 raw key
   events on the root window, on a thread with an X connection of its own.
   Raw events are delivered in addition to the normal ones, so Qt keeps its
@@ -149,7 +148,7 @@ thread, as `10a24a1` requires.
 3. MIDI input straight to the play thread.
 4. The Linux raw keyboard thread.
 5. macOS and Windows keyboards.
-6. Priorities: the play thread and the sequencer's note, ornament and pedal
+6. Priorities: the play thread and the sequencer's output, ornament and pedal
    threads (and the input thread) above normal. On Linux that takes
    `SCHED_FIFO`, at a low priority (~10, below PipeWire's 88), asked for
    directly (an `audio` group member's `RLIMIT_RTPRIO`) or through rtkit,

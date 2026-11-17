@@ -45,7 +45,7 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
               ++m_generation;
               if (reason == JumpReason::Replay)
                 return; // our own rewind to the take's start
-              if (m_replayActive)
+              if (IsReplaying())
               {
                 // The user navigated away mid-replay: end it.
                 DispatchStop();
@@ -161,13 +161,19 @@ void AutomaticOrchestrionPlayer::Halt()
   ++m_generation; // cancels all scheduled events, nominal and replay alike
   m_running = false;
   // Don't leave notes ringing. m_running is already false, so a position
-  // jump this may cause cannot re-enter here; m_replayActive is still true,
-  // so a mid-replay stop's releases aren't recorded as take events: it is
-  // reset on the main thread, once they are there.
+  // jump this may cause cannot re-enter here; the replay still counts as
+  // under way, so a mid-replay stop's releases aren't recorded as take
+  // events: it ends on the main thread, once they are there.
   m_sequencer->AllNotesOff();
-  QMetaObject::invokeMethod(
-      &m_mainThreadContext, [this] { m_replayActive = false; },
-      Qt::QueuedConnection);
+  if (const unsigned replay = m_activeReplay)
+    QMetaObject::invokeMethod(
+        &m_mainThreadContext,
+        [this, replay]
+        {
+          unsigned expected = replay;
+          m_activeReplay.compare_exchange_strong(expected, 0);
+        },
+        Qt::QueuedConnection);
 }
 
 void AutomaticOrchestrionPlayer::DispatchStop()
@@ -181,14 +187,14 @@ void AutomaticOrchestrionPlayer::DispatchStop()
 void AutomaticOrchestrionPlayer::SetReplayTake(std::optional<ReplayTake> take)
 {
   if (!take)
-    m_replayActive = false;
+    m_activeReplay = 0;
   Post([this, take = std::move(take)]() mutable
        { m_replayTake = std::move(take); });
 }
 
 void AutomaticOrchestrionPlayer::StartReplay()
 {
-  m_replayActive = true;
+  m_activeReplay = ++m_replaySerial;
   m_replayIndex = 0;
   m_sequencer->GoToTick(m_replayTake->startTick, JumpReason::Replay);
   m_replayClockStart = PlayThread::Clock::now();
@@ -227,7 +233,7 @@ void AutomaticOrchestrionPlayer::ScheduleReplayNext()
 
 void AutomaticOrchestrionPlayer::FireReplayEvent()
 {
-  if (!m_replayActive)
+  if (!IsReplaying())
     return;
   const ReplayEvent &event = m_replayTake->events[m_replayIndex];
   m_sequencer->OnHandInputEvent(event.type, event.isLeftHand, event.velocity);

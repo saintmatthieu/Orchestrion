@@ -58,6 +58,12 @@ private:
 
   dgk::Inject<muse::midi::IMidiInPort> midiInPort{this};
   dgk::Inject<IVirtualMidiKeyboard> virtualKeyboard{this};
+  /**
+   * Found on the main thread and kept: quitting, the injected services are
+   * set to null there, while this still reads them on its thread.
+   */
+  const std::shared_ptr<muse::midi::IMidiInPort> m_port;
+  const std::shared_ptr<IVirtualMidiKeyboard> m_virtualKeyboard;
   muse::async::Channel<int, std::optional<float>> m_noteOn;
   muse::async::Channel<int> m_noteOff;
   muse::async::Channel<bool> m_sustainPedal;

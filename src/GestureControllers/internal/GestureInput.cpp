@@ -21,9 +21,6 @@
 #include "MidiDevice/MidiDeviceGestureController.h"
 #include "OrchestrionCommon/OfflineRendering.h"
 
-#include <QMetaObject>
-#include <QThread>
-
 namespace dgk
 {
 GestureInput::~GestureInput()
@@ -91,44 +88,8 @@ void GestureInput::Dispatch(const Gesture &received)
   Gesture gesture = received;
   if (gesture.time == std::chrono::steady_clock::time_point{})
     gesture.time = std::chrono::steady_clock::now();
-  {
-    std::scoped_lock lock{m_receiverMutex};
-    if (m_receiver)
-      m_receiver(gesture);
-  }
-  if (QThread::currentThread() == m_mainThreadContext.thread())
-    SendChannels(gesture);
-  else
-    QMetaObject::invokeMethod(
-        &m_mainThreadContext, [this, gesture] { SendChannels(gesture); },
-        Qt::QueuedConnection);
-}
-
-void GestureInput::SendChannels(const Gesture &gesture)
-{
-  switch (gesture.kind)
-  {
-  case Gesture::Kind::noteOn:
-    m_noteOn.send(gesture.pitch, gesture.velocity);
-    break;
-  case Gesture::Kind::noteOff:
-    m_noteOff.send(gesture.pitch);
-    break;
-  case Gesture::Kind::sustainPedal:
-    m_sustainPedal.send(gesture.down);
-    break;
-  }
-}
-
-muse::async::Channel<int, std::optional<float>> GestureInput::noteOn() const
-{
-  return m_noteOn;
-}
-
-muse::async::Channel<int> GestureInput::noteOff() const { return m_noteOff; }
-
-muse::async::Channel<bool> GestureInput::sustainPedal() const
-{
-  return m_sustainPedal;
+  std::scoped_lock lock{m_receiverMutex};
+  if (m_receiver)
+    m_receiver(gesture);
 }
 } // namespace dgk

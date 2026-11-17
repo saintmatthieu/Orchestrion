@@ -91,7 +91,14 @@ void Orchestrion::rebuildSequencer(std::optional<int> resumeTick)
   const auto masterNotation = projectSession()->masterNotation();
   if (!masterNotation)
   {
-    m_playThread->Wait([this] { m_playThreadSequencer.reset(); });
+    // The score is gone: so are those playing it, whose chords are its.
+    m_playThread->Wait(
+        [this]
+        {
+          m_followPlayer.reset();
+          m_playThreadSequencer.reset();
+        });
+    m_autoPlayer.reset();
     setSequencer(nullptr);
     return;
   }

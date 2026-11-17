@@ -18,8 +18,6 @@
  */
 #pragma once
 
-#include "IGestureController.h"
-
 #include <chrono>
 #include <functional>
 #include <modularity/imoduleinterface.h>
@@ -27,7 +25,7 @@
 
 namespace dgk
 {
-//! The note events of every gesture controller, merged into one stream: the
+//! The gestures of every gesture controller, merged into one stream: the
 //! computer keyboard, always, and the MIDI device chosen in the Audio/MIDI
 //! menu, whenever one is connected. There is nothing to select — whatever can
 //! produce notes does. The same goes for the sustain pedal plugged into the
@@ -35,7 +33,7 @@ namespace dgk
 //!
 //! The MIDI device's come from a thread of its own (see InputThread), the
 //! computer keyboard's from the main thread.
-class IGestureInput : public IGestureController, MODULE_GLOBAL_EXPORT_INTERFACE
+class IGestureInput : MODULE_GLOBAL_EXPORT_INTERFACE
 {
   INTERFACE_ID(IGestureInput);
 
@@ -68,8 +66,8 @@ public:
   using Receiver = std::function<void(const Gesture &)>;
 
   /**
-   * Told of every gesture, before the channels are, on the thread it comes
-   * from, which needn't be the main thread: for the sequencer, which takes
+   * Told of every gesture, on the thread it comes from, which needn't be the
+   * main thread: for the sequencer, which takes
    * them on a thread of its own. Must be quick, and safe from any thread.
    */
   virtual void setReceiver(Receiver) = 0;

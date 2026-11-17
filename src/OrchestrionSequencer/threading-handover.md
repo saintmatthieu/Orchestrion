@@ -23,7 +23,7 @@ uneven.
 | `bbd561d` | Crash on quitting: services read null in destructors during IoC reset. |
 | `b058deb` | `OutputEvent` to the audio engine only; GUI observers use `MainThreadOutputEvent` (relayed); jump cut is `AllNotesOffEvent` in line with the notes. |
 | `fb38e02` | Copilot's first review: teardown order, gestures relayed in order for the take recorder, velocities posted to the main thread. |
-| after `f4e4078` | Copilot's second review: one sender to the audio engine (output thread), event times for grading, replayed gestures not recorded, takes kept in time order; the follower inline in renders. |
+| `3b0fe19` | Copilot's second review: one sender to the audio engine (output thread), event times for grading, replayed gestures not recorded, takes kept in time order; the follower inline in renders. |
 
 How it was checked on Linux: both tutorials live; offline renders
 byte-identical run to run (and to the pre-change build, but for 6.8 ms
@@ -41,7 +41,7 @@ cleanly; loop wraps keep the loop's first chord.
    channel between two threads takes a lock the main thread holds while
    processing. Use queued Qt calls (`QMetaObject::invokeMethod(...,
    Qt::QueuedConnection)`) instead; see `SequencerProxy::Relay`,
-   `GestureInput::Dispatch`, `ComputerKeyboard::onKey`.
+   `ComputerKeyboard::onKey`.
 3. **Subscriptions are made and let go of on the thread they deliver on.**
    Play-thread subscribers use a separate `Asyncable` member created and
    reset inside `Wait()` (see `SequencerProxy`, `AutomaticOrchestrionPlayer`,
@@ -71,8 +71,6 @@ Nothing was compiled on Windows or macOS. Likely spots:
   there, and Qt's key path works as before.
 - `GestureControllers/CMakeLists.txt`: `RawKeyboard_lin.cpp` and `X11 Xi` under
   `OS_IS_LIN` only.
-- `OrchestrionSequencer.cpp`: `SetThreadPriority(m_noteThread...)` under
-  `OS_IS_WIN` was there before; untouched.
 - `InputThread` uses `muse::async::processMessages(thread id)`; MIDI on
   Windows (`WinMidiInPort`, callback thread) and macOS (`CoreMidiInPort`,
   CoreMIDI's thread) sends from its own thread like ALSA's, so the input
@@ -144,7 +142,7 @@ throttling), (b) may be worth it; it may well not.
 
 See threading.md, step 6. For the other platforms:
 - **Windows:** `SetThreadPriority(..., THREAD_PRIORITY_ABOVE_NORMAL)` for the
-  play, note, ornament, pedal and input threads (and the raw keyboard's).
+  play, output, ornament, pedal and input threads (and the raw keyboard's).
   Maybe MMCSS (`AvSetMmThreadCharacteristicsW(L"Games")`) for the play
   thread.
 - **macOS:** `pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0)`,

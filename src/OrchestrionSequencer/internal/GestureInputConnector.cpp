@@ -32,8 +32,11 @@ GestureInputConnector::~GestureInputConnector()
 {
   // No more gestures posted (one under way is waited for), then none of
   // those posted runs: the token goes on the play thread, where they run.
-  if (m_gestureInput)
-    m_gestureInput->setReceiver(nullptr);
+  // (Never initialized, if the application quit as it started: nothing to
+  // let go of, and no play thread.)
+  if (!m_gestureInput)
+    return;
+  m_gestureInput->setReceiver(nullptr);
   m_orchestrion.GetPlayThread().Wait([this] { m_alive.reset(); });
 }
 
