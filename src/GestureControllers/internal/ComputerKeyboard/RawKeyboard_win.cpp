@@ -92,10 +92,7 @@ char KeyOf(USHORT virtualKey, HKL layout)
   return static_cast<char>(std::toupper(static_cast<int>(character)));
 }
 
-bool IsDown(int virtualKey)
-{
-  return GetAsyncKeyState(virtualKey) & 0x8000;
-}
+bool IsDown(int virtualKey) { return GetAsyncKeyState(virtualKey) & 0x8000; }
 } // namespace
 
 void RawKeyboard::Run()
@@ -146,9 +143,11 @@ void RawKeyboard::Run()
           {
             const bool modified =
                 IsDown(VK_SHIFT) || IsDown(VK_CONTROL) || IsDown(VK_MENU);
-            if (const char character = KeyOf(
-                    key.VKey, GetKeyboardLayout(connection.mainThreadId));
-                character && !modified)
+            if (const char character =
+                    KeyOf(key.VKey, GetKeyboardLayout(connection.mainThreadId));
+                character && (!pressed || !modified))
+              // A release counts whatever is held: its key was pressed
+              // without.
               m_callback(character, pressed);
           }
         }

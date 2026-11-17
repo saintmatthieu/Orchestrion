@@ -36,7 +36,8 @@ namespace dgk
  * Raw events don't say which window they are for: the main thread tells
  * whether keys play (SetPlayable), which a press must be for to count. A
  * release always does, a key held as the focus moved being released all the
- * same. As with Qt's events, nothing counts while Shift, Ctrl or Alt is held.
+ * same. As with Qt's events, no press counts while Shift, Ctrl or Alt is
+ * held.
  */
 class RawKeyboard
 {

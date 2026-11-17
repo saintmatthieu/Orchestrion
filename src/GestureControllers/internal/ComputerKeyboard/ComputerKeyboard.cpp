@@ -91,15 +91,18 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
   // Those of the keyboard itself are read by the raw keyboard, if there is
   // one: only the synthesized ones (a demo's) are left to this.
   const bool handledElsewhere = m_owner.raw() && event->spontaneous();
-  if (!isKeyModifierPressed && !handledElsewhere)
+  if (!handledElsewhere)
   {
-    // Only the presses: a key held when the focus moved must still be
-    // released.
-    if (event->type() == QEvent::KeyPress && !keysAreForSomethingElse())
+    // Only the presses are conditional: a key held when the focus moved, or
+    // when a modifier went down, must still be released.
+    if (event->type() == QEvent::KeyPress && !isKeyModifierPressed &&
+        !keysAreForSomethingElse())
     {
       auto keyEvent = static_cast<const QKeyEvent *>(event);
       if (keyEvent->isAutoRepeat())
         return false;
+      if (const quint32 scanCode = keyEvent->nativeScanCode())
+        m_pressedKeys[scanCode] = keyEvent->key();
       m_owner.onKey(keyEvent->key(), true);
     }
     else if (event->type() == QEvent::KeyRelease)
@@ -107,7 +110,15 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
       auto keyEvent = static_cast<const QKeyEvent *>(event);
       if (keyEvent->isAutoRepeat())
         return false;
-      m_owner.onKey(keyEvent->key(), false);
+      // The key as it was pressed: with Shift down since, it reads otherwise.
+      int key = keyEvent->key();
+      if (const auto it = m_pressedKeys.find(keyEvent->nativeScanCode());
+          it != m_pressedKeys.end())
+      {
+        key = it->second;
+        m_pressedKeys.erase(it);
+      }
+      m_owner.onKey(key, false);
     }
   }
   return QObject::eventFilter(watched, event);
