@@ -1343,12 +1343,12 @@ Item {
                 onClicked: root.model.searchOnline()
             }
             // Here, away from the corner: the window's own close button is there.
-            // As tall as the row; the drawing is a little wider than tall.
+            // As tall as the row, and as wide.
             Item {
                 id: backLink
                 visible: root.model.hasScore
                 height: searchField.height
-                width: height * 769 / 728
+                width: height
 
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
