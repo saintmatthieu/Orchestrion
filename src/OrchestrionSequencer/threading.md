@@ -55,10 +55,12 @@ implemented by a proxy:
 - **Commands** (`GoToTick`, `GoToEnd`, `AllNotesOff`, `OnInputEvent`, ...)
   are posted to the play thread.
 - **Notifications** (transitions, about-to-jump, hand note events, wrong
-  notes) are relayed to the main thread as one ordered stream. Separate kors
-  channels crossing threads don't keep their order relative to one another,
-  and subscribers rely on `AboutToJumpPosition` coming before the jump's
-  transitions.
+  notes, gestures) are relayed to the main thread as one ordered stream.
+  Separate kors channels crossing threads don't keep their order relative to
+  one another, and subscribers rely on `AboutToJumpPosition` coming before
+  the jump's transitions. Each comes with when it happened (`EventTime`):
+  what goes by time, judging the timing of onsets, goes by that rather than
+  by when the busy main thread got to it.
 - **Queries** are answered from what the stream brought:
   - `GetCurrentTransitions` returns a copy kept on the main thread.
   - `GetNextChord` gets each track's next chord computed on the play thread
@@ -67,13 +69,17 @@ implemented by a proxy:
     under a mutex after each onset and extrapolated by the reader.
   - `GetAllVoices` and `RoleOfKey` only read what never changes, plus the
     staff modes, which the main thread owns.
-- **`OutputEvent`** comes from the sequencer's threads (play, note, pedal,
-  ornament) and goes to the audio engine only. The main thread's observers
-  (the pedal indicator, MIDI out) use `MainThreadOutputEvent`, which the proxy
-  relays as queued Qt calls (`OrchestrionSequencer::SetOutputObserver`): none
-  of those threads sends kors messages to the main thread. A jump's cut
-  (`AllNotesOffEvent`) goes down `OutputEvent` from the play thread, in line
-  with the unstrummed notes struck after it.
+- **`OutputEvent`** goes to the audio engine only, sent by one thread, the
+  sequencer's output thread (a `PlayThread`): the play, pedal and ornament
+  threads queue their output for it (`QueueOutput`), in order of due time.
+  With one sender, what is sent stays in order: a jump's cut
+  (`AllNotesOffEvent`) drops what is queued and comes after all that was
+  sent before it, before all that is sent after. Rendering offline, the
+  output thread is the main thread, on its virtual clock. The main thread's
+  observers (the pedal indicator, MIDI out) use `MainThreadOutputEvent`,
+  which the proxy relays as queued Qt calls
+  (`OrchestrionSequencer::SetOutputObserver`): no sequencer thread sends kors
+  messages to the main thread.
 
 ### What the sequencer reads from the main thread today
 
@@ -88,9 +94,9 @@ posted tasks when they change:
 The action registrations (`nav-first-control`, play/stop) stay on the main
 thread and post to the play thread.
 
-`MuseChord::GetVelocity`/`SetVelocity` touch the score's notes. Editing a score
-while it is being played is the only possible conflict, and it should be
-looked at when we get there.
+Recording a chord's velocity marks the score's notes: the sequencer posts
+`MuseChord::SetVelocity` to the main thread (`SetMainThreadPoster`), and reads
+velocities from atomics, the saved one read at construction.
 
 ### Input
 

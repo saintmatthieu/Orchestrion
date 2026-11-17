@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "FollowerThread.h"
+#include "OrchestrionCommon/OfflineRendering.h"
 
 #include <algorithm>
 
@@ -29,7 +30,8 @@ FollowerThread::FollowerThread(PlayThread &playThread,
   visibleScore()->visibleTicksChanged().onNotify(this, [this]
                                                  { PostVisibleTicks(); });
   PostVisibleTicks();
-  m_thread = std::thread{[this] { Run(); }};
+  if (!m_inline)
+    m_thread = std::thread{[this] { Run(); }};
 }
 
 FollowerThread::~FollowerThread() { Stop(); }
@@ -106,6 +108,11 @@ void FollowerThread::PostVisibleTicks()
 
 void FollowerThread::Post(Task task)
 {
+  if (m_inline)
+  {
+    Handle(std::move(task));
+    return;
+  }
   {
     std::scoped_lock lock{m_mutex};
     m_tasks.push_back(std::move(task));
@@ -115,7 +122,6 @@ void FollowerThread::Post(Task task)
 
 void FollowerThread::Run()
 {
-  std::shared_ptr<PerformanceFollower> follower;
   while (true)
   {
     Task task;
@@ -127,53 +133,59 @@ void FollowerThread::Run()
       task = std::move(m_tasks.front());
       m_tasks.pop_front();
     }
-    switch (task.kind)
+    Handle(std::move(task));
+  }
+}
+
+void FollowerThread::Handle(Task task)
+{
+  std::shared_ptr<PerformanceFollower> &follower = m_handledFollower;
+  switch (task.kind)
+  {
+  case Task::Kind::follow:
+  {
+    follower = std::move(task.follower);
+    std::optional<std::pair<int, int>> visible;
     {
-    case Task::Kind::follow:
+      std::scoped_lock lock{m_mutex};
+      visible = m_visible;
+    }
+    if (follower && visible)
+      follower->SetVisibleTicks(visible->first, visible->second);
+    break;
+  }
+  case Task::Kind::reset:
+    if (follower)
+      follower->Reset(task.event);
+    break;
+  case Task::Kind::visible:
+    if (follower)
+      follower->SetVisibleTicks(task.visible.first, task.visible.second);
+    break;
+  case Task::Kind::note:
+  {
+    if (!follower)
+      break;
+    if (task.ticksPerMs)
+      follower->SetTicksPerMs(*task.ticksPerMs);
+    follower->OnNoteOn(task.pitch, task.ms);
+    const ScoreEvent &event = follower->Events()[follower->FollowedEvent()];
+    const auto has = [&](const std::vector<int> &pitches)
     {
-      follower = std::move(task.follower);
-      std::optional<std::pair<int, int>> visible;
-      {
-        std::scoped_lock lock{m_mutex};
-        visible = m_visible;
-      }
-      if (follower && visible)
-        follower->SetVisibleTicks(visible->first, visible->second);
-      break;
-    }
-    case Task::Kind::reset:
-      if (follower)
-        follower->Reset(task.event);
-      break;
-    case Task::Kind::visible:
-      if (follower)
-        follower->SetVisibleTicks(task.visible.first, task.visible.second);
-      break;
-    case Task::Kind::note:
-    {
-      if (!follower)
-        break;
-      if (task.ticksPerMs)
-        follower->SetTicksPerMs(*task.ticksPerMs);
-      follower->OnNoteOn(task.pitch, task.ms);
-      const ScoreEvent &event = follower->Events()[follower->FollowedEvent()];
-      const auto has = [&](const std::vector<int> &pitches)
-      {
-        return std::find(pitches.begin(), pitches.end(), task.pitch) !=
-               pitches.end();
-      };
-      const bool matched = has(event.pitches) || has(event.trillPitches);
-      m_playThread.Post(
-          [this, life = m_life, generation = task.generation,
-           followed = Followed{event.tick, task.ms, task.pitch, matched}]
-          {
-            std::scoped_lock lock{life->mutex};
-            if (life->alive && generation == m_generation)
-              m_onFollowed(followed);
-          });
-      break;
-    }
-    }
+      return std::find(pitches.begin(), pitches.end(), task.pitch) !=
+             pitches.end();
+    };
+    const bool matched = has(event.pitches) || has(event.trillPitches);
+    m_playThread.Post(
+        [this, life = m_life, generation = task.generation,
+         followed = Followed{event.tick, task.ms, task.pitch, matched}]
+        {
+          std::scoped_lock lock{life->mutex};
+          if (life->alive && generation == m_generation)
+            m_onFollowed(followed);
+        });
+    break;
+  }
   }
 }
 } // namespace dgk

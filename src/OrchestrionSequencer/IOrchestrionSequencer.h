@@ -22,6 +22,7 @@
 #include "OrchestrionTypes.h"
 #include <async/channel.h>
 #include <async/notification.h>
+#include <chrono>
 #include <map>
 #include <optional>
 
@@ -178,6 +179,13 @@ public:
    * when each gesture was made rather than when the main thread heard of it.
    */
   virtual muse::async::Channel<IGestureInput::Gesture> Gestures() const = 0;
+  /**
+   * When what is being told on the channels above happened, on the steady
+   * clock. What reaches the main thread comes as late as it is busy: what
+   * goes by time (judging the timing of onsets) goes by this rather than by
+   * when it is told. Meant to be asked while being told.
+   */
+  virtual std::chrono::steady_clock::time_point EventTime() const = 0;
   virtual void GoToTick(int tick, JumpReason reason) = 0;
   /**
    * Goes past the last event (JumpReason::End), where playing the score

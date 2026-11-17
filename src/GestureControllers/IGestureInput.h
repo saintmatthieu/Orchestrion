@@ -59,6 +59,11 @@ public:
     bool down = false;
     /** When it was made: stamped as it comes in, if not before. */
     std::chrono::steady_clock::time_point time{};
+    /**
+     * Not the performer's but a recorded take's, replayed (see send): no
+     * new take.
+     */
+    bool replayed = false;
   };
   using Receiver = std::function<void(const Gesture &)>;
 

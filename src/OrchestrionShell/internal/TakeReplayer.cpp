@@ -132,19 +132,23 @@ void TakeReplayer::Fire()
   if (!m_take)
     return;
   const Take::Event &e = m_take->events[m_index++];
+  // Not recorded as a take of its own, however late the recorder hears of it
+  const auto send = [this](IGestureInput::Gesture gesture)
+  {
+    gesture.replayed = true;
+    gestureInput()->send(gesture);
+  };
   switch (e.kind)
   {
   case Take::Event::Kind::noteOn:
-    gestureInput()->send(
-        {IGestureInput::Gesture::Kind::noteOn, e.pitch, e.velocity, false});
+    send({IGestureInput::Gesture::Kind::noteOn, e.pitch, e.velocity, false});
     break;
   case Take::Event::Kind::noteOff:
-    gestureInput()->send(
-        {IGestureInput::Gesture::Kind::noteOff, e.pitch, std::nullopt, false});
+    send({IGestureInput::Gesture::Kind::noteOff, e.pitch, std::nullopt, false});
     break;
   case Take::Event::Kind::sustainPedal:
-    gestureInput()->send({IGestureInput::Gesture::Kind::sustainPedal, 0,
-                          std::nullopt, e.pedalDown});
+    send({IGestureInput::Gesture::Kind::sustainPedal, 0, std::nullopt,
+          e.pedalDown});
     break;
   case Take::Event::Kind::playbackStarted:
     if (!orchestrion()->player()->IsPlaying())

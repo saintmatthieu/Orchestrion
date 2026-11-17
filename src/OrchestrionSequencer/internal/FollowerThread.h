@@ -19,6 +19,7 @@
 #pragma once
 
 #include "IVisibleScore.h"
+#include "OrchestrionCommon/OfflineRendering.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "PerformanceFollower.h"
 #include "PlayThread.h"
@@ -117,6 +118,8 @@ private:
   void PostVisibleTicks();
   void Post(Task);
   void Run();
+  /** The follower thread's, or the play thread's if m_inline. */
+  void Handle(Task);
 
   PlayThread &m_playThread;
   const std::function<void(const Followed &)> m_onFollowed;
@@ -141,6 +144,16 @@ private:
     bool alive = true;
   };
   const std::shared_ptr<Life> m_life = std::make_shared<Life>();
+
+  /**
+   * Rendering offline, the tasks are handled as they are posted, on the play
+   * thread (the main thread then), not on a thread of their own: the
+   * follower's findings come at the virtual time of the notes followed, the
+   * same from one render to the next.
+   */
+  const bool m_inline = !offlineRendering.audioPath.empty();
+  /** The follower the tasks are handled with (see Handle). */
+  std::shared_ptr<PerformanceFollower> m_handledFollower;
 
   std::mutex m_mutex;
   std::condition_variable m_cv;

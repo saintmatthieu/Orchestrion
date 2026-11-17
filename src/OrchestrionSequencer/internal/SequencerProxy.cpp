@@ -132,12 +132,27 @@ void SequencerProxy::Post(std::function<void(OrchestrionSequencer &)> task)
 
 void SequencerProxy::Relay(std::function<void()> task)
 {
+  const auto time = std::chrono::steady_clock::now();
   if (QThread::currentThread() == m_mainThreadContext.thread())
+  {
     // Offline rendering: the play thread is the main thread.
+    m_eventTime = time;
     task();
+  }
   else
-    QMetaObject::invokeMethod(&m_mainThreadContext, std::move(task),
-                              Qt::QueuedConnection);
+    QMetaObject::invokeMethod(
+        &m_mainThreadContext,
+        [this, time, task = std::move(task)]
+        {
+          m_eventTime = time;
+          task();
+        },
+        Qt::QueuedConnection);
+}
+
+std::chrono::steady_clock::time_point SequencerProxy::EventTime() const
+{
+  return m_eventTime;
 }
 
 std::map<TrackIndex, const IChord *> SequencerProxy::NextChords() const

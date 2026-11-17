@@ -22,6 +22,8 @@ uneven.
 | `d78fd55` | X11: `RawKeyboard` reads XInput2 raw key events on its own thread. CI: `libxi-dev`, `libxi6`. |
 | `bbd561d` | Crash on quitting: services read null in destructors during IoC reset. |
 | `b058deb` | `OutputEvent` to the audio engine only; GUI observers use `MainThreadOutputEvent` (relayed); jump cut is `AllNotesOffEvent` in line with the notes. |
+| `fb38e02` | Copilot's first review: teardown order, gestures relayed in order for the take recorder, velocities posted to the main thread. |
+| after `f4e4078` | Copilot's second review: one sender to the audio engine (output thread), event times for grading, replayed gestures not recorded, takes kept in time order; the follower inline in renders. |
 
 How it was checked on Linux: both tutorials live; offline renders
 byte-identical run to run (and to the pre-change build, but for 6.8 ms
@@ -50,8 +52,14 @@ cleanly; loop wraps keep the loop's first chord.
    first. Keep a `shared_ptr` from construction (see
    `ComputerKeyboardGestureController::m_keyboard`).
 6. **Offline rendering stays on the main thread** (`offlineRendering.audioPath`
-   non-empty): the play thread is the main thread, no input thread, no raw
-   keyboard. Renders must stay identical run to run.
+   non-empty): the play and output threads are the main thread, the follower
+   works inline, no input thread, no raw keyboard. Renders must stay
+   identical run to run: a real thread whose result the main thread uses
+   makes them flaky, since the virtual clock jumps ahead while the main thread
+   waits. (The pedal and ornament threads still are real threads: their
+   timing in renders goes by the wall clock.)
+7. **One sender to the audio engine**: everything for it is queued for the
+   output thread (`QueueOutput`), never sent from another thread.
 
 ## First thing on each platform: does it build and play?
 
@@ -142,6 +150,8 @@ See threading.md, step 6. For the other platforms:
 - **macOS:** `pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0)`,
   called from each thread itself (first thing in its function).
 - **Linux:** `SCHED_FIFO` ~10, falling back to rtkit, then nothing.
+- The output thread is a `PlayThread` now (the note thread's Windows
+  `THREAD_PRIORITY_ABOVE_NORMAL` went with it): give `PlayThread` a priority.
 - **Not** the follower thread.
 
 ## Known gaps

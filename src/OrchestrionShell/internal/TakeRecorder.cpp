@@ -19,6 +19,8 @@
 #include "TakeRecorder.h"
 #include "OrchestrionSequencer/IChord.h"
 
+#include <algorithm>
+
 #include <engraving/dom/masterscore.h>
 #include <engraving/dom/measure.h>
 #include <notation/imasternotation.h>
@@ -51,6 +53,8 @@ void TakeRecorder::OnSequencerChanged()
       this,
       [this](const IGestureInput::Gesture &gesture)
       {
+        if (gesture.replayed)
+          return;
         Take::Event e;
         switch (gesture.kind)
         {
@@ -170,7 +174,12 @@ void TakeRecorder::Add(Take::Event e,
     m_takeStart = time;
   }
   e.ms = std::chrono::duration<double, std::milli>(time - m_takeStart).count();
-  m_take->events.push_back(e);
+  // In time order: a gesture is heard of later than playback's start or stop
+  // made after it (see IOrchestrionSequencer::Gestures).
+  const auto pos = std::upper_bound(
+      m_take->events.begin(), m_take->events.end(), e.ms,
+      [](double ms, const Take::Event &event) { return ms < event.ms; });
+  m_take->events.insert(pos, e);
 }
 
 std::optional<int> TakeRecorder::NextChordTick() const

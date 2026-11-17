@@ -85,6 +85,7 @@ public:
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   muse::async::Channel<IGestureInput::Gesture> Gestures() const override;
+  std::chrono::steady_clock::time_point EventTime() const override;
   void GoToTick(int tick, JumpReason reason) override;
   void GoToEnd() override;
   std::optional<PerformedTempo> PerformedTempoNow() override;
@@ -100,7 +101,8 @@ private:
   void Post(std::function<void(OrchestrionSequencer &)> task);
   /**
    * On the sequencer's threads: runs `task` on the main thread, after what
-   * was relayed before (from the same thread).
+   * was relayed before (from the same thread), EventTime() telling when it
+   * was relayed.
    */
   void Relay(std::function<void()> task);
   /** On the play thread: each track's next chord. */
@@ -118,6 +120,7 @@ private:
   QObject m_mainThreadContext;
 
   // As of what was relayed last
+  std::chrono::steady_clock::time_point m_eventTime;
   std::map<TrackIndex, ChordTransition> m_transitions;
   std::map<TrackIndex, const IChord *> m_nextChords;
   /** None until told: no estimate yet. */

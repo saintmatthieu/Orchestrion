@@ -116,6 +116,8 @@ public:
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;
   muse::async::Channel<IGestureInput::Gesture> Gestures() const override;
+  /** Now: it tells as things happen. */
+  std::chrono::steady_clock::time_point EventTime() const override;
   /** Sends Gestures: a gesture it is about to be given. */
   void ObserveGesture(const IGestureInput::Gesture &);
   void GoToTick(int tick, JumpReason reason) override;
@@ -414,8 +416,28 @@ private:
   void CancelOrnaments();
   /** Sends TempoChanged. */
   void PublishTempo();
-  /** Sends OutputEvent, and tells the observer. */
+  /**
+   * Output thread: sends OutputEvent, and tells the observer. The only
+   * sender of OutputEvent, so that what is sent stays in order (see
+   * QueueOutput).
+   */
   void SendOutput(EventVariant);
+  /** Output thread: sends what is queued and due. */
+  void SendDueOutput();
+  /**
+   * Queues the events for the output thread to send when due (now if not
+   * given: before those timed), in order of due time, after those due at the
+   * same time: the
+   * other threads' output goes through it, so that a jump's cut comes after
+   * all that was sent before and before all that is sent after it.
+   */
+  void QueueOutput(std::vector<QueueEntry<EventVariant>>);
+  void QueueOutput(EventVariant);
+  /**
+   * A jump: what is queued for the output thread and not sent yet is dropped,
+   * and the synthesizers cut what sounds (AllNotesOffEvent).
+   */
+  void CutOutput();
   bool HandIn(const Modes &, bool isLeftHand, StaffMode) const;
   bool IsNotesKey(const Modes &, int pitch) const;
   std::optional<bool> PerformerHand(const Modes &, int pitch) const;
@@ -440,7 +462,13 @@ private:
   //! press still pending, held back until the press so that the pedal catches
   //! them.
   ThreadMembers<EventVariant> m_pedalThreadMembers;
-  ThreadMembers<NoteEvent> m_noteThreadMembers;
+  /** What the output thread is to send, sorted by due time (QueueOutput). */
+  struct OutputQueue
+  {
+    std::deque<QueueEntry<EventVariant>> queue;
+    std::mutex mutex;
+  };
+  OutputQueue m_output;
   //! Its queue is kept sorted by due time. Its mutex also guards m_tracks
   //! and m_ornamentGeneration.
   ThreadMembers<OrnamentStepDue> m_ornamentThreadMembers;
@@ -449,8 +477,13 @@ private:
   std::map<TrackIndex, TrackSchedule> m_tracks;
   unsigned m_ornamentGeneration = 0;
   std::thread m_pedalThread;
-  std::thread m_noteThread;
   std::thread m_ornamentThread;
+  /**
+   * Sends OutputEvent (SendDueOutput). Rendering offline, the main thread,
+   * on its virtual clock, as the play thread is: what sounds when stays the
+   * same from one render to the next.
+   */
+  std::unique_ptr<PlayThread> m_outputThread;
   const std::chrono::steady_clock::time_point m_epoch =
       std::chrono::steady_clock::now();
 
