@@ -23,6 +23,7 @@
 #include <X11/extensions/XInput2.h>
 #include <X11/keysym.h>
 
+#include <array>
 #include <cctype>
 #include <poll.h>
 #include <sys/eventfd.h>
@@ -121,6 +122,8 @@ void RawKeyboard::Run()
   Display *const display = m_connection->display;
   pollfd fds[2] = {{ConnectionNumber(display), POLLIN, 0},
                    {m_connection->stopFd, POLLIN, 0}};
+  // The keys down, by key code, as they read when pressed (0: not down).
+  std::array<char, 256> downKeys{};
   while (true)
   {
     if (!XPending(display))
@@ -149,8 +152,13 @@ void RawKeyboard::Run()
         XkbStateRec state{};
         XkbGetState(display, XkbUseCoreKbd, &state);
         const bool modified = state.mods & (ShiftMask | ControlMask | Mod1Mask);
-        if (const char key = KeyOf(display, raw->detail, state);
-            key && !modified)
+        // A release counts whatever is held, and is told as its key read
+        // when pressed: a modifier down since may make it read otherwise.
+        char &down = downKeys[raw->detail & 0xff];
+        const char key =
+            !pressed && down ? down : KeyOf(display, raw->detail, state);
+        down = pressed && !modified ? key : 0;
+        if (key && (!pressed || !modified))
           m_callback(key, pressed);
       }
     }

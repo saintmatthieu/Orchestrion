@@ -23,6 +23,7 @@
 #include <QTimer>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 namespace dgk
 {
@@ -43,6 +44,11 @@ private:
   void updatePlayable();
 
   ComputerKeyboard &m_owner;
+  /**
+   * The keys down, by scan code, as they read when pressed: what their
+   * release is told as, whatever modifier went down meanwhile.
+   */
+  std::unordered_map<quint32, int> m_pressedKeys;
   /**
    * What the keys are for may change without the focus moving (the score
    * shelf shown around it): looked at again every so often.
