@@ -202,6 +202,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
           find ${{env.BUILD_DIR}}/Orchestrion.app -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" -o -name "*.framework" -o -name "*.o" \) -exec codesign --timestamp --force --verify --verbose --strict --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" {} \;
           codesign --timestamp --deep --force --verify --verbose --strict --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/Orchestrion.app
+          # --deep gives Qt WebEngine's helper the hardened runtime but no entitlements: V8 then can't JIT, the page's
+          # renderer dies and the recordings' player shows nothing. Re-sign it with Qt's entitlements, then what holds it.
+          WEBENGINE=${{env.BUILD_DIR}}/Orchestrion.app/Contents/Frameworks/QtWebEngineCore.framework
+          HELPER=$WEBENGINE/Versions/A/Helpers/QtWebEngineProcess.app
+          codesign --timestamp --force --verbose --options runtime --entitlements "$HELPER/Contents/Resources/QtWebEngineProcess.entitlements" --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" "$HELPER"
+          codesign --timestamp --force --verbose --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" "$WEBENGINE"
+          codesign --timestamp --force --verbose --options runtime --sign "Developer ID Application: Matthieu Hodgkinson (7JHUJWK5GF)" ${{env.BUILD_DIR}}/Orchestrion.app
+          codesign --verify --deep --strict --verbose=2 ${{env.BUILD_DIR}}/Orchestrion.app
+          codesign -d --entitlements - "$HELPER"
 
       - name: Install create-dmg
         run: brew install create-dmg
