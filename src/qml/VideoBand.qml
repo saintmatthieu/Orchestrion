@@ -29,8 +29,9 @@ import Orchestrion 1.0
  * Under the pointer it comes all the way out, a few pixels over the
  * parchment; clicked, it grows where it is, with the band that opens between
  * the title and the score and pushes the score down (smaller, still under it,
- * to follow the music), playing, with the score's other recordings beside it;
- * from there it can go full screen.
+ * to follow the music), playing, with a cross to close it on its corner (or
+ * Esc).
+ * The player's own controls go full screen and to YouTube.
  *
  * It grows with the band (`progress`) and shrinks back the same way. YouTube's
  * player runs in a page of the website (player.html); a video its owner
@@ -57,22 +58,23 @@ Item {
     property real titleBottom: 0
     /** Opened: its height. */
     property real openHeight: 0
+    /**
+     * Whether Esc may close it: not while something over it takes the key
+     * (the score shelf, say).
+     */
+    property bool escapeEnabled: true
 
     readonly property bool fullScreen: internal.fullScreen
 
-    function toggleFullScreen() {
-        if (internal.playerFullScreen)
+    function exitFullScreen() {
+        if (internal.fullScreen)
             playerLoader.item.triggerWebAction(WebEngineView.ExitFullScreen)
-        else
-            internal.fullScreen = !internal.fullScreen
     }
 
     QtObject {
         id: internal
+        // The player's own button
         property bool fullScreen: false
-        // The player asked for it (its own button), and must be told when it
-        // ends.
-        property bool playerFullScreen: false
         property bool unavailable: false
         // The player has started: its picture replaces the thumbnail.
         property bool started: false
@@ -85,8 +87,7 @@ Item {
         target: root.model
         function onCurrentChanged() {
             if (root.model.currentIndex < 0) {
-                if (internal.playerFullScreen)
-                    playerLoader.item.triggerWebAction(WebEngineView.ExitFullScreen)
+                root.exitFullScreen()
                 internal.fullScreen = false
                 if (playerLoader.item)
                     playerLoader.item.runJavaScript("window.pausePlayer && pausePlayer()")
@@ -102,10 +103,17 @@ Item {
         }
     }
 
+    // Out of full screen, then closed
     Shortcut {
         sequence: "Escape"
-        enabled: internal.fullScreen
-        onActivated: root.toggleFullScreen()
+        enabled: root.escapeEnabled
+                 && (internal.fullScreen || root.model.currentIndex >= 0)
+        onActivated: {
+            if (internal.fullScreen)
+                root.exitFullScreen()
+            else
+                root.model.stopWatching()
+        }
     }
 
     // Tucked: its size (wide enough for what it says), and how much of it
@@ -202,7 +210,6 @@ Item {
 
                                 onFullScreenRequested: function(request) {
                                     request.accept()
-                                    internal.playerFullScreen = request.toggleOn
                                     internal.fullScreen = request.toggleOn
                                 }
                                 onJavaScriptConsoleMessage: function(level, message) {
@@ -317,84 +324,39 @@ Item {
         }
     }
 
-    // The score's recordings, and the ways out
-    Rectangle {
-        x: card.x + card.width + 16
-        y: card.y
-        width: Math.min(root.width - x - 16, recordingsColumn.implicitWidth + 24)
-        height: recordingsColumn.height + 20
-        radius: 8
-        color: Theme.backdrop
-        border.color: Theme.metal
-        border.width: 1
+    // The way out, on its top right corner: the ring filled with the
+    // backdrop's colour, to show on any picture
+    Item {
+        x: card.x + card.width - width / 2
+        y: card.y - height / 2
+        width: 32
+        height: 32
         visible: opacity > 0
         opacity: root.progress
 
-        Column {
-            id: recordingsColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 12
-            anchors.topMargin: 10
-            spacing: 8
-
-            Repeater {
-                model: root.model.performers
-
-                Text {
-                    required property int index
-                    required property string modelData
-                    width: Math.min(implicitWidth, root.width / 4)
-                    elide: Text.ElideRight
-                    text: modelData
-                    color: index === root.model.currentIndex ? Theme.metalBright : Theme.metal
-                    font.pixelSize: 14
-                    font.bold: index === root.model.currentIndex
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.model.watch(parent.index)
-                    }
-                }
-            }
-
-            Text {
-                text: qsTr("Full screen")
-                color: Theme.accent
-                font.pixelSize: 13
-                font.underline: true
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleFullScreen()
-                }
-            }
-
-            // Always: YouTube doesn't always say when it refuses a video.
-            Text {
-                text: qsTr("Open on YouTube")
-                color: Theme.accent
-                font.pixelSize: 13
-                font.underline: true
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.model.watchInBrowser()
-                }
-            }
-
-            Text {
-                text: qsTr("Close")
-                color: Theme.inkMuted
-                font.pixelSize: 13
-                font.underline: true
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.model.stopWatching()
-                }
-            }
+        // The ring's own proportions (tools/gen_player_glyphs.py's RING_AR)
+        Rectangle {
+            anchors.centerIn: parent
+            width: parent.width * 0.945 - 2
+            height: parent.height - 2
+            radius: width / 2
+            color: Theme.backdrop
+        }
+        MetalGlyph {
+            anchors.fill: parent
+            source: "qrc:/icons/player/close.svg"
+            hovered: closeMouse.containsMouse
+        }
+        MouseArea {
+            id: closeMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.model.stopWatching()
+        }
+        OrchestrionToolTip {
+            visible: closeMouse.containsMouse
+            text: qsTr("Close (Esc)")
         }
     }
 }
