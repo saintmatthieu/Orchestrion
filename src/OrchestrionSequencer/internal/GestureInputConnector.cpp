@@ -18,6 +18,7 @@
  */
 #include "GestureInputConnector.h"
 #include "Orchestrion.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 
 #include <log.h>
 
@@ -81,6 +82,10 @@ void GestureInputConnector::onSequencerChanged()
 
 void GestureInputConnector::onGesture(const IGestureInput::Gesture &gesture)
 {
+  if (LatencyTrace *const trace = LatencyTrace::instance())
+    trace->stamp(gesture.traceId, LatencyTrace::played);
+  // The notes the sequencer queues meanwhile are this gesture's.
+  const LatencyTrace::CurrentScope traceScope{gesture.traceId};
   OrchestrionSequencer *const sequencer = m_orchestrion.PlayThreadSequencer();
   if (sequencer)
     // Before it plays it: told in order with what it causes

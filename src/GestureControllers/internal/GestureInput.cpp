@@ -19,6 +19,7 @@
 #include "GestureInput.h"
 #include "ComputerKeyboard/ComputerKeyboardGestureController.h"
 #include "MidiDevice/MidiDeviceGestureController.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 #include "OrchestrionCommon/OfflineRendering.h"
 
 namespace dgk
@@ -96,6 +97,11 @@ void GestureInput::Dispatch(const Gesture &received)
   Gesture gesture = received;
   if (gesture.time == std::chrono::steady_clock::time_point{})
     gesture.time = std::chrono::steady_clock::now();
+  if (gesture.kind != Gesture::Kind::sustainPedal)
+    if (LatencyTrace *const trace = LatencyTrace::instance())
+      gesture.traceId =
+          trace->newNote(gesture.kind == Gesture::Kind::noteOn, gesture.pitch,
+                         LatencyTrace::toNs(gesture.time));
   std::scoped_lock lock{m_receiverMutex};
   if (m_receiver)
     m_receiver(gesture);

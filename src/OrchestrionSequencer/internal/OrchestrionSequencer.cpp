@@ -18,6 +18,7 @@
  */
 #include "OrchestrionSequencer.h"
 #include "IChord.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 #include "OrchestrionCommon/OfflineRendering.h"
 #include "OrnamentSchedule.h"
 #include "ScoreEvents.h"
@@ -395,6 +396,13 @@ muse::async::Channel<AutoPlayEvent> OrchestrionSequencer::HandNoteEvents() const
 
 void OrchestrionSequencer::SendOutput(EventVariant event)
 {
+  if (LatencyTrace *const trace = LatencyTrace::instance())
+    if (const auto *notes = std::get_if<NoteEvents>(&event))
+    {
+      const auto now = LatencyTrace::now();
+      for (const NoteEvent &note : *notes)
+        trace->stamp(note.traceId, LatencyTrace::sent, now);
+    }
   {
     std::scoped_lock lock{m_outputObserverMutex};
     if (m_outputObserver)
@@ -407,6 +415,21 @@ void OrchestrionSequencer::SendOutput(EventVariant event)
 void OrchestrionSequencer::QueueOutput(
     std::vector<QueueEntry<EventVariant>> entries)
 {
+  if (LatencyTrace *const trace = LatencyTrace::instance())
+    if (const std::uint32_t id = LatencyTrace::current())
+    {
+      const auto now = LatencyTrace::now();
+      for (auto &entry : entries)
+        if (auto *notes = std::get_if<NoteEvents>(&entry.event))
+        {
+          for (NoteEvent &note : *notes)
+            if (note.traceId == 0)
+              note.traceId = id;
+          trace->stamp(id, LatencyTrace::queued, now);
+          if (entry.time)
+            trace->setDue(id, LatencyTrace::toNs(*entry.time));
+        }
+    }
   std::vector<OptTimePoint> dues;
   {
     std::scoped_lock lock{m_output.mutex};

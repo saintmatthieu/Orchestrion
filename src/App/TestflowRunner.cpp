@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "TestflowRunner.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 #ifdef Q_OS_LINUX
 #include "OfflineRenderer.h"
 #endif
@@ -47,7 +48,13 @@ constexpr int settleMs = 3000;
  * Skips the teardown, which isn't what is tested, and which on the null audio
  * device of headless runs aborts. Flush the output first.
  */
-[[noreturn]] void exitWithoutTeardown(int code) { std::_Exit(code); }
+[[noreturn]] void exitWithoutTeardown(int code)
+{
+  // Teardown skipped, so is the trace's own dump
+  if (LatencyTrace *const trace = LatencyTrace::instance())
+    trace->dump();
+  std::_Exit(code);
+}
 
 /**
  * The video being rendered (--test-case-render) starts now.

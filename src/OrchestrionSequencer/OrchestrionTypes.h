@@ -201,6 +201,8 @@ struct NoteEvent
   TrackIndex track;
   int pitch;
   float velocity;
+  /** The gesture's note in the LatencyTrace, if tracing. */
+  std::uint32_t traceId = 0;
 };
 
 using NoteEvents = std::vector<NoteEvent>;
