@@ -42,8 +42,7 @@ inline constexpr const char *latencyDialogUri = "orchestrion://audio/latency";
  * OutputLatency).
  *
  * Only where the driver can tell (muse::audio::IAudioOutputMonitor: WASAPI,
- * PipeWire);
- * elsewhere `available` is false.
+ * PipeWire, CoreAudio's direct driver); elsewhere `available` is false.
  */
 class IOutputLatency : MODULE_GLOBAL_EXPORT_INTERFACE
 {

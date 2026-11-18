@@ -132,7 +132,31 @@ First confirm the cause: the same automatic-play trace plugged in, and on
 battery with Low Power Mode on and off. Then verify: the `played` step of
 `auto note-on` should drop to Linux's level (well under 1 ms).
 
-## Task 3: the latency dialog on macOS
+## Task 3: the latency dialog on macOS (done)
+
+Done on 2026-11-18, as on Linux: `OSXDirectAudioDriver` is an
+`IAudioOutputMonitor` (muse fork, branch `orchestrion-latency-coreaudio`).
+A level is the IOProc's buffer (`kAudioDevicePropertyBufferFrameSize`,
+changed on the running device), the engine's block times 1, 2, 4; the
+block is 256 frames by default on macOS too (5.3, 10.7, 21.3 ms at
+48 kHz), so a callback renders what it asks for at once (a VST grows its
+largest block when asked for more). Underruns: an IOProc that returns
+after `inOutputTime`'s host time less the safety offset (after one late
+callback the HAL may call the next ones at once, late too: a 15 ms delay
+at Low counts 3); clock stalls: `inOutputTime`'s sample time jumping (the
+HAL skipped cycles). Latency: from the IOProc's start to `inOutputTime`,
+plus the device's and stream's latency.
+
+Checked on BlackHole at 48 kHz, on battery, with
+`command://orchestrion/latency`: a callback 8 ms late is an underrun at
+Low only, 15 ms at Low and Medium; Getting Started at Low: no underrun in
+225 s of sound, least headroom 3.4 ms, load at most 36 %, gesture note-on
+to its block 1.9 ms p50, 4.9 max (10.8 / 23.2 with 1024 frames). 128-frame
+buffers (2.7 ms) had no underrun either in Getting Started (least headroom
+1 ms, load at most 63 %): a lower Low is possible.
+
+What was asked:
+
 
 Windows has an Audio/MIDI > Latency… dialog: the margin kept against
 underruns (Automatic, or Low / Medium / Large), headroom, load, underruns.

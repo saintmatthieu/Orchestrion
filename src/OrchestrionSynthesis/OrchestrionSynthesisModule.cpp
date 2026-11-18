@@ -120,6 +120,11 @@ void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
   muse::settings()->setDefaultValue(
       muse::Settings::Key("audio", "io/audioDriver"),
       muse::Val("CoreAudioDirect"));
+  // The engine's block, the least of the latency's levels: the device's
+  // buffer is the block or a multiple of it (see IOutputLatency), so each
+  // callback renders what it asks for, as on Linux.
+  muse::settings()->setDefaultValue(
+      muse::Settings::Key("audio", "io/bufferSize"), muse::Val(256));
 #elif defined(MUSE_MODULE_AUDIO_PIPEWIRE)
   // PipeWire's own client, which asks for a latency (node.latency): the graph's
   // quantum comes down to the lowest asked. Through ALSA, a PipeWire system
