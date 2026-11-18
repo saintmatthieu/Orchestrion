@@ -75,6 +75,7 @@ public:
 
 private:
   const muse::audio::IAudioDriverPtr m_driver;
+  int m_opens = 0;
 };
 
 /**
