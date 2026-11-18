@@ -1048,6 +1048,8 @@ ApplicationWindow {
                     titleBottom: topOrnament.y + topOrnament.chevronBottom
                     parchmentTop: notationPaintView.parchmentTop
                     leftBarrelRight: notationPaintView.leftBarrelRight
+                    // Theirs while they show
+                    escapeEnabled: !scoreShelf.shown && !scoreBanner.visible
                     // The composer's name hangs into the band's room
                     openHeight: furniture.videoBandHeight
                                 - (topOrnament.inkBottom - topOrnament.height
