@@ -186,16 +186,21 @@ Break one and it deadlocks, races, or renders differ from one run to the next.
 
 - **Thread priorities.** The play, output, ornament and pedal threads, the
   input thread and the raw keyboard's, above normal; not the follower thread,
-  whose work grows with the score's length. `PlayThread` needs a way to set
-  its own.
+  whose work grows with the score's length. Each calls
+  `raiseTimedThreadPriority()` (`OrchestrionCommon/ThreadPriority.h`) as it
+  starts; offline, the play and output threads are the main thread and
+  aren't raised.
   - Linux: `SCHED_FIFO` at a low priority (~10, below PipeWire's 88), asked
     for directly (an `audio` group member's `RLIMIT_RTPRIO`) or through
     rtkit, staying at normal priority otherwise. `nice` can't be lowered
     without privilege, and MuseScore's `setThreadPriority` is a no-op under
     `SCHED_OTHER`.
   - Windows: `THREAD_PRIORITY_ABOVE_NORMAL`, maybe MMCSS for the play thread.
-  - macOS: `pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0)`,
-    called by each thread itself.
+  - macOS (done): user-interactive QoS. Default QoS let the automatic
+    player's timed waits wake up 4–5 ms late (up to 11.5), coalesced; now
+    1 ms. Real-time scheduling (`THREAD_TIME_CONSTRAINT_POLICY`) gave
+    0.03 ms, but the kernel demotes a thread that exceeds its computation
+    budget, and the play thread's work isn't bounded: not taken.
 - **The macOS keyboard** off the main thread needs the Input Monitoring
   permission (a system prompt, granted in System Settings). Measure first
   how much the main thread waits there (Metal, no XWayland throttling); if it

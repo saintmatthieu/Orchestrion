@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "InputThread.h"
+#include "OrchestrionCommon/ThreadPriority.h"
 
 #include <async/processevents.h>
 #include <chrono>
@@ -60,6 +61,7 @@ void InputThread::Wait(std::function<void()> task)
 
 void InputThread::Run()
 {
+  raiseTimedThreadPriority();
   const std::thread::id self = std::this_thread::get_id();
   std::unique_lock lock{m_mutex};
   while (!m_stopping)

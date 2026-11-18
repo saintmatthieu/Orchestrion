@@ -20,6 +20,7 @@
 #include "IChord.h"
 #include "OrchestrionCommon/LatencyTrace.h"
 #include "OrchestrionCommon/OfflineRendering.h"
+#include "OrchestrionCommon/ThreadPriority.h"
 #include "OrnamentSchedule.h"
 #include "ScoreEvents.h"
 #include <algorithm>
@@ -93,6 +94,7 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
   return std::thread{
       [&, cb = cb]
       {
+        raiseTimedThreadPriority();
         std::unique_lock lock{m.mutex};
         while (true)
         {

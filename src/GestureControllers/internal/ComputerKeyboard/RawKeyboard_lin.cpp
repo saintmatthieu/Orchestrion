@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+#include "OrchestrionCommon/ThreadPriority.h"
 #include "RawKeyboard.h"
 
 #include <X11/XKBlib.h>
@@ -119,6 +120,7 @@ char KeyOf(Display *display, unsigned keycode, const XkbStateRec &state)
 
 void RawKeyboard::Run()
 {
+  raiseTimedThreadPriority();
   Display *const display = m_connection->display;
   pollfd fds[2] = {{ConnectionNumber(display), POLLIN, 0},
                    {m_connection->stopFd, POLLIN, 0}};

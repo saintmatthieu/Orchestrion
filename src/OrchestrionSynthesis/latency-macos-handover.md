@@ -92,7 +92,22 @@ playing.
   sampleRate` is the PipeWire graph's (`PipeWireGraphRate`); and `PipeWire`
   is now the driver's default the macOS way, in `onPreInit`.
 
-## Task 2: timers on time (thread QoS)
+## Task 2: timers on time (thread QoS) (done)
+
+Done on 2026-11-18: `raiseTimedThreadPriority()`
+(`OrchestrionCommon/ThreadPriority.h`), user-interactive QoS on macOS, called
+by the play, output, ornament, pedal, input and raw keyboard threads; the
+Linux and Windows branches are still empty. The cause confirmed: notes due
+together are played within 0.3 ms of each other, the lateness is the
+thread's wake-up. Automatic notes' lateness (Getting Started, 48 kHz),
+before → after, p50 / p90 / max: on AC power 4.57 / 5.04 / 11.5 →
+1.03 / 1.05 / 1.08 ms, on battery (Low Power Mode off) 4.01 / 5.04 / 5.08 →
+1.01 / 1.04 / 1.07 ms. Not measured with Low Power Mode on. Real-time
+scheduling would give 0.03 ms but wasn't taken (see `threading.md`, "What's
+left").
+
+What was asked:
+
 
 The automatic player's notes are timed on the play thread (`PlayThread`,
 `condition_variable` waits until due); ornaments, graces and the pedal on the
