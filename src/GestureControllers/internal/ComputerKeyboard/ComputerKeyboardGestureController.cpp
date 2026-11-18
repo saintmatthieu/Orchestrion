@@ -69,7 +69,9 @@ void ComputerKeyboardGestureController::keyReleased(char letter)
 
   {
     std::scoped_lock lock{m_mutex};
-    m_pressedLetters.erase(letter);
+    if (m_pressedLetters.erase(letter) == 0)
+      // Not pressed: a release told twice, or of a key pressed before
+      return;
   }
   m_dispatch({IGestureInput::Gesture::Kind::noteOff, m_noteMap.at(letter),
               std::nullopt, false});
