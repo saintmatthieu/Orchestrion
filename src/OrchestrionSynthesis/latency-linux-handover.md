@@ -38,7 +38,16 @@ the Windows side came about, with its measurements.
   device" (clock stalls), a 2-minute strip, Start over, and a button making
   a callback 15 ms late. Without a monitor it says it isn't available.
 
-## Task 1: translations
+## Task 1: translations: done
+
+Done on 2026-11-18: the `lupdate` target didn't know `qsTrc` (MuseScore's
+QML function with a context, which the dialog uses): aliased to
+`qsTranslate`. The alias also brings MuseScore's QML strings into the `.ts`
+files, left untranslated (English, as before). German and French checked in
+the dialog under Xvfb; French's menu item is `La&tence…` (L is the playback
+device's).
+
+The task was:
 
 The dialog's strings (context `orchestrion/latency`) and the menu item
 `&Latency…` (context `appshell/menu/audio-midi`, in
@@ -48,7 +57,26 @@ glitch?" toast's (`src/qml/GlitchToast.qml`, `qsTr`) are in neither
 check them in the dialog (the popup's text wraps at 280 px; the level
 buttons share the dialog's width three ways).
 
-## Task 2: a monitor for PipeWire (and ALSA)
+## Task 2: a monitor for PipeWire (and ALSA): done for PipeWire
+
+Done on 2026-11-18 (muse branch `orchestrion-latency-pipewire`, on top of
+the WASAPI one): a level is the quantum asked for (`node.latency`, updated
+on the running stream), the engine's block (256 frames by default on Linux
+too, `OrchestrionSynthesisModule::onPreInit`) times 1, 2, 4: 5.3, 10.7,
+21.3 ms at 48 kHz. Headroom: to the start of the next cycle (the stream
+isn't processed in PipeWire's realtime thread, so a callback's frames play
+from the next cycle). Underruns: the graph's clock (`pw_time.ticks`) goes on
+while the frames taken from the stream don't. `command://orchestrion/latency`
+(`level`, `delay`; answers with the status) drives it from a script.
+Checked on a null sink, a callback made late while playing: at Low, 8 ms
+late starves 5.3 ms, 15 → 10.7, 30 → 26.7; at Medium 8 ms passes; at Large
+15 ms passes. Left: no clock stalls reported (the dialog's orange cells never
+show here); ALSA has no monitor. A level change makes the graph starve
+the stream for a cycle or so: the 20 callbacks after one aren't counted. On this ThinkPad, underruns
+of ~200 ms every 10.75 s are the platform's (see the dGPU's
+`power/control`), not the app's.
+
+The plan it followed:
 
 Implement `IAudioOutputMonitor` in the muse fork's PipeWire driver (and
 ALSA's if cheap), so the dialog works here. Things to decide:

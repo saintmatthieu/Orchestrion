@@ -26,6 +26,7 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IStaffModes.h"
 #include "OrchestrionShell/ITutorials.h"
+#include "OrchestrionSynthesis/IOutputLatency.h"
 
 #include <actions/iactionsdispatcher.h>
 #include <async/asyncable.h>
@@ -79,6 +80,7 @@ class OrchestrionCommands : public muse::rcommand::IModuleCommandsState,
   dgk::Inject<IVirtualMidiKeyboard> virtualMidiKeyboard{this};
   dgk::Inject<IMidiDeviceService> midiDeviceService{this};
   dgk::Inject<ITutorials> tutorials{this};
+  dgk::Inject<IOutputLatency> outputLatency{this};
 
 public:
   OrchestrionCommands(std::shared_ptr<DemoCursor> demoCursor,

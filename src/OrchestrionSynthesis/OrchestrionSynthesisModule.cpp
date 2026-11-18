@@ -128,6 +128,11 @@ void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
   // ALSA stays the default, as above.
   muse::settings()->setDefaultValue(
       muse::Settings::Key("audio", "io/audioDriver"), muse::Val("PipeWire"));
+  // The engine's block, the least of the latency's levels: the quantum asked
+  // for is the block or a multiple of it (see IOutputLatency), so each
+  // callback renders what it asks for, never through the alignment buffer.
+  muse::settings()->setDefaultValue(
+      muse::Settings::Key("audio", "io/bufferSize"), muse::Val(256));
 #elif defined(Q_OS_WIN)
   // MuseScore's 1024 frames are more than WASAPI's shared-mode period (10 ms,
   // 480 frames at 48 kHz): the engine rendered on every second or third

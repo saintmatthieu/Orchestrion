@@ -41,7 +41,8 @@ inline constexpr const char *latencyDialogUri = "orchestrion://audio/latency";
  * driver measures of it. Levels change only while the app isn't playing (see
  * OutputLatency).
  *
- * Only where the driver can tell (muse::audio::IAudioOutputMonitor: WASAPI);
+ * Only where the driver can tell (muse::audio::IAudioOutputMonitor: WASAPI,
+ * PipeWire);
  * elsewhere `available` is false.
  */
 class IOutputLatency : MODULE_GLOBAL_EXPORT_INTERFACE
