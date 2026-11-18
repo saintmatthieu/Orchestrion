@@ -48,6 +48,7 @@ muse::modularity::IContextSetup *GestureControllersModule::newContext(
   { onContextPreInit(mode); };
   hooks.onInit = [this](const muse::IApplication::RunMode &mode)
   { onContextInit(mode); };
+  hooks.onDeinit = [this] { onContextDeinit(); };
   return new ModuleContextSetup(ctx, std::move(hooks));
 }
 
@@ -61,5 +62,12 @@ void GestureControllersModule::onContextInit(
     const muse::IApplication::RunMode &) const
 {
   m_gestureInput->init();
+}
+
+void GestureControllersModule::onContextDeinit() const
+{
+  // Undoes onContextInit, before the global module's deinit stops the message
+  // queues the input thread processes.
+  m_gestureInput->deinit();
 }
 } // namespace dgk

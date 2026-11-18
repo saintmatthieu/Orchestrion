@@ -39,6 +39,11 @@ public:
 
   //! Creates the controllers; needs the IoC container populated (module init).
   void init();
+  /**
+   * Lets go of the controllers and stops the input thread: before the
+   * message queues it processes stop (the global module's deinit).
+   */
+  void deinit();
 
   void setReceiver(Receiver) override;
   void send(const Gesture &) override;
