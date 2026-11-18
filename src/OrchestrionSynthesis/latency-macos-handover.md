@@ -88,6 +88,9 @@ playing.
   per callback, fewer than the engine's 1024-frame block: renders skip
   callbacks (`useAlignBuffer`), as on Windows. Same on any driver that
   resamples: open at the device's rate.
+- **Done on Linux** with `DeviceFollowingAudioDriver`: `outputDevice::
+  sampleRate` is the PipeWire graph's (`PipeWireGraphRate`); and `PipeWire`
+  is now the driver's default the macOS way, in `onPreInit`.
 
 ## Task 2: timers on time (thread QoS)
 
