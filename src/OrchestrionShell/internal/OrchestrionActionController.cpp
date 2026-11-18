@@ -175,7 +175,13 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, actionIds::showLatency,
                     [this]
                     {
-                      muse::UriQuery query("orchestrion://audio/latency");
+                      // One window: brought forward if already open
+                      muse::UriQuery query(latencyDialogUri);
+                      if (interactive()->isOpened(query.uri()).val)
+                      {
+                        interactive()->raise(query);
+                        return;
+                      }
                       query.addParam("modal", muse::Val(false));
                       interactive()->open(query);
                     });

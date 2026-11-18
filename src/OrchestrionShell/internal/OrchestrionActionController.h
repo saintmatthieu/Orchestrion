@@ -21,6 +21,7 @@
 #include "OrchestrionSequencer/IOrchestrion.h"
 #include "OrchestrionSequencer/IOrchestrionSequencerConfiguration.h"
 #include "OrchestrionSynthesis/IEffectChain.h"
+#include "OrchestrionSynthesis/IOutputLatency.h"
 
 #include <actions/actionable.h>
 #include <actions/iactionsdispatcher.h>

@@ -18,7 +18,10 @@
  */
 #pragma once
 
+#include "GestureControllers/IGestureInput.h"
 #include "IOutputLatency.h"
+#include "OrchestrionCommon/OrchestrionIoc.h"
+#include "OrchestrionSequencer/IOrchestrion.h"
 
 #include <audio/iaudiooutputmonitor.h>
 #include <audio/main/internal/iaudiodriverfactory.h>
@@ -39,13 +42,21 @@ namespace dgk
  * dialog shows, and chooses the margin level (see IOutputLatency).
  *
  * The automatic setting raises the level after an underrun or a close call
- * (less than 1 ms of headroom), and lowers it
- * after five minutes of sound without one, if the least headroom over them
- * would still leave 2 ms with a period less. Its level is kept across
- * sessions, and so is the user's.
+ * (less than 1 ms of headroom) while something sounds, and lowers it after
+ * five minutes of sound without one (doubled after each raise in the
+ * session), if the least headroom over them would still leave 2 ms with a
+ * period less. Its level is kept across sessions, and so is the user's.
+ * Off by default: the user's level, Low.
+ *
+ * A level changes once the app isn't playing: the automatic player stopped,
+ * no key nor the pedal held (or silent for 10 s), and the output silent for
+ * half a second.
  */
-class OutputLatency : public IOutputLatency
+class OutputLatency : public IOutputLatency, public dgk::Injectable
 {
+  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<IGestureInput> gestureInput{this};
+
 public:
   OutputLatency();
   ~OutputLatency() override;
@@ -66,6 +77,9 @@ public:
   void setLevel(size_t level) override;
   void resetCounters() override;
   void delayNextCallback(double ms) override;
+  bool glitchHintShown() const override;
+  muse::async::Notification glitchHintChanged() const override;
+  void closeGlitchHint(bool forGood) override;
 
 private:
   using Clock = std::chrono::steady_clock;
@@ -114,6 +128,9 @@ private:
   double m_soundingSecondsClean = 0.0;
   double m_cleanHeadroomMinMs = std::numeric_limits<double>::infinity();
   int m_raisesThisSession = 0;
+
+  bool m_glitchHintShown = false;
+  muse::async::Notification m_glitchHintChanged;
 };
 
 /**

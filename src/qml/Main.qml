@@ -508,6 +508,7 @@ ApplicationWindow {
                     readonly property real underScoreHeight: nextBand.bandHeight
                                                              + demoBand.bandHeight
                                                              + offerBand.bandHeight
+                                                             + glitchBand.bandHeight
                                                              + lowerBandHeight * lowerBandOpen
                     // As tall as the keyboard at its full size and the air
                     // under it, no more: the rest is the score's
@@ -650,6 +651,7 @@ ApplicationWindow {
                             if (!atEnd || open > 0)
                                 return
                             const others = demoBand.bandHeight + offerBand.bandHeight
+                                           + glitchBand.bandHeight
                             // The other rows, centred under the score
                             const clearBelow = others > 0
                                 ? (furniture.underParchmentTop + furniture.underParchmentBottom
@@ -850,6 +852,7 @@ ApplicationWindow {
                         Layout.preferredHeight: bandHeight
                         spaceTop: furniture.underParchmentTop + nextBand.rowClear
                         spaceBottom: furniture.underParchmentBottom - offerBand.bandHeight
+                                     - glitchBand.bandHeight
                         // Till it has faded out, which is when the script takes
                         // its caption away
                         covered: scoreShelf.visible
@@ -866,6 +869,7 @@ ApplicationWindow {
                         property real spaceTop: furniture.underParchmentTop + nextBand.rowClear
                                                 + demoBand.bandHeight
                         property real spaceBottom: furniture.underParchmentBottom
+                                                   - glitchBand.bandHeight
                         property real open: tutorialOffer.shown && !scoreShelf.shown ? 1 : 0
                         Behavior on open {
                             NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
@@ -946,6 +950,32 @@ ApplicationWindow {
                             }
                         }
                     }
+                    }
+
+                    // After an audible glitch with a latency the user chose:
+                    // the way to the latency dialog. A row of its own, as the
+                    // tutorial's offer.
+                    Item {
+                        id: glitchBand
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: bandHeight
+                        readonly property int rowGap: 12
+                        property real spaceTop: furniture.underParchmentTop + nextBand.rowClear
+                                                + demoBand.bandHeight + offerBand.bandHeight
+                        property real spaceBottom: furniture.underParchmentBottom
+                        property real open: glitchToast.shown && !scoreShelf.shown ? 1 : 0
+                        Behavior on open {
+                            NumberAnimation { duration: 350; easing.type: Easing.InOutCubic }
+                        }
+                        readonly property real bandHeight: (glitchToast.height + rowGap) * open
+
+                        GlitchToast {
+                            id: glitchToast
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: (glitchBand.spaceTop + glitchBand.spaceBottom - glitchBand.bandHeight
+                                + glitchBand.rowGap) / 2 - glitchBand.y
+                            opacity: glitchBand.open
+                        }
                     }
 
                     // While the virtual MIDI keyboard is the MIDI device in use

@@ -26,6 +26,8 @@
 
 #include <async/asyncable.h>
 
+#include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -47,6 +49,7 @@ public:
 
   void setReceiver(Receiver) override;
   void send(const Gesture &) override;
+  bool anyHeld() const override { return m_anyHeld; }
 
 private:
   /** Merges the controller's gestures in, from the thread they come from. */
@@ -73,5 +76,13 @@ private:
 
   std::mutex m_receiverMutex;
   Receiver m_receiver;
+  /**
+   * Under m_receiverMutex: how many note-ons each pitch has without their
+   * note-off (the keyboard's and the MIDI device's may overlap), and the
+   * pedal.
+   */
+  std::map<int, int> m_heldPitches;
+  bool m_pedalDown = false;
+  std::atomic<bool> m_anyHeld = false;
 };
 } // namespace dgk

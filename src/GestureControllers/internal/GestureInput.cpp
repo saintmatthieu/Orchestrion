@@ -103,6 +103,21 @@ void GestureInput::Dispatch(const Gesture &received)
           trace->newNote(gesture.kind == Gesture::Kind::noteOn, gesture.pitch,
                          LatencyTrace::toNs(gesture.time));
   std::scoped_lock lock{m_receiverMutex};
+  switch (gesture.kind)
+  {
+  case Gesture::Kind::noteOn:
+    ++m_heldPitches[gesture.pitch];
+    break;
+  case Gesture::Kind::noteOff:
+    if (const auto it = m_heldPitches.find(gesture.pitch);
+        it != m_heldPitches.end() && --it->second <= 0)
+      m_heldPitches.erase(it);
+    break;
+  case Gesture::Kind::sustainPedal:
+    m_pedalDown = gesture.down;
+    break;
+  }
+  m_anyHeld = m_pedalDown || !m_heldPitches.empty();
   if (m_receiver)
     m_receiver(gesture);
 }

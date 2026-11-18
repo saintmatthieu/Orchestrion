@@ -34,6 +34,8 @@ const std::string moduleName("OrchestrionSynthesis");
 const muse::Settings::Key AUTOMATIC(moduleName, "latency/automatic");
 const muse::Settings::Key AUTOMATIC_LEVEL(moduleName, "latency/automaticLevel");
 const muse::Settings::Key USER_LEVEL(moduleName, "latency/userLevel");
+const muse::Settings::Key GLITCH_HINT_DISABLED(moduleName,
+                                               "latency/glitchHintDisabled");
 
 constexpr auto pollInterval = std::chrono::milliseconds{250};
 constexpr auto recentSpan = std::chrono::seconds{10};
@@ -41,6 +43,7 @@ constexpr size_t historySeconds = 120;
 // Below this the output is taken as silent (-80 dBFS)
 constexpr float silentPeak = 1e-4f;
 constexpr auto silentFor = std::chrono::milliseconds{500};
+constexpr auto heldSilentFor = std::chrono::seconds{10};
 // The automatic setting lowers its level after so much sound without an
 // underrun (doubled after each raise in the session), if the least headroom
 // over it would still leave this much with a period less
@@ -71,9 +74,12 @@ std::shared_ptr<muse::audio::IAudioOutputMonitor> OutputLatency::monitor() const
 
 void OutputLatency::start()
 {
-  muse::settings()->setDefaultValue(AUTOMATIC, muse::Val(true));
+  // By default the least latency, the user's: the "Audio glitch?" toast
+  // offers the dialog if it glitches
+  muse::settings()->setDefaultValue(AUTOMATIC, muse::Val(false));
   muse::settings()->setDefaultValue(AUTOMATIC_LEVEL, muse::Val(0));
   muse::settings()->setDefaultValue(USER_LEVEL, muse::Val(0));
+  muse::settings()->setDefaultValue(GLITCH_HINT_DISABLED, muse::Val(false));
   m_automatic = muse::settings()->value(AUTOMATIC).toBool();
   m_automaticLevel =
       std::max(0, muse::settings()->value(AUTOMATIC_LEVEL).toInt());
@@ -134,8 +140,23 @@ void OutputLatency::runAutomatic(
     const muse::audio::IAudioOutputMonitor::Window &window, double periodMs,
     size_t levelCount)
 {
-  const bool closeCall =
-      window.callbacks > 0 && window.headroomMinMs < closeCallMs;
+  // Only what happens while something sounds counts: an underrun in
+  // silence isn't heard, and may come from what else the machine does while
+  // nobody plays (the dialog still shows it)
+  const bool sounding = window.callbacks > 0 && window.outputPeak >= silentPeak;
+  if (!sounding || levelCount == 0)
+    return;
+
+  // The user's level: an audible glitch, and nothing will change by itself
+  if (window.underruns > 0 && !m_automatic && !m_glitchHintShown &&
+      !muse::settings()->value(GLITCH_HINT_DISABLED).toBool())
+  {
+    LOGI() << "Underrun at the user's level: the glitch hint shows";
+    m_glitchHintShown = true;
+    m_glitchHintChanged.notify();
+  }
+
+  const bool closeCall = window.headroomMinMs < closeCallMs;
   if (window.underruns > 0 || closeCall)
   {
     m_soundingSecondsClean = 0.0;
@@ -154,9 +175,6 @@ void OutputLatency::runAutomatic(
     return;
   }
 
-  const bool sounding = window.callbacks > 0 && window.outputPeak >= silentPeak;
-  if (!sounding || levelCount == 0)
-    return;
   const std::shared_ptr<muse::audio::IAudioOutputMonitor> mon = monitor();
   if (!mon || mon->marginLevel() != wantedLevel(levelCount))
     return;
@@ -187,8 +205,13 @@ void OutputLatency::applyWhenSilent(
     const muse::audio::IAudioOutputMonitor::Window &window)
 {
   const auto now = Clock::now();
-  // Not running: as good as silent
-  const bool silent = window.callbacks == 0 || window.outputPeak < silentPeak;
+  // Not while the automatic player plays, even a rest; else once the output
+  // has been silent a while (not running: as good as silent)
+  const IOrchestrionPlayerPtr player =
+      orchestrion() ? orchestrion()->player() : nullptr;
+  const bool silent =
+      (window.callbacks == 0 || window.outputPeak < silentPeak) &&
+      !(player && player->IsPlaying());
   if (!silent)
   {
     m_silentSince.reset();
@@ -199,6 +222,11 @@ void OutputLatency::applyWhenSilent(
 
   const size_t levelCount = monitor.marginLevelsMs().size();
   if (levelCount == 0 || now - *m_silentSince < silentFor)
+    return;
+  // Nor while a key or the pedal is held, unless silent for long: a release
+  // lost (focus taken while held) mustn't hold the change back for ever
+  if (gestureInput() && gestureInput()->anyHeld() &&
+      now - *m_silentSince < heldSilentFor)
     return;
   const size_t wanted = wantedLevel(levelCount);
   if (monitor.marginLevel() == wanted)
@@ -273,6 +301,12 @@ void OutputLatency::setAutomatic(bool automatic)
     return;
   m_automatic = automatic;
   muse::settings()->setSharedValue(AUTOMATIC, muse::Val(automatic));
+  // It deals with the glitches now
+  if (automatic && m_glitchHintShown)
+  {
+    m_glitchHintShown = false;
+    m_glitchHintChanged.notify();
+  }
   m_statusChanged.notify();
 }
 
@@ -305,5 +339,23 @@ void OutputLatency::delayNextCallback(double ms)
 {
   if (const std::shared_ptr<muse::audio::IAudioOutputMonitor> mon = monitor())
     mon->delayNextCallback(ms);
+}
+
+bool OutputLatency::glitchHintShown() const { return m_glitchHintShown; }
+
+muse::async::Notification OutputLatency::glitchHintChanged() const
+{
+  return m_glitchHintChanged;
+}
+
+void OutputLatency::closeGlitchHint(bool forGood)
+{
+  if (forGood)
+    muse::settings()->setSharedValue(GLITCH_HINT_DISABLED, muse::Val(true));
+  if (m_glitchHintShown)
+  {
+    m_glitchHintShown = false;
+    m_glitchHintChanged.notify();
+  }
 }
 } // namespace dgk
