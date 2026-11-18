@@ -28,12 +28,14 @@
 #include "internal/OfflineAudioDriver.h"
 #include "internal/OrchestrionFxResolver.h"
 #include "internal/OrchestrionSynthesisConfiguration.h"
+#include "internal/OutputLatency.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
 #include "internal/TracingAudioDriver.h"
 #include "internal/TrackChannelMapper.h"
 #include "view/EffectHeaderModel.h"
 #include "view/EffectMeterModel.h"
+#include "view/OutputLatencyModel.h"
 #include <audio/common/workmode.h>
 #include <global/settings.h>
 #include <interactive/iinteractiveuriregister.h>
@@ -50,7 +52,8 @@ OrchestrionSynthesisModule::OrchestrionSynthesisModule()
       m_builtInEffects{std::make_shared<BuiltInEffects>()},
       m_fxResolver{
           std::make_shared<OrchestrionFxResolver>(m_builtInEffects->runtime())},
-      m_effectChain{std::make_shared<EffectChain>(m_fxResolver)}
+      m_effectChain{std::make_shared<EffectChain>(m_fxResolver)},
+      m_outputLatency{std::make_shared<OutputLatency>()}
 {
 }
 
@@ -69,6 +72,7 @@ void OrchestrionSynthesisModule::registerExports()
                                                    m_synthesizerManager);
   globalIoc()->registerExport<IEffectChain>(moduleName(), m_effectChain);
   globalIoc()->registerExport<IBuiltInEffects>(moduleName(), m_builtInEffects);
+  globalIoc()->registerExport<IOutputLatency>(moduleName(), m_outputLatency);
 
   // Rendering a video offline, the sound goes to a file
   if (!offlineRendering.audioPath.empty())
@@ -81,7 +85,10 @@ void OrchestrionSynthesisModule::registerExports()
                globalIoc()->resolve<muse::audio::IAudioDriverFactory>(
                    moduleName()))
   {
-    // The platform's drivers, following the output device
+    // The platform's drivers, watched for underruns and given their margin
+    factory =
+        std::make_shared<DriverCapturingFactory>(factory, m_outputLatency);
+    // following the output device
     factory = std::make_shared<DeviceFollowingAudioDriverFactory>(factory);
     // Tracing latencies, the callbacks are timed
     if (LatencyTrace::instance())
@@ -139,6 +146,8 @@ void OrchestrionSynthesisModule::registerUiTypes()
                                     "EffectMeterModel");
   qmlRegisterType<EffectHeaderModel>("Orchestrion.OrchestrionSynthesis", 1, 0,
                                      "EffectHeaderModel");
+  qmlRegisterType<OutputLatencyModel>("Orchestrion.OrchestrionSynthesis", 1, 0,
+                                      "OutputLatencyModel");
 }
 
 void OrchestrionSynthesisModule::resolveImports()
@@ -147,8 +156,13 @@ void OrchestrionSynthesisModule::resolveImports()
   auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(
       moduleName());
   if (ir)
+  {
     ir->registerQmlUri(muse::Uri("orchestrion://effects/builtin"),
                        "Orchestrion", "BuiltInEffectDialog");
+    // Audio/MIDI > Latency…
+    ir->registerQmlUri(muse::Uri("orchestrion://audio/latency"), "Orchestrion",
+                       "LatencyDialog");
+  }
 }
 
 void OrchestrionSynthesisModule::onDelayedInit()
@@ -181,6 +195,7 @@ void OrchestrionSynthesisModule::onContextAllInited(
   m_synthesizerManager->onAllInited();
   m_synthesizerConnector->onAllInited();
   m_effectChain->onAllInited();
+  m_outputLatency->start();
 
   // The VST editor window gets Orchestrion's header (bypass) around the
   // framework's editor item. Replaced here, after the vst module's context

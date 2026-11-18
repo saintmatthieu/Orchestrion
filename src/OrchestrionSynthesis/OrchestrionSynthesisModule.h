@@ -29,6 +29,7 @@ class OrchestrionSynthesisConfiguration;
 class EffectChain;
 class BuiltInEffects;
 class OrchestrionFxResolver;
+class OutputLatency;
 
 class OrchestrionSynthesisModule : public muse::modularity::IModuleSetup
 {
@@ -54,5 +55,6 @@ private:
   const std::shared_ptr<BuiltInEffects> m_builtInEffects;
   const std::shared_ptr<OrchestrionFxResolver> m_fxResolver;
   const std::shared_ptr<EffectChain> m_effectChain;
+  const std::shared_ptr<OutputLatency> m_outputLatency;
 };
 } // namespace dgk

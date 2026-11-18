@@ -97,6 +97,8 @@ muse::ui::UiActionList makeActions(
                          muse::shortcuts::CTX_ANY),
       muse::ui::UiAction(actionIds::editEffect, muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY),
+      muse::ui::UiAction(actionIds::showLatency, muse::ui::UiCtxAny,
+                         muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("view-toggle-fullscreen", muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY),
       muse::ui::UiAction(actionIds::toggleMidiKeyboardIcon, muse::ui::UiCtxAny,

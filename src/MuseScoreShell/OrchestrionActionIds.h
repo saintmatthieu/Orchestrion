@@ -111,4 +111,8 @@ static constexpr const char *ornamentsAutomatic =
 static constexpr const char *addEffect = "orchestrion-effects-add";
 static constexpr const char *removeEffect = "orchestrion-effects-remove";
 static constexpr const char *editEffect = "orchestrion-effects-edit";
+/**
+ * Audio/MIDI menu: the latency dialog (see IOutputLatency).
+ */
+static constexpr const char *showLatency = "orchestrion-audio-latency";
 } // namespace dgk::actionIds

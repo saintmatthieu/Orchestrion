@@ -465,7 +465,10 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeAudioMidiMenu()
       muse::TranslatableString("appshell/menu/audio-midi", "&Audio/MIDI"),
       {makeAudioMidiSubmenu(DeviceType::MidiController),
        makeAudioMidiSubmenu(DeviceType::MidiSynthesizer),
-       makeAudioMidiSubmenu(DeviceType::PlaybackDevice)},
+       makeAudioMidiSubmenu(DeviceType::PlaybackDevice), makeSeparator(),
+       makeMenuItem(
+           actionIds::showLatency,
+           muse::TranslatableString("appshell/menu/audio-midi", "&Latency…"))},
       audioMidiMenuId);
 }
 
