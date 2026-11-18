@@ -360,6 +360,7 @@ add_custom_target(lupdate
             -tr-function-alias translate+=trc
             -tr-function-alias translate+=qtrc
             -tr-function-alias translate+=mtrc
+            -tr-function-alias qsTranslate+=qsTrc
             -ts ${TS_FILES}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Updating .ts translation files"
