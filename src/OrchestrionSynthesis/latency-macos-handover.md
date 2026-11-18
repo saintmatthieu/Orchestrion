@@ -55,13 +55,18 @@ AudioQueue and added direct IO callback", May 2026): an IOProc on the device,
 selected by the setting `CoreAudioDirect`. To do:
 
 1. Make `CoreAudioDirect` Orchestrion's default on macOS, without forking
-   MuseScore if possible: Orchestrion's configurations already set defaults
-   with `muse::settings()->setDefaultValue` (e.g.
-   `ExternalDevices/internal/ExternalDevicesConfiguration.cpp`); the key is
-   `Settings::Key("audio", "io/audioDriver")`. Mind the order: it must come
-   after `AudioConfiguration::init` sets its own default, and before the
-   driver is created. A user's stored value wins over a default; Orchestrion
-   has no UI for this setting, so there should be none, but check.
+   MuseScore: **not with `setDefaultValue`** (learned on Linux, see "Learned
+   on Linux" below), but with a factory decorator, like
+   `internal/PipeWireFirstAudioDriverFactory.h` there: `createDriver("CoreAudio")`
+   makes `CoreAudioDirect`. Wrap it in `OrchestrionSynthesisModule::
+   registerExports` next to the PipeWire one (under `#ifdef Q_OS_MAC`),
+   inside the tracing decorator. A user's stored `audio/io/audioDriver`
+   would still be mapped (Orchestrion has no UI for it, so there should be
+   none). Mind that with the default unchanged, MuseScore has no other
+   driver to fall back to if the direct one fails to open
+   (`switchToDefaultAudioDriver` gives up when current == default): fall
+   back to `CoreAudio` in the decorator (a driver whose `open` tries the
+   direct one, then the AudioQueue one) if that's a real risk.
 2. **The sample rate.** `prepareDeviceWithOutputSpec` (direct driver) sets the
    device's nominal rate to the closest to what is asked (the
    `audio/io/sampleRate` setting, 44100 by default): that changes the rate
@@ -84,6 +89,23 @@ regular. The trace can't show the AudioQueue's buffer going away: a
 loopback measurement can (a key's click into a microphone next to the
 speaker, or the app's own `audio/io/measureInputLag` if it helps), else
 reason from the code.
+
+## Learned on Linux
+
+- **A default set by another module comes too late, or is overwritten.**
+  `AudioModule::onInit` calls `AudioConfiguration::init` (which sets the
+  `audio/io/*` defaults) and opens the driver (`startAudioProcessing`) in the
+  same call: an Orchestrion module's `onInit` runs before it (its default is
+  then overwritten) or after it (the driver is already open). What can be
+  changed is what the driver gets: the factory registered as
+  `IAudioDriverFactory` (Orchestrion re-registers it, wrapped, in
+  `OrchestrionSynthesisModule::registerExports`), and through it the driver
+  and the spec it is opened with (driver name, rate, buffer size).
+- **A stream whose rate isn't the device's costs the alignment buffer.**
+  PipeWire's client opened at 44.1 kHz on a 48 kHz graph gets 940/941 frames
+  per callback, fewer than the engine's 1024-frame block: renders skip
+  callbacks (`useAlignBuffer`), as on Windows. Same on any driver that
+  resamples: open at the device's rate.
 
 ## Task 2: timers on time (thread QoS)
 

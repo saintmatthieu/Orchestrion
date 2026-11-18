@@ -49,11 +49,16 @@ when the driver asks for at least the engine's block (no alignment), so:
    does with a buffer duration below its period (log `m_bufferFrames`,
    `m_defaultPeriod`, `m_minimumPeriod` after `Initialize`, e.g. a `LOGI` in
    the driver, or add them to the trace's `meta.txt` through the driver).
-   Orchestrion can set the default without forking: `muse::settings()->
-   setDefaultValue` on `Settings::Key("audio", "io/bufferSize")`, after
-   `AudioConfiguration::init` (see the macOS handover, task 1, for the same
-   with the driver key), under `#ifdef Q_OS_WIN` until the other platforms
-   settle theirs.
+   Orchestrion can't set it with `muse::settings()->setDefaultValue`: the
+   defaults are set and the driver opened in the same call
+   (`AudioModule::onInit`, see the macOS handover's "Learned on Linux"). Do it
+   through the driver instead: a decorator whose `open(spec, activeSpec)`
+   lowers `spec.output.samplesPerChannel` before passing it on (the engine is
+   set up from the active spec the driver returns), made by a factory
+   decorator wrapped in `OrchestrionSynthesisModule::registerExports` like
+   `PipeWireFirstAudioDriverFactory` (under `#ifdef Q_OS_WIN` until the other
+   platforms settle theirs). The macOS handover plans a driver decorator for
+   the device's rate: if it's on the branch, add the buffer size there.
 2. **Low-latency shared mode** (the bigger gain, a patch to the muse fork's
    WASAPI driver): `IAudioClient3::GetSharedModeEnginePeriod` and
    `InitializeSharedAudioStream` at the engine's minimum period (often 128
