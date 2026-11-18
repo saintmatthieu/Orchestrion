@@ -20,6 +20,12 @@
 
 #if defined(__APPLE__)
 #include <pthread/qos.h>
+#elif defined(_WIN32)
+// As <windows.h> declares them (HANDLE is void*, BOOL int), without its
+// macros: wingdi's ABSOLUTE, for one, breaks MuseScore's engraving headers.
+extern "C" __declspec(dllimport) void *__stdcall GetCurrentThread();
+extern "C" __declspec(dllimport) int __stdcall SetThreadPriority(void *thread,
+                                                                 int priority);
 #endif
 
 namespace dgk
@@ -32,12 +38,16 @@ namespace dgk
  *
  * - macOS: user-interactive QoS. A default-QoS thread's timed waits may be
  *   coalesced: they wake up to 10 ms late.
- * - Linux, Windows: not yet (normal priority).
+ * - Windows: above normal priority.
+ * - Linux: not yet (normal priority).
  */
 inline void raiseTimedThreadPriority()
 {
 #if defined(__APPLE__)
   pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#elif defined(_WIN32)
+  constexpr int threadPriorityAboveNormal = 1; // THREAD_PRIORITY_ABOVE_NORMAL
+  SetThreadPriority(GetCurrentThread(), threadPriorityAboveNormal);
 #endif
 }
 } // namespace dgk

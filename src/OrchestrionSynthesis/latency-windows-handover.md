@@ -34,6 +34,30 @@ and 1024 frames, opened at 48 kHz (the mix format's: no resampling):
 - **The WASAPI thread has no MMCSS registration** (no
   `AvSetMmThreadCharacteristics` in the driver).
 
+## Where things stand (2026-11-18)
+
+Traced with Getting Started (`--test-case GettingStarted --latency-trace`),
+this machine's default device now at 44.1 kHz (period 441 frames):
+
+- **Done: 256 frames by default** (`OrchestrionSynthesisModule::onPreInit`,
+  `Q_OS_WIN`). Every callback renders its 441 frames; note-on to its block
+  5.0 ms p50, 10.0 p99 (was 10.2 / 30.0 max); load 4 % p50.
+- **Done, unverified: low-latency shared mode** (muse commit `33c6c74cf`,
+  local branch `orchestrion-latency-wasapi` in `MuseScore/muse`, not pushed,
+  gitlinks not bumped). This device offers no shorter period
+  (`GetSharedModeEnginePeriod`: default = fundamental = min = max = 441), so
+  `InitializeSharedAudioStream` wasn't run; its fallback to `Initialize` on
+  the same client after a failure is untested too. Needs a device with the
+  inbox HD Audio or USB Audio 2 class driver.
+- **Done: MMCSS "Pro Audio"** for the WASAPI thread (same commit):
+  processing max 3.3 → 1.7 ms, load max 33 → 17 %.
+- **Still there: WASAPI's buffer** is 970 frames whatever is asked (asked
+  256): each write sits behind ~529 frames (12 ms) queued. Writing only
+  enough to keep about one period queued would remove most of it, at the
+  cost of the slack against a late callback. Not tried.
+- **Timed threads above normal** (`raiseTimedThreadPriority`): no
+  measurable effect, see `threading.md`, "What's left".
+
 ## Task 1: render every period, with a small WASAPI buffer
 
 The engine's block size (`audio/io/bufferSize`, MuseScore's

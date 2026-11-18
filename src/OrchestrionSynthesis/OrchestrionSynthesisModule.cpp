@@ -119,6 +119,17 @@ void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
   // ALSA stays the default, as above.
   muse::settings()->setDefaultValue(
       muse::Settings::Key("audio", "io/audioDriver"), muse::Val("PipeWire"));
+#elif defined(Q_OS_WIN)
+  // MuseScore's 1024 frames are more than WASAPI's shared-mode period (10 ms,
+  // 480 frames at 48 kHz): the engine rendered on every second or third
+  // callback, through the alignment buffer, a note waiting up to 30 ms for
+  // its block, and WASAPI's buffer was as long. Below the period, the engine
+  // renders what each callback asks for, and the driver asks for a shorter
+  // period, the shortest holding the block (low-latency shared mode), where
+  // the device allows. 256 is the smallest MuseScore offers on Windows. Set
+  // here, before the audio module's onInit, as on macOS above.
+  muse::settings()->setDefaultValue(
+      muse::Settings::Key("audio", "io/bufferSize"), muse::Val(256));
 #endif
 }
 
