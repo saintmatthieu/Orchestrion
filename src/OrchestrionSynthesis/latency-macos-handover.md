@@ -35,8 +35,10 @@ macOS 15.7, arm64, on battery below 20 %, driver `OSX`, 44.1 kHz, 1024 frames:
 - **The automatic player fires its notes late**: 3.6 ms p50, 5.0 p90, 5.1 max
   after they were due (Linux: 0.17, 0.27, 1.1). Gestures, which wake the play
   thread, aren't (0.03 ms).
-- Every computer-key release is dispatched twice (also on Linux; being
-  looked into on Linux, not your task).
+- Every computer-key release was dispatched twice (on Linux too): the
+  application's event filter saw each key event once for the window and once
+  for the item it passed it on to. Fixed on this branch; check on the Mac
+  that a trace's `gesture note-off` count equals `gesture note-on`'s.
 
 ## Task 1: the direct CoreAudio driver, at the device's own rate
 

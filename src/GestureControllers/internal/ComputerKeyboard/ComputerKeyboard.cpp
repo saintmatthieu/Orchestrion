@@ -27,6 +27,7 @@
 #include <QLocale>
 #include <QQuickItem>
 #include <QThread>
+#include <QWindow>
 #include <global/settings.h>
 #include <log.h>
 
@@ -91,7 +92,10 @@ bool ComputerKeyboardImpl::eventFilter(QObject *watched, QEvent *event)
   // Those of the keyboard itself are read by the raw keyboard, if there is
   // one: only the synthesized ones (a demo's) are left to this.
   const bool handledElsewhere = m_owner.raw() && event->spontaneous();
-  if (!handledElsewhere)
+  // A key event goes to the window, which passes it on to the item with the
+  // focus: the application's filter sees it each time. Once is enough.
+  const bool toWindow = qobject_cast<QWindow *>(watched) != nullptr;
+  if (!handledElsewhere && toWindow)
   {
     // Only the presses are conditional: a key held when the focus moved, or
     // when a modifier went down, must still be released.
