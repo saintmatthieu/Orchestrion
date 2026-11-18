@@ -41,6 +41,7 @@ set(MODULE_SRC
     internal/LowpassFilteredSynthesizer.h
     internal/OfflineAudioDriver.cpp
     internal/OfflineAudioDriver.h
+    internal/PipeWireFirstAudioDriverFactory.h
     internal/TracingAudioDriver.cpp
     internal/TracingAudioDriver.h
     internal/OrchestrionSynthesizerWrapper.cpp

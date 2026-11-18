@@ -27,6 +27,7 @@
 #include "internal/OfflineAudioDriver.h"
 #include "internal/OrchestrionFxResolver.h"
 #include "internal/OrchestrionSynthesisConfiguration.h"
+#include "internal/PipeWireFirstAudioDriverFactory.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
 #include "internal/TracingAudioDriver.h"
@@ -35,6 +36,7 @@
 #include "view/EffectMeterModel.h"
 #include <audio/common/workmode.h>
 #include <interactive/iinteractiveuriregister.h>
+#include <muse_framework_config.h>
 
 #include <QQmlEngine>
 
@@ -74,16 +76,20 @@ void OrchestrionSynthesisModule::registerExports()
     globalIoc()->registerExport<muse::audio::IAudioDriverFactory>(
         moduleName(), std::make_shared<OfflineAudioDriverFactory>());
   }
-  // Tracing latencies, the callbacks are timed
-  else if (LatencyTrace::instance())
-    if (const auto factory =
-            globalIoc()->resolve<muse::audio::IAudioDriverFactory>(
-                moduleName()))
-    {
-      globalIoc()->unregister<muse::audio::IAudioDriverFactory>(moduleName());
-      globalIoc()->registerExport<muse::audio::IAudioDriverFactory>(
-          moduleName(), std::make_shared<TracingAudioDriverFactory>(factory));
-    }
+  else if (std::shared_ptr<muse::audio::IAudioDriverFactory> factory =
+               globalIoc()->resolve<muse::audio::IAudioDriverFactory>(
+                   moduleName()))
+  {
+#ifdef MUSE_MODULE_AUDIO_PIPEWIRE
+    factory = std::make_shared<PipeWireFirstAudioDriverFactory>(factory);
+#endif
+    // Tracing latencies, the callbacks are timed
+    if (LatencyTrace::instance())
+      factory = std::make_shared<TracingAudioDriverFactory>(factory);
+    globalIoc()->unregister<muse::audio::IAudioDriverFactory>(moduleName());
+    globalIoc()->registerExport<muse::audio::IAudioDriverFactory>(moduleName(),
+                                                                  factory);
+  }
 }
 
 void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
