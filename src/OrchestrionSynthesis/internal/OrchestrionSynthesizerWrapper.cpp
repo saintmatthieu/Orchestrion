@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSynthesizerWrapper.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 
 #include <log.h>
 
@@ -70,6 +71,12 @@ void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
         notes.begin();
     sendNoteoffs(notes.data(), noteonOffset);
     sendNoteons(notes.data() + noteonOffset, notes.size() - noteonOffset);
+    if (LatencyTrace *const trace = LatencyTrace::instance())
+    {
+      const auto now = LatencyTrace::now();
+      for (const NoteEvent &note : notes)
+        trace->stamp(note.traceId, LatencyTrace::received, now);
+    }
   }
   else if (std::holds_alternative<PedalEvent>(event))
   {

@@ -19,6 +19,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <modularity/imoduleinterface.h>
 #include <optional>
@@ -62,6 +63,8 @@ public:
      * new take.
      */
     bool replayed = false;
+    /** Its note's id in the LatencyTrace, if tracing. */
+    std::uint32_t traceId = 0;
   };
   using Receiver = std::function<void(const Gesture &)>;
 

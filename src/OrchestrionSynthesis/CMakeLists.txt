@@ -41,6 +41,8 @@ set(MODULE_SRC
     internal/LowpassFilteredSynthesizer.h
     internal/OfflineAudioDriver.cpp
     internal/OfflineAudioDriver.h
+    internal/TracingAudioDriver.cpp
+    internal/TracingAudioDriver.h
     internal/OrchestrionSynthesizerWrapper.cpp
     internal/OrchestrionSynthesizerWrapper.h
     internal/OrchestrionSynthesisConfiguration.cpp

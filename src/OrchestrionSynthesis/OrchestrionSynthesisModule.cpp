@@ -19,6 +19,7 @@
 #include "OrchestrionSynthesisModule.h"
 #include "IBuiltInEffects.h"
 #include "IEffectChain.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 #include "OrchestrionCommon/OfflineRendering.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/BuiltInEffects.h"
@@ -28,6 +29,7 @@
 #include "internal/OrchestrionSynthesisConfiguration.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
+#include "internal/TracingAudioDriver.h"
 #include "internal/TrackChannelMapper.h"
 #include "view/EffectHeaderModel.h"
 #include "view/EffectMeterModel.h"
@@ -72,6 +74,16 @@ void OrchestrionSynthesisModule::registerExports()
     globalIoc()->registerExport<muse::audio::IAudioDriverFactory>(
         moduleName(), std::make_shared<OfflineAudioDriverFactory>());
   }
+  // Tracing latencies, the callbacks are timed
+  else if (LatencyTrace::instance())
+    if (const auto factory =
+            globalIoc()->resolve<muse::audio::IAudioDriverFactory>(
+                moduleName()))
+    {
+      globalIoc()->unregister<muse::audio::IAudioDriverFactory>(moduleName());
+      globalIoc()->registerExport<muse::audio::IAudioDriverFactory>(
+          moduleName(), std::make_shared<TracingAudioDriverFactory>(factory));
+    }
 }
 
 void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
