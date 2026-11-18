@@ -30,7 +30,11 @@ namespace dgk
 class TracingAudioDriver : public muse::audio::IAudioDriver
 {
 public:
-  explicit TracingAudioDriver(muse::audio::IAudioDriverPtr driver);
+  /**
+   * `name`: the driver's, as the factory was asked for it (two drivers may
+   * call themselves the same, as macOS' CoreAudio ones do).
+   */
+  TracingAudioDriver(muse::audio::IAudioDriverPtr driver, std::string name);
 
   void init() override { m_driver->init(); }
   std::string name() const override { return m_driver->name(); }
@@ -75,6 +79,7 @@ public:
 
 private:
   const muse::audio::IAudioDriverPtr m_driver;
+  const std::string m_name;
   int m_opens = 0;
 };
 

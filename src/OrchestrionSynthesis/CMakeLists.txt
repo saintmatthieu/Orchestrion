@@ -24,6 +24,8 @@ set(MODULE_SRC
     internal/BuiltInEffectRuntime.h
     internal/BuiltInEffects.cpp
     internal/BuiltInEffects.h
+    internal/DeviceFollowingAudioDriver.cpp
+    internal/DeviceFollowingAudioDriver.h
     internal/DynamicsProcessor.cpp
     internal/DynamicsProcessor.h
     internal/ParameterStore.h
@@ -44,6 +46,7 @@ set(MODULE_SRC
     internal/PipeWireFirstAudioDriverFactory.h
     internal/TracingAudioDriver.cpp
     internal/TracingAudioDriver.h
+    internal/OutputDevice.h
     internal/OrchestrionSynthesizerWrapper.cpp
     internal/OrchestrionSynthesizerWrapper.h
     internal/OrchestrionSynthesisConfiguration.cpp
@@ -108,5 +111,17 @@ set(MODULE_LINK
     fluidsynth
     DSPFilters
 )
+
+if (OS_IS_MAC)
+    list(APPEND MODULE_SRC internal/OutputDevice.mm)
+    list(APPEND MODULE_LINK "-framework CoreAudio")
+    # Don't mix C++ and Objective-C++ in unity/PCH builds
+    set_source_files_properties(internal/OutputDevice.mm PROPERTIES
+        SKIP_UNITY_BUILD_INCLUSION ON
+        SKIP_PRECOMPILE_HEADERS ON
+    )
+else()
+    list(APPEND MODULE_SRC internal/OutputDevice.cpp)
+endif()
 
 setup_module()
