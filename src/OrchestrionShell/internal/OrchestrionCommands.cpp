@@ -28,6 +28,8 @@
 #include <QTimer>
 #include <QUrl>
 
+#include <algorithm>
+
 namespace dgk
 {
 namespace
@@ -78,6 +80,7 @@ const muse::rcommand::Command
     midiPedalCommand("command://orchestrion/midi-pedal");
 const muse::rcommand::Command
     midiDeviceCommand("command://orchestrion/midi-device");
+const muse::rcommand::Command latencyCommand("command://orchestrion/latency");
 
 muse::Ret virtualKeyboardInUseRet(bool inUse)
 {
@@ -186,7 +189,8 @@ OrchestrionCommandsRegister::commandList() const
         demoScrollCommand,       demoWaitGoneCommand, demoTypeCommand,
         demoCaptionCommand,      demoKeyPressCommand, demoKeyReleaseCommand,
         waitUntilStoppedCommand, staffModeCommand,    undoCommand,
-        midiNoteCommand,         midiPedalCommand,    midiDeviceCommand};
+        midiNoteCommand,         midiPedalCommand,    midiDeviceCommand,
+        latencyCommand};
     for (const ActionCommand &ac : actionCommands())
       list.push_back(ac.command);
     return list;
@@ -324,6 +328,19 @@ OrchestrionCommandsRegister::commandInfoList() const
                         u"no change")}}),
         muse::rcommand::Decoration());
     list.emplace_back(
+        latencyCommand, muse::TranslatableString("orchestrion", "Latency"),
+        muse::TranslatableString(
+            "orchestrion",
+            "Chooses the output's latency level, as the Latency dialog does, "
+            "or makes a callback late; answers with what is measured"),
+        muse::rcommand::InputSchema(
+            {{"level", muse::rcommand::Arg(muse::rcommand::DataType::Integer,
+                                           u"0 the least; none, no change")},
+             {"delay", muse::rcommand::Arg(
+                           muse::rcommand::DataType::Float,
+                           u"Makes the next callback so many ms late")}}),
+        muse::rcommand::Decoration());
+    list.emplace_back(
         undoCommand, muse::TranslatableString("orchestrion", "Undo"),
         muse::TranslatableString("orchestrion",
                                  "Undoes the last edit of the score (the "
@@ -412,6 +429,31 @@ void OrchestrionCommands::registerHandlers()
               muse::Ret ret = muse::make_ok();
               ret.setText(staffModeName(staffModes()->mode(
                   it == params.end() ? 0 : it->second.toInt())));
+              return ret;
+            });
+  // Tests: the latency's level, a late callback, and the measures
+  onRequest(latencyCommand,
+            [this](const muse::rcommand::Params &params)
+            {
+              if (const auto it = params.find("level"); it != params.end())
+                outputLatency()->setLevel(
+                    static_cast<size_t>(std::max(0, it->second.toInt())));
+              if (const auto it = params.find("delay"); it != params.end())
+                outputLatency()->delayNextCallback(it->second.toDouble());
+              const IOutputLatency::Status s = outputLatency()->status();
+              std::string levels;
+              for (const double ms : s.levelsMarginMs)
+                levels += (levels.empty() ? "" : ",") + std::to_string(ms);
+              muse::Ret ret = muse::make_ok();
+              ret.setText(
+                  "available=" + std::to_string(s.available) + " driver=" +
+                  s.driver + " periodMs=" + std::to_string(s.periodMs) +
+                  " levelsMs=" + levels + " level=" + std::to_string(s.level) +
+                  " applied=" + std::to_string(s.appliedLevel) +
+                  " underruns=" + std::to_string(s.underruns) +
+                  " headroomMeanMs=" + std::to_string(s.headroomMeanMs) +
+                  " headroomMinMs=" + std::to_string(s.headroomMinMs) +
+                  " loadMaxPercent=" + std::to_string(s.loadMaxPercent));
               return ret;
             });
   // A tutorial takes back what it changed of the user's score: undone, an
