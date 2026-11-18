@@ -203,12 +203,6 @@ muse::async::Channel<AutoPlayEvent> SequencerProxy::HandNoteEvents() const
   return m_handNoteEvents;
 }
 
-muse::async::Channel<EventVariant> SequencerProxy::OutputEvent() const
-{
-  // Sent from the sequencer's output thread, to the audio engine
-  return m_sequencer->OutputEvent();
-}
-
 muse::async::Channel<IGestureInput::Gesture> SequencerProxy::Gestures() const
 {
   return m_gestures;

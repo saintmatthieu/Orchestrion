@@ -72,7 +72,6 @@ public:
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const override;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const override;
-  muse::async::Channel<EventVariant> OutputEvent() const override;
   muse::async::Channel<EventVariant> MainThreadOutputEvent() const override;
   muse::async::Channel<std::vector<const IChord *>> WrongNotes() const override;
   muse::async::Channel<int, JumpReason> AboutToJumpPosition() const override;

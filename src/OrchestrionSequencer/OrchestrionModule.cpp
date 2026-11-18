@@ -22,6 +22,7 @@
 #include "internal/Orchestrion.h"
 #include "internal/OrchestrionSequencerConfiguration.h"
 #include "internal/StaffModes.h"
+#include "internal/SynthesizerFeed.h"
 #include "internal/VisibleScore.h"
 
 #include <QQmlEngine>
@@ -48,6 +49,8 @@ void OrchestrionModule::registerExports()
       moduleName(), m_sequencerConfiguration);
   globalIoc()->registerExport<IStaffModes>(moduleName(), m_staffModes);
   globalIoc()->registerExport<IVisibleScore>(moduleName(), m_visibleScore);
+  globalIoc()->registerExport<ISynthesizerFeed>(
+      moduleName(), std::make_shared<SynthesizerFeed>());
 }
 
 void OrchestrionModule::registerUiTypes() {}

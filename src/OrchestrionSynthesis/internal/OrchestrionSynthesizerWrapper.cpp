@@ -17,7 +17,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "OrchestrionSynthesizerWrapper.h"
-#include "OrchestrionSequencer/IOrchestrionSequencer.h"
 
 #include <log.h>
 
@@ -46,25 +45,9 @@ bool noteoffsAreBeforeNoteons(const NoteEvents &notes)
 
 OrchestrionSynthesizerWrapper::OrchestrionSynthesizerWrapper(
     SynthFactory factory, muse::audio::AudioInputParams params)
-    : m_params{std::move(params)}, m_synthFactory{std::move(factory)}
+    : m_params{std::move(params)}, m_synthFactory{std::move(factory)},
+      m_events{synthesizerFeed() ? synthesizerFeed()->connect() : nullptr}
 {
-  orchestrion()->sequencerChanged().onNotify(
-      this,
-      [this]
-      {
-        if (const auto sequencer = orchestrion()->sequencer())
-          setupCallback(*sequencer);
-      });
-  if (const auto sequencer = orchestrion()->sequencer())
-    setupCallback(*sequencer);
-}
-
-void OrchestrionSynthesizerWrapper::setupCallback(
-    const IOrchestrionSequencer &sequencer)
-{
-  sequencer.OutputEvent().onReceive(
-      this, [this](EventVariant event) { processEvent(event); },
-      Asyncable::Mode::SetReplace);
 }
 
 void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
@@ -79,7 +62,7 @@ void OrchestrionSynthesizerWrapper::processEvent(const EventVariant &event)
       firstNoteLogged = true;
       LOGI() << "First note event received by the Orchestrion synthesizer";
     }
-    auto notes = std::get<NoteEvents>(event);
+    const NoteEvents &notes = std::get<NoteEvents>(event);
     IF_ASSERT_FAILED(noteoffsAreBeforeNoteons(notes)) { return; }
     const int noteonOffset =
         std::find_if(notes.begin(), notes.end(), [](const auto &evt)
@@ -136,6 +119,13 @@ muse::audio::samples_t
 OrchestrionSynthesizerWrapper::process(float *buffer,
                                        muse::audio::samples_t samplesPerChannel)
 {
+  // What the sequencer sent since the last block, at its start
+  if (m_events &&
+      !m_events->drain([this](const EventVariant &event)
+                       { processEvent(event); }) &&
+      m_synthesizer)
+    // Not read for a long while, events were dropped
+    m_synthesizer->allNotesOff();
   if (!m_synthesizer)
     return 0;
   static bool renderingLogged = false;
