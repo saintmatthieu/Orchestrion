@@ -13,9 +13,11 @@
 			"detail": "CMake template build task"
 		},
 		{
+			// Through CMake Tools, so that it runs in the kit's environment (MSVC's on
+			// Windows): a plain shell task has none, and cl finds no headers.
 			"label": "CMake: install",
-			"type": "shell",
-			"command": "cmake --build \"${command:cmake.buildDirectory}\" --target install",
+			"type": "cmake",
+			"command": "install",
 			"problemMatcher": []
 		},
 		{
