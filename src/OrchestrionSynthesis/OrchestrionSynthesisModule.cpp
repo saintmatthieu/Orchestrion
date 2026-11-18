@@ -28,7 +28,6 @@
 #include "internal/OfflineAudioDriver.h"
 #include "internal/OrchestrionFxResolver.h"
 #include "internal/OrchestrionSynthesisConfiguration.h"
-#include "internal/PipeWireFirstAudioDriverFactory.h"
 #include "internal/SynthesizerConnector.h"
 #include "internal/SynthesizerManager.h"
 #include "internal/TracingAudioDriver.h"
@@ -82,9 +81,6 @@ void OrchestrionSynthesisModule::registerExports()
                globalIoc()->resolve<muse::audio::IAudioDriverFactory>(
                    moduleName()))
   {
-#ifdef MUSE_MODULE_AUDIO_PIPEWIRE
-    factory = std::make_shared<PipeWireFirstAudioDriverFactory>(factory);
-#endif
     // The platform's drivers, following the output device
     factory = std::make_shared<DeviceFollowingAudioDriverFactory>(factory);
     // Tracing latencies, the callbacks are timed
@@ -115,6 +111,14 @@ void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
   muse::settings()->setDefaultValue(
       muse::Settings::Key("audio", "io/audioDriver"),
       muse::Val("CoreAudioDirect"));
+#elif defined(MUSE_MODULE_AUDIO_PIPEWIRE)
+  // PipeWire's own client, which asks for a latency (node.latency): the graph's
+  // quantum comes down to the lowest asked. Through ALSA, a PipeWire system
+  // plays at the graph's quantum. Without a PipeWire server, or with
+  // MUSESCORE_FORCE_ALSA set, MuseScore's factory makes an ALSA driver anyway;
+  // ALSA stays the default, as above.
+  muse::settings()->setDefaultValue(
+      muse::Settings::Key("audio", "io/audioDriver"), muse::Val("PipeWire"));
 #endif
 }
 

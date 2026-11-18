@@ -18,7 +18,16 @@
  */
 #include "OutputDevice.h"
 
-// The platforms that can't tell (yet): see OutputDevice.mm for macOS.
+#include <muse_framework_config.h>
+
+#ifdef MUSE_MODULE_AUDIO_PIPEWIRE
+#include "PipeWireGraphRate.h"
+#endif
+
+// Windows and Linux (see OutputDevice.mm for macOS). On Linux with a PipeWire
+// server, the rate of its graph, whatever the device: PipeWire's client,
+// asked for none, follows the default device itself (and so does ALSA's
+// "default" through PipeWire's plugin); a rate change isn't watched yet.
 namespace dgk::outputDevice
 {
 std::optional<muse::audio::AudioDeviceID> systemDefault() { return {}; }
@@ -26,7 +35,11 @@ std::optional<muse::audio::AudioDeviceID> systemDefault() { return {}; }
 std::optional<muse::audio::sample_rate_t>
 sampleRate(const muse::audio::AudioDeviceID &)
 {
+#ifdef MUSE_MODULE_AUDIO_PIPEWIRE
+  return pipeWireGraphRate();
+#else
   return {};
+#endif
 }
 
 std::shared_ptr<void> watch(const muse::audio::AudioDeviceID &,

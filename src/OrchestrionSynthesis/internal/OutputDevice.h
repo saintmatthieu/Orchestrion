@@ -26,8 +26,8 @@
 
 /**
  * What the system tells of its output devices, where the platform can tell
- * (macOS so far: devices are named by their CoreAudio ids, as both CoreAudio
- * drivers name them; elsewhere, nothing).
+ * (macOS: devices are named by their CoreAudio ids, as both CoreAudio
+ * drivers name them; Linux: the PipeWire graph's rate; Windows: nothing).
  */
 namespace dgk::outputDevice
 {

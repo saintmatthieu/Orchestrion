@@ -43,7 +43,6 @@ set(MODULE_SRC
     internal/LowpassFilteredSynthesizer.h
     internal/OfflineAudioDriver.cpp
     internal/OfflineAudioDriver.h
-    internal/PipeWireFirstAudioDriverFactory.h
     internal/TracingAudioDriver.cpp
     internal/TracingAudioDriver.h
     internal/OutputDevice.h
@@ -122,6 +121,14 @@ if (OS_IS_MAC)
     )
 else()
     list(APPEND MODULE_SRC internal/OutputDevice.cpp)
+endif()
+
+if (MUSE_MODULE_AUDIO_PIPEWIRE)
+    list(APPEND MODULE_SRC
+        internal/PipeWireGraphRate.cpp
+        internal/PipeWireGraphRate.h
+    )
+    list(APPEND MODULE_LINK PipeWire::PipeWire)
 endif()
 
 setup_module()
