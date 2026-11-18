@@ -21,6 +21,7 @@
 #include "IOrchestrionSequencer.h"
 #include "IOrchestrionSequencerConfiguration.h"
 #include "IStaffModes.h"
+#include "ISynthesizerFeed.h"
 #include "OrchestrionTypes.h"
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/FollowerThread.h"
@@ -64,6 +65,7 @@ class OrchestrionSequencer : public dgk::Injectable,
   dgk::Inject<mu::project::IProjectSession> projectSession{this};
   dgk::Inject<IOrchestrionSequencerConfiguration> configuration{this};
   dgk::Inject<IStaffModes> staffModes{this};
+  dgk::Inject<ISynthesizerFeed> synthesizerFeed{this};
 
 public:
   using KeyRole = IOrchestrionSequencer::KeyRole;
@@ -125,11 +127,10 @@ public:
   muse::async::Channel<std::map<TrackIndex, ChordTransition>>
   ChordTransitions() const;
   muse::async::Channel<AutoPlayEvent> HandNoteEvents() const;
-  muse::async::Channel<EventVariant> OutputEvent() const;
   /**
-   * Told of each OutputEvent, on the thread that sends it (the sequencer's
-   * own threads); none from now on if empty. For the SequencerProxy, which
-   * relays them to the main thread.
+   * Told of each event sent to the synthesizers, on the thread that sends it
+   * (the sequencer's output thread); none from now on if empty. For the
+   * SequencerProxy, which relays them to the main thread.
    */
   void SetOutputObserver(std::function<void(const EventVariant &)>);
   using MainThreadPoster = std::function<void(std::function<void()>)>;
@@ -454,8 +455,8 @@ private:
   /** Sends TempoChanged. */
   void PublishTempo();
   /**
-   * Output thread: sends OutputEvent, and tells the observer. The only
-   * sender of OutputEvent, so that what is sent stays in order (see
+   * Output thread: sends to the synthesizers (ISynthesizerFeed), and tells
+   * the observer. The only sender, so that what is sent stays in order (see
    * QueueOutput).
    */
   void SendOutput(EventVariant);
@@ -516,9 +517,9 @@ private:
   std::thread m_pedalThread;
   std::thread m_ornamentThread;
   /**
-   * Sends OutputEvent (SendDueOutput). Rendering offline, the main thread,
-   * on its virtual clock, as the play thread is: what sounds when stays the
-   * same from one render to the next.
+   * Sends to the synthesizers (SendDueOutput). Rendering offline, the main
+   * thread, on its virtual clock, as the play thread is: what sounds when stays
+   * the same from one render to the next.
    */
   std::unique_ptr<PlayThread> m_outputThread;
   const std::chrono::steady_clock::time_point m_epoch =
@@ -556,7 +557,6 @@ private:
 
   muse::ValCh<std::map<TrackIndex, ChordTransition>> m_transitions;
   muse::async::Channel<AutoPlayEvent> m_handNoteEvent;
-  muse::async::Channel<EventVariant> m_outputEvent;
   muse::async::Channel<int /*tick*/, JumpReason> m_aboutToJumpPosition;
   muse::async::Channel<IGestureInput::Gesture> m_gestures;
   int m_autoPlayTick = 0;
@@ -565,6 +565,8 @@ private:
    * The notation the sequencer plays, and the modes its hands were last
    * found in: the staff modes notify of another score's, too.
    */
+  /** Resolved here, on the main thread, for the output thread. */
+  const std::shared_ptr<ISynthesizerFeed> m_synthesizerFeed;
   const mu::notation::IMasterNotation *const m_notation;
   /** The staff modes, as last told (see SetStaffModes). */
   Modes m_staffModes;

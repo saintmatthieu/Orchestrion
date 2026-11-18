@@ -71,9 +71,14 @@ lives on the play thread with it (the players, the gesture connector).
     under a mutex after each onset and extrapolated by the reader.
   - `GetAllVoices` and `RoleOfKey` only read what never changes, plus the
     staff modes, which the main thread owns.
-- **`OutputEvent`** goes to the audio engine only, sent by one thread, the
-  sequencer's output thread (a `PlayThread`): the play, pedal and ornament
-  threads queue their output for it (`QueueOutput`), in order of due time.
+- **What is to sound** goes to the synthesizers only, sent by one thread, the
+  sequencer's output thread (a `PlayThread`), through `ISynthesizerFeed`:
+  a lock-free ring per synthesizer, which it reads at the start of each
+  block, on the audio callback's thread. Not a kors channel, whose
+  subscriber, the synthesizer, lives on the audio engine's worker, which
+  looks at its queue every 16 ms: up to 16 ms more for every note. The
+  play, pedal and ornament threads queue their output for it
+  (`QueueOutput`), in order of due time.
   With one sender, what is sent stays in order: a jump's cut
   (`AllNotesOffEvent`) drops what is queued and comes after all that was
   sent before it, before all that is sent after. Rendering offline, the

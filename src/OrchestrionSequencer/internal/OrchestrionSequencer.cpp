@@ -184,6 +184,7 @@ OrchestrionSequencer::OrchestrionSequencer(
       m_ornamentThread{MakeThread<OrnamentStepDue>(
           *this, m_ornamentThreadMembers,
           [this](OrnamentStepDue due) { OnOrnamentStepDue(due); })},
+      m_synthesizerFeed{synthesizerFeed()},
       m_notation{projectSession()->masterNotation().get()},
       m_staffModes{staffModes()->mode(0), staffModes()->mode(1)},
       m_modes{m_staffModes},
@@ -399,7 +400,8 @@ void OrchestrionSequencer::SendOutput(EventVariant event)
     if (m_outputObserver)
       m_outputObserver(event);
   }
-  m_outputEvent.send(std::move(event));
+  if (m_synthesizerFeed)
+    m_synthesizerFeed->send(event);
 }
 
 void OrchestrionSequencer::QueueOutput(
@@ -482,11 +484,6 @@ void OrchestrionSequencer::SetMainThreadPoster(MainThreadPoster poster)
 {
   std::scoped_lock lock{m_outputObserverMutex};
   m_mainThreadPoster = std::move(poster);
-}
-
-muse::async::Channel<EventVariant> OrchestrionSequencer::OutputEvent() const
-{
-  return m_outputEvent;
 }
 
 const IChord *OrchestrionSequencer::GetNextChord(TrackIndex track) const

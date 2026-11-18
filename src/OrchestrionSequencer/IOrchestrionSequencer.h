@@ -119,16 +119,10 @@ public:
    */
   virtual const IChord *GetNextChord(TrackIndex) const = 0;
   /**
-   * What is to sound, sent from the sequencer's threads: for the audio
-   * engine, which is never waited for. Not for the main thread: see
-   * MainThreadOutputEvent.
-   */
-  virtual muse::async::Channel<EventVariant> OutputEvent() const = 0;
-  /**
-   * The same, sent on the main thread, for what shows it or sends it out
-   * from there (the pedal indicator, MIDI out): the sequencer's threads send
-   * nothing to the main thread through kors, which may make the sender wait
-   * for it.
+   * What is to sound, sent on the main thread, for what shows it or sends it
+   * out from there (the pedal indicator, MIDI out): the sequencer's threads
+   * send nothing to the main thread through kors, which may make the sender
+   * wait for it. The synthesizers get it through ISynthesizerFeed.
    */
   virtual muse::async::Channel<EventVariant> MainThreadOutputEvent() const = 0;
   /**

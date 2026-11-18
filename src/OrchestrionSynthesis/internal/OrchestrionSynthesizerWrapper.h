@@ -20,7 +20,7 @@
 
 #include "IOrchestrionSynthesizer.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
-#include "OrchestrionSequencer/IOrchestrion.h"
+#include "OrchestrionSequencer/ISynthesizerFeed.h"
 #include "OrchestrionSequencer/OrchestrionTypes.h"
 
 #include <async/asyncable.h>
@@ -38,7 +38,8 @@ class IOrchestrionSynthesizer;
 /**
  * Adapts an IOrchestrionSynthesizer to MuseScore's audio engine as an
  * ISynthesizer. The engine drives process(); the note events come straight from
- * Orchestrion's sequencer, not from the engine's playback data.
+ * Orchestrion's sequencer (ISynthesizerFeed), not from the engine's playback
+ * data, and are taken as each block is rendered, on the audio thread.
  */
 class OrchestrionSynthesizerWrapper : public muse::audio::synth::ISynthesizer,
                                       public dgk::Injectable,
@@ -78,12 +79,11 @@ private:
   process(float *buffer, muse::audio::samples_t samplesPerChannel) override;
 
 private:
-  void setupCallback(const IOrchestrionSequencer &sequencer);
   void processEvent(const EventVariant &event);
   void sendNoteoffs(const NoteEvent *noteoffs, size_t numNoteoffs);
   void sendNoteons(const NoteEvent *noteons, size_t numNoteons);
 
-  dgk::Inject<IOrchestrion> orchestrion{this};
+  dgk::Inject<ISynthesizerFeed> synthesizerFeed{this};
 
   muse::audio::AudioSourceParams m_params;
   muse::async::Channel<muse::audio::AudioInputParams> m_paramsChanged;
@@ -93,5 +93,7 @@ private:
   const SynthFactory m_synthFactory;
   muse::audio::OutputSpec m_outputSpec;
   std::unique_ptr<IOrchestrionSynthesizer> m_synthesizer;
+  /** Read by process() only. */
+  const std::shared_ptr<EventRing> m_events;
 };
 } // namespace dgk

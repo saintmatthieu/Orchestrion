@@ -41,6 +41,8 @@ set(MODULE_SRC
     internal/PlayThread.cpp
     internal/PlayThread.h
     internal/ScoreEvents.cpp
+    internal/SynthesizerFeed.cpp
+    internal/SynthesizerFeed.h
     internal/SequencerProxy.cpp
     internal/SequencerProxy.h
     internal/ScoreEvents.h
@@ -66,6 +68,8 @@ set(MODULE_SRC
     IOrchestrion.h
     IOrchestrionPlayer.h
     IOrchestrionSequencer.h
+    ISynthesizerFeed.h
+    EventRing.h
     IRest.h
     IStaffModes.h
     IVisibleScore.h
