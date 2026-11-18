@@ -30,9 +30,12 @@ Steps (see src/OrchestrionSynthesis/gestureToSound.md):
   played     -> queued    the sequencer, until it queues the notes
   queued     -> sent      output thread (minus what the sequencer delayed
                           on purpose, an ornament's or a grace's due time)
-  sent       -> received  kors to the audio worker, which polls every 16 ms
-  received   -> rendered  wait for the next callback (the first starting
-                          after received)
+  sent       -> received  to the synthesizer: drained at the start of the
+                          next block, on the audio thread (ISynthesizerFeed);
+                          before that, kors to the audio worker, which
+                          polled every 16 ms
+  received   -> rendered  0 if received during a callback (drained there);
+                          else the wait for the next callback
   total = dispatched -> rendered; the device's output latency comes on top
   and isn't measured.
 """
@@ -117,14 +120,17 @@ def main():
                    ["dispatched", "played", "queued", "sent", "received"]):
             incomplete += 1
             continue
-        i = bisect.bisect_left(starts, t["received"])
-        if i == len(starts):
+        i = bisect.bisect_right(starts, t["received"])
+        if i > 0 and callbacks[i - 1][1] >= t["received"]:
+            # Received while a callback ran: drained by it, or (kors to the
+            # audio worker) maybe rendered by it already
+            ambiguous += 1
+            rendered = t["received"]
+        elif i == len(starts):
             incomplete += 1
             continue
-        rendered = starts[i]
-        # Told while a callback ran: that one may have rendered it already.
-        if i > 0 and callbacks[i - 1][1] > t["received"]:
-            ambiguous += 1
+        else:
+            rendered = starts[i]
         target = max(t["queued"], t["due"])
         d = {
             "played": ms(t["played"] - t["dispatched"]),

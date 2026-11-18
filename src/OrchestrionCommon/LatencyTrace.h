@@ -61,7 +61,7 @@ public:
     played,   // GestureInputConnector::onGesture, on the play thread
     queued,   // OrchestrionSequencer::QueueOutput, on the play thread
     sent,     // OrchestrionSequencer::SendOutput, on the output thread
-    received, // OrchestrionSynthesizerWrapper::processEvent, synth told
+    received, // OrchestrionSynthesizerWrapper::processEvent, audio thread
     numSteps
   };
 
