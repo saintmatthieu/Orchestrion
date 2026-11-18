@@ -40,55 +40,37 @@ macOS 15.7, arm64, on battery below 20 %, driver `OSX`, 44.1 kHz, 1024 frames:
   for the item it passed it on to. Fixed on this branch; check on the Mac
   that a trace's `gesture note-off` count equals `gesture note-on`'s.
 
-## Task 1: the direct CoreAudio driver, at the device's own rate
+## Task 1: the direct CoreAudio driver, at the device's own rate (done)
 
-`OSX` is MuseScore's `OSXAudioDriver`
-(`MuseScore/muse/framework/audio/driver/platform/osx/osxaudiodriver.mm`),
-what the `audio/io/audioDriver` setting's macOS default, `CoreAudio`, makes
-(`main/internal/audiodriverfactory.cpp`). It plays through an `AudioQueue` with
-**two buffers of the block size enqueued** (line ~142), and sets the device's
-buffer to the block size too: each block waits behind another whole buffer,
-23 ms at 1024 frames, which the trace can't see.
+Done on 2026-11-18, see `gestureToSound.md` (after the table of delays):
+`CoreAudioDirect` is the default (`OrchestrionSynthesisModule::onPreInit`,
+see "Learned on macOS" below: no factory decorator needed, and MuseScore's
+own fallback to `CoreAudio` kept), `DeviceFollowingAudioDriver` opens the
+device at its own rate, keeps "default" as the device and follows it, and
+reopens on rate changes. Checked on BlackHole (48 kHz kept, a change to
+96 kHz followed) and with Getting Started at 48 kHz (passed, 10 221
+callbacks at 21.33 ms, load ≤ 31 %, the mixer's threads in the device's
+AudioWorkGroup). Measured through BlackHole as a loopback (30 isolated key
+taps, 48 kHz, 1024 frames, on AC power, each onset in the recording timed
+against the trace's stamps): from the start of the block a note is rendered
+in to its sound, 44.1 ms (p50) with the AudioQueue, 22.8 ms direct: the
+queued block (21.3 ms) gone; key to sound 55.6 → 34.0 ms (p50), 62.4 →
+42.6 ms (p90). Not checked: a switch of the system's default device while
+playing.
 
-Upstream added `OSXDirectAudioDriver` (`osxdirectaudiodriver.mm`, "removed
-AudioQueue and added direct IO callback", May 2026): an IOProc on the device,
-selected by the setting `CoreAudioDirect`. To do:
+## Learned on macOS
 
-1. Make `CoreAudioDirect` Orchestrion's default on macOS, without forking
-   MuseScore: **not with `setDefaultValue`** (learned on Linux, see "Learned
-   on Linux" below), but with a factory decorator, like
-   `internal/PipeWireFirstAudioDriverFactory.h` there: `createDriver("CoreAudio")`
-   makes `CoreAudioDirect`. Wrap it in `OrchestrionSynthesisModule::
-   registerExports` next to the PipeWire one (under `#ifdef Q_OS_MAC`),
-   inside the tracing decorator. A user's stored `audio/io/audioDriver`
-   would still be mapped (Orchestrion has no UI for it, so there should be
-   none). Mind that with the default unchanged, MuseScore has no other
-   driver to fall back to if the direct one fails to open
-   (`switchToDefaultAudioDriver` gives up when current == default): fall
-   back to `CoreAudio` in the decorator (a driver whose `open` tries the
-   direct one, then the AudioQueue one) if that's a real risk.
-2. **The sample rate.** `prepareDeviceWithOutputSpec` (direct driver) sets the
-   device's nominal rate to the closest to what is asked (the
-   `audio/io/sampleRate` setting, 44100 by default): that changes the rate
-   of the device for the whole system, and MacBooks' output usually runs at
-   48 kHz. Orchestrion should ask for the device's current rate instead
-   (unless the user chose one): read `kAudioDevicePropertyNominalSampleRate`
-   and use that as the default, or make the driver keep the current rate.
-   Linux has the same question (PipeWire at 48 kHz, Orchestrion at 44.1), to
-   be settled the same way, so keep the "which rate" decision out of
-   macOS-only code if you can (e.g. "the device's current rate, when the
-   driver can tell" behind the driver).
-3. Check that the `AudioWorkGroup` the direct driver joins and the engine's
-   multithreaded track processing (`Mixer::processTrackChannels`) still
-   behave; and that changing the output device in Orchestrion still works.
-
-Verify with traces before and after (same session shape: a minute of keys,
-a minute of automatic play, quit normally): `meta.txt` must say
-`driver=` the direct driver and the rate opened; callbacks should stay
-regular. The trace can't show the AudioQueue's buffer going away: a
-loopback measurement can (a key's click into a microphone next to the
-speaker, or the app's own `audio/io/measureInputLag` if it helps), else
-reason from the code.
+- **A default set in `onPreInit` does reach the driver.** All modules'
+  `onPreInit` run after the settings are loaded (`GlobalModule::onPreInit`)
+  and before any `onInit`. `Settings::setDefaultValue` on a key with no item
+  yet makes the value too; on an existing one it changes only the default.
+  So Orchestrion's default set there is the value the driver is opened with,
+  `AudioConfiguration::init`'s becomes the default, which is what
+  `switchToDefaultAudioDriver` falls back on, and a stored value still wins.
+  The trace's `meta.txt` shows it (`driver=CoreAudioDirect (OSX)`). The
+  bullet below holds for `onInit`, not `onPreInit`; PipeWire could take the
+  same route (`PipeWire` as the value, MuseScore's `ALSA` left as the
+  fallback).
 
 ## Learned on Linux
 

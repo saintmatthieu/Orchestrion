@@ -45,6 +45,18 @@ filled on the worker while the audio thread read it, unlocked. Measured with
 gesture's note-on reached its block in 25 ms (p50), 30 ms (p90), 37 ms (max)
 then; 9, 19 and 26 ms with the rings.
 
+After the block, the driver: on macOS, MuseScore's direct CoreAudio driver
+(`CoreAudioDirect`, an IOProc on the device; Orchestrion's default since
+2026-11-18, set in `OrchestrionSynthesisModule::onPreInit`) hands the block to
+the device's IO buffer. The AudioQueue driver it replaced (`CoreAudio`, still
+the fallback) kept a second block queued behind it: 23 ms more at 1024 frames
+and 44.1 kHz, which the trace can't see. `DeviceFollowingAudioDriver` opens
+the device at the rate it already runs at (the direct driver would set the
+device to the asked rate, for the whole system), stays on the system's default
+device as it changes, and has the device reopened when someone else changes
+its rate (what the system tells of devices: `OutputDevice.h`, macOS only so
+far).
+
 What is left is the wait for the next block, which a smaller buffer shortens.
 Timestamps would let each note start at its own sample offset in the block: a
 constant latency of about one block in place of that jitter.

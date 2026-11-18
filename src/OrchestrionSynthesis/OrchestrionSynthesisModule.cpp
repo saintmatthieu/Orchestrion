@@ -23,6 +23,7 @@
 #include "OrchestrionCommon/OfflineRendering.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
 #include "internal/BuiltInEffects.h"
+#include "internal/DeviceFollowingAudioDriver.h"
 #include "internal/EffectChain.h"
 #include "internal/OfflineAudioDriver.h"
 #include "internal/OrchestrionFxResolver.h"
@@ -35,6 +36,7 @@
 #include "view/EffectHeaderModel.h"
 #include "view/EffectMeterModel.h"
 #include <audio/common/workmode.h>
+#include <global/settings.h>
 #include <interactive/iinteractiveuriregister.h>
 #include <muse_framework_config.h>
 
@@ -83,6 +85,8 @@ void OrchestrionSynthesisModule::registerExports()
 #ifdef MUSE_MODULE_AUDIO_PIPEWIRE
     factory = std::make_shared<PipeWireFirstAudioDriverFactory>(factory);
 #endif
+    // The platform's drivers, following the output device
+    factory = std::make_shared<DeviceFollowingAudioDriverFactory>(factory);
     // Tracing latencies, the callbacks are timed
     if (LatencyTrace::instance())
       factory = std::make_shared<TracingAudioDriverFactory>(factory);
@@ -99,6 +103,19 @@ void OrchestrionSynthesisModule::onPreInit(const muse::IApplication::RunMode &)
   // clock says: none of it on a timer of its own.
   if (!offlineRendering.audioPath.empty())
     muse::audio::workmode::setSessionMode(muse::audio::workmode::DriverMode);
+
+#ifdef Q_OS_MACOS
+  // CoreAudio's direct driver, an IOProc on the device, rather than the
+  // AudioQueue, which keeps a second buffer queued: a whole block more of
+  // latency. The audio module sets its own default and opens the driver in
+  // the same onInit, so this comes first, now that the settings are loaded:
+  // a key without a value yet takes its first default as its value, and the
+  // audio module's ("CoreAudio") stays the default, the driver it falls back
+  // on if this one fails to open. A stored value still wins.
+  muse::settings()->setDefaultValue(
+      muse::Settings::Key("audio", "io/audioDriver"),
+      muse::Val("CoreAudioDirect"));
+#endif
 }
 
 void OrchestrionSynthesisModule::registerUiTypes()

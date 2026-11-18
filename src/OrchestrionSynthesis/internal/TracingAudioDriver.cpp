@@ -51,8 +51,9 @@ struct TimedCallback
 };
 } // namespace
 
-TracingAudioDriver::TracingAudioDriver(muse::audio::IAudioDriverPtr driver)
-    : m_driver{std::move(driver)}
+TracingAudioDriver::TracingAudioDriver(muse::audio::IAudioDriverPtr driver,
+                                       std::string name)
+    : m_driver{std::move(driver)}, m_name{std::move(name)}
 {
 }
 
@@ -81,7 +82,7 @@ bool TracingAudioDriver::open(const Spec &spec, Spec *activeSpec)
                    QSysInfo::kernelType().toStdString() + " " +
                    QSysInfo::kernelVersion().toStdString() + ", " +
                    QSysInfo::currentCpuArchitecture().toStdString() + ")"},
-        {"driver", m_driver->name()},
+        {"driver", m_name + " (" + m_driver->name() + ")"},
         {"opened", opened ? "yes" : "no"},
         {"opens", std::to_string(++m_opens)},
         {"askedDevice", spec.deviceId},
@@ -113,6 +114,6 @@ TracingAudioDriverFactory::createDriver(const std::string &name) const
   muse::audio::IAudioDriverPtr driver = m_factory->createDriver(name);
   if (!driver)
     return driver;
-  return std::make_shared<TracingAudioDriver>(std::move(driver));
+  return std::make_shared<TracingAudioDriver>(std::move(driver), name);
 }
 } // namespace dgk
