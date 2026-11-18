@@ -47,9 +47,7 @@ static constexpr int compressorMeterUpdatePeriodMs = 1000 / 30;
 constexpr double compressorThresholdDbDefault = -12;
 constexpr double compressorKneeWidthDbDefault = 6;
 constexpr double compressorCompressionRatioDefault = 4;
-// Setup the default makeup gain so that the transfer function yields 0 output at 0 input.
-constexpr double compressorMakeupGainDbDefault = compressorThresholdDbDefault / compressorCompressionRatioDefault
-                                                 - compressorThresholdDbDefault;
+constexpr double compressorMakeupGainDbDefault = 0;
 constexpr double compressorLookaheadMsDefault = 3;
 constexpr double compressorAttackMsDefault = 3;
 constexpr double compressorReleaseMsDefault = 100;
