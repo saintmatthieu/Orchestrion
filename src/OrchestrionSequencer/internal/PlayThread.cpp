@@ -17,6 +17,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "PlayThread.h"
+#include "OrchestrionCommon/ThreadPriority.h"
 
 #include <QMetaObject>
 #include <QObject>
@@ -82,6 +83,7 @@ private:
 
   void Run()
   {
+    raiseTimedThreadPriority();
     std::unique_lock lock{m_mutex};
     while (true)
     {

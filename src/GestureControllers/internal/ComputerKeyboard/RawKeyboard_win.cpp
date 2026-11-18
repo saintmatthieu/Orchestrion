@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+#include "OrchestrionCommon/ThreadPriority.h"
 #include "RawKeyboard.h"
 
 #ifndef NOMINMAX
@@ -97,6 +98,7 @@ bool IsDown(int virtualKey) { return GetAsyncKeyState(virtualKey) & 0x8000; }
 
 void RawKeyboard::Run()
 {
+  raiseTimedThreadPriority();
   Connection &connection = *m_connection;
   // "Message" is the system's class for message-only windows.
   const HWND window = CreateWindowExW(0, L"Message", nullptr, 0, 0, 0, 0, 0,
