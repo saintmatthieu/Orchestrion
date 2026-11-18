@@ -23,7 +23,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -32,9 +32,9 @@ namespace dgk
 /**
  * A temporary tool: when each note-on/off gesture passes each hand-off on its
  * way to the sound (see OrchestrionSynthesis/gestureToSound.md), and when the
- * audio callbacks run. On when ORCHESTRION_LATENCY_TRACE names a directory,
- * where notes.csv, callbacks.csv and meta.txt are written on exit; analysed
- * by tools/latency_trace.py.
+ * audio callbacks run. On with --latency-trace <dir>, where notes.csv,
+ * callbacks.csv and meta.txt are written on exit; analysed by
+ * tools/latency_trace.py.
  *
  * Lock-free and allocation-free once made: each note's step is stamped once,
  * by the first thread to get there (a chord's notes, sent to every track's
@@ -44,20 +44,48 @@ namespace dgk
 class LatencyTrace
 {
 public:
+  /** What played the note. */
+  enum class Source
+  {
+    gesture,
+    automatic, // AutomaticOrchestrionPlayer
+  };
+
   enum Step
   {
-    dispatched, // GestureInput::Dispatch, on the input thread
-    played,     // GestureInputConnector::onGesture, on the play thread
-    queued,     // OrchestrionSequencer::QueueOutput, on the play thread
-    sent,       // OrchestrionSequencer::SendOutput, on the output thread
-    received,   // OrchestrionSynthesizerWrapper::processEvent, synth told
+    /**
+     * GestureInput::Dispatch, on the input thread; the automatic player's,
+     * when it was due.
+     */
+    dispatched,
+    played,   // GestureInputConnector::onGesture, on the play thread
+    queued,   // OrchestrionSequencer::QueueOutput, on the play thread
+    sent,     // OrchestrionSequencer::SendOutput, on the output thread
+    received, // OrchestrionSynthesizerWrapper::processEvent, synth told
     numSteps
   };
+
+  /**
+   * Traces into this directory (made if it isn't there): before any thread
+   * might trace, i.e. before the application is set up.
+   */
+  static void enable(const std::filesystem::path &dir)
+  {
+    LatencyTrace &trace = singleton();
+    if (dir.empty() || !trace.m_dir.empty())
+      return;
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    trace.m_dir = dir;
+    // Made, and their pages touched, before anything is traced.
+    trace.m_notes = std::make_unique<Note[]>(noteCapacity);
+    trace.m_callbacks = std::make_unique<Callback[]>(callbackCapacity);
+  }
 
   /** Null unless tracing. */
   static LatencyTrace *instance()
   {
-    static LatencyTrace trace;
+    LatencyTrace &trace = singleton();
     return trace.m_dir.empty() ? nullptr : &trace;
   }
 
@@ -70,8 +98,12 @@ public:
         .count();
   }
 
-  /** A new note gesture's id (never 0), or 0 when there's no room left. */
-  std::uint32_t newNote(bool noteOn, int pitch, std::int64_t dispatchedNs)
+  /**
+   * A new note's id (never 0), or 0 when there's no room left. The automatic
+   * player's hands have no pitch: -1 for the left, -2 for the right.
+   */
+  std::uint32_t newNote(bool noteOn, int pitch, std::int64_t dispatchedNs,
+                        Source source = Source::gesture)
   {
     const std::uint32_t id = m_noteCount.fetch_add(1) + 1;
     if (id >= noteCapacity)
@@ -79,6 +111,8 @@ public:
     Note &note = m_notes[id];
     note.noteOn.store(noteOn, std::memory_order_relaxed);
     note.pitch.store(pitch, std::memory_order_relaxed);
+    note.automatic.store(source == Source::automatic,
+                         std::memory_order_relaxed);
     stamp(id, dispatched, dispatchedNs);
     return id;
   }
@@ -146,6 +180,7 @@ private:
     std::atomic<std::int64_t> due{0};
     std::atomic<int> pitch{0};
     std::atomic<bool> noteOn{false};
+    std::atomic<bool> automatic{false};
   };
 
   struct Callback
@@ -155,16 +190,22 @@ private:
     int frames;
   };
 
-  LatencyTrace()
+  static FILE *open(const std::filesystem::path &path)
   {
-    if (const char *dir = std::getenv("ORCHESTRION_LATENCY_TRACE"))
-      m_dir = dir;
-    if (m_dir.empty())
-      return;
-    // Made, and their pages touched, before anything is traced.
-    m_notes = std::make_unique<Note[]>(noteCapacity);
-    m_callbacks = std::make_unique<Callback[]>(callbackCapacity);
+#ifdef _WIN32
+    return _wfopen(path.c_str(), L"w");
+#else
+    return std::fopen(path.c_str(), "w");
+#endif
   }
+
+  static LatencyTrace &singleton()
+  {
+    static LatencyTrace trace;
+    return trace;
+  }
+
+  LatencyTrace() = default;
 
   ~LatencyTrace()
   {
@@ -179,23 +220,24 @@ public:
    */
   void dump() const
   {
-    if (FILE *f = std::fopen((m_dir + "/meta.txt").c_str(), "w"))
+    if (FILE *f = open(m_dir / "meta.txt"))
     {
       std::fprintf(f, "driver=%s\nsampleRate=%d\nrequestedFrames=%d\n",
                    m_driver.c_str(), m_sampleRate, m_requestedFrames);
       std::fclose(f);
     }
-    if (FILE *f = std::fopen((m_dir + "/notes.csv").c_str(), "w"))
+    if (FILE *f = open(m_dir / "notes.csv"))
     {
-      std::fprintf(f, "id,kind,pitch,dispatched,played,queued,due,sent,"
-                      "received\n");
+      std::fprintf(f, "id,source,kind,pitch,dispatched,played,queued,due,"
+                      "sent,received\n");
       const std::uint32_t count =
           std::min<std::uint32_t>(m_noteCount.load() + 1, noteCapacity);
       for (std::uint32_t id = 1; id < count; ++id)
       {
         const Note &n = m_notes[id];
         std::fprintf(
-            f, "%u,%s,%d,%lld,%lld,%lld,%lld,%lld,%lld\n", id,
+            f, "%u,%s,%s,%d,%lld,%lld,%lld,%lld,%lld,%lld\n", id,
+            n.automatic.load() ? "auto" : "gesture",
             n.noteOn.load() ? "on" : "off", n.pitch.load(),
             (long long)n.t[dispatched].load(), (long long)n.t[played].load(),
             (long long)n.t[queued].load(), (long long)n.due.load(),
@@ -203,7 +245,7 @@ public:
       }
       std::fclose(f);
     }
-    if (FILE *f = std::fopen((m_dir + "/callbacks.csv").c_str(), "w"))
+    if (FILE *f = open(m_dir / "callbacks.csv"))
     {
       std::fprintf(f, "start,end,frames\n");
       const std::uint64_t count =
@@ -216,7 +258,7 @@ public:
   }
 
 private:
-  std::string m_dir;
+  std::filesystem::path m_dir;
   std::unique_ptr<Note[]> m_notes;
   std::atomic<std::uint32_t> m_noteCount{0};
   std::unique_ptr<Callback[]> m_callbacks;

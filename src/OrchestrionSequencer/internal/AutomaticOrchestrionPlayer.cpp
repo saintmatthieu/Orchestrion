@@ -18,6 +18,7 @@
  */
 #include "AutomaticOrchestrionPlayer.h"
 #include "MuseScoreShell/OrchestrionActionIds.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 #include <QMetaObject>
 #include <algorithm>
 #include <cmath>
@@ -267,29 +268,55 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
                            std::chrono::duration<double, std::milli>{m_nextMs});
     const int gen = m_generation;
     Post(
-        [this, events = *next, gen]
+        [this, events = *next, gen, due]
         {
           if (gen == m_generation)
-            FireAndContinue(events);
+            FireAndContinue(events, due);
         },
         due);
   }
   else
-    FireAndContinue(*next);
+    FireAndContinue(*next, PlayThread::Clock::now());
 }
 
 void AutomaticOrchestrionPlayer::FireAndContinue(
-    const NextAutoPlayEvents &events)
+    const NextAutoPlayEvents &events, PlayThread::Clock::time_point due)
 {
   if (!m_running)
     return;
+  LatencyTrace *const trace = LatencyTrace::instance();
+  // Each note traced from when it was due, the notes the sequencer queues
+  // meanwhile its own
+  const auto traced = [&](NoteEventType type, int pitch, auto &&play)
+  {
+    std::uint32_t id = 0;
+    if (trace)
+    {
+      id = trace->newNote(type == NoteEventType::noteOn, pitch,
+                          LatencyTrace::toNs(due),
+                          LatencyTrace::Source::automatic);
+      trace->stamp(id, LatencyTrace::played);
+    }
+    const LatencyTrace::CurrentScope traceScope{id};
+    play();
+  };
   m_firingInputEvents = true;
   if (events.leftHandEvent)
-    m_sequencer->OnHandInputEvent(*events.leftHandEvent, true, std::nullopt);
+    traced(*events.leftHandEvent, -1,
+           [&] {
+             m_sequencer->OnHandInputEvent(*events.leftHandEvent, true,
+                                           std::nullopt);
+           });
   if (events.rightHandEvent)
-    m_sequencer->OnHandInputEvent(*events.rightHandEvent, false, std::nullopt);
+    traced(*events.rightHandEvent, -2,
+           [&]
+           {
+             m_sequencer->OnHandInputEvent(*events.rightHandEvent, false,
+                                           std::nullopt);
+           });
   for (const auto &[type, pitch] : events.notes)
-    m_sequencer->OnInputEvent(type, pitch, std::nullopt);
+    traced(type, pitch,
+           [&] { m_sequencer->OnInputEvent(type, pitch, std::nullopt); });
   m_firingInputEvents = false;
   ScheduleNext();
 }

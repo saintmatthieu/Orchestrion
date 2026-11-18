@@ -24,6 +24,7 @@
 #include "App/OfflineRenderer.h"
 #endif
 #include "App/OrchestrionAppFactory.h"
+#include "OrchestrionCommon/LatencyTrace.h"
 
 #include "global/iapplication.h"
 #include "global/modularity/ioc.h"
@@ -31,6 +32,7 @@
 #include "muse_framework_config.h"
 
 #include <csignal>
+#include <filesystem>
 #include <memory>
 
 #if (defined(_MSCVER) || defined(_MSC_VER))
@@ -212,6 +214,11 @@ int main(int argc, char **argv)
   dgk::CommandLineParser commandLineParser;
   commandLineParser.init();
   commandLineParser.parse(argcFinal, argvFinal);
+
+  // Before any thread might trace
+  if (const QString dir = commandLineParser.options()->latencyTraceDir;
+      !dir.isEmpty())
+    dgk::LatencyTrace::enable(std::filesystem::path{dir.toStdWString()});
 
 #ifdef Q_OS_LINUX
   // Before the application is created: its platform and clock

@@ -170,6 +170,12 @@ struct CommandOptions : public muse::CmdOptions
     QString renderAfterStep;
   } testflow;
 
+  /**
+   * --latency-trace <dir>: each note's way to the sound, timed, and the audio
+   * callbacks (OrchestrionCommon/LatencyTrace.h), written there on exit.
+   */
+  QString latencyTraceDir;
+
   // --register-audio-plugin <path> [--register-audio-plugin-out <file>]: the
   // subprocess the GUI application runs to examine a newly found plugin (see
   // OrchestrionConsoleApp). With an output file the result is written there;
