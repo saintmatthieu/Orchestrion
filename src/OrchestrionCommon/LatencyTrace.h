@@ -25,7 +25,10 @@
 #include <cstdio>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace dgk
 {
@@ -147,11 +150,20 @@ public:
   }
 
   /** The output as opened, on the main thread. */
-  void setOutput(const std::string &driver, int sampleRate, int frames)
+  /**
+   * What meta.txt says, e.g. the output as last opened; not on the audio
+   * thread.
+   */
+  void setMeta(const std::string &key, const std::string &value)
   {
-    m_driver = driver;
-    m_sampleRate = sampleRate;
-    m_requestedFrames = frames;
+    std::scoped_lock lock{m_metaMutex};
+    for (auto &[k, v] : m_meta)
+      if (k == key)
+      {
+        v = value;
+        return;
+      }
+    m_meta.emplace_back(key, value);
   }
 
   /**
@@ -222,8 +234,9 @@ public:
   {
     if (FILE *f = open(m_dir / "meta.txt"))
     {
-      std::fprintf(f, "driver=%s\nsampleRate=%d\nrequestedFrames=%d\n",
-                   m_driver.c_str(), m_sampleRate, m_requestedFrames);
+      std::scoped_lock lock{m_metaMutex};
+      for (const auto &[key, value] : m_meta)
+        std::fprintf(f, "%s=%s\n", key.c_str(), value.c_str());
       std::fclose(f);
     }
     if (FILE *f = open(m_dir / "notes.csv"))
@@ -263,8 +276,7 @@ private:
   std::atomic<std::uint32_t> m_noteCount{0};
   std::unique_ptr<Callback[]> m_callbacks;
   std::atomic<std::uint64_t> m_callbackCount{0};
-  std::string m_driver;
-  int m_sampleRate = 0;
-  int m_requestedFrames = 0;
+  mutable std::mutex m_metaMutex;
+  std::vector<std::pair<std::string, std::string>> m_meta;
 };
 } // namespace dgk

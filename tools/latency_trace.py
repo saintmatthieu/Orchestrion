@@ -84,9 +84,8 @@ def main():
     with open(os.path.join(directory, "notes.csv")) as f:
         notes = list(csv.DictReader(f))
 
-    print("Output: %s, %s Hz, %s frames requested" %
-          (meta.get("driver"), meta.get("sampleRate"),
-           meta.get("requestedFrames")))
+    for key, value in meta.items():
+        print("%-21s %s" % (key + ":", value))
 
     if callbacks:
         frames = sorted({c[2] for c in callbacks})

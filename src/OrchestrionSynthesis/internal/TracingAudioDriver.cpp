@@ -20,6 +20,12 @@
 #include "OrchestrionCommon/LatencyTrace.h"
 
 #include <algorithm>
+#include <string>
+#include <utility>
+
+#include <QSysInfo>
+
+#include <log.h>
 
 namespace dgk
 {
@@ -60,14 +66,44 @@ bool TracingAudioDriver::open(const Spec &spec, Spec *activeSpec)
       TimedCallback{alreadyTimed ? alreadyTimed->callback : spec.callback,
                     channels * static_cast<int>(sizeof(float))};
   const bool opened = m_driver->open(timed, activeSpec);
-  if (opened)
-    if (LatencyTrace *const trace = LatencyTrace::instance())
+  if (LatencyTrace *const trace = LatencyTrace::instance())
+  {
+    const auto list = [](const auto &values)
     {
-      const Spec &active = m_driver->activeSpec();
-      trace->setOutput(m_driver->name() + " " + active.deviceId,
-                       static_cast<int>(active.output.sampleRate),
-                       static_cast<int>(active.output.samplesPerChannel));
+      std::string s;
+      for (const auto &v : values)
+        s += (s.empty() ? "" : " ") + std::to_string(v);
+      return s;
+    };
+    const Spec &active = m_driver->activeSpec();
+    const std::pair<std::string, std::string> meta[] = {
+        {"os", QSysInfo::prettyProductName().toStdString() + " (" +
+                   QSysInfo::kernelType().toStdString() + " " +
+                   QSysInfo::kernelVersion().toStdString() + ", " +
+                   QSysInfo::currentCpuArchitecture().toStdString() + ")"},
+        {"driver", m_driver->name()},
+        {"opened", opened ? "yes" : "no"},
+        {"opens", std::to_string(++m_opens)},
+        {"askedDevice", spec.deviceId},
+        {"askedSampleRate", std::to_string(spec.output.sampleRate)},
+        {"askedFrames", std::to_string(spec.output.samplesPerChannel)},
+        {"device", active.deviceId},
+        {"sampleRate", std::to_string(active.output.sampleRate)},
+        {"requestedFrames", std::to_string(active.output.samplesPerChannel)},
+        {"channels", std::to_string(active.output.audioChannelCount)},
+        {"availableSampleRates",
+         list(m_driver->availableOutputDeviceSampleRates())},
+        {"availableBufferSizes",
+         list(m_driver->availableOutputDeviceBufferSizes())},
+    };
+    std::string line;
+    for (const auto &[key, value] : meta)
+    {
+      trace->setMeta(key, value);
+      line += " " + key + "=" + value;
     }
+    LOGI() << "Latency trace, output opened:" << line;
+  }
   return opened;
 }
 
