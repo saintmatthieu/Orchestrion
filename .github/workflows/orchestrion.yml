@@ -54,7 +54,7 @@ jobs:
           host: "windows"
           target: "desktop"
           arch: "win64_msvc2022_64"
-          modules: qtnetworkauth qt5compat qtscxml qtshadertools qtwebengine qtwebchannel qtpositioning
+          modules: qtnetworkauth qt5compat qtscxml qtshadertools qtwebengine qtwebchannel qtpositioning qtserialport
           cache: true
 
       - name: Install Ninja
@@ -162,7 +162,7 @@ jobs:
           version: "6.10.2"
           arch: "clang_64"
           target: "desktop"
-          modules: qtnetworkauth qt5compat qtscxml qtshadertools qtwebengine qtwebchannel qtpositioning
+          modules: qtnetworkauth qt5compat qtscxml qtshadertools qtwebengine qtwebchannel qtpositioning qtserialport
           cache: true
 
       - name: Install Ninja
@@ -298,7 +298,7 @@ jobs:
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
-          modules: qtnetworkauth qt5compat qtscxml qtshadertools qtwebengine qtwebchannel qtpositioning
+          modules: qtnetworkauth qt5compat qtscxml qtshadertools qtwebengine qtwebchannel qtpositioning qtserialport
           cache: true
 
       - name: Setup ccache
