@@ -23,12 +23,15 @@ the Windows side came about, with its measurements.
   innermost in the factory chain (`OrchestrionSynthesisModule::
   registerExports`), hands it each driver made; it polls the monitor every
   250 ms on the main thread, keeps 10 s of windows and 2 min of seconds,
-  and runs the automatic setting (the default): up a level after an
+  and runs the automatic setting (off by default: Low, the user's, with
+  an "Audio glitch?" toast after an audible underrun): up a level after an
   underrun or under 1 ms of headroom, down after 5 minutes of sound with a
   period of headroom to spare (doubled after each raise in the session),
-  applied once the output has been silent 500 ms (peak under -80 dBFS: so
-  **a monitor must report the output's peak**, or nothing ever counts as
-  sounding and the level never comes down).
+  reacting only to what happens while the output sounds, and applied once
+  the app isn't playing (automatic player stopped, no key or pedal held,
+  output silent 500 ms: peak under -80 dBFS). So **a monitor must report
+  the output's peak**, or nothing ever counts as sounding: no raise, and
+  the level never comes down.
 - **Audio/MIDI > Latency…** (`src/qml/LatencyDialog.qml`,
   `view/OutputLatencyModel`): Automatic (with a ringed ? popup), Low /
   Medium / Large, headroom, load, underruns, "silence played by the
@@ -39,7 +42,8 @@ the Windows side came about, with its measurements.
 
 The dialog's strings (context `orchestrion/latency`) and the menu item
 `&Latency…` (context `appshell/menu/audio-midi`, in
-`src/MuseScoreShell/view/OrchestrionMenuModel.cpp`) are in neither
+`src/MuseScoreShell/view/OrchestrionMenuModel.cpp`), and the "Audio
+glitch?" toast's (`src/qml/GlitchToast.qml`, `qsTr`) are in neither
 `share/locale/*.ts`: run the `lupdate` target, translate German and French,
 check them in the dialog (the popup's text wraps at 280 px; the level
 buttons share the dialog's width three ways).

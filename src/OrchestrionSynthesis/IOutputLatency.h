@@ -29,11 +29,17 @@
 namespace dgk
 {
 /**
+ * The latency dialog (Audio/MIDI > Latency…).
+ */
+inline constexpr const char *latencyDialogUri = "orchestrion://audio/latency";
+
+/**
  * The audio output's latency against its safety: the margin the driver keeps
  * queued for the device (a level, each adding latency), chosen automatically
- * (raised after an underrun or a close call, lowered after long stretches with
- * headroom to spare) or by the user, and what the driver measures of it. Levels
- * change only while nothing sounds.
+ * (raised after an underrun or a close call while something sounds, lowered
+ * after long stretches with headroom to spare) or by the user, and what the
+ * driver measures of it. Levels change only while the app isn't playing (see
+ * OutputLatency).
  *
  * Only where the driver can tell (muse::audio::IAudioOutputMonitor: WASAPI);
  * elsewhere `available` is false.
@@ -54,7 +60,7 @@ public:
      * Each level's margin (queued for the device), in ms, least first.
      */
     std::vector<double> levelsMarginMs;
-    bool automatic = true;
+    bool automatic = false;
     /**
      * The level chosen (by the automatic setting, or the user), and the one in
      * effect: they differ until the output is silent.
@@ -108,5 +114,15 @@ public:
    * For trying the detection: the next callback starts so much later.
    */
   virtual void delayNextCallback(double ms) = 0;
+
+  /**
+   * The hint offering the latency dialog ("Audio glitch?"): shown after an
+   * underrun while something sounds and the level is the user's (the
+   * automatic setting deals with it otherwise), until closed: back at the next
+   * such underrun, or, closed for good, never again.
+   */
+  virtual bool glitchHintShown() const = 0;
+  virtual muse::async::Notification glitchHintChanged() const = 0;
+  virtual void closeGlitchHint(bool forGood) = 0;
 };
 } // namespace dgk

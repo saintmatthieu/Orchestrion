@@ -142,6 +142,34 @@ StyledDialogView {
             }
         }
 
+        // Always there, so that nothing moves: whether the level chosen is the
+        // one in effect, or waits for the output to be silent
+        Row {
+            id: levelState
+
+            readonly property bool pending: root.s.level !== root.s.appliedLevel
+
+            visible: root.available
+            spacing: 8
+
+            Rectangle {
+                width: 10
+                height: 10
+                radius: 5
+                anchors.verticalCenter: parent.verticalCenter
+                color: levelState.pending ? root.stallColor : ui.theme.buttonColor
+                border.color: ui.theme.strokeColor
+                border.width: 1
+            }
+
+            StyledTextLabel {
+                text: levelState.pending
+                      ? qsTrc("orchestrion/latency", "Pending: takes effect when the app is not playing")
+                      : qsTrc("orchestrion/latency", "In effect")
+                font: ui.theme.bodyFont
+            }
+        }
+
         // What is measured
         Caption {
             visible: root.available

@@ -82,6 +82,8 @@ set(MODULE_SRC
     view/EffectMeterModel.h
     view/EffectHeaderModel.cpp
     view/EffectHeaderModel.h
+    view/GlitchHintModel.cpp
+    view/GlitchHintModel.h
     view/OutputLatencyModel.cpp
     view/OutputLatencyModel.h
     ${THIRDPARTY_DSP_SRC}

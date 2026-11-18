@@ -19,6 +19,7 @@
 #include "OrchestrionSynthesisModule.h"
 #include "IBuiltInEffects.h"
 #include "IEffectChain.h"
+#include "IOutputLatency.h"
 #include "OrchestrionCommon/LatencyTrace.h"
 #include "OrchestrionCommon/OfflineRendering.h"
 #include "OrchestrionCommon/OrchestrionIoc.h"
@@ -35,6 +36,7 @@
 #include "internal/TrackChannelMapper.h"
 #include "view/EffectHeaderModel.h"
 #include "view/EffectMeterModel.h"
+#include "view/GlitchHintModel.h"
 #include "view/OutputLatencyModel.h"
 #include <audio/common/workmode.h>
 #include <global/settings.h>
@@ -148,6 +150,8 @@ void OrchestrionSynthesisModule::registerUiTypes()
                                      "EffectHeaderModel");
   qmlRegisterType<OutputLatencyModel>("Orchestrion.OrchestrionSynthesis", 1, 0,
                                       "OutputLatencyModel");
+  qmlRegisterType<GlitchHintModel>("Orchestrion.OrchestrionSynthesis", 1, 0,
+                                   "GlitchHintModel");
 }
 
 void OrchestrionSynthesisModule::resolveImports()
@@ -160,7 +164,7 @@ void OrchestrionSynthesisModule::resolveImports()
     ir->registerQmlUri(muse::Uri("orchestrion://effects/builtin"),
                        "Orchestrion", "BuiltInEffectDialog");
     // Audio/MIDI > Latency…
-    ir->registerQmlUri(muse::Uri("orchestrion://audio/latency"), "Orchestrion",
+    ir->registerQmlUri(muse::Uri(latencyDialogUri), "Orchestrion",
                        "LatencyDialog");
   }
 }

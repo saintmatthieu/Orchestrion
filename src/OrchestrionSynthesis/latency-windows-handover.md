@@ -60,7 +60,9 @@ this machine's default device now at 44.1 kHz (period 441 frames):
   a whole one), in a buffer of three periods: one period measured 19.7 ms.
   It detects underruns (a write after the pass that needed it, from the
   event grid and the queue after the last write; and the stream's clock
-  stalling), and reports headroom and load. Automatic (the default) raises
+  stalling), and reports headroom and load. The default is Low, the
+  user's, an "Audio glitch?" toast offering the dialog after an audible
+  underrun. Automatic raises
   the level after an underrun or under 1 ms of headroom, lowers it after
   5 minutes of sound with a period to spare (doubled after each raise),
   only while silent. Checked: a callback made 15 ms late is an underrun at

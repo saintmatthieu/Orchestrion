@@ -80,5 +80,11 @@ public:
    * it. From the main thread.
    */
   virtual void send(const Gesture &) = 0;
+
+  /**
+   * Whether a key or the sustain pedal is held now, as the gestures told.
+   * From any thread.
+   */
+  virtual bool anyHeld() const = 0;
 };
 } // namespace dgk
