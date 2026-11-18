@@ -23,19 +23,27 @@
 
 namespace dgk
 {
-GestureInput::~GestureInput()
+GestureInput::~GestureInput() { deinit(); }
+
+void GestureInput::deinit()
 {
   // The producers first: they call Dispatch(), which uses the members
   // declared after them. The keyboard's controller lets go of the keyboard's
   // receiver, waiting for a key under way.
   m_keyboard.reset();
+  // Where they were made: on the input thread, if there is one.
+  const auto releaseMidiDevice = [this]
+  {
+    m_midiDeviceSubscriptions.reset();
+    m_midiDevice.reset();
+  };
   if (m_inputThread)
-    m_inputThread->Wait(
-        [this]
-        {
-          m_midiDeviceSubscriptions.reset();
-          m_midiDevice.reset();
-        });
+  {
+    m_inputThread->Wait(releaseMidiDevice);
+    m_inputThread.reset();
+  }
+  else
+    releaseMidiDevice();
 }
 
 void GestureInput::init()

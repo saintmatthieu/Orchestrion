@@ -39,6 +39,7 @@ private:
 
   void onContextPreInit(const muse::IApplication::RunMode &) const;
   void onContextInit(const muse::IApplication::RunMode &) const;
+  void onContextDeinit() const;
 
   const std::shared_ptr<GestureInput> m_gestureInput;
   const std::shared_ptr<ComputerKeyboard> m_keyboard;
