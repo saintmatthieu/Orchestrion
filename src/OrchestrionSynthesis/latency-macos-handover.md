@@ -132,6 +132,31 @@ First confirm the cause: the same automatic-play trace plugged in, and on
 battery with Low Power Mode on and off. Then verify: the `played` step of
 `auto note-on` should drop to Linux's level (well under 1 ms).
 
+## Task 3: the latency dialog on macOS
+
+Windows has an Audio/MIDI > Latency… dialog: the margin kept against
+underruns (Automatic, or Low / Medium / Large), headroom, load, underruns.
+It works wherever the platform's driver implements the muse fork's
+`IAudioOutputMonitor`; only WASAPI does. Read `latency-linux-handover.md`,
+"What exists" and Task 2: the same questions arise with
+`CoreAudioDirectDriver`, with these differences:
+
+- **A level** would be the IOProc's buffer size
+  (`kAudioDevicePropertyBufferFrameSize`, e.g. 128 / 256 / 512 frames),
+  with the engine's block following it: the same choice as on Linux
+  between the driver applying it and `OutputLatency` going through
+  `IAudioDriverController::changeBufferSize`. Today's block is 1024 frames
+  (21.3 ms at 48 kHz): Low could take that to a few ms.
+- **Underruns**: a gap in the IOProc's `inOutputTime->mSampleTime` from one
+  call to the next (the HAL skipped a cycle), and the device's
+  `kAudioDeviceProcessorOverload` notification.
+- **Headroom**: from the IOProc's return to `inOutputTime->mHostTime` (when
+  the buffer starts playing), less the device's safety offset.
+- The output's peak must be reported (the automatic setting's silence
+  detection, see the Linux handover).
+
+Check it with the dialog's test button as described there.
+
 ## Practicalities
 
 - Build and run as in `CLAUDE.md` (macOS: install prefix is the build dir).

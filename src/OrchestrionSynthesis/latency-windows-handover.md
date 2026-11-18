@@ -72,6 +72,19 @@ this machine's default device now at 44.1 kHz (period 441 frames):
 - **Timed threads above normal** (`raiseTimedThreadPriority`): no
   measurable effect, see `threading.md`, "What's left".
 
+## Left on Windows
+
+- **Not run yet**: the automatic setting's raise on a close call (under
+  1 ms of headroom, added last): run Getting Started and check the log for
+  no "Close call" raise in a clean run.
+- Whether the system's own glitches stall the stream's clock (orange cells
+  in the dialog's strip): if one is heard with no cell, reword "Silence
+  played by the device".
+- Low-latency shared mode, untested (this machine's Realtek behind Intel
+  SST offers no shorter period).
+- The automatic player's ~1 ms lateness: a high-resolution waitable timer
+  for the play thread's last stretch.
+
 ## Task 1: render every period, with a small WASAPI buffer
 
 The engine's block size (`audio/io/bufferSize`, MuseScore's
