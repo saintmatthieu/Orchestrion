@@ -233,6 +233,11 @@ void CommandLineParser::init()
       "test-case-render",
       "Render the test case's video offline, faster than it plays (Linux)",
       "video"));
+  m_parser.addOption(QCommandLineOption(
+      "latency-trace",
+      "Time each note's way to the sound and the audio callbacks, written "
+      "to this directory on exit (see tools/latency_trace.py)",
+      "dir"));
   m_parser.addOption(QCommandLineOption("test-case-render-from",
                                         "Start the video when this step starts",
                                         "step"));
@@ -678,6 +683,10 @@ void CommandLineParser::parse(int argc, char **argv)
   {
     m_options->testflow.testCaseSpeed = m_parser.value("test-case-speed");
   }
+
+  if (m_parser.isSet("latency-trace"))
+    m_options->latencyTraceDir =
+        fromUserInputPath(m_parser.value("latency-trace"));
 
   if (m_parser.isSet("test-case-render"))
   {

@@ -77,7 +77,8 @@ private:
   void Start();
   void Halt();
   void ScheduleNext();
-  void FireAndContinue(const NextAutoPlayEvents &events);
+  void FireAndContinue(const NextAutoPlayEvents &events,
+                       PlayThread::Clock::time_point due);
   double TicksToMilliseconds(int ticks) const;
   double ElapsedMs() const;
   void StartReplay();

@@ -17,13 +17,16 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 """Summarises a LatencyTrace (src/OrchestrionCommon/LatencyTrace.h).
 
-Run the app with ORCHESTRION_LATENCY_TRACE=<dir> (an existing directory,
-preferably on tmpfs, e.g. /dev/shm/trace), play, quit, then:
+Run the app with --latency-trace <dir> (made if needed; on Linux preferably
+on tmpfs, e.g. /dev/shm/trace, so that writing it doesn't disturb what is
+measured), play, quit, then:
 
     tools/latency_trace.py <dir> [--notes]
 
 Steps (see src/OrchestrionSynthesis/gestureToSound.md):
-  dispatched -> played    input thread to play thread
+  dispatched -> played    input thread to play thread; for the automatic
+                          player's notes, how late it fired after the note
+                          was due
   played     -> queued    the sequencer, until it queues the notes
   queued     -> sent      output thread (minus what the sequencer delayed
                           on purpose, an ornament's or a grace's due time)
@@ -98,7 +101,9 @@ def main():
                     if (b[0] - a[0]) / 1e9 > 1.5 * a[2] / rate]
             print("  intervals > 1.5 periods: %d" % len(late))
 
-    steps = {k: {"on": [], "off": []} for k in
+    groups = [(source, kind) for source in ["gesture", "auto"]
+              for kind in ["on", "off"]]
+    steps = {k: {g: [] for g in groups} for k in
              ["played", "queued", "sent (late)", "due delay", "received",
               "rendered", "total"]}
     incomplete = 0
@@ -107,7 +112,7 @@ def main():
     for n in notes:
         t = {k: int(n[k]) for k in
              ["dispatched", "played", "queued", "due", "sent", "received"]}
-        kind = n["kind"]
+        group = (n.get("source", "gesture"), n["kind"])
         if not all(t[k] for k in
                    ["dispatched", "played", "queued", "sent", "received"]):
             incomplete += 1
@@ -131,20 +136,22 @@ def main():
             "total": ms(rendered - t["dispatched"]),
         }
         for k, v in d.items():
-            steps[k][kind].append(v)
-        rows.append((n["id"], kind, n["pitch"], d))
+            steps[k][group].append(v)
+        rows.append((n["id"], "%s-%s" % group, n["pitch"], d))
 
     print("\nNotes: %d traced, %d incomplete (no score, no sound, or "
           "after the last callback), %d told during a callback" %
           (len(notes), incomplete, ambiguous))
-    for kind in ["on", "off"]:
-        print("\nnote-%s (ms)" % kind)
+    for group in groups:
+        if not steps["total"][group]:
+            continue
+        print("\n%s note-%s (ms)" % group)
         for k in ["played", "queued", "due delay", "sent (late)", "received",
                   "rendered", "total"]:
-            print("  %-12s %s" % (k, percentiles(steps[k][kind])))
+            print("  %-12s %s" % (k, percentiles(steps[k][group])))
 
     if show_notes:
-        print("\nid kind pitch " + " ".join("%11s" % k for k in rows[0][3])
+        print("\nid source-kind pitch " + " ".join("%11s" % k for k in rows[0][3])
               if rows else "")
         for id_, kind, pitch, d in rows:
             print("%s %s %s " % (id_, kind, pitch) +
