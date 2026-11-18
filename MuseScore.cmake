@@ -73,6 +73,13 @@ if (NOT DEFINED MUSE_ENABLE_UNIT_TESTS)
   set(MUSE_ENABLE_UNIT_TESTS OFF)
 endif()
 set(MUSE_MODULE_AUDIO_EXPORT OFF)            # no mp3/ogg/flac/aac export: avoids the encoder dependencies
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # PipeWire's own client (prebuilt by muse_deps): the stream asks for its
+  # latency, and PipeWire lowers its quantum to the lowest asked; through
+  # ALSA, it stays at the graph's. Falls back to ALSA without a PipeWire
+  # server.
+  set(MUSE_MODULE_AUDIO_PIPEWIRE ON)
+endif()
 set(MUSE_MODULE_AUDIOPLUGINS ON) # VST3 plugin discovery: the Effects menu and the VST instruments
 set(MUSE_MODULE_AUTOMATION OFF)
 set(MUSE_MODULE_CLOUD OFF)
@@ -245,6 +252,26 @@ set(EXTDEPS_DIR "${MuseScore_ROOT_DIR}/muse_deps")
 set(LOCAL_ROOT_PATH ${FETCHCONTENT_BASE_DIR})
 include(${EXTDEPS_DIR}/buildtools/manifest.cmake)
 include(${MUSE_FRAMEWORK_PATH}/buildscripts/cmake/ExtDepsManifest.cmake)
+if (TARGET PipeWire::PipeWire)
+  # Linked against, never loaded: the system's libpipewire must be the one
+  # used, matching the PipeWire server and its modules (ALSA's PipeWire
+  # plugin loads it too, and two of them in one process break both). By name,
+  # so that its directory is in no RUNPATH, build tree's included; not
+  # installed but as a fallback for the AppImage, for systems without it (see
+  # buildscripts/packaging/Linux/pipewire-fallback.sh).
+  get_target_property(_pw_libs PipeWire::PipeWire INTERFACE_LINK_LIBRARIES)
+  list(GET _pw_libs 0 _pw_lib)
+  get_filename_component(_pw_dir "${_pw_lib}" DIRECTORY)
+  # (A link directory would end up in the build tree's RUNPATH too.)
+  set_target_properties(PipeWire::PipeWire PROPERTIES
+    INTERFACE_LINK_LIBRARIES pipewire-0.3
+    INTERFACE_LINK_OPTIONS "-L${_pw_dir}")
+  file(REAL_PATH "${_pw_dir}/libpipewire-0.3.so.0" _pw_real)
+  install(FILES "${_pw_real}"
+    DESTINATION lib/fallback/libpipewire-0.3.so.0
+    RENAME libpipewire-0.3.so.0)
+  set_property(GLOBAL PROPERTY pipewire_INSTALL_LIBRARIES "")
+endif()
 extdeps_install_consumed(MACOS_BUNDLE Orchestrion.app)
 
 # Populated by ExtDepsManifest (MUSE_MODULE_VST); Orchestrion's own code
