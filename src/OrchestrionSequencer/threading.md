@@ -195,7 +195,11 @@ Break one and it deadlocks, races, or renders differ from one run to the next.
     rtkit, staying at normal priority otherwise. `nice` can't be lowered
     without privilege, and MuseScore's `setThreadPriority` is a no-op under
     `SCHED_OTHER`.
-  - Windows: `THREAD_PRIORITY_ABOVE_NORMAL`, maybe MMCSS for the play thread.
+  - Windows (done): `THREAD_PRIORITY_ABOVE_NORMAL`. It changed nothing
+    measurable: the automatic player's notes are still ~1 ms late (0.95 p50,
+    2.9 max), the granularity of MSVC's `condition_variable::wait_until`
+    (milliseconds). Sub-millisecond would take a high-resolution waitable
+    timer (`CREATE_WAITABLE_TIMER_HIGH_RESOLUTION`) for the last stretch.
   - macOS (done): user-interactive QoS. Default QoS let the automatic
     player's timed waits wake up 4–5 ms late (up to 11.5), coalesced; now
     1 ms. Real-time scheduling (`THREAD_TIME_CONSTRAINT_POLICY`) gave
