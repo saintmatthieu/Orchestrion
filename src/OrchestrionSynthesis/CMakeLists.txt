@@ -50,6 +50,8 @@ set(MODULE_SRC
     internal/OrchestrionSynthesizerWrapper.h
     internal/OrchestrionSynthesisConfiguration.cpp
     internal/OrchestrionSynthesisConfiguration.h
+    internal/OutputLatency.cpp
+    internal/OutputLatency.h
     internal/OrchestrionSynthResolver.cpp
     internal/OrchestrionSynthResolver.h
     internal/OrchestrionFxResolver.cpp
@@ -69,6 +71,7 @@ set(MODULE_SRC
     BuiltInEffectTypes.h
     IBuiltInEffects.h
     IEffectChain.h
+    IOutputLatency.h
     ReverbPresets.h
     ITrackChannelMapper.h
     ISynthesizerConnector.h
@@ -79,6 +82,8 @@ set(MODULE_SRC
     view/EffectMeterModel.h
     view/EffectHeaderModel.cpp
     view/EffectHeaderModel.h
+    view/OutputLatencyModel.cpp
+    view/OutputLatencyModel.h
     ${THIRDPARTY_DSP_SRC}
 )
 

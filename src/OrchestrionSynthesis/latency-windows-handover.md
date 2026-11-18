@@ -51,10 +51,24 @@ this machine's default device now at 44.1 kHz (period 441 frames):
   inbox HD Audio or USB Audio 2 class driver.
 - **Done: MMCSS "Pro Audio"** for the WASAPI thread (same commit):
   processing max 3.3 → 1.7 ms, load max 33 → 17 %.
-- **Still there: WASAPI's buffer** is 970 frames whatever is asked (asked
-  256): each write sits behind ~529 frames (12 ms) queued. Writing only
-  enough to keep about one period queued would remove most of it, at the
-  cost of the slack against a late callback. Not tried.
+- **Done: the margin queued, chosen** (muse `IAudioOutputMonitor`,
+  Orchestrion `IOutputLatency`, Audio/MIDI > Latency…). Filling WASAPI's
+  buffer (970 frames, ~2.2 periods, whatever is asked) put each write behind
+  ~529 frames: 31.7 ms from a callback to its first frame played
+  (`IAudioClock`). The driver now keeps one, two or three whole periods
+  queued (Low, Medium, Large; half a period more buys no time, a pass takes
+  a whole one), in a buffer of three periods: one period measured 19.7 ms.
+  It detects underruns (a write after the pass that needed it, from the
+  event grid and the queue after the last write; and the stream's clock
+  stalling), and reports headroom and load. Automatic (the default) raises
+  the level after an underrun or under 1 ms of headroom, lowers it after
+  5 minutes of sound with a period to spare (doubled after each raise),
+  only while silent. Checked: a callback made 15 ms late is an underrun at
+  Low (heard, and the clock stalled 9.8 ms), the level rose, and later ones
+  weren't. Open: whether the system's own glitches stall the stream's clock
+  (the dialog's "Silence played by the device" says so); the other
+  platforms' monitors (macOS: the IOProc's buffer size, Linux: PipeWire's
+  `node.latency`).
 - **Timed threads above normal** (`raiseTimedThreadPriority`): no
   measurable effect, see `threading.md`, "What's left".
 

@@ -172,6 +172,13 @@ void OrchestrionActionController::init()
   dispatcher()->reg(this, actionIds::removeEffect,
                     [this](const muse::actions::ActionData &args)
                     { effectChain()->removeEffect(args.arg<std::string>(0)); });
+  dispatcher()->reg(this, actionIds::showLatency,
+                    [this]
+                    {
+                      muse::UriQuery query("orchestrion://audio/latency");
+                      query.addParam("modal", muse::Val(false));
+                      interactive()->open(query);
+                    });
   dispatcher()->reg(this, actionIds::editEffect,
                     [this](const muse::actions::ActionData &args)
                     { effectChain()->openEditor(args.arg<std::string>(0)); });
