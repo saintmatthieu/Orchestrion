@@ -56,8 +56,9 @@ public:
   /**
    * How big a staff space is drawn, in logical pixels: a staff is four of
    * them high. Every score is drawn at that size, so that the cards' music is
-   * all of a piece; only a score whose first system would not fit the strip
-   * (three staves and more) is drawn smaller.
+   * all of a piece; only a score whose first system would not fit the strip,
+   * with what sticks out of its staves (up to six staff spaces), is drawn
+   * smaller.
    */
   static constexpr double spatiumPixels = 6.0;
 

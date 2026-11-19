@@ -48,7 +48,7 @@ namespace
  * Bumped whenever the rendering changes, so that the entries rendered before
  * are rendered again.
  */
-constexpr int renderVersion = 4;
+constexpr int renderVersion = 5;
 
 /** MusicXML's <work-number>, as MuseScore keeps it. */
 const QString workNumberTag = "workNumber";
@@ -155,19 +155,14 @@ QImage drawIncipit(const mu::engraving::rendering::IScoreRenderer &renderer,
       ScoreIncipitCache::width * ScoreIncipitCache::pixelRatio;
   constexpr int imageHeight =
       ScoreIncipitCache::height * ScoreIncipitCache::pixelRatio;
-  // Every score at the same size, unless its staves themselves don't fit:
-  // what sticks out of a crowded band is cut rather than everything shrunk.
-  const double scale =
-      std::min(ScoreIncipitCache::spatiumPixels *
-                   ScoreIncipitCache::pixelRatio / spatium,
-               imageHeight / (staves.height() + 2 * minOverhang * spatium));
+  // Every score at the same size, unless its band doesn't fit: then the
+  // whole band, shrunk, rather than what sticks out of it cut.
+  const double scale = std::min(ScoreIncipitCache::spatiumPixels *
+                                    ScoreIncipitCache::pixelRatio / spatium,
+                                imageHeight / (bottom - top));
   const double viewHeight = imageHeight / scale;
-  // Centred on the band, as far as the staves stay in view.
-  const double highest = staves.top() - minOverhang * spatium;
-  const double lowest =
-      std::min(staves.bottom() + minOverhang * spatium - viewHeight, highest);
-  const double viewTop =
-      std::clamp((top + bottom - viewHeight) / 2, lowest, highest);
+  // Centred on the band.
+  const double viewTop = (top + bottom - viewHeight) / 2;
   const double left = incipitLeft(*system, spatium);
   const RectF band{left, viewTop, imageWidth / scale, viewHeight};
 
