@@ -221,6 +221,14 @@ bool RollsLibrary::parseIndex(const QByteArray &json,
     score.sourceUrl = entry.value("source").toObject().value("url").toString();
     // Relative to the index, wherever that is served from.
     score.musicxmlUrl = indexUrl.resolved(QUrl{musicxml});
+    const QJsonObject preview = entry.value("preview").toObject();
+    if (const QString url = preview.value("url").toString(); !url.isEmpty())
+    {
+      score.previewUrl = indexUrl.resolved(QUrl{url});
+      score.previewSize = {preview.value("width").toDouble(),
+                           preview.value("height").toDouble()};
+      score.previewStaffSpace = preview.value("staffSpace").toDouble();
+    }
     score.version = entry.value("version").toString();
     scores.push_back(std::move(score));
   }

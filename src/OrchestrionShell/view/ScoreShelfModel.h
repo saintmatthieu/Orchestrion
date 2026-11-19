@@ -37,6 +37,7 @@
 #include <QFileSystemWatcher>
 #include <QObject>
 #include <QSet>
+#include <QSizeF>
 #include <QTimer>
 #include <QUrl>
 #include <map>
@@ -95,6 +96,13 @@ public:
     NotesRole,
     /** A frame of its best video (IRollsLibrary::recordings); empty if none. */
     VideoFrameRole,
+    /**
+     * A score of Rolls' first system, as Rolls engraved it, for its card
+     * until it is downloaded; empty if Rolls has none.
+     */
+    PreviewRole,
+    /** The size to draw the preview at, in logical pixels. */
+    PreviewSizeRole,
   };
 
   struct Item
@@ -113,6 +121,8 @@ public:
     int rhythm = 0;
     int notes = 0;
     QUrl videoFrame;
+    QUrl preview;
+    QSizeF previewSize;
     bool ready = false;
     /** Title, composer and file name, folded for search. */
     QString searchText;

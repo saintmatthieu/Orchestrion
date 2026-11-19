@@ -53,6 +53,13 @@ public:
   static constexpr int width = 320;
   static constexpr int height = 112;
   static constexpr int pixelRatio = 2;
+  /**
+   * How big a staff space is drawn, in logical pixels: a staff is four of
+   * them high. Every score is drawn at that size, so that the cards' music is
+   * all of a piece; only a score whose first system would not fit the strip
+   * (three staves and more) is drawn smaller.
+   */
+  static constexpr double spatiumPixels = 6.0;
 
   struct Entry
   {

@@ -321,6 +321,10 @@ QVariant ScoreListModel::data(const QModelIndex &index, int role) const
     return item.notes;
   case VideoFrameRole:
     return item.videoFrame;
+  case PreviewRole:
+    return item.preview;
+  case PreviewSizeRole:
+    return item.previewSize;
   default:
     return {};
   }
@@ -348,6 +352,8 @@ QHash<int, QByteArray> ScoreListModel::roleNames() const
       {RhythmRole, "rhythm"},
       {NotesRole, "notes"},
       {VideoFrameRole, "videoFrame"},
+      {PreviewRole, "preview"},
+      {PreviewSizeRole, "previewSize"},
   };
 }
 
@@ -1110,7 +1116,8 @@ ScoreShelfModel::makeItem(const QString &path,
   }
   if (const auto piece = rollsLibrary()->pieceIdOf(path))
     for (const ScoreRecording &recording : rollsLibrary()->recordings(*piece))
-      if (item.videoFrame = youTubeFrame(recording.url); !item.videoFrame.isEmpty())
+      if (item.videoFrame = youTubeFrame(recording.url);
+          !item.videoFrame.isEmpty())
         break;
   const auto id = rollsLibrary()->idOf(path);
   if (!id)
@@ -1127,6 +1134,18 @@ ScoreShelfModel::makeItem(const QString &path,
     item.rhythm = score->rhythm;
     item.notes = score->notes;
     item.titledByIndex = true;
+    if (const QSizeF size = score->previewSize;
+        score->previewUrl.isValid() && !size.isEmpty())
+    {
+      // As a local incipit is drawn: at its staff size, unless the system
+      // would not fit the strip.
+      double scale = ScoreIncipitCache::height / size.height();
+      if (score->previewStaffSpace > 0)
+        scale = std::min(scale, ScoreIncipitCache::spatiumPixels /
+                                    score->previewStaffSpace);
+      item.preview = score->previewUrl;
+      item.previewSize = size * scale;
+    }
   }
   item.downloaded = rollsLibrary()->isDownloaded(*id);
   // Nothing to draw until it is downloaded.

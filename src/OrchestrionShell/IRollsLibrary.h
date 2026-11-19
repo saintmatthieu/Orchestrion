@@ -22,6 +22,7 @@
 #include <async/notification.h>
 #include <modularity/imoduleinterface.h>
 
+#include <QSizeF>
 #include <QString>
 #include <QUrl>
 #include <optional>
@@ -63,6 +64,18 @@ struct RollsScore
   /** The edition's page at its source (e.g. Mutopia's). */
   QString sourceUrl;
   QUrl musicxmlUrl;
+  /**
+   * Its first system, engraved by Rolls (an SVG), for its card until it is
+   * downloaded; empty if the index has none.
+   */
+  QUrl previewUrl;
+  /** The preview's size, in its own units. */
+  QSizeF previewSize;
+  /**
+   * The gap between a staff's lines in the preview, in its units; 0 if the
+   * index doesn't say.
+   */
+  double previewStaffSpace = 0;
   /** A hash of the MusicXML: a new version has a new one. */
   QString version;
 };

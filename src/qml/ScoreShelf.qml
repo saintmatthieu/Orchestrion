@@ -697,6 +697,8 @@ Item {
         required property string displayNameOverride
         required property bool current
         required property bool downloaded
+        required property url preview
+        required property size previewSize
         required property bool downloading
         required property bool downloadFailed
         required property bool updateAvailable
@@ -809,13 +811,13 @@ Item {
                 }
             }
 
-            // Not on this computer: no music to show, so say where it is
-            // rather than draw empty staves, which look broken. Breathes
-            // while it downloads.
+            // Not on this computer: no music to show but Rolls' preview, if
+            // there is one, so say where it is rather than draw empty
+            // staves, which look broken. Breathes while it downloads.
             Column {
                 id: remoteNote
                 property real breath: 0.55
-                visible: !card.downloaded
+                visible: !card.downloaded && rollsPreview.status !== Image.Ready
                 anchors.centerIn: parent
                 spacing: 4
                 opacity: card.downloading && root.shown ? breath : 0.55
@@ -854,6 +856,34 @@ Item {
                 // Fades in when rendered.
                 opacity: status === Image.Ready ? 1 : 0
                 Behavior on opacity { NumberAnimation { duration: 250 } }
+            }
+
+            // Rolls' engraving of the first system, at the size a local
+            // incipit's music is drawn, from the left; breathes while it
+            // downloads. It is drawn locally once downloaded.
+            Image {
+                id: rollsPreview
+                property real breath: 1
+                anchors.verticalCenter: parent.verticalCenter
+                width: card.previewSize.width
+                height: card.previewSize.height
+                source: card.downloaded ? "" : card.preview
+                sourceSize.width: width * 2
+                sourceSize.height: height * 2
+                smooth: true
+                asynchronous: true
+                opacity: status !== Image.Ready ? 0
+                         : card.downloading && root.shown ? breath : 1
+                Behavior on opacity {
+                    enabled: !card.downloading
+                    NumberAnimation { duration: 250 }
+                }
+                SequentialAnimation on breath {
+                    running: card.downloading && root.shown
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 1; to: 0.45; duration: 700 }
+                    NumberAnimation { from: 0.45; to: 1; duration: 700 }
+                }
             }
 
             Rectangle {

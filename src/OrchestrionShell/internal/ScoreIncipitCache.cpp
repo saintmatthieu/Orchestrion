@@ -68,14 +68,6 @@ int level(const mu::project::ProjectMeta &meta, const QString &tag)
 }
 
 /**
- * How big a staff space is drawn, in logical pixels: a staff is four of
- * them high. Every score is drawn at that size, so that the cards' music is
- * all of a piece; only a score whose first system would not fit the strip
- * (three staves and more) is drawn smaller.
- */
-constexpr double spatiumPixels = 6.0;
-
-/**
  * How far above and below its staves a system's band may reach for what
  * sticks out (ledger-line notes, dynamics, tempo marks), in staff spaces.
  */
@@ -166,7 +158,8 @@ QImage drawIncipit(const mu::engraving::rendering::IScoreRenderer &renderer,
   // Every score at the same size, unless its staves themselves don't fit:
   // what sticks out of a crowded band is cut rather than everything shrunk.
   const double scale =
-      std::min(spatiumPixels * ScoreIncipitCache::pixelRatio / spatium,
+      std::min(ScoreIncipitCache::spatiumPixels *
+                   ScoreIncipitCache::pixelRatio / spatium,
                imageHeight / (staves.height() + 2 * minOverhang * spatium));
   const double viewHeight = imageHeight / scale;
   // Centred on the band, as far as the staves stay in view.
