@@ -708,7 +708,11 @@ muse::uicomponents::MenuItem *OrchestrionMenuModel::makeDevelopmentMenu()
           gradingItem, makeSeparator(), takeRecordingItem,
           makeMenuItem(actionIds::replayTake,
                        muse::TranslatableString("appshell/menu/development",
-                                                "&Replay a take…"))},
+                                                "&Replay a take…")),
+          makeSeparator(),
+          makeMenuItem(actionIds::fetchRollsIndex,
+                       muse::TranslatableString("appshell/menu/development",
+                                                "&Fetch the Rolls index"))},
       "menu-orchestrion-development");
 }
 #endif

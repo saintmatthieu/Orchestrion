@@ -67,6 +67,9 @@ void OrchestrionActionController::init()
                           !sequencerConfig()->takeRecordingEnabled());
                     });
   dispatcher()->reg(this, actionIds::replayTake, [this] { replayTake(); });
+  // The score shelf and the recordings follow when it arrives.
+  dispatcher()->reg(this, actionIds::fetchRollsIndex,
+                    [this] { rollsLibrary()->fetchIndex(); });
 
   dispatcher()->reg(this, "orchestrion-file-open",
                     [this](const muse::actions::ActionData &args)

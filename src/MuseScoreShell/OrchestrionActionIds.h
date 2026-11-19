@@ -79,6 +79,12 @@ static constexpr const char *toggleGradingExposure =
 static constexpr const char *toggleTakeRecording =
     "orchestrion-dev-toggle-take-recording";
 static constexpr const char *replayTake = "orchestrion-dev-replay-take";
+/**
+ * Development menu: fetches Rolls' index now, however recently it was, to see
+ * what was just published there (it is otherwise fetched every 3 hours).
+ */
+static constexpr const char *fetchRollsIndex =
+    "orchestrion-dev-fetch-rolls-index";
 
 static constexpr const char *playModePerformance =
     "orchestrion-advanced-play-mode-performance";

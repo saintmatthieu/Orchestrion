@@ -71,6 +71,8 @@ muse::ui::UiActionList makeActions(
                          muse::shortcuts::CTX_ANY),
       muse::ui::UiAction(actionIds::replayTake, muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY),
+      muse::ui::UiAction(actionIds::fetchRollsIndex, muse::ui::UiCtxAny,
+                         muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-proportional-spacing",
                          muse::ui::UiCtxAny, muse::shortcuts::CTX_ANY),
       muse::ui::UiAction(actionIds::playbackToggle, muse::ui::UiCtxAny,
