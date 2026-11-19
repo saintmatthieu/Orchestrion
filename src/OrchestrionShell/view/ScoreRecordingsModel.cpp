@@ -139,6 +139,8 @@ QUrl ScoreRecordingsModel::playerUrl() const
   query.addQueryItem("v", video->id);
   if (!video->start.isEmpty())
     query.addQueryItem("start", video->start);
+  if (!video->end.isEmpty())
+    query.addQueryItem("end", video->end);
   url.setQuery(query);
   return url;
 }

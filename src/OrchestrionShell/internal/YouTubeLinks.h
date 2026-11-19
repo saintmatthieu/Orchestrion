@@ -32,9 +32,16 @@ struct YouTubeVideo
   QString id;
   /** Where to start, in seconds; empty for the beginning. */
   QString start;
+  /** Where to stop, in seconds, after the start; empty for the end. */
+  QString end;
 };
 
-/** The video a youtu.be or youtube.com/watch link is to; none for others. */
+/**
+ * The video a youtu.be or youtube.com/watch link is to; none for others.
+ * Its t= is where to start and its end= where to stop: YouTube's own pages
+ * ignore end=, a parameter of the Rolls index's for a piece that is only a
+ * part of the video.
+ */
 std::optional<YouTubeVideo> youTubeVideo(const QUrl &url);
 
 /** A frame of the video (YouTube's thumbnail, 320×180); empty if not one. */
