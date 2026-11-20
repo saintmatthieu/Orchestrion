@@ -36,6 +36,8 @@ set(MODULE_SRC
     internal/OrnamentGesture.h
     internal/OrnamentSchedule.cpp
     internal/OrnamentSchedule.h
+    internal/PerformanceAligner.cpp
+    internal/PerformanceAligner.h
     internal/PerformanceFollower.cpp
     internal/PerformanceFollower.h
     internal/PlayThread.cpp
