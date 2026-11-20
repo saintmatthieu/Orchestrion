@@ -6,6 +6,8 @@ set(MODULE_TEST orchestrionsequencer_tests)
 set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/OrnamentScheduleTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentSchedule.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/PerformanceAlignerTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceAligner.cpp
   ${CMAKE_CURRENT_LIST_DIR}/PerformanceFollowerTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceFollower.cpp
   ${CMAKE_CURRENT_LIST_DIR}/ScoreEventsTests.cpp
@@ -22,6 +24,8 @@ set(MODULE_TEST_SRC
 
 set(MODULE_TEST_LINK
 )
+
+set(MODULE_TEST_DATA_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 # gtest.cmake adds the googletest include dir but not googlemock's, which the
 # framework's gmain.cpp needs. googletest comes from muse_deps, which records
