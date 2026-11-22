@@ -1451,14 +1451,7 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
   if (!m_syncBeatTicks.empty())
   {
     const int beat = syncBeatAt(QPointF{logicPos.x(), logicPos.y()});
-    QPointF itemPos;
-    if (beat >= 0)
-      if (const auto point = syncBeatPoint(beat))
-      {
-        const muse::PointF at = fromLogical(muse::PointF{point->x(), point->y()});
-        itemPos = QPointF{at.x(), at.y()};
-      }
-    setHoveredSyncBeat(beat, itemPos);
+    setHoveredSyncBeat(beat);
     if (beat >= 0)
       return;
   }
@@ -2294,6 +2287,8 @@ namespace
 constexpr int kSyncBeatGrowMs = 150;
 /** How much bigger the active one is. */
 constexpr double kSyncBeatGrowth = 0.7;
+/** How long the band following a video takes to fade in. */
+constexpr int kFollowFadeInMs = 1000;
 } // namespace
 
 void OrchestrionNotationPaintView::setSyncBeats(const QVariantList &beats)
@@ -2301,20 +2296,18 @@ void OrchestrionNotationPaintView::setSyncBeats(const QVariantList &beats)
   m_syncBeats = beats;
   m_syncBeatTicks.clear();
   m_syncBeatLowLane.clear();
-  m_syncBeatOnBeat.clear();
   for (const QVariant &beat : beats)
   {
-    const QVariantMap map = beat.toMap();
-    const int tick = map.value("tick").toInt();
-    m_syncBeatOnBeat.push_back(map.value("onBeat", true).toBool());
-    const bool jumpedBack = !m_syncBeatTicks.empty() && tick < m_syncBeatTicks.back();
+    const int tick = beat.toMap().value("tick").toInt();
+    const bool jumpedBack =
+        !m_syncBeatTicks.empty() && tick < m_syncBeatTicks.back();
     m_syncBeatLowLane.push_back(m_syncBeatLowLane.empty()
                                     ? false
                                     : m_syncBeatLowLane.back() != jumpedBack);
     m_syncBeatTicks.push_back(tick);
   }
   if (m_hoveredSyncBeat >= static_cast<int>(m_syncBeatTicks.size()))
-    setHoveredSyncBeat(-1, {});
+    setHoveredSyncBeat(-1);
   emit syncBeatsChanged();
   update();
 }
@@ -2326,6 +2319,17 @@ void OrchestrionNotationPaintView::setActiveSyncBeat(int beat)
   m_previousSyncBeat = m_activeSyncBeat;
   m_activeSyncBeat = beat;
   m_syncBeatSince.start();
+  // Syncing, the page keeps the anchor the video is at in view, as it does
+  // the notes played: back at a repeat, on as anchors are tapped.
+  if (beat >= 0 && beat < static_cast<int>(m_syncBeatTicks.size()))
+    if (const auto x = syncBeatX(m_syncBeatTicks[beat]))
+    {
+      if (m_previousSyncBeat >= 0 &&
+          m_previousSyncBeat < static_cast<int>(m_syncBeatTicks.size()) &&
+          m_syncBeatTicks[beat] < m_syncBeatTicks[m_previousSyncBeat])
+        m_follower.jump();
+      m_follower.onEvents(true, *x, *x, std::nullopt);
+    }
   if (!m_syncBeatAnimationConnected)
   {
     m_syncBeatAnimationConnected = true;
@@ -2344,6 +2348,125 @@ void OrchestrionNotationPaintView::setActiveSyncBeat(int beat)
   update();
 }
 
+void OrchestrionNotationPaintView::setHighlightNotes(bool highlight)
+{
+  if (highlight == m_highlightNotes)
+    return;
+  m_highlightNotes = highlight;
+  emit followSpanChanged();
+  update();
+}
+
+bool OrchestrionNotationPaintView::followBandFadingIn() const
+{
+  return m_followBandShown.isValid() &&
+         m_followBandShown.elapsed() < kFollowFadeInMs;
+}
+
+void OrchestrionNotationPaintView::setFollowSpan(const QVariantMap &span)
+{
+  // Appearing, it fades in.
+  if (m_followSpanMap.isEmpty() && !span.isEmpty())
+    m_followBandShown.start();
+  m_followSpanMap = span;
+  m_followSpan = span.isEmpty() ? std::pair{-1, -1}
+                                : std::pair{span.value("from").toInt(),
+                                            span.value("to").toInt()};
+  m_followFraction = span.value("fraction").toDouble();
+  m_followMsLeft = span.value("msLeft").toDouble();
+  m_followSpanSince.start();
+  // Repainted every frame while it glides.
+  if (!m_followSpanAnimationConnected)
+  {
+    m_followSpanAnimationConnected = true;
+    m_followSpanAnimation.setInterval(16);
+    m_followSpanAnimation.callOnTimeout(this,
+                                        [this]
+                                        {
+                                          update();
+                                          if (m_followSpanSince.elapsed() >
+                                                  m_followMsLeft &&
+                                              !followBandFadingIn())
+                                            m_followSpanAnimation.stop();
+                                        });
+  }
+  if (m_followMsLeft > 0.0 || followBandFadingIn())
+    m_followSpanAnimation.start();
+  else
+    m_followSpanAnimation.stop();
+  emit followSpanChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::paintFollowSpan(QPainter *painter)
+{
+  const auto notation = this->notation();
+  const BeltGeometry belt = sampleBelt();
+  if (!notation || !belt.valid || m_followSpan.first < 0 ||
+      m_followSpan.second <= m_followSpan.first)
+    return;
+  const auto from = syncBeatX(m_followSpan.first);
+  if (!from)
+    return;
+  const double spatium = notation->elements()->msScore()->style().spatium();
+  // Its end, or a little on if that's on another system.
+  const double to =
+      syncBeatX(m_followSpan.second).value_or(*from + 4 * spatium);
+  if (to <= *from)
+    return;
+
+  // Where the video is now: as far into the span as it was told, gliding on
+  // to its end in the time it was told it would take.
+  double fraction = m_followFraction;
+  if (m_followMsLeft > 0.0)
+    fraction += (1.0 - fraction) *
+                std::min(1.0, m_followSpanSince.elapsed() / m_followMsLeft);
+  const double centre = *from + fraction * (to - *from);
+
+  // A rough indication of where the music is, not of where a beat starts
+  // and ends (its timing is only as close as the anchors): a flat top about
+  // a beat wide, fading out smoothly over about a bar, the same width
+  // wherever it is, lest it look as if it meant something.
+  QColor tint =
+      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::highlight);
+  const double flat = 6.0 * spatium;
+  const double fade = 12.0 * spatium;
+  // Fading in, when it appears.
+  const double shown =
+      std::min(1.0, m_followBandShown.isValid()
+                        ? m_followBandShown.elapsed() / double(kFollowFadeInMs)
+                        : 1.0);
+  const double strength = 0.22 * shown * shown * (3 - 2 * shown);
+  const double left = centre - flat / 2 - fade;
+  const double right = centre + flat / 2 + fade;
+  QLinearGradient gradient{left, 0.0, right, 0.0};
+  const double fadeShare = fade / (right - left);
+  constexpr int steps = 6;
+  for (int i = 0; i <= steps; ++i)
+  {
+    // Eased in and out: no edge to the fade either.
+    const double t = double(i) / steps;
+    QColor colour = tint;
+    colour.setAlphaF(strength * t * t * (3 - 2 * t));
+    gradient.setColorAt(t * fadeShare, colour);
+    gradient.setColorAt(1.0 - t * fadeShare, colour);
+  }
+  painter->save();
+  painter->setPen(Qt::NoPen);
+  painter->setBrush(gradient);
+  painter->drawRect(QRectF{QPointF{left, belt.paper.top()},
+                           QPointF{right, belt.paper.bottom()}});
+  painter->restore();
+}
+
+void OrchestrionNotationPaintView::setHoveredSyncBeat(int beat)
+{
+  if (beat == m_hoveredSyncBeat)
+    return;
+  m_hoveredSyncBeat = beat;
+  update();
+}
+
 void OrchestrionNotationPaintView::setSelectedSyncBeats(
     const QVariantList &selected)
 {
@@ -2355,18 +2478,8 @@ void OrchestrionNotationPaintView::setSelectedSyncBeats(
   update();
 }
 
-void OrchestrionNotationPaintView::setHoveredSyncBeat(int beat,
-                                                      const QPointF &itemPos)
-{
-  if (beat == m_hoveredSyncBeat && itemPos == m_hoveredSyncBeatPos)
-    return;
-  m_hoveredSyncBeat = beat;
-  m_hoveredSyncBeatPos = itemPos;
-  emit hoveredSyncBeatChanged();
-  update();
-}
-
-std::optional<QPointF> OrchestrionNotationPaintView::syncBeatPoint(int beat) const
+std::optional<QPointF>
+OrchestrionNotationPaintView::syncBeatPoint(int beat) const
 {
   const auto x = syncBeatX(m_syncBeatTicks[beat]);
   const auto notation = this->notation();
@@ -2374,13 +2487,13 @@ std::optional<QPointF> OrchestrionNotationPaintView::syncBeatPoint(int beat) con
   if (!x || !notation || !belt.valid)
     return std::nullopt;
   // Just inside the parchment's edge.
-  const double inset =
-      1.2 * notation->elements()->msScore()->style().spatium();
+  const double inset = 1.2 * notation->elements()->msScore()->style().spatium();
   return QPointF{*x, m_syncBeatLowLane[beat] ? belt.paper.bottom() - inset
                                              : belt.paper.top() + inset};
 }
 
-std::optional<double> OrchestrionNotationPaintView::syncBeatX(int writtenTick) const
+std::optional<double>
+OrchestrionNotationPaintView::syncBeatX(int writtenTick) const
 {
   const auto notation = this->notation();
   if (!notation)
@@ -2421,7 +2534,8 @@ std::optional<double> OrchestrionNotationPaintView::syncBeatX(int writtenTick) c
     if (tick >= s->tick() && tick < t2)
     {
       const double x1 = s->canvasPos().x();
-      x = x1 + (x2 - x1) * (tick - s->tick()).ticks() / (t2 - s->tick()).ticks();
+      x = x1 +
+          (x2 - x1) * (tick - s->tick()).ticks() / (t2 - s->tick()).ticks();
     }
     s = next;
   }
@@ -2433,8 +2547,7 @@ int OrchestrionNotationPaintView::syncBeatAt(const QPointF &logical) const
   const auto notation = this->notation();
   if (!notation)
     return -1;
-  const double reach =
-      1.2 * notation->elements()->msScore()->style().spatium();
+  const double reach = 1.2 * notation->elements()->msScore()->style().spatium();
   int found = -1;
   for (int i = 0; i < static_cast<int>(m_syncBeatTicks.size()); ++i)
   {
@@ -2456,8 +2569,7 @@ void OrchestrionNotationPaintView::paintSyncBeats(QPainter *painter)
   const auto notation = this->notation();
   if (m_syncBeatTicks.empty() || !notation)
     return;
-  const double spatium =
-      notation->elements()->msScore()->style().spatium();
+  const double spatium = notation->elements()->msScore()->style().spatium();
   const double grown =
       std::min(1.0, m_syncBeatSince.isValid()
                         ? m_syncBeatSince.elapsed() / double(kSyncBeatGrowMs)
@@ -2484,9 +2596,7 @@ void OrchestrionNotationPaintView::paintSyncBeats(QPainter *painter)
       growth = 1.0 - ease;
     if (i == m_hoveredSyncBeat)
       growth = std::max(growth, 0.5);
-    // Subdivisions smaller than beats.
-    const double size = m_syncBeatOnBeat[i] ? 0.45 : 0.3;
-    const double radius = size * spatium * (1.0 + kSyncBeatGrowth * growth);
+    const double radius = 0.45 * spatium * (1.0 + kSyncBeatGrowth * growth);
     painter->setBrush(i == m_activeSyncBeat || i == m_hoveredSyncBeat ? accent
                                                                       : quiet);
     painter->drawEllipse(*point, radius, radius);
@@ -2513,9 +2623,10 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   paintBelt(painter);
   paintLoopRegionUnderlay(painter);
   paintBeatLines(painter);
+  paintFollowSpan(painter);
   paintSyncBeats(painter);
 
-  if (m_boxes.empty() && m_fader.empty())
+  if ((m_boxes.empty() && m_fader.empty()) || !m_highlightNotes)
     return;
 
   painter->save();
@@ -2734,10 +2845,12 @@ void OrchestrionNotationPaintView::paint(QPainter *painter)
   // Painted on the render thread maybe, so on the view's own.
   QMetaObject::invokeMethod(
       this,
-      [this, parchmentHeight = belt.valid ? belt.viewY(belt.paper.bottom()) -
-                                                belt.viewY(belt.paper.top())
-                                          : m_parchmentHeight,
-       parchmentTop = belt.valid ? belt.viewY(belt.paper.top()) : m_parchmentTop,
+      [this,
+       parchmentHeight = belt.valid ? belt.viewY(belt.paper.bottom()) -
+                                          belt.viewY(belt.paper.top())
+                                    : m_parchmentHeight,
+       parchmentTop =
+           belt.valid ? belt.viewY(belt.paper.top()) : m_parchmentTop,
        // Its axis, where the flat run starts, and its radius (paintRollers)
        leftBarrelRight =
            belt.valid ? belt.tangent(true) + belt.core : m_leftBarrelRight]

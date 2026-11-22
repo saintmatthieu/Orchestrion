@@ -27,7 +27,6 @@ namespace
 constexpr int eighth = 240;
 constexpr int beat = 3 * eighth; // 12/8
 constexpr int bar = 4 * beat;
-using Precision = RecordingSyncSession::Precision;
 
 /**
  * Four bars of 12/8, the second and third a repeat: as played, bars 0, 1, 2,
@@ -44,10 +43,11 @@ std::vector<PlayedBar> Bars()
     b.writtenTick = written[i] * bar;
     b.length = bar;
     b.beatTicks = beat;
-    b.subdivisionTicks = eighth;
     b.beats = 4;
     b.number = written[i] + 1;
     b.pass = i >= 3 && i <= 4 ? 2 : 1;
+    // Chords on every beat, but in the last bar, a half note on its second.
+    b.lastOnset = i < 5 ? 3 * beat : beat;
     bars.push_back(b);
   }
   return bars;
@@ -80,29 +80,20 @@ TEST(RecordingSyncSessionTests, TapsGoThroughTheScoreInOrder)
   EXPECT_EQ(session.Sync().points[1].tick, beat);
 }
 
-TEST(RecordingSyncSessionTests, AnotherPassRewritesFinerOrCoarser)
+TEST(RecordingSyncSessionTests, AnotherPassRewrites)
 {
   auto session = BeatsOfBarZero();
-  // Again from bar 0, in eighths, over its first beat and a half.
-  session.SetPrecision(Precision::subdivisions);
+  // Again from bar 0, over its first two beats: those are replaced, the
+  // others kept.
   EXPECT_EQ(session.TapFrom(0), 0.0);
-  for (int e = 0; e < 5; ++e)
-    session.Tap(1.0 + e * 0.3);
-  EXPECT_EQ(Positions(session),
-            (std::vector<int>{0, eighth, 2 * eighth, beat, beat + eighth,
-                              2 * beat, 3 * beat}));
-  // And in beats again: the eighths between go; those past the pass's last
-  // tap are still there.
-  session.SetPrecision(Precision::beats);
-  session.TapFrom(0);
-  session.Tap(1.0);
+  session.Tap(1.1);
   session.Tap(1.9);
   EXPECT_EQ(Positions(session),
-            (std::vector<int>{0, beat, beat + eighth, 2 * beat, 3 * beat}));
-  session.Tap(3.0);
-  EXPECT_EQ(Positions(session),
             (std::vector<int>{0, beat, 2 * beat, 3 * beat}));
+  EXPECT_DOUBLE_EQ(session.Sync().points[0].seconds, 1.1);
   EXPECT_DOUBLE_EQ(session.Sync().points[1].seconds, 1.9);
+  EXPECT_DOUBLE_EQ(session.Sync().points[2].seconds, 3.0);
+  EXPECT_EQ(session.Next(), 2 * beat);
 }
 
 TEST(RecordingSyncSessionTests, KeepsTimeInOrder)
@@ -113,16 +104,6 @@ TEST(RecordingSyncSessionTests, KeepsTimeInOrder)
   // Later than the third beat's anchor: that one goes.
   session.Tap(3.5);
   EXPECT_EQ(Positions(session), (std::vector<int>{0, beat, 3 * beat}));
-}
-
-TEST(RecordingSyncSessionTests, ChangingPrecisionAlignsTheNextTap)
-{
-  RecordingSyncSession session{Bars(), {}};
-  session.SetPrecision(Precision::subdivisions);
-  session.Tap(1.0);
-  EXPECT_EQ(session.Next(), eighth);
-  session.SetPrecision(Precision::beats);
-  EXPECT_EQ(session.Next(), beat);
 }
 
 TEST(RecordingSyncSessionTests, TapsOnFromWhereTheSyncLeftOff)
@@ -141,25 +122,16 @@ TEST(RecordingSyncSessionTests, UndoesEachChange)
   auto session = BeatsOfBarZero();
   session.TapFrom(0);
   session.Tap(1.0);
-  session.Tap(3.5);
-  session.SetSeconds(1, 1.5);
-  session.SetSeconds(1, 1.6); // the same change, moved on
+  session.Tap(3.5); // the third beat's anchor goes
+  session.Select(0, false);
+  session.DeleteSelection();
   ASSERT_TRUE(session.Undo());
-  EXPECT_DOUBLE_EQ(session.Sync().points[1].seconds, 3.5);
+  EXPECT_EQ(Positions(session), (std::vector<int>{0, beat, 3 * beat}));
   ASSERT_TRUE(session.Undo());
   ASSERT_TRUE(session.Undo());
   EXPECT_EQ(Positions(session),
             (std::vector<int>{0, beat, 2 * beat, 3 * beat}));
-  EXPECT_DOUBLE_EQ(session.Sync().points[2].seconds, 3.0);
-}
-
-TEST(RecordingSyncSessionTests, MovesAnchorsOnlyBetweenTheirNeighbours)
-{
-  auto session = BeatsOfBarZero();
-  session.SetSeconds(1, 5.0);
-  EXPECT_DOUBLE_EQ(session.Sync().points[1].seconds, 2.99);
-  session.SetSeconds(1, 0.0);
-  EXPECT_DOUBLE_EQ(session.Sync().points[1].seconds, 1.01);
+  EXPECT_DOUBLE_EQ(session.Sync().points[1].seconds, 2.0);
 }
 
 TEST(RecordingSyncSessionTests, SelectsAndDeletes)
@@ -183,6 +155,18 @@ TEST(RecordingSyncSessionTests, SelectsAndDeletes)
   EXPECT_EQ(Positions(session).size(), 4u);
 }
 
+TEST(RecordingSyncSessionTests, ClearsAllToStartAgain)
+{
+  auto session = BeatsOfBarZero();
+  session.SelectAll();
+  ASSERT_TRUE(session.DeleteSelection());
+  EXPECT_TRUE(session.Sync().points.empty());
+  EXPECT_EQ(session.Next(), 0);
+  ASSERT_TRUE(session.Undo());
+  EXPECT_EQ(Positions(session).size(), 4u);
+  EXPECT_EQ(session.Next(), bar);
+}
+
 TEST(RecordingSyncSessionTests, FindsTheBarClickedInTheNearestPass)
 {
   const RecordingSyncSession session{Bars(), {}};
@@ -198,15 +182,45 @@ TEST(RecordingSyncSessionTests, PlacesPositions)
   const auto place = session.PlaceOf(4 * bar + beat + 2 * eighth);
   EXPECT_EQ(place.bar, 4);
   EXPECT_EQ(place.beat, 2);
-  EXPECT_EQ(place.subdivision, 3);
-  EXPECT_EQ(place.subdivisions, 3);
 }
 
-TEST(RecordingSyncSessionTests, StopsAtTheEnd)
+TEST(RecordingSyncSessionTests, RefusesTapsBeforeThePieceStarts)
 {
   RecordingSyncSession session{Bars(), {}};
-  for (int b = 0; b < 6 * 4; ++b)
+  EXPECT_FALSE(session.Tap(-2.0));
+  EXPECT_TRUE(session.Sync().points.empty());
+  EXPECT_EQ(session.Next(), 0);
+}
+
+TEST(RecordingSyncSessionTests, StartsAPickupWhereItsNotesAreInTheBar)
+{
+  // An eighth's pickup: the end of a bar of 12/8, before the bars as above.
+  auto bars = Bars();
+  for (PlayedBar &b : bars)
+    b.tick += eighth;
+  PlayedBar pickup;
+  pickup.length = eighth;
+  pickup.beatTicks = beat;
+  pickup.beats = 1;
+  pickup.pickup = true;
+  pickup.gridOffset = bar - eighth;
+  pickup.lastOnset = 0;
+  bars.insert(bars.begin(), pickup);
+
+  // No beat in it: the first tap is bar 1's first beat. Its note is in the
+  // last beat of its bar.
+  RecordingSyncSession session{bars, {}};
+  EXPECT_EQ(session.Next(), eighth);
+  EXPECT_EQ(session.PlaceOf(0).beat, 4);
+}
+
+TEST(RecordingSyncSessionTests, StopsAtTheLastChord)
+{
+  RecordingSyncSession session{Bars(), {}};
+  // Five bars of four beats, then the first two of the last.
+  for (int b = 0; b < 5 * 4 + 2; ++b)
     EXPECT_TRUE(session.Tap(1.0 + b));
+  EXPECT_EQ(session.Position(5 * 4 + 1), 5 * bar + beat);
   EXPECT_FALSE(session.Next().has_value());
   EXPECT_FALSE(session.Tap(100.0));
 }

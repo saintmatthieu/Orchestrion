@@ -101,11 +101,6 @@ Item {
             if (playerLoader.item)
                 playerLoader.item.runJavaScript("window.pausePlayer && pausePlayer()")
         }
-        function onReplayRequested(seconds) {
-            if (playerLoader.item)
-                playerLoader.item.runJavaScript("window.player && player.seekTo && (player.seekTo("
-                                                + seconds + ", true), player.playVideo())")
-        }
         function onSeekRequested(seconds) {
             if (playerLoader.item)
                 playerLoader.item.runJavaScript("window.player && player.seekTo && player.seekTo("
@@ -163,6 +158,11 @@ Item {
         sequence: "Backspace"
         enabled: root.model.syncing
         onActivated: root.model.undoSync()
+    }
+    Shortcut {
+        sequences: [StandardKey.SelectAll]
+        enabled: root.model.syncing
+        onActivated: root.model.selectAllSyncBeats()
     }
     Shortcut {
         sequence: "Ctrl+Left"
@@ -229,45 +229,11 @@ Item {
                     color: Theme.metalBright
                     font.pixelSize: 15
                 }
-                // What a tap is for
-                Row {
-                    spacing: 6
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("Taps:")
-                        color: Theme.metalBright
-                        font.pixelSize: 13
-                    }
-                    Repeater {
-                        model: [qsTr("beats"), qsTr("subdivisions")]
-                        Rectangle {
-                            readonly property bool chosen: root.model.syncPrecision === index
-                            width: choice.implicitWidth + 14
-                            height: choice.implicitHeight + 6
-                            radius: height / 2
-                            color: chosen ? Theme.accent : "transparent"
-                            border.color: Theme.metal
-                            border.width: chosen ? 0 : 1
-                            Text {
-                                id: choice
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: parent.chosen ? Theme.accentInk : Theme.metalBright
-                                font.pixelSize: 13
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.model.syncPrecision = index
-                            }
-                        }
-                    }
-                }
                 Text {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: qsTr("%n anchor(s). Return taps, going over what was there; Backspace undoes; clicking a bar taps from it. "
-                               + "Click an anchor to select it, Ctrl to add, Ctrl+arrows for its neighbours; Delete deletes. Esc when done.",
+                    text: qsTr("%n beat(s) anchored. Return taps the next beat, going over what was there; Backspace undoes; clicking a bar taps from it. "
+                               + "Click an anchor to select it, Ctrl to add, Ctrl+arrows for its neighbours, Ctrl+A for all; Delete deletes. Esc when done.",
                                "", root.model.syncCount)
                     color: Theme.metalBright
                     opacity: 0.75

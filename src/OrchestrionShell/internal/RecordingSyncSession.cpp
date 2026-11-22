@@ -25,8 +25,6 @@ namespace dgk
 {
 namespace
 {
-/** Anchors are this far apart at the least. */
-constexpr double kResolution = 0.01;
 /** Going back to tap a bar again: from this long before it. */
 constexpr double kLeadIn = 2.0;
 /** How many changes can be taken back. */
@@ -37,8 +35,11 @@ RecordingSyncSession::RecordingSyncSession(std::vector<PlayedBar> bars,
                                            RecordingSync sync)
     : m_bars{std::move(bars)}, m_sync{std::move(sync)}
 {
+  for (auto bar = m_bars.rbegin(); bar != m_bars.rend() && m_end < 0; ++bar)
+    if (bar->lastOnset >= 0)
+      m_end = bar->tick + bar->lastOnset;
   if (m_sync.points.empty())
-    m_next = m_bars.empty() ? std::nullopt : std::optional<int>{0};
+    m_next = m_end < 0 ? std::nullopt : GridFrom(0, true);
   else
   {
     // On from the last anchor.
@@ -66,40 +67,28 @@ RecordingSyncSession::Place RecordingSyncSession::PlaceOf(int position) const
   Place place;
   place.bar = BarOf(position);
   const PlayedBar &bar = m_bars[place.bar];
-  const int tick = position - bar.tick;
+  const int tick = position - bar.tick + bar.gridOffset;
   place.beat = tick / bar.beatTicks + 1;
-  place.subdivisions = bar.beatTicks / std::max(1, bar.subdivisionTicks);
-  place.subdivision =
-      tick % bar.beatTicks / std::max(1, bar.subdivisionTicks) + 1;
   return place;
-}
-
-int RecordingSyncSession::Step(int bar) const
-{
-  return m_precision == Precision::beats ? m_bars[bar].beatTicks
-                                         : m_bars[bar].subdivisionTicks;
 }
 
 std::optional<int> RecordingSyncSession::GridFrom(int position, bool at) const
 {
   const int index = BarOf(position);
   const PlayedBar &bar = m_bars[index];
-  const int step = std::max(1, Step(index));
-  const int tick = position - bar.tick;
+  const int step = std::max(1, bar.beatTicks);
+  // Its time's beats: a pickup's from where its whole bar would start.
+  const int tick = position - bar.tick + bar.gridOffset;
   const int grid =
       at ? (tick + step - 1) / step * step : (tick / step + 1) * step;
-  if (grid < bar.length)
-    return bar.tick + grid;
-  if (index + 1 < static_cast<int>(m_bars.size()))
-    return m_bars[index + 1].tick;
-  return std::nullopt; // the end
-}
-
-void RecordingSyncSession::SetPrecision(Precision precision)
-{
-  m_precision = precision;
-  if (m_next)
-    m_next = GridFrom(*m_next, true);
+  std::optional<int> found;
+  if (grid - bar.gridOffset < bar.length)
+    found = bar.tick + grid - bar.gridOffset;
+  else if (index + 1 < static_cast<int>(m_bars.size()))
+    found = m_bars[index + 1].tick;
+  if (!found || *found > m_end)
+    return std::nullopt; // nothing to tap after the last chord
+  return found;
 }
 
 void RecordingSyncSession::PushUndo()
@@ -107,12 +96,12 @@ void RecordingSyncSession::PushUndo()
   m_undo.push_back({m_sync.points, m_next, m_last});
   if (m_undo.size() > kUndoDepth)
     m_undo.erase(m_undo.begin());
-  m_moving = -1;
 }
 
 bool RecordingSyncSession::Tap(double seconds)
 {
-  if (!m_next)
+  // Before the piece starts in the recording, it isn't being played.
+  if (!m_next || seconds < 0.0)
     return false;
   PushUndo();
   const int at = *m_next;
@@ -194,31 +183,6 @@ int RecordingSyncSession::AnchorAt(double seconds) const
   return static_cast<int>(after - m_sync.points.begin()) - 1;
 }
 
-double RecordingSyncSession::Minimum(int anchor) const
-{
-  return anchor > 0 ? m_sync.points[anchor - 1].seconds + kResolution : 0.0;
-}
-
-double RecordingSyncSession::Maximum(int anchor) const
-{
-  return anchor + 1 < static_cast<int>(m_sync.points.size())
-             ? m_sync.points[anchor + 1].seconds - kResolution
-             : m_sync.points[anchor].seconds + 3600.0;
-}
-
-void RecordingSyncSession::SetSeconds(int anchor, double seconds)
-{
-  if (anchor < 0 || anchor >= static_cast<int>(m_sync.points.size()))
-    return;
-  if (anchor != m_moving)
-  {
-    PushUndo();
-    m_moving = anchor;
-  }
-  m_sync.points[anchor].seconds =
-      std::clamp(seconds, Minimum(anchor), Maximum(anchor));
-}
-
 void RecordingSyncSession::Select(int anchor, bool add)
 {
   if (anchor < 0 || anchor >= static_cast<int>(m_sync.points.size()))
@@ -244,6 +208,12 @@ void RecordingSyncSession::ExtendSelection(int direction, int from)
     m_selection.insert(added);
 }
 
+void RecordingSyncSession::SelectAll()
+{
+  for (int i = 0; i < static_cast<int>(m_sync.points.size()); ++i)
+    m_selection.insert(i);
+}
+
 bool RecordingSyncSession::ClearSelection()
 {
   if (m_selection.empty())
@@ -261,6 +231,11 @@ bool RecordingSyncSession::DeleteSelection()
   for (auto it = m_selection.rbegin(); it != m_selection.rend(); ++it)
     m_sync.points.erase(m_sync.points.begin() + *it);
   m_selection.clear();
+  if (m_sync.points.empty())
+  {
+    m_last.reset();
+    m_next = m_end < 0 ? std::nullopt : GridFrom(0, true);
+  }
   return true;
 }
 
@@ -274,7 +249,6 @@ bool RecordingSyncSession::Undo()
   m_last = state.last;
   m_undo.pop_back();
   m_selection.clear();
-  m_moving = -1;
   return true;
 }
 } // namespace dgk

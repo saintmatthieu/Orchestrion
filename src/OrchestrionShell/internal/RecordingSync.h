@@ -39,8 +39,8 @@ namespace dgk
  * The file is JSON: {"version": 2, "score": "<the score's Rolls version>",
  * "points": [[bar, tick, seconds], ...]}. `bar` is the measure's index as
  * the music is played (repeats unrolled, from 0, a pickup included); `tick`
- * where in it the point is, in ticks from its start (a beat or one of its
- * subdivisions, as tapped); `seconds` from the start of the piece in the
+ * where in it the point is, in ticks from its start (the beat tapped);
+ * `seconds` from the start of the piece in the
  * recording (its link's t=). The points are in the order played; a bar
  * index that jumps by more than one is a part of the score the recording
  * skips (a repeat). Version 1 had the beat, from 1, instead of the tick.
@@ -66,19 +66,25 @@ struct PlayedBar
   int tick = 0;
   int writtenTick = 0;
   /**
-   * Its length, its beat's (the time signature's: a dotted quarter in 12/8)
-   * and its beat's subdivision's (an eighth in 12/8, in 4/4 too), in ticks.
+   * Its length and its beat's (the time signature's: a dotted quarter in
+   * 12/8), in ticks.
    */
   int length = 0;
   int beatTicks = 0;
-  int subdivisionTicks = 0;
   /** How many beats it has, the last maybe shorter. */
   int beats = 0;
   /** Its number as printed; a pickup is the first bar shorter than its time. */
   int number = 0;
   bool pickup = false;
+  /**
+   * Where its start is in its time's beats, in ticks from where a whole bar
+   * would start: a pickup is the end of a bar.
+   */
+  int gridOffset = 0;
   /** Which time it is played, from 1: a repeat's second time is 2. */
   int pass = 1;
+  /** Where its last chord is struck, in ticks from its start; -1 if none. */
+  int lastOnset = -1;
 };
 
 std::vector<PlayedBar> PlayedBars(const mu::engraving::Score &);
@@ -93,8 +99,9 @@ ReadRecordingSync(const QString &path, const std::vector<PlayedBar> &bars);
 bool WriteRecordingSync(const QString &path, const RecordingSync &);
 
 /**
- * The points as the score's positions: none if some point isn't in it (a bar
- * or a beat past its end), or if they aren't in the order played.
+ * The points as the score's positions, the noise of their tapping smoothed
+ * out (SmoothBeats): none if some point isn't in it (a bar or a beat past
+ * its end), or if they aren't in the order played.
  */
 std::shared_ptr<const RecordingTimeline>
 MakeRecordingTimeline(const mu::engraving::Score &, const RecordingSync &);
