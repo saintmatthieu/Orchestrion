@@ -350,6 +350,10 @@ ApplicationWindow {
                 syncBeats: scoreRecordings.syncBeats
                 activeSyncBeat: scoreRecordings.activeSyncBeat
                 selectedSyncBeats: scoreRecordings.selectedSyncBeats
+                // Following a video: where it is, as far as its sync tells,
+                // rather than the notes lighting up, which would claim more.
+                followSpan: scoreRecordings.followSpan
+                highlightNotes: !scoreRecordings.following
                 onSyncBeatClicked: function(beat, add) {
                     scoreRecordings.selectSyncBeat(beat, add)
                 }
@@ -1241,13 +1245,6 @@ ApplicationWindow {
                 // Advanced menu ("Show note info on hover"). The paint view
                 // leaves hoveredNoteInfo empty unless the feature is enabled
                 // and a note is under the cursor.
-                // Syncing a video: the time of the beat whose marker is hovered.
-                SyncBeatEditor {
-                    z: 103
-                    model: scoreRecordings
-                    paintView: notationPaintView
-                }
-
                 OrchestrionToolTip {
                     id: noteInfoToolTip
                     z: 102

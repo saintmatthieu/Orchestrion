@@ -28,14 +28,14 @@ namespace dgk
 {
 /**
  * Syncing a recording with a score: its anchors (the points of its sync,
- * each a position in the score and when the recording plays it), as they
- * are tapped, rewritten, moved and deleted.
+ * each a beat of the score and when the recording plays it), as they are
+ * tapped, rewritten and deleted.
  *
- * Taps go through the score in order, at the precision chosen (beats, or
- * their subdivisions), from where the last left off or from a bar chosen.
- * Each anchors the position it is for, and replaces the anchors between it
- * and the tap before: going over a passage again rewrites it, finer or
- * coarser. Anchors stay in the order played, in time as in the score.
+ * Taps go through the score's beats in order (a pickup's as its bar's last
+ * ones), from where the last left off or from a bar chosen, up to its last
+ * chord. Each anchors the beat it is for, and replaces the anchors between
+ * it and the tap before: going over a passage again rewrites it. Anchors
+ * stay in the order played, in time as in the score.
  *
  * Positions are in ticks with repeats (as played); seconds are the piece's,
  * from its start in the recording.
@@ -43,20 +43,11 @@ namespace dgk
 class RecordingSyncSession
 {
 public:
-  enum class Precision
-  {
-    beats,
-    subdivisions,
-  };
-
-  /** Where a position is: in which bar, beat and subdivision (from 1). */
+  /** Where a position is: in which bar, and beat (from 1). */
   struct Place
   {
     int bar = 0;
     int beat = 1;
-    int subdivision = 1;
-    /** How many subdivisions its beat has. */
-    int subdivisions = 1;
   };
 
   /** `sync` must fit `bars` (see ReadRecordingSync). */
@@ -68,13 +59,12 @@ public:
   int Position(int anchor) const;
   Place PlaceOf(int position) const;
 
-  Precision GetPrecision() const { return m_precision; }
-  /** The next tap is for the first position at this precision from here. */
-  void SetPrecision(Precision);
-
   /** The position the next tap is for; none past the score's end. */
   std::optional<int> Next() const { return m_next; }
-  /** A tap, `seconds` into the piece. False if it was past the end. */
+  /**
+   * A tap, `seconds` into the piece. False if it was past the score's end,
+   * or before the piece's start.
+   */
   bool Tap(double seconds);
   /**
    * The next tap is for the start of `bar`. If the recording was anchored
@@ -89,12 +79,6 @@ public:
 
   /** The anchor the recording is at `seconds`: the last before; -1 if none. */
   int AnchorAt(double seconds) const;
-  /** How early and late an anchor may be: just after and before its neighbours.
-   */
-  double Minimum(int anchor) const;
-  double Maximum(int anchor) const;
-  /** Moves an anchor, kept between its neighbours. */
-  void SetSeconds(int anchor, double seconds);
 
   const std::set<int> &Selection() const { return m_selection; }
   /** Selects the anchor; added to (or taken from) the selection if `add`. */
@@ -104,12 +88,16 @@ public:
    * none is selected, `from`.
    */
   void ExtendSelection(int direction, int from);
+  void SelectAll();
   /** False if nothing was selected. */
   bool ClearSelection();
-  /** False if nothing was selected. */
+  /**
+   * False if nothing was selected. With all deleted, taps start again from
+   * the score's start.
+   */
   bool DeleteSelection();
 
-  /** Takes the last change back (a tap, a deletion, an anchor moved). */
+  /** Takes the last change back (a tap, a deletion). */
   bool Undo();
 
 private:
@@ -121,20 +109,21 @@ private:
   };
 
   int BarOf(int position) const;
-  int Step(int bar) const;
-  /** The first position at this precision after (or at, if `at`) one. */
+  /**
+   * The first beat after (or at, if `at`) a position; none
+   * past the last chord struck: there is nothing to tap after it.
+   */
   std::optional<int> GridFrom(int position, bool at) const;
   void PushUndo();
 
   const std::vector<PlayedBar> m_bars;
+  /** The last chord struck in the score, as played; -1 if none. */
+  int m_end = -1;
   RecordingSync m_sync;
-  Precision m_precision = Precision::beats;
   std::optional<int> m_next;
   /** The position tapped last, from which the next tap replaces anchors. */
   std::optional<int> m_last;
   std::set<int> m_selection;
   std::vector<State> m_undo;
-  /** The anchor moved last: moving it on is one change, for undoing. */
-  int m_moving = -1;
 };
 } // namespace dgk

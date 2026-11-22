@@ -26,7 +26,6 @@
     <file>src/qml/OrchestrionStandardDialog.qml</file>
     <file>src/qml/TakesDialog.qml</file>
     <file>src/qml/VideoBand.qml</file>
-    <file>src/qml/SyncBeatEditor.qml</file>
     <file>src/qml/BackdropFrame.qml</file>
     <file>src/qml/MetalGlyph.qml</file>
         <file>src/qml/DemoCursorOverlay.qml</file>

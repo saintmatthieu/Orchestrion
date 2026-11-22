@@ -21,6 +21,7 @@
 #include <engraving/dom/measure.h>
 #include <engraving/dom/repeatlist.h>
 #include <engraving/dom/score.h>
+#include <engraving/dom/segment.h>
 #include <log.h>
 
 #include <QDir>
@@ -33,7 +34,6 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
-#include <tuple>
 
 namespace dgk
 {
@@ -44,17 +44,16 @@ constexpr int kFormatVersion = 2;
 constexpr int kWholeTicks = 4 * 480;
 
 /**
- * The time signature's beat and its subdivision: a dotted quarter of three
- * eighths in 6/8, 9/8 and 12/8, else its denominator's note in halves (a
- * half note of two quarters in cut time).
+ * The time signature's beat: a dotted quarter in 6/8, 9/8 and 12/8 (three
+ * eighths), else its denominator's note (a half in cut time).
  */
-std::pair<int, int> BeatTicks(const mu::engraving::Fraction &timesig)
+int BeatTicks(const mu::engraving::Fraction &timesig)
 {
   const int note = kWholeTicks / std::max(1, timesig.denominator());
   const bool compound = timesig.numerator() > 3 &&
                         timesig.numerator() % 3 == 0 &&
                         timesig.denominator() >= 8;
-  return compound ? std::pair{3 * note, note} : std::pair{note, note / 2};
+  return compound ? 3 * note : note;
 }
 
 } // namespace
@@ -72,12 +71,21 @@ std::vector<PlayedBar> PlayedBars(const mu::engraving::Score &score)
       bar.tick = tick;
       bar.writtenTick = measure->tick().ticks();
       bar.length = measure->ticks().ticks();
-      std::tie(bar.beatTicks, bar.subdivisionTicks) =
-          BeatTicks(measure->timesig());
+      bar.beatTicks = BeatTicks(measure->timesig());
       bar.beats = (bar.length + bar.beatTicks - 1) / bar.beatTicks;
       bar.number = measure->measureNumber() + 1; // as the layout prints it
       bar.pickup = bars.empty() && measure->ticks() < measure->timesig();
+      if (bar.pickup)
+        bar.gridOffset = (measure->timesig() - measure->ticks()).ticks();
       bar.pass = ++passes[measure];
+      for (const mu::engraving::Segment *segment =
+               measure->first(mu::engraving::SegmentType::ChordRest);
+           segment;
+           segment = segment->next(mu::engraving::SegmentType::ChordRest))
+        if (std::any_of(segment->elist().begin(), segment->elist().end(),
+                        [](const mu::engraving::EngravingItem *item)
+                        { return item && item->isChord(); }))
+          bar.lastOnset = (segment->tick() - measure->tick()).ticks();
       bars.push_back(bar);
       tick += bar.length;
     }
@@ -163,7 +171,9 @@ MakeRecordingTimeline(const mu::engraving::Score &score,
                      previousBar && point.bar > *previousBar + 1});
     previousBar = point.bar;
   }
-  auto timeline = std::make_shared<const RecordingTimeline>(std::move(beats));
+  // Tapped by hand: each tap's error smoothed out.
+  auto timeline =
+      std::make_shared<const RecordingTimeline>(SmoothBeats(std::move(beats)));
   return timeline->Empty() ? nullptr : timeline;
 }
 } // namespace dgk

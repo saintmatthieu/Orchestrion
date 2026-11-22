@@ -39,7 +39,6 @@
 #include <QElapsedTimer>
 #include <QImage>
 #include <QTimer>
-#include <set>
 #include <QVariantAnimation>
 #include <QVariantList>
 #include <actions/iactionsdispatcher.h>
@@ -48,6 +47,7 @@
 #include <notation/inotationcontextconfiguration.h>
 #include <notationscene/qml/MuseScore/NotationScene/notationpaintview.h>
 #include <project/iprojectsession.h>
+#include <set>
 #include <ui/iuiconfiguration.h>
 #include <unordered_map>
 #include <vector>
@@ -80,14 +80,23 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   /** The one the video is at, highlighted; -1 if none. */
   Q_PROPERTY(int activeSyncBeat READ activeSyncBeat WRITE setActiveSyncBeat
                  NOTIFY syncBeatsChanged)
+  /**
+   * Whether the notes played light up: not while the score follows a video
+   * by its sync, whose timing is only as close as its anchors (see
+   * followSpanFrom).
+   */
+  Q_PROPERTY(bool highlightNotes READ highlightNotes WRITE setHighlightNotes
+                 NOTIFY followSpanChanged)
+  /**
+   * Where the music is while the score follows a video, as far as its sync
+   * tells (see ScoreRecordingsModel::followSpan), shown as a band across the
+   * parchment, gliding on between reports; empty for none.
+   */
+  Q_PROPERTY(QVariantMap followSpan READ followSpan WRITE setFollowSpan NOTIFY
+                 followSpanChanged)
   /** Those selected, by index: ringed. */
   Q_PROPERTY(QVariantList selectedSyncBeats READ selectedSyncBeats WRITE
                  setSelectedSyncBeats NOTIFY syncBeatsChanged)
-  /** The marker under the pointer, -1 if none, and where it is (its top). */
-  Q_PROPERTY(int hoveredSyncBeat READ hoveredSyncBeat NOTIFY
-                 hoveredSyncBeatChanged)
-  Q_PROPERTY(QPointF hoveredSyncBeatPos READ hoveredSyncBeatPos NOTIFY
-                 hoveredSyncBeatChanged)
   // Whether the last right-click hit a chord — enables the "set loop
   // start/end" context-menu items.
   Q_PROPERTY(bool contextMenuHasTarget READ contextMenuHasTarget NOTIFY
@@ -170,7 +179,8 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // Where the parchment's top edge is in the view, and the right edge of the
   // left cylinder, wherever it has rolled to: for what is set by them (a
   // recording's thumbnail tucked behind the parchment).
-  Q_PROPERTY(double parchmentTop READ parchmentTop NOTIFY parchmentGeometryChanged)
+  Q_PROPERTY(
+      double parchmentTop READ parchmentTop NOTIFY parchmentGeometryChanged)
   Q_PROPERTY(double leftBarrelRight READ leftBarrelRight NOTIFY
                  parchmentGeometryChanged)
   // The staves' mode arrows, for keyboard navigation and screen readers (see
@@ -222,9 +232,11 @@ public:
   int activeSyncBeat() const { return m_activeSyncBeat; }
   void setActiveSyncBeat(int);
   QVariantList selectedSyncBeats() const { return m_selectedSyncBeatList; }
+  bool highlightNotes() const { return m_highlightNotes; }
+  void setHighlightNotes(bool);
+  QVariantMap followSpan() const { return m_followSpanMap; }
+  void setFollowSpan(const QVariantMap &);
   void setSelectedSyncBeats(const QVariantList &);
-  int hoveredSyncBeat() const { return m_hoveredSyncBeat; }
-  QPointF hoveredSyncBeatPos() const { return m_hoveredSyncBeatPos; }
   int hoveredNoteInfoPlacement() const { return m_hoveredNoteInfoPlacement; }
   TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
   bool tempoVisualizationEnabled() const;
@@ -268,7 +280,7 @@ signals:
   void mouseActivity();
   void hoveredNoteInfoChanged();
   void syncBeatsChanged();
-  void hoveredSyncBeatChanged();
+  void followSpanChanged();
   /** A beat's marker was clicked; `add`, with Ctrl. */
   void syncBeatClicked(int beat, bool add);
   void contextMenuTargetChanged();
@@ -759,7 +771,8 @@ private:
 
   // The beats tapped to sync a video (see syncBeats): where they are in the
   // score as written, the one the video is at, the one before it (shrinking
-  // back as the new one grows), since when, and the one under the pointer.
+  // back as the new one grows), since when, and the one under the pointer
+  // (to be clicked).
   QVariantList m_syncBeats;
   std::vector<int> m_syncBeatTicks;
   /**
@@ -768,9 +781,20 @@ private:
    * passage's passes don't hide one another.
    */
   std::vector<bool> m_syncBeatLowLane;
-  /** Whether a beat is on the beat, rather than one of its subdivisions. */
-  std::vector<bool> m_syncBeatOnBeat;
   QVariantList m_selectedSyncBeatList;
+  // Following a video: whether notes light up; the span it is in, how far
+  // into it and how long from its end it was when told, since when.
+  bool m_highlightNotes = true;
+  QVariantMap m_followSpanMap;
+  std::pair<int, int> m_followSpan{-1, -1};
+  double m_followFraction = 0.0;
+  double m_followMsLeft = 0.0;
+  QElapsedTimer m_followSpanSince;
+  QElapsedTimer m_followBandShown;
+  bool followBandFadingIn() const;
+  QTimer m_followSpanAnimation;
+  bool m_followSpanAnimationConnected = false;
+  void paintFollowSpan(QPainter *);
   std::set<int> m_selectedSyncBeats;
   int m_activeSyncBeat = -1;
   int m_previousSyncBeat = -1;
@@ -778,14 +802,13 @@ private:
   QTimer m_syncBeatAnimation;
   bool m_syncBeatAnimationConnected = false;
   int m_hoveredSyncBeat = -1;
-  QPointF m_hoveredSyncBeatPos;
   /** Where a beat is across the page, in the score's coordinates. */
   std::optional<double> syncBeatX(int writtenTick) const;
   /** Where a beat's marker is, in the score's coordinates: none if nowhere. */
   std::optional<QPointF> syncBeatPoint(int beat) const;
   /** The marker at `logical`, -1 if none: the nearest to the active one. */
   int syncBeatAt(const QPointF &logical) const;
-  void setHoveredSyncBeat(int beat, const QPointF &itemPos);
+  void setHoveredSyncBeat(int beat);
   void paintSyncBeats(QPainter *);
 
   // Chord under the last right-click, acted on by the context-menu items.

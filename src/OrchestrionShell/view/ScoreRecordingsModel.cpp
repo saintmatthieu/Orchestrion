@@ -22,15 +22,17 @@
 #include "OrchestrionShell/internal/RecordingSync.h"
 #include "OrchestrionShell/internal/YouTubeLinks.h"
 
-#include <log.h>
 #include <engraving/dom/masterscore.h>
+#include <log.h>
 #include <notation/imasternotation.h>
 #include <project/inotationproject.h>
 
+#include <QCoreApplication>
+#include <QKeyEvent>
 #include <QUrlQuery>
 #include <algorithm>
-#include <cmath>
 #include <chrono>
+#include <cmath>
 #include <optional>
 
 namespace dgk
@@ -38,21 +40,13 @@ namespace dgk
 ScoreRecordingsModel::ScoreRecordingsModel(QObject *parent)
     : QObject(parent), m_end{std::chrono::seconds{3}}
 {
+  qApp->installEventFilter(this);
   m_activeSyncBeatTimer.setSingleShot(true);
   connect(&m_activeSyncBeatTimer, &QTimer::timeout, this,
           [this] { updateActiveSyncBeat(); });
-  m_replayTimer.setSingleShot(true);
-  m_replayTimer.setInterval(400);
-  connect(&m_replayTimer, &QTimer::timeout, this,
-          [this]
-          {
-            if (!m_session || m_replayBeat < 0 ||
-                m_replayBeat >= syncCount())
-              return;
-            constexpr double leadIn = 1.5;
-            emit replayRequested(std::max(
-                0.0, syncBeatSeconds(m_replayBeat) - leadIn));
-          });
+  m_followSpanTimer.setSingleShot(true);
+  connect(&m_followSpanTimer, &QTimer::timeout, this,
+          [this] { updateFollowSpan(); });
 }
 
 void ScoreRecordingsModel::load()
@@ -82,13 +76,14 @@ void ScoreRecordingsModel::load()
                            });
   m_end.start();
   dispatcher()->reg(this, actionIds::syncVideo, [this] { startSync(); });
-  orchestrion()->sequencerChanged().onNotify(this,
-                                             [this]
-                                             {
-                                               subscribePlayer();
-                                               orchestrion()->player()->FollowRecording(
-                                                   m_timeline);
-                                             });
+  orchestrion()->sequencerChanged().onNotify(
+      this,
+      [this]
+      {
+        subscribePlayer();
+        orchestrion()->player()->FollowRecording(m_timeline);
+        orchestrion()->player()->SetTempoCurve(m_tempoCurve);
+      });
   subscribePlayer();
   update();
 }
@@ -120,7 +115,11 @@ void ScoreRecordingsModel::subscribePlayer()
         if ((player->IsPlaying() && !player->IsFollowing()) ||
             (m_following && !player->IsPlaying()))
           emit pauseRequested();
-        m_following = player->IsFollowing();
+        if (m_following != player->IsFollowing())
+        {
+          m_following = player->IsFollowing();
+          emit followingChanged();
+        }
       },
       muse::async::Asyncable::Mode::SetReplace);
 }
@@ -131,14 +130,15 @@ void ScoreRecordingsModel::update()
   if (const auto project = projectSession()->project())
     id = rollsLibrary()->pieceIdOf(project->path().toQString());
   m_pieceId = id;
-  m_recordings = id ? rollsLibrary()->recordings(*id)
-                    : std::vector<ScoreRecording>{};
+  m_recordings =
+      id ? rollsLibrary()->recordings(*id) : std::vector<ScoreRecording>{};
   emit recordingsChanged();
   emit thumbnailChanged();
   if (m_recordings.empty())
     setOfferShown(false);
   if (m_current >= static_cast<int>(m_recordings.size()))
     stopWatching();
+  updateTempoCurve();
   // Only for a piece that may have some: nobody playing their own score
   // needs the index.
   if (id)
@@ -165,17 +165,22 @@ void ScoreRecordingsModel::loadSync()
 {
   m_timeline.reset();
   m_startSeconds = 0.0;
-  const auto video = m_current >= 0 ? youTubeVideo(m_recordings[m_current].url)
-                                    : std::nullopt;
+  // Until the player tells: at the start, not playing.
+  m_videoClock = {};
+  const auto video =
+      m_current >= 0 ? youTubeVideo(m_recordings[m_current].url) : std::nullopt;
   if (video)
     m_startSeconds = video->start.toDouble();
+  m_videoClock.Tell(m_startSeconds, std::chrono::steady_clock::now(), 1.0,
+                    false);
   const auto project = projectSession()->project();
   if (video && m_pieceId && project)
   {
     const QString path =
         RecordingSyncPath(globalConfiguration()->userAppDataPath().toQString(),
                           *m_pieceId, video->id);
-    const mu::engraving::Score &score = *project->masterNotation()->masterScore();
+    const mu::engraving::Score &score =
+        *project->masterNotation()->masterScore();
     if (const auto sync = ReadRecordingSync(path, PlayedBars(score)))
     {
       m_timeline = MakeRecordingTimeline(score, *sync);
@@ -184,27 +189,52 @@ void ScoreRecordingsModel::loadSync()
     }
   }
   orchestrion()->player()->FollowRecording(m_timeline);
+  updateFollowSpan();
+  updateTempoCurve();
+}
+
+void ScoreRecordingsModel::updateTempoCurve()
+{
+  std::shared_ptr<const RecordingTimeline> curve = m_timeline;
+  const auto project = projectSession()->project();
+  if (!curve && m_pieceId && project)
+  {
+    const mu::engraving::Score &score =
+        *project->masterNotation()->masterScore();
+    const std::vector<PlayedBar> bars = PlayedBars(score);
+    for (const ScoreRecording &recording : m_recordings)
+      if (const auto video = youTubeVideo(recording.url))
+        if (const auto sync = ReadRecordingSync(
+                RecordingSyncPath(
+                    globalConfiguration()->userAppDataPath().toQString(),
+                    *m_pieceId, video->id),
+                bars))
+          if ((curve = MakeRecordingTimeline(score, *sync)))
+            break;
+  }
+  m_tempoCurve = curve;
+  orchestrion()->player()->SetTempoCurve(m_tempoCurve);
 }
 
 void ScoreRecordingsModel::reportPlayer(double seconds, double rate, int state)
 {
   constexpr int playing = 1;
-  m_videoSeconds = seconds;
-  m_videoTime = std::chrono::steady_clock::now();
-  m_videoRate = rate > 0.0 ? rate : 1.0;
-  m_videoPlaying = state == playing;
+  const auto now = std::chrono::steady_clock::now();
+  m_videoClock.Tell(seconds, now, rate > 0.0 ? rate : 1.0, state == playing);
   if (m_session)
     updateActiveSyncBeat();
+  updateFollowSpan();
   if (m_current < 0 || !m_timeline || m_session)
     return;
   orchestrion()->player()->SetRecordingClock(
-      seconds - m_startSeconds, m_videoTime, m_videoRate, m_videoPlaying);
+      m_videoClock.SecondsAt(now) - m_startSeconds, now, m_videoClock.Rate(),
+      m_videoClock.Playing());
 }
 
 QString ScoreRecordingsModel::syncPath() const
 {
-  const auto video = m_current >= 0 ? youTubeVideo(m_recordings[m_current].url)
-                                    : std::nullopt;
+  const auto video =
+      m_current >= 0 ? youTubeVideo(m_recordings[m_current].url) : std::nullopt;
   if (!video || !m_pieceId)
     return {};
   return RecordingSyncPath(globalConfiguration()->userAppDataPath().toQString(),
@@ -232,11 +262,12 @@ void ScoreRecordingsModel::startSync()
         score && !rollsLibrary()->hasUpdate(*m_pieceId))
       sync.scoreVersion = score->version;
   m_session.emplace(std::move(bars), std::move(sync));
-  m_session->SetPrecision(m_precision);
+  m_leastTapDelayMs.reset();
   // What is tapped is followed once done, not while tapping.
   orchestrion()->player()->FollowRecording(nullptr);
   emit syncChanged();
   updateActiveSyncBeat();
+  updateFollowSpan();
 }
 
 void ScoreRecordingsModel::syncEdited()
@@ -248,9 +279,42 @@ void ScoreRecordingsModel::syncEdited()
   updateActiveSyncBeat();
 }
 
+bool ScoreRecordingsModel::eventFilter(QObject *, QEvent *event)
+{
+  // A key bound to a shortcut comes as a shortcut override first, and may
+  // never come as a press.
+  if (m_session && (event->type() == QEvent::KeyPress ||
+                    event->type() == QEvent::ShortcutOverride))
+  {
+    const auto *key = static_cast<QKeyEvent *>(event);
+    if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
+        !key->isAutoRepeat())
+      m_returnPressedAt = key->timestamp();
+  }
+  return false;
+}
+
 void ScoreRecordingsModel::tapBeat()
 {
-  if (m_session && m_videoPlaying && m_session->Tap(videoSecondsNow()))
+  // When the key was pressed, rather than when the tap gets here, which is
+  // later by however busy the app is: by how much longer than the least it
+  // has taken (the key's time counts from where its system likes).
+  double late = 0.0;
+  if (m_returnPressedAt)
+  {
+    const double nowMs =
+        std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+    const double delay = nowMs - static_cast<double>(*m_returnPressedAt);
+    m_leastTapDelayMs = std::min(m_leastTapDelayMs.value_or(delay), delay);
+    constexpr double longest = 200.0; // beyond, something else is amiss
+    late = std::min(delay - *m_leastTapDelayMs, longest) / 1000.0 *
+           m_videoClock.Rate();
+    m_returnPressedAt.reset();
+  }
+  if (m_session && m_videoClock.Playing() &&
+      m_session->Tap(videoSecondsNow() - late))
     syncEdited();
 }
 
@@ -281,7 +345,6 @@ void ScoreRecordingsModel::finishSync()
   if (!m_session)
     return;
   m_session.reset();
-  m_replayTimer.stop();
   emit syncChanged();
   updateActiveSyncBeat();
   loadSync();
@@ -292,20 +355,6 @@ bool ScoreRecordingsModel::syncing() const { return m_session.has_value(); }
 int ScoreRecordingsModel::syncCount() const
 {
   return m_session ? static_cast<int>(m_session->Sync().points.size()) : 0;
-}
-
-int ScoreRecordingsModel::syncPrecision() const
-{
-  return m_precision == RecordingSyncSession::Precision::beats ? 0 : 1;
-}
-
-void ScoreRecordingsModel::setSyncPrecision(int precision)
-{
-  m_precision = precision == 0 ? RecordingSyncSession::Precision::beats
-                               : RecordingSyncSession::Precision::subdivisions;
-  if (m_session)
-    m_session->SetPrecision(m_precision);
-  emit syncChanged();
 }
 
 QString ScoreRecordingsModel::syncNext() const
@@ -323,13 +372,6 @@ QString ScoreRecordingsModel::positionName(int position) const
   QString name = bar.pickup ? tr("the pickup") : tr("bar %1").arg(bar.number);
   if (bar.pass > 1)
     name = tr("%1 (time %2)").arg(name).arg(bar.pass);
-  if (place.subdivision > 1)
-    //: e.g. "bar 12, beat 3 (2/3)": the second third of the beat
-    return tr("%1, beat %2 (%3/%4)")
-        .arg(name)
-        .arg(place.beat)
-        .arg(place.subdivision)
-        .arg(place.subdivisions);
   //: e.g. "bar 12, beat 3"
   return tr("%1, beat %2").arg(name).arg(place.beat);
 }
@@ -343,8 +385,7 @@ QVariantList ScoreRecordingsModel::syncBeats() const
   for (const RecordingSync::Point &point : sync.points)
   {
     const PlayedBar &bar = m_session->Bars()[point.bar];
-    beats.append(QVariantMap{{"tick", bar.writtenTick + point.tick},
-                             {"onBeat", point.tick % bar.beatTicks == 0}});
+    beats.append(QVariantMap{{"tick", bar.writtenTick + point.tick}});
   }
   return beats;
 }
@@ -356,44 +397,6 @@ QVariantList ScoreRecordingsModel::selectedSyncBeats() const
     for (const int beat : m_session->Selection())
       selected.append(beat);
   return selected;
-}
-
-QString ScoreRecordingsModel::syncBeatName(int beat) const
-{
-  if (!m_session || beat < 0 || beat >= syncCount())
-    return {};
-  return positionName(m_session->Position(beat));
-}
-
-double ScoreRecordingsModel::syncBeatSeconds(int beat) const
-{
-  if (!m_session || beat < 0 || beat >= syncCount())
-    return 0.0;
-  return m_startSeconds + m_session->Sync().points[beat].seconds;
-}
-
-double ScoreRecordingsModel::syncBeatMinimum(int beat) const
-{
-  if (!m_session || beat < 0 || beat >= syncCount())
-    return 0.0;
-  return m_startSeconds + m_session->Minimum(beat);
-}
-
-double ScoreRecordingsModel::syncBeatMaximum(int beat) const
-{
-  if (!m_session || beat < 0 || beat >= syncCount())
-    return 0.0;
-  return m_startSeconds + m_session->Maximum(beat);
-}
-
-void ScoreRecordingsModel::setSyncBeatSeconds(int beat, double seconds)
-{
-  if (!m_session || beat < 0 || beat >= syncCount())
-    return;
-  m_session->SetSeconds(beat, seconds - m_startSeconds);
-  syncEdited();
-  m_replayBeat = beat;
-  m_replayTimer.start();
 }
 
 void ScoreRecordingsModel::selectSyncBeat(int beat, bool add)
@@ -409,6 +412,14 @@ void ScoreRecordingsModel::extendSyncSelection(int direction)
   if (!m_session)
     return;
   m_session->ExtendSelection(direction, m_activeSyncBeat);
+  emit syncChanged();
+}
+
+void ScoreRecordingsModel::selectAllSyncBeats()
+{
+  if (!m_session)
+    return;
+  m_session->SelectAll();
   emit syncChanged();
 }
 
@@ -428,13 +439,59 @@ void ScoreRecordingsModel::deleteSyncSelection()
 
 double ScoreRecordingsModel::videoSecondsNow() const
 {
-  double seconds = m_videoSeconds;
-  if (m_videoPlaying)
-    seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                             m_videoTime)
-                   .count() *
-               m_videoRate;
-  return seconds - m_startSeconds;
+  return m_videoClock.SecondsAt(std::chrono::steady_clock::now()) -
+         m_startSeconds;
+}
+
+void ScoreRecordingsModel::updateFollowSpan()
+{
+  m_followSpanTimer.stop();
+  QVariantMap span;
+  if (m_timeline && !m_session && m_current >= 0)
+  {
+    const std::vector<RecordingBeat> &beats = m_timeline->Beats();
+    const double now = videoSecondsNow();
+    const auto after = std::upper_bound(beats.begin(), beats.end(), now,
+                                        [](double s, const RecordingBeat &beat)
+                                        { return s < beat.seconds; });
+    if (after == beats.begin())
+    {
+      // Before its first anchor (just opened, say): there, waiting.
+      const RecordingBeat &first = beats.front();
+      span = {{"from", first.writtenTick},
+              {"to", first.writtenTick + first.beatTicks},
+              {"fraction", 0.0},
+              {"msLeft", 0.0}};
+    }
+    else
+    {
+      const RecordingBeat &beat = *(after - 1);
+      // To the next anchor, as far on as it is played: over a repeat's end,
+      // as written, it reaches past it; before a skip, or at the end, a beat.
+      const bool onToNext = after != beats.end() && !after->afterSkip;
+      const int length = onToNext ? after->tick - beat.tick : beat.beatTicks;
+      const double seconds =
+          after != beats.end() ? after->seconds - beat.seconds : 0.0;
+      const double fraction =
+          seconds > 0.0 ? std::clamp((now - beat.seconds) / seconds, 0.0, 1.0)
+                        : 0.0;
+      const double msLeft =
+          m_videoClock.Playing() && seconds > 0.0
+              ? (after->seconds - now) / m_videoClock.Rate() * 1000.0
+              : 0.0;
+      span = {{"from", beat.writtenTick},
+              {"to", beat.writtenTick + length},
+              {"fraction", fraction},
+              {"msLeft", std::max(0.0, msLeft)}};
+    }
+    if (m_videoClock.Playing() && after != beats.end())
+      m_followSpanTimer.start(static_cast<int>(
+          std::ceil((after->seconds - now) / m_videoClock.Rate() * 1000.0)));
+  }
+  // Told on each report of the video's clock too: the position between
+  // anchors is told afresh, not only the anchors.
+  m_followSpan = span;
+  emit followSpanChanged();
 }
 
 void ScoreRecordingsModel::updateActiveSyncBeat()
@@ -447,9 +504,9 @@ void ScoreRecordingsModel::updateActiveSyncBeat()
     active = m_session->AnchorAt(now);
     // On to the next when the video gets there.
     const auto &points = m_session->Sync().points;
-    if (m_videoPlaying && active + 1 < static_cast<int>(points.size()))
+    if (m_videoClock.Playing() && active + 1 < static_cast<int>(points.size()))
       m_activeSyncBeatTimer.start(static_cast<int>(std::ceil(
-          (points[active + 1].seconds - now) / m_videoRate * 1000.0)));
+          (points[active + 1].seconds - now) / m_videoClock.Rate() * 1000.0)));
   }
   if (active == m_activeSyncBeat)
     return;
@@ -482,7 +539,8 @@ int ScoreRecordingsModel::currentIndex() const { return m_current; }
 QUrl ScoreRecordingsModel::thumbnailUrl() const
 {
   if (m_current >= 0)
-    if (const QUrl url = youTubeFrame(m_recordings[m_current].url); !url.isEmpty())
+    if (const QUrl url = youTubeFrame(m_recordings[m_current].url);
+        !url.isEmpty())
       return url;
   for (const ScoreRecording &recording : m_recordings)
     if (const QUrl url = youTubeFrame(recording.url); !url.isEmpty())
