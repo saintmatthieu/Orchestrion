@@ -345,6 +345,15 @@ ApplicationWindow {
                 id: notationPaintView
                 anchors.fill: parent
 
+                // Syncing a video: its anchors, the one it is at, those
+                // selected (by clicking them).
+                syncBeats: scoreRecordings.syncBeats
+                activeSyncBeat: scoreRecordings.activeSyncBeat
+                selectedSyncBeats: scoreRecordings.selectedSyncBeats
+                onSyncBeatClicked: function(beat, add) {
+                    scoreRecordings.selectSyncBeat(beat, add)
+                }
+
                 // The score runs on a belt: at either end it turns around a
                 // cylinder and away from the viewer. The knobs sit here so
                 // they can be tried out without recompiling the view.
@@ -1232,6 +1241,13 @@ ApplicationWindow {
                 // Advanced menu ("Show note info on hover"). The paint view
                 // leaves hoveredNoteInfo empty unless the feature is enabled
                 // and a note is under the cursor.
+                // Syncing a video: the time of the beat whose marker is hovered.
+                SyncBeatEditor {
+                    z: 103
+                    model: scoreRecordings
+                    paintView: notationPaintView
+                }
+
                 OrchestrionToolTip {
                     id: noteInfoToolTip
                     z: 102

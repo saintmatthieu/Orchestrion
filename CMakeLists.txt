@@ -270,6 +270,7 @@ qt_add_qml_module(Orchestrion
     QML_FILES "src/qml/OrchestrionStandardDialog.qml"
     QML_FILES "src/qml/TakesDialog.qml"
     QML_FILES "src/qml/VideoBand.qml"
+    QML_FILES "src/qml/SyncBeatEditor.qml"
     QML_FILES "src/qml/BuiltInEffectDialog.qml"
     QML_FILES "src/qml/LatencyDialog.qml"
     QML_FILES "src/qml/GlitchToast.qml"

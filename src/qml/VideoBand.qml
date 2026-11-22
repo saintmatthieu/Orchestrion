@@ -101,6 +101,11 @@ Item {
             if (playerLoader.item)
                 playerLoader.item.runJavaScript("window.pausePlayer && pausePlayer()")
         }
+        function onReplayRequested(seconds) {
+            if (playerLoader.item)
+                playerLoader.item.runJavaScript("window.player && player.seekTo && (player.seekTo("
+                                                + seconds + ", true), player.playVideo())")
+        }
         function onSeekRequested(seconds) {
             if (playerLoader.item)
                 playerLoader.item.runJavaScript("window.player && player.seekTo && player.seekTo("
@@ -138,14 +143,17 @@ Item {
         onActivated: {
             if (internal.fullScreen)
                 root.exitFullScreen()
-            else if (root.model.syncing)
-                root.model.finishSync()
+            else if (root.model.syncing) {
+                if (!root.model.clearSyncSelection())
+                    root.model.finishSync()
+            }
             else
                 root.model.stopWatching()
         }
     }
 
-    // Syncing the video with the score: a beat tapped, the last taken back
+    // Syncing the video with the score: a tap, the last change taken back,
+    // the selection extended and deleted.
     Shortcut {
         sequences: ["Return", "Enter"]
         enabled: root.model.syncing
@@ -154,7 +162,22 @@ Item {
     Shortcut {
         sequence: "Backspace"
         enabled: root.model.syncing
-        onActivated: root.model.undoBeat()
+        onActivated: root.model.undoSync()
+    }
+    Shortcut {
+        sequence: "Ctrl+Left"
+        enabled: root.model.syncing
+        onActivated: root.model.extendSyncSelection(-1)
+    }
+    Shortcut {
+        sequence: "Ctrl+Right"
+        enabled: root.model.syncing
+        onActivated: root.model.extendSyncSelection(1)
+    }
+    Shortcut {
+        sequences: [StandardKey.Delete]
+        enabled: root.model.syncing && root.model.selectedSyncBeats.length > 0
+        onActivated: root.model.deleteSyncSelection()
     }
 
     // Tucked: its size (wide enough for what it says), and how much of it
@@ -202,14 +225,49 @@ Item {
                 Text {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: qsTr("Syncing: tap Return on each beat. Next: %1.").arg(root.model.syncNext)
+                    text: qsTr("Syncing. Next tap: %1.").arg(root.model.syncNext)
                     color: Theme.metalBright
                     font.pixelSize: 15
+                }
+                // What a tap is for
+                Row {
+                    spacing: 6
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Taps:")
+                        color: Theme.metalBright
+                        font.pixelSize: 13
+                    }
+                    Repeater {
+                        model: [qsTr("beats"), qsTr("subdivisions")]
+                        Rectangle {
+                            readonly property bool chosen: root.model.syncPrecision === index
+                            width: choice.implicitWidth + 14
+                            height: choice.implicitHeight + 6
+                            radius: height / 2
+                            color: chosen ? Theme.accent : "transparent"
+                            border.color: Theme.metal
+                            border.width: chosen ? 0 : 1
+                            Text {
+                                id: choice
+                                anchors.centerIn: parent
+                                text: modelData
+                                color: parent.chosen ? Theme.accentInk : Theme.metalBright
+                                font.pixelSize: 13
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.model.syncPrecision = index
+                            }
+                        }
+                    }
                 }
                 Text {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: qsTr("%n beat(s) tapped. Backspace takes the last back; clicking a bar makes it the next. Esc when done.",
+                    text: qsTr("%n anchor(s). Return taps, going over what was there; Backspace undoes; clicking a bar taps from it. "
+                               + "Click an anchor to select it, Ctrl to add, Ctrl+arrows for its neighbours; Delete deletes. Esc when done.",
                                "", root.model.syncCount)
                     color: Theme.metalBright
                     opacity: 0.75
