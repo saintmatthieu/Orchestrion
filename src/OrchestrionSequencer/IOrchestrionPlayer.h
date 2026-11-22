@@ -73,6 +73,13 @@ public:
   virtual muse::async::Channel<double> RecordingSeekRequested() const = 0;
   /** Whether it is playing along with a recording (see FollowRecording). */
   virtual bool IsFollowing() const = 0;
+  /**
+   * Plays the score as a recording plays it, by its `timeline`, rather than
+   * at the score's tempo (the tempo multiplier still applies). Null: at the
+   * score's tempo.
+   */
+  virtual void
+  SetTempoCurve(std::shared_ptr<const RecordingTimeline> timeline) = 0;
 };
 
 using IOrchestrionPlayerPtr = std::shared_ptr<IOrchestrionPlayer>;

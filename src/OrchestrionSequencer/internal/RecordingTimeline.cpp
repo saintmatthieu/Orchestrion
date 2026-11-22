@@ -28,6 +28,33 @@ namespace
 constexpr double kDefaultBeatSeconds = 0.6;
 } // namespace
 
+std::vector<RecordingBeat> SmoothBeats(std::vector<RecordingBeat> beats,
+                                       int passes)
+{
+  for (int pass = 0; pass < passes; ++pass)
+  {
+    std::vector<double> seconds(beats.size());
+    for (size_t i = 0; i < beats.size(); ++i)
+    {
+      seconds[i] = beats[i].seconds;
+      // Between two beats it is played on from and to.
+      if (i == 0 || i + 1 == beats.size() || beats[i].afterSkip ||
+          beats[i + 1].afterSkip)
+        continue;
+      const RecordingBeat &before = beats[i - 1];
+      const RecordingBeat &after = beats[i + 1];
+      const double between =
+          before.seconds + (after.seconds - before.seconds) *
+                               (beats[i].tick - before.tick) /
+                               (after.tick - before.tick);
+      seconds[i] = (beats[i].seconds + 2.0 * between) / 3.0;
+    }
+    for (size_t i = 0; i < beats.size(); ++i)
+      beats[i].seconds = seconds[i];
+  }
+  return beats;
+}
+
 RecordingTimeline::RecordingTimeline(std::vector<RecordingBeat> beats)
     : m_beats{std::move(beats)}
 {
@@ -52,8 +79,7 @@ namespace
 {
 /** The pace from beat `i` to the next, if they are played one after the other.
  */
-std::optional<double> SecondsPerTick(const std::vector<RecordingBeat> &beats,
-                                     size_t i)
+std::optional<double> Pace(const std::vector<RecordingBeat> &beats, size_t i)
 {
   if (i + 1 >= beats.size() || beats[i + 1].afterSkip)
     return std::nullopt;
@@ -68,7 +94,7 @@ double SegmentSeconds(const std::vector<RecordingBeat> &beats, size_t i)
     return beats[i + 1].seconds - beats[i].seconds;
   // The last: at the pace of the beat before, if it led to it.
   if (i > 0)
-    if (const auto pace = SecondsPerTick(beats, i - 1))
+    if (const auto pace = Pace(beats, i - 1))
       return *pace * beats[i].beatTicks;
   return kDefaultBeatSeconds;
 }
@@ -104,8 +130,8 @@ std::optional<double> RecordingTimeline::SecondsAt(int tick) const
       after->tick - tick <= after->beatTicks)
   {
     const auto i = static_cast<size_t>(after - m_beats.begin());
-    const double pace = SecondsPerTick(m_beats, i)
-                            .value_or(kDefaultBeatSeconds / after->beatTicks);
+    const double pace =
+        Pace(m_beats, i).value_or(kDefaultBeatSeconds / after->beatTicks);
     return after->seconds - (after->tick - tick) * pace;
   }
   if (after == m_beats.begin())
@@ -118,6 +144,23 @@ std::optional<double> RecordingTimeline::SecondsAt(int tick) const
     return std::nullopt; // skipped, or past the end
   return beat.seconds +
          SegmentSeconds(m_beats, i) * (tick - beat.tick) / reached;
+}
+
+std::optional<double> RecordingTimeline::SecondsPerTick(int tick) const
+{
+  const auto after = std::upper_bound(m_beats.begin(), m_beats.end(), tick,
+                                      [](int t, const RecordingBeat &beat)
+                                      { return t < beat.tick; });
+  const auto at = static_cast<size_t>(
+      std::max<std::ptrdiff_t>(0, after - m_beats.begin() - 1));
+  // Outwards from there, before first, the first two beats played one
+  // after the other.
+  for (size_t distance = 0; distance < m_beats.size(); ++distance)
+    for (const auto i : {at - distance, at + distance})
+      if (i < m_beats.size())
+        if (const auto pace = Pace(m_beats, i))
+          return pace;
+  return std::nullopt;
 }
 
 const RecordingBeat *RecordingTimeline::NextPlayed(int tick) const
