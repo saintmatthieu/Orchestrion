@@ -6,6 +6,8 @@ set(MODULE_TEST orchestrionsequencer_tests)
 set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/OrnamentScheduleTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/OrnamentSchedule.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/RecordingTimelineTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/RecordingTimeline.cpp
   ${CMAKE_CURRENT_LIST_DIR}/PerformanceAlignerTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceAligner.cpp
   ${CMAKE_CURRENT_LIST_DIR}/PerformanceFollowerTests.cpp

@@ -31,6 +31,7 @@
 #include "internal/VoiceSequencer.h"
 
 #include <array>
+#include <atomic>
 #include <async/asyncable.h>
 #include <chrono>
 #include <condition_variable>
@@ -146,7 +147,18 @@ public:
   /** Sends Gestures: a gesture it is about to be given. */
   void ObserveGesture(const IGestureInput::Gesture &);
   void GoToTick(int tick, JumpReason reason);
+  /**
+   * To the first chord at or after `withRepeats`, in that pass of a repeat;
+   * `withoutRepeats` is the same position in the score as written.
+   */
+  void GoToTickWithRepeats(int withRepeats, int withoutRepeats,
+                           JumpReason reason);
   void GoToEnd();
+  /**
+   * While silent, nothing is played, though the score moves on as it does
+   * when it is: the notes and the pedal aren't sent out. Any thread.
+   */
+  void SetSilent(bool silent);
   std::optional<PerformedTempo> PerformedTempoNow();
   /**
    * Moves the hand on, silently, to the first of its chords at or after the
@@ -165,6 +177,8 @@ public:
    * the Mute ones. Returns std::nullopt when there is nothing left to play.
    */
   std::optional<NextAutoPlayEvents> WhatToPlayNext();
+  /** Where the automatic player is, in ticks with repeats. */
+  int AutoPlayTick() const { return m_autoPlayTick; }
   KeyRole RoleOfKey(int pitch) const;
 
   /**
@@ -567,6 +581,7 @@ private:
    */
   /** Resolved here, on the main thread, for the output thread. */
   const std::shared_ptr<ISynthesizerFeed> m_synthesizerFeed;
+  std::atomic<bool> m_silent = false;
   const mu::notation::IMasterNotation *const m_notation;
   /** The staff modes, as last told (see SetStaffModes). */
   Modes m_staffModes;

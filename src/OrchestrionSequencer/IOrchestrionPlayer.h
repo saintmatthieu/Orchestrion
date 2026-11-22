@@ -19,7 +19,10 @@
 #pragma once
 
 #include "IOrchestrionSequencer.h" // ReplayTake
+#include "RecordingTimeline.h"
+#include <async/channel.h>
 #include <async/notification.h>
+#include <chrono>
 #include <memory>
 #include <optional>
 
@@ -48,6 +51,28 @@ public:
   //! replay).
   virtual bool IsPlaying() const = 0;
   virtual muse::async::Notification PlayingChanged() const = 0;
+
+  /**
+   * Plays along with a recording, silently, while it plays: the score moves
+   * on as the recording plays it, by `timeline`. It counts as playing then.
+   * Null stops following.
+   */
+  virtual void
+  FollowRecording(std::shared_ptr<const RecordingTimeline> timeline) = 0;
+  /**
+   * Where the recording followed is: `seconds` into it at `when`, going at
+   * `rate` if `playing`. Told as often as it is known, a few times a second.
+   */
+  virtual void SetRecordingClock(double seconds,
+                                 std::chrono::steady_clock::time_point when,
+                                 double rate, bool playing) = 0;
+  /**
+   * Where the recording is to go, in its seconds: the user moved the score
+   * (clicked it, say) while it was being followed.
+   */
+  virtual muse::async::Channel<double> RecordingSeekRequested() const = 0;
+  /** Whether it is playing along with a recording (see FollowRecording). */
+  virtual bool IsFollowing() const = 0;
 };
 
 using IOrchestrionPlayerPtr = std::shared_ptr<IOrchestrionPlayer>;

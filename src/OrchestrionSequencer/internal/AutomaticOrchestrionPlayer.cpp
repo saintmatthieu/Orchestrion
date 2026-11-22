@@ -28,6 +28,18 @@ namespace dgk
 namespace
 {
 constexpr int ticksPerQuarterNote = 480;
+/**
+ * Following a recording, the score counts as in step with it while the
+ * recording is between the step fired last and the one due next, give or
+ * take this: the clock it is told jitters a little.
+ */
+constexpr double kFollowLeewaySeconds = 0.3;
+/**
+ * The recording asked to go somewhere is taken to be there once its clock
+ * says it is this close, and to have refused if it doesn't within the time.
+ */
+constexpr double kSeekReachedSeconds = 1.0;
+constexpr std::chrono::seconds kSeekTimeout{2};
 } // namespace
 
 AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
@@ -44,8 +56,27 @@ AutomaticOrchestrionPlayer::AutomaticOrchestrionPlayer(
             [this](int /*tick*/, JumpReason reason)
             {
               ++m_generation;
-              if (reason == JumpReason::Replay)
-                return; // our own rewind to the take's start
+              if (reason == JumpReason::Replay ||
+                  reason == JumpReason::Recording)
+                return; // our own rewind to the take's start, or following
+              if (m_followRunning)
+              {
+                m_followNext.reset();
+                // The score's end isn't where the recording goes on: it
+                // ends there. A staff mode chosen leaves the score where it
+                // was. Otherwise, wherever the score went, the recording
+                // goes too, once the jump is done.
+                if (reason == JumpReason::Realign)
+                  Post(
+                      [this]
+                      {
+                        m_followTick = m_sequencer->AutoPlayTick();
+                        ScheduleFollowNext();
+                      });
+                else if (reason != JumpReason::ScoreEnd)
+                  Post([this] { RequestRecordingSeek(); });
+                return;
+              }
               if (IsReplaying())
               {
                 // The user navigated away mid-replay: end it.
@@ -129,6 +160,16 @@ void AutomaticOrchestrionPlayer::TogglePlay()
 
 void AutomaticOrchestrionPlayer::Stop()
 {
+  if (m_following)
+  {
+    // Until the recording is paused, its clock still says it plays.
+    m_followStopped = true;
+    m_following = false;
+    m_playing = false;
+    Post([this] { SetFollowActive(false); });
+    m_playingChanged.notify();
+    return;
+  }
   if (!m_playing)
   {
     // Not the player playing, then, but the performer: stopping is for them
@@ -244,6 +285,11 @@ void AutomaticOrchestrionPlayer::FireReplayEvent()
 
 void AutomaticOrchestrionPlayer::ScheduleNext()
 {
+  if (m_followRunning)
+  {
+    ScheduleFollowNext();
+    return;
+  }
   if (!m_running)
     return;
 
@@ -282,7 +328,7 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
 void AutomaticOrchestrionPlayer::FireAndContinue(
     const NextAutoPlayEvents &events, PlayThread::Clock::time_point due)
 {
-  if (!m_running)
+  if (!m_running && !m_followRunning)
     return;
   LatencyTrace *const trace = LatencyTrace::instance();
   // Each note traced from when it was due, the notes the sequencer queues
@@ -333,5 +379,217 @@ double AutomaticOrchestrionPlayer::ElapsedMs() const
   return std::chrono::duration<double, std::milli>(PlayThread::Clock::now() -
                                                    m_clockStart)
       .count();
+}
+void AutomaticOrchestrionPlayer::FollowRecording(
+    std::shared_ptr<const RecordingTimeline> timeline)
+{
+  m_followTimeline = timeline;
+  Post([this, timeline] { m_timeline = timeline; });
+  if (!timeline && m_following)
+  {
+    m_following = false;
+    m_playing = false;
+    Post([this] { SetFollowActive(false); });
+    m_playingChanged.notify();
+  }
+}
+
+void AutomaticOrchestrionPlayer::SetRecordingClock(
+    double seconds, std::chrono::steady_clock::time_point when, double rate,
+    bool playing)
+{
+  if (!playing)
+    m_followStopped = false;
+  // Not over the score's own playing: it stops the recording.
+  const bool follow = playing && m_followTimeline &&
+                      !m_followTimeline->Empty() && !m_followStopped &&
+                      (!m_playing || m_following);
+  Post(
+      [this, clock = RecordingClock{when, seconds, rate > 0.0 ? rate : 1.0},
+       follow]
+      {
+        m_clock = clock;
+        SetFollowActive(follow);
+      });
+  if (follow != m_following)
+  {
+    m_following = follow;
+    m_playing = follow;
+    m_playingChanged.notify();
+  }
+}
+
+void AutomaticOrchestrionPlayer::SetFollowActive(bool active)
+{
+  m_followActive = active && m_timeline && !m_timeline->Empty();
+  if (!m_followActive)
+    m_recordingSeek.reset();
+  UpdateFollowing();
+}
+
+void AutomaticOrchestrionPlayer::UpdateFollowing()
+{
+  ++m_generation;
+  if (!m_followActive || m_running)
+  {
+    if (m_followRunning)
+    {
+      m_followRunning = false;
+      m_followNext.reset();
+      m_sequencer->AllNotesOff();
+      m_sequencer->SetSilent(false);
+    }
+    return;
+  }
+
+  const double now = RecordingSecondsNow();
+  if (m_recordingSeek)
+  {
+    if (std::abs(now - m_recordingSeek->seconds) < kSeekReachedSeconds ||
+        PlayThread::Clock::now() > m_recordingSeek->until)
+      m_recordingSeek.reset();
+    else
+      return; // The score waits where it was moved to.
+  }
+  const auto position = m_timeline->PositionAt(now);
+  if (!position)
+  {
+    // Before the recording's first beat: back then.
+    const int gen = m_generation;
+    Post(
+        [this, gen]
+        {
+          if (gen == m_generation)
+            UpdateFollowing();
+        },
+        RecordingTime(m_timeline->Beats().front().seconds));
+    return;
+  }
+
+  bool inStep = false;
+  if (!m_followRunning)
+  {
+    m_followRunning = true;
+    m_sequencer->SetSilent(true);
+    m_followNext.reset();
+  }
+  else if (const auto last = m_timeline->SecondsAt(m_followTick))
+  {
+    const auto next = m_followNext
+                          ? m_timeline->SecondsAt(m_followNext->tick)
+                          : std::nullopt;
+    inStep = *last - kFollowLeewaySeconds <= now &&
+             (!next || now <= *next + kFollowLeewaySeconds);
+  }
+  if (!inStep)
+  {
+    // Started, or sought: to where the recording is.
+    m_followNext.reset();
+    m_sequencer->GoToTickWithRepeats(position->tick, position->writtenTick,
+                                     JumpReason::Recording);
+    m_followTick = position->tick;
+  }
+  ScheduleFollowNext();
+}
+
+void AutomaticOrchestrionPlayer::ScheduleFollowNext()
+{
+  if (!m_followRunning)
+    return;
+  if (!m_followNext)
+  {
+    m_followNext = m_sequencer->WhatToPlayNext();
+    if (!m_followNext)
+      return; // The score is over; the recording may go on.
+  }
+  const int gen = m_generation;
+  if (const auto seconds = m_timeline->SecondsAt(m_followNext->tick))
+  {
+    Post(
+        [this, gen]
+        {
+          if (gen == m_generation)
+            FireFollowed();
+        },
+        RecordingTime(*seconds));
+    return;
+  }
+
+  // A part the recording skips (a repeat), or past where it ends.
+  const RecordingBeat *next = m_timeline->NextPlayed(m_followNext->tick);
+  if (!next)
+  {
+    m_followNext.reset();
+    return;
+  }
+  if (next->tick <= m_followTick)
+  {
+    // Already there, say a release left behind by the skip: now.
+    Post(
+        [this, gen]
+        {
+          if (gen == m_generation)
+            FireFollowed();
+        });
+    return;
+  }
+  Post(
+      [this, gen, tick = next->tick, writtenTick = next->writtenTick]
+      {
+        if (gen != m_generation)
+          return;
+        m_followNext.reset();
+        m_sequencer->GoToTickWithRepeats(tick, writtenTick,
+                                         JumpReason::Recording);
+        m_followTick = tick;
+        ScheduleFollowNext();
+      },
+      RecordingTime(next->seconds));
+}
+
+void AutomaticOrchestrionPlayer::FireFollowed()
+{
+  if (!m_followNext)
+    return;
+  const NextAutoPlayEvents events = std::move(*m_followNext);
+  m_followNext.reset();
+  m_followTick = events.tick;
+  FireAndContinue(events, PlayThread::Clock::now());
+}
+
+double AutomaticOrchestrionPlayer::RecordingSecondsNow() const
+{
+  const double elapsed =
+      std::chrono::duration<double>(PlayThread::Clock::now() - m_clock.when)
+          .count();
+  return m_clock.seconds + elapsed * m_clock.rate;
+}
+
+PlayThread::Clock::time_point
+AutomaticOrchestrionPlayer::RecordingTime(double seconds) const
+{
+  return m_clock.when +
+         std::chrono::duration_cast<PlayThread::Clock::duration>(
+             std::chrono::duration<double>((seconds - m_clock.seconds) /
+                                           m_clock.rate));
+}
+
+void AutomaticOrchestrionPlayer::RequestRecordingSeek()
+{
+  ++m_generation;
+  m_followNext.reset();
+  m_followTick = m_sequencer->AutoPlayTick();
+  std::optional<double> seconds = m_timeline->SecondsAt(m_followTick);
+  if (!seconds)
+    if (const RecordingBeat *next = m_timeline->NextPlayed(m_followTick))
+      seconds = next->seconds;
+  if (!seconds)
+    return;
+  m_recordingSeek =
+      RecordingSeek{*seconds, PlayThread::Clock::now() + kSeekTimeout};
+  QMetaObject::invokeMethod(
+      &m_mainThreadContext,
+      [this, seconds = *seconds] { m_recordingSeekRequested.send(seconds); },
+      Qt::QueuedConnection);
 }
 } // namespace dgk

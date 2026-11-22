@@ -101,6 +101,33 @@ Item {
             if (playerLoader.item)
                 playerLoader.item.runJavaScript("window.pausePlayer && pausePlayer()")
         }
+        function onSeekRequested(seconds) {
+            if (playerLoader.item)
+                playerLoader.item.runJavaScript("window.player && player.seekTo && player.seekTo("
+                                                + seconds + ", true)")
+        }
+    }
+
+    // Where the video is, for the score to follow it: asked of the player
+    // page while it plays, and when its state changes.
+    function pollPlayer() {
+        if (!playerLoader.item || root.model.currentIndex < 0)
+            return
+        playerLoader.item.runJavaScript(
+            "(function () { var p = window.player;"
+            + " if (!p || !p.getCurrentTime) return null;"
+            + " return [p.getCurrentTime(), p.getPlaybackRate(), p.getPlayerState()]; })()",
+            function (result) {
+                if (result)
+                    root.model.reportPlayer(result[0], result[1], result[2])
+            })
+    }
+
+    Timer {
+        interval: 100
+        repeat: true
+        running: internal.started && root.model.currentIndex >= 0
+        onTriggered: root.pollPlayer()
     }
 
     // Out of full screen, then closed
@@ -111,9 +138,23 @@ Item {
         onActivated: {
             if (internal.fullScreen)
                 root.exitFullScreen()
+            else if (root.model.syncing)
+                root.model.finishSync()
             else
                 root.model.stopWatching()
         }
+    }
+
+    // Syncing the video with the score: a beat tapped, the last taken back
+    Shortcut {
+        sequences: ["Return", "Enter"]
+        enabled: root.model.syncing
+        onActivated: root.model.tapBeat()
+    }
+    Shortcut {
+        sequence: "Backspace"
+        enabled: root.model.syncing
+        onActivated: root.model.undoBeat()
     }
 
     // Tucked: its size (wide enough for what it says), and how much of it
@@ -139,6 +180,43 @@ Item {
         width: root.width
         height: root.parchmentTop
         clip: true
+
+        // Syncing: which beat to tap next, and how, on the dark of the
+        // thumbnail's caption, which reads over the cream behind.
+        Rectangle {
+            id: syncPanel
+            readonly property real padding: 10
+            x: card.x + card.width + 16
+            y: card.y + card.height - height
+            width: Math.min(360, Math.max(0, root.width - x - 16))
+            height: syncText.implicitHeight + 2 * padding
+            radius: 6
+            color: Theme.backdrop
+            visible: root.model.syncing && card.p > 0.9 && width > 120
+            Column {
+                id: syncText
+                x: syncPanel.padding
+                y: syncPanel.padding
+                width: syncPanel.width - 2 * syncPanel.padding
+                spacing: 4
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    text: qsTr("Syncing: tap Return on each beat. Next: %1.").arg(root.model.syncNext)
+                    color: Theme.metalBright
+                    font.pixelSize: 15
+                }
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    text: qsTr("%n beat(s) tapped. Backspace takes the last back; clicking a bar makes it the next. Esc when done.",
+                               "", root.model.syncCount)
+                    color: Theme.metalBright
+                    opacity: 0.75
+                    font.pixelSize: 13
+                }
+            }
+        }
 
         Item {
             id: card
@@ -215,8 +293,10 @@ Item {
                                 onJavaScriptConsoleMessage: function(level, message) {
                                     if (message.startsWith("orchestrion-player:error:"))
                                         internal.unavailable = true
-                                    else if (message.startsWith("orchestrion-player:state:"))
+                                    else if (message.startsWith("orchestrion-player:state:")) {
                                         internal.started = true
+                                        root.pollPlayer()
+                                    }
                                 }
                                 // The player's links (its logo, the title, ...)
                                 // leave it: those are for the browser.

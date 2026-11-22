@@ -88,6 +88,12 @@ static constexpr const char *playModeMetronome =
     "orchestrion-advanced-play-mode-metronome";
 
 /**
+ * Advanced menu: syncing the video being watched with the score, by tapping
+ * its beats (see ScoreRecordingsModel::startSync).
+ */
+static constexpr const char *syncVideo = "orchestrion-advanced-sync-video";
+
+/**
  * Advanced menu: back to the settings Orchestrion was installed with, then a
  * restart.
  */
