@@ -72,6 +72,8 @@ public:
     return m_recordingSeekRequested;
   }
   bool IsFollowing() const override { return m_following; }
+  void
+  SetTempoCurve(std::shared_ptr<const RecordingTimeline> timeline) override;
 
 private:
   // Main thread
@@ -90,6 +92,8 @@ private:
   void FireAndContinue(const NextAutoPlayEvents &events,
                        PlayThread::Clock::time_point due);
   double TicksToMilliseconds(int ticks) const;
+  /** How long until the step: by the tempo curve, if there is one. */
+  double StepMilliseconds(const NextAutoPlayEvents &) const;
   double ElapsedMs() const;
   void StartReplay();
   void ScheduleReplayNext();
@@ -107,6 +111,8 @@ private:
   PlayThread::Clock::time_point RecordingTime(double seconds) const;
   /** The user moved the score while it followed: the recording follows. */
   void RequestRecordingSeek();
+  /** The recording, paused, was moved: the score goes where it is. */
+  void PlaceWhereRecordingIs();
 
   const std::shared_ptr<OrchestrionSequencer> m_sequencer;
   const std::shared_ptr<PlayThread> m_thread;
@@ -151,6 +157,9 @@ private:
   bool m_firingInputEvents = false;
   /** The score's tempo, quarter notes per minute times the multiplier. */
   double m_quartersPerMinute = 0.0;
+  /** The multiplier alone, and the tempo curve played by, if any. */
+  double m_tempoMultiplier = 1.0;
+  std::shared_ptr<const RecordingTimeline> m_tempoCurve;
   // The play clock, started with nominal playback, and the due time on it of
   // the events scheduled last: accumulated from the score's tick deltas, so
   // that timer latency doesn't build up into drift (see ScheduleNext).
@@ -182,6 +191,8 @@ private:
     PlayThread::Clock::time_point until;
   };
   std::optional<RecordingSeek> m_recordingSeek;
+  /** Where the recording was last told to be, if it has a timeline. */
+  std::optional<double> m_placedSeconds;
   std::size_t m_replayIndex = 0;
   unsigned m_replaySerial = 0;
   PlayThread::Clock::time_point m_replayClockStart;

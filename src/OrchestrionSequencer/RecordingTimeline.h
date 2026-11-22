@@ -41,6 +41,16 @@ struct RecordingBeat
   bool afterSkip = false;
 };
 
+/**
+ * The beats with the noise of their timing (beats tapped by hand, say)
+ * smoothed out: each moved a third of the way to where its neighbours,
+ * played one after the other, put it, `passes` times. Steady beats stay;
+ * so do the ends of each run played without a skip, and the tempo's
+ * broader moves.
+ */
+std::vector<RecordingBeat> SmoothBeats(std::vector<RecordingBeat> beats,
+                                       int passes = 1);
+
 /** Where in the score a recording is, as it plays. */
 class RecordingTimeline
 {
@@ -74,6 +84,13 @@ public:
    * after a part of the score it skips. Null if none.
    */
   const RecordingBeat *NextPlayed(int tick) const;
+
+  /**
+   * How fast the recording plays the score around `tick`, in seconds per
+   * tick: between the beats around it, else the nearest two played one
+   * after the other. None if no two are.
+   */
+  std::optional<double> SecondsPerTick(int tick) const;
 
 private:
   /** How far the music played from beat `i` reaches before the next beat. */

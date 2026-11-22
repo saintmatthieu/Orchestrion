@@ -84,6 +84,38 @@ TEST(RecordingTimelineTests, TimesGraceNotesBeforeTheBeat)
   EXPECT_DOUBLE_EQ(*timeline.SecondsAt(12 * quarter - quarter / 4), 5.875);
 }
 
+TEST(RecordingTimelineTests, TellsThePaceAround)
+{
+  const auto timeline = WithSkip();
+  // A quarter a second, then (after the skip) half a second.
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(quarter / 2), 1.0 / quarter);
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(-quarter), 1.0 / quarter);
+  // In the part skipped, and at the last beat: the nearest pace.
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(6 * quarter), 1.0 / quarter);
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(13 * quarter), 0.5 / quarter);
+  EXPECT_FALSE(RecordingTimeline({{0, 0, quarter, 1.0}}).SecondsPerTick(0));
+}
+
+TEST(RecordingTimelineTests, SmoothsTheNoiseOfTaps)
+{
+  // Steady beats a second apart, the third tapped 150 ms late; a skip
+  // before the last two.
+  auto beats = WithSkip().Beats();
+  beats[2].seconds += 0.15;
+  const auto smoothed = SmoothBeats(beats);
+  EXPECT_DOUBLE_EQ(smoothed[0].seconds, 1.0); // a run's ends stay
+  EXPECT_DOUBLE_EQ(smoothed[1].seconds, 2.05);
+  EXPECT_DOUBLE_EQ(smoothed[2].seconds, 3.05);
+  EXPECT_DOUBLE_EQ(smoothed[3].seconds, 4.0);
+  EXPECT_DOUBLE_EQ(smoothed[4].seconds, 6.0);
+  EXPECT_DOUBLE_EQ(smoothed[5].seconds, 6.5);
+  // Steady beats stay.
+  const auto steady = WithSkip().Beats();
+  const auto unchanged = SmoothBeats(steady, 3);
+  for (size_t i = 0; i < steady.size(); ++i)
+    EXPECT_DOUBLE_EQ(unchanged[i].seconds, steady[i].seconds) << i;
+}
+
 TEST(RecordingTimelineTests, RefusesBeatsOutOfOrder)
 {
   EXPECT_TRUE(RecordingTimeline(

@@ -45,6 +45,7 @@ public:
     return m_recordingSeekRequested;
   }
   bool IsFollowing() const override { return false; }
+  void SetTempoCurve(std::shared_ptr<const RecordingTimeline>) override {}
 
 private:
   muse::async::Notification m_playingChanged;
