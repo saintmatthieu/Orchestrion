@@ -35,6 +35,8 @@ set(MODULE_SRC
   internal/PerformanceEndWatcher.h
   internal/RecordingSync.cpp
   internal/RecordingSync.h
+  internal/RecordingSyncSession.cpp
+  internal/RecordingSyncSession.h
   internal/RollsLibrary.cpp
   internal/RollsLibrary.h
   internal/YouTubeLinks.cpp
@@ -123,3 +125,7 @@ elseif (OS_IS_MAC)
 endif()
 
 setup_module()
+
+if (MUSE_ENABLE_UNIT_TESTS)
+    add_subdirectory(tests)
+endif()

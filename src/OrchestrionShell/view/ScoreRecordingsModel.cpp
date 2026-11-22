@@ -28,6 +28,8 @@
 #include <project/inotationproject.h>
 
 #include <QUrlQuery>
+#include <algorithm>
+#include <cmath>
 #include <chrono>
 #include <optional>
 
@@ -36,6 +38,21 @@ namespace dgk
 ScoreRecordingsModel::ScoreRecordingsModel(QObject *parent)
     : QObject(parent), m_end{std::chrono::seconds{3}}
 {
+  m_activeSyncBeatTimer.setSingleShot(true);
+  connect(&m_activeSyncBeatTimer, &QTimer::timeout, this,
+          [this] { updateActiveSyncBeat(); });
+  m_replayTimer.setSingleShot(true);
+  m_replayTimer.setInterval(400);
+  connect(&m_replayTimer, &QTimer::timeout, this,
+          [this]
+          {
+            if (!m_session || m_replayBeat < 0 ||
+                m_replayBeat >= syncCount())
+              return;
+            constexpr double leadIn = 1.5;
+            emit replayRequested(std::max(
+                0.0, syncBeatSeconds(m_replayBeat) - leadIn));
+          });
 }
 
 void ScoreRecordingsModel::load()
@@ -84,7 +101,7 @@ void ScoreRecordingsModel::subscribePlayer()
         this,
         [this](int tick, JumpReason reason)
         {
-          if (m_syncing && reason == JumpReason::Click)
+          if (m_session && reason == JumpReason::Click)
             syncFrom(tick);
         },
         muse::async::Asyncable::Mode::SetReplace);
@@ -158,10 +175,10 @@ void ScoreRecordingsModel::loadSync()
     const QString path =
         RecordingSyncPath(globalConfiguration()->userAppDataPath().toQString(),
                           *m_pieceId, video->id);
-    if (const auto sync = ReadRecordingSync(path))
+    const mu::engraving::Score &score = *project->masterNotation()->masterScore();
+    if (const auto sync = ReadRecordingSync(path, PlayedBars(score)))
     {
-      m_timeline = MakeRecordingTimeline(
-          *project->masterNotation()->masterScore(), *sync);
+      m_timeline = MakeRecordingTimeline(score, *sync);
       if (!m_timeline)
         LOGW() << "The sync doesn't fit the score: " << path;
     }
@@ -176,7 +193,9 @@ void ScoreRecordingsModel::reportPlayer(double seconds, double rate, int state)
   m_videoTime = std::chrono::steady_clock::now();
   m_videoRate = rate > 0.0 ? rate : 1.0;
   m_videoPlaying = state == playing;
-  if (m_current < 0 || !m_timeline || m_syncing)
+  if (m_session)
+    updateActiveSyncBeat();
+  if (m_current < 0 || !m_timeline || m_session)
     return;
   orchestrion()->player()->SetRecordingClock(
       seconds - m_startSeconds, m_videoTime, m_videoRate, m_videoPlaying);
@@ -194,7 +213,7 @@ QString ScoreRecordingsModel::syncPath() const
 
 void ScoreRecordingsModel::startSync()
 {
-  if (m_syncing || m_recordings.empty())
+  if (m_session || m_recordings.empty())
     return;
   if (m_current < 0)
     watch(0);
@@ -203,145 +222,239 @@ void ScoreRecordingsModel::startSync()
   if (m_current < 0 || !project || path.isEmpty())
     return; // Not a video the app plays.
 
-  m_bars = PlayedBars(*project->masterNotation()->masterScore());
-  if (m_bars.empty())
+  std::vector<PlayedBar> bars =
+      PlayedBars(*project->masterNotation()->masterScore());
+  if (bars.empty())
     return;
-  m_sync = ReadRecordingSync(path).value_or(RecordingSync{});
-  if (m_sync.scoreVersion.isEmpty())
+  RecordingSync sync = ReadRecordingSync(path, bars).value_or(RecordingSync{});
+  if (sync.scoreVersion.isEmpty())
     if (const RollsScore *score = rollsLibrary()->score(*m_pieceId);
         score && !rollsLibrary()->hasUpdate(*m_pieceId))
-      m_sync.scoreVersion = score->version;
-  m_nextBar = 0;
-  m_nextBeat = 1;
-  if (!m_sync.points.empty())
-  {
-    m_nextBar = m_sync.points.back().bar;
-    m_nextBeat = m_sync.points.back().beat;
-    advanceSync();
-  }
+      sync.scoreVersion = score->version;
+  m_session.emplace(std::move(bars), std::move(sync));
+  m_session->SetPrecision(m_precision);
   // What is tapped is followed once done, not while tapping.
   orchestrion()->player()->FollowRecording(nullptr);
-  m_syncing = true;
   emit syncChanged();
+  updateActiveSyncBeat();
 }
 
-void ScoreRecordingsModel::advanceSync()
+void ScoreRecordingsModel::syncEdited()
 {
-  if (m_nextBar >= static_cast<int>(m_bars.size()))
-    return;
-  if (++m_nextBeat > m_bars[m_nextBar].beats)
-  {
-    ++m_nextBar;
-    m_nextBeat = 1;
-  }
+  const QString path = syncPath();
+  if (!path.isEmpty() && !WriteRecordingSync(path, m_session->Sync()))
+    LOGE() << "Could not save the sync: " << path;
+  emit syncChanged();
+  updateActiveSyncBeat();
 }
 
 void ScoreRecordingsModel::tapBeat()
 {
-  if (!m_syncing || !m_videoPlaying ||
-      m_nextBar >= static_cast<int>(m_bars.size()))
-    return;
-  const double elapsed = std::chrono::duration<double>(
-                             std::chrono::steady_clock::now() - m_videoTime)
-                             .count();
-  const double seconds =
-      m_videoSeconds + elapsed * m_videoRate - m_startSeconds;
-  if (!m_sync.points.empty() && seconds <= m_sync.points.back().seconds)
-    return;
-  m_sync.points.push_back({m_nextBar, m_nextBeat, seconds});
-  advanceSync();
-  saveSync();
-  emit syncChanged();
+  if (m_session && m_videoPlaying && m_session->Tap(videoSecondsNow()))
+    syncEdited();
 }
 
-void ScoreRecordingsModel::undoBeat()
+void ScoreRecordingsModel::undoSync()
 {
-  if (!m_syncing || m_sync.points.empty())
-    return;
-  m_nextBar = m_sync.points.back().bar;
-  m_nextBeat = m_sync.points.back().beat;
-  m_sync.points.pop_back();
-  saveSync();
-  emit syncChanged();
+  if (m_session && m_session->Undo())
+    syncEdited();
 }
 
 void ScoreRecordingsModel::syncFrom(int writtenTick)
 {
-  // The bar clicked, among the bars played: ahead of the last tapped if it
-  // is played again there, else the last time before.
-  const int last = m_sync.points.empty() ? -1 : m_sync.points.back().bar;
-  std::optional<int> behind, ahead;
-  for (int i = 0; i < static_cast<int>(m_bars.size()); ++i)
-  {
-    const PlayedBar &bar = m_bars[i];
-    if (writtenTick < bar.writtenTick ||
-        writtenTick >= bar.writtenTick + bar.length)
-      continue;
-    if (i > last)
-    {
-      if (!ahead)
-        ahead = i;
-    }
-    else
-      behind = i;
-  }
-  if (ahead)
-    m_nextBar = *ahead;
-  else if (behind)
-  {
-    // Tapped again from there: the video goes back to just before.
-    m_nextBar = *behind;
-    std::erase_if(m_sync.points, [this](const RecordingSync::Point &point)
-                  { return point.bar >= m_nextBar; });
-    constexpr double leadIn = 2.0;
-    const double from =
-        m_sync.points.empty() ? 0.0 : m_sync.points.back().seconds - leadIn;
-    emit seekRequested(m_startSeconds + std::max(0.0, from));
-    saveSync();
-  }
-  else
+  // Of a repeat's passes, the one nearest where the video is.
+  int near = 0;
+  if (m_activeSyncBeat >= 0)
+    near = m_session->Position(m_activeSyncBeat);
+  else if (const auto next = m_session->Next())
+    near = *next;
+  const auto bar = m_session->BarAt(writtenTick, near);
+  if (!bar)
     return;
-  m_nextBeat = 1;
+  if (const auto from = m_session->TapFrom(*bar))
+    emit seekRequested(m_startSeconds + *from);
   emit syncChanged();
-}
-
-void ScoreRecordingsModel::saveSync()
-{
-  const QString path = syncPath();
-  if (!path.isEmpty() && !WriteRecordingSync(path, m_sync))
-    LOGE() << "Could not save the sync: " << path;
 }
 
 void ScoreRecordingsModel::finishSync()
 {
-  if (!m_syncing)
+  if (!m_session)
     return;
-  m_syncing = false;
-  saveSync();
+  m_session.reset();
+  m_replayTimer.stop();
   emit syncChanged();
+  updateActiveSyncBeat();
   loadSync();
 }
 
-bool ScoreRecordingsModel::syncing() const { return m_syncing; }
+bool ScoreRecordingsModel::syncing() const { return m_session.has_value(); }
 
 int ScoreRecordingsModel::syncCount() const
 {
-  return static_cast<int>(m_sync.points.size());
+  return m_session ? static_cast<int>(m_session->Sync().points.size()) : 0;
+}
+
+int ScoreRecordingsModel::syncPrecision() const
+{
+  return m_precision == RecordingSyncSession::Precision::beats ? 0 : 1;
+}
+
+void ScoreRecordingsModel::setSyncPrecision(int precision)
+{
+  m_precision = precision == 0 ? RecordingSyncSession::Precision::beats
+                               : RecordingSyncSession::Precision::subdivisions;
+  if (m_session)
+    m_session->SetPrecision(m_precision);
+  emit syncChanged();
 }
 
 QString ScoreRecordingsModel::syncNext() const
 {
-  if (!m_syncing)
+  if (!m_session)
     return {};
-  if (m_nextBar >= static_cast<int>(m_bars.size()))
-    return tr("the end");
-  const PlayedBar &bar = m_bars[m_nextBar];
-  QString name =
-      bar.pickup ? tr("the pickup") : tr("bar %1").arg(bar.number);
+  const auto next = m_session->Next();
+  return next ? positionName(*next) : tr("the end");
+}
+
+QString ScoreRecordingsModel::positionName(int position) const
+{
+  const auto place = m_session->PlaceOf(position);
+  const PlayedBar &bar = m_session->Bars()[place.bar];
+  QString name = bar.pickup ? tr("the pickup") : tr("bar %1").arg(bar.number);
   if (bar.pass > 1)
     name = tr("%1 (time %2)").arg(name).arg(bar.pass);
+  if (place.subdivision > 1)
+    //: e.g. "bar 12, beat 3 (2/3)": the second third of the beat
+    return tr("%1, beat %2 (%3/%4)")
+        .arg(name)
+        .arg(place.beat)
+        .arg(place.subdivision)
+        .arg(place.subdivisions);
   //: e.g. "bar 12, beat 3"
-  return tr("%1, beat %2").arg(name).arg(m_nextBeat);
+  return tr("%1, beat %2").arg(name).arg(place.beat);
+}
+
+QVariantList ScoreRecordingsModel::syncBeats() const
+{
+  QVariantList beats;
+  if (!m_session)
+    return beats;
+  const RecordingSync &sync = m_session->Sync();
+  for (const RecordingSync::Point &point : sync.points)
+  {
+    const PlayedBar &bar = m_session->Bars()[point.bar];
+    beats.append(QVariantMap{{"tick", bar.writtenTick + point.tick},
+                             {"onBeat", point.tick % bar.beatTicks == 0}});
+  }
+  return beats;
+}
+
+QVariantList ScoreRecordingsModel::selectedSyncBeats() const
+{
+  QVariantList selected;
+  if (m_session)
+    for (const int beat : m_session->Selection())
+      selected.append(beat);
+  return selected;
+}
+
+QString ScoreRecordingsModel::syncBeatName(int beat) const
+{
+  if (!m_session || beat < 0 || beat >= syncCount())
+    return {};
+  return positionName(m_session->Position(beat));
+}
+
+double ScoreRecordingsModel::syncBeatSeconds(int beat) const
+{
+  if (!m_session || beat < 0 || beat >= syncCount())
+    return 0.0;
+  return m_startSeconds + m_session->Sync().points[beat].seconds;
+}
+
+double ScoreRecordingsModel::syncBeatMinimum(int beat) const
+{
+  if (!m_session || beat < 0 || beat >= syncCount())
+    return 0.0;
+  return m_startSeconds + m_session->Minimum(beat);
+}
+
+double ScoreRecordingsModel::syncBeatMaximum(int beat) const
+{
+  if (!m_session || beat < 0 || beat >= syncCount())
+    return 0.0;
+  return m_startSeconds + m_session->Maximum(beat);
+}
+
+void ScoreRecordingsModel::setSyncBeatSeconds(int beat, double seconds)
+{
+  if (!m_session || beat < 0 || beat >= syncCount())
+    return;
+  m_session->SetSeconds(beat, seconds - m_startSeconds);
+  syncEdited();
+  m_replayBeat = beat;
+  m_replayTimer.start();
+}
+
+void ScoreRecordingsModel::selectSyncBeat(int beat, bool add)
+{
+  if (!m_session)
+    return;
+  m_session->Select(beat, add);
+  emit syncChanged();
+}
+
+void ScoreRecordingsModel::extendSyncSelection(int direction)
+{
+  if (!m_session)
+    return;
+  m_session->ExtendSelection(direction, m_activeSyncBeat);
+  emit syncChanged();
+}
+
+bool ScoreRecordingsModel::clearSyncSelection()
+{
+  if (!m_session || !m_session->ClearSelection())
+    return false;
+  emit syncChanged();
+  return true;
+}
+
+void ScoreRecordingsModel::deleteSyncSelection()
+{
+  if (m_session && m_session->DeleteSelection())
+    syncEdited();
+}
+
+double ScoreRecordingsModel::videoSecondsNow() const
+{
+  double seconds = m_videoSeconds;
+  if (m_videoPlaying)
+    seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             m_videoTime)
+                   .count() *
+               m_videoRate;
+  return seconds - m_startSeconds;
+}
+
+void ScoreRecordingsModel::updateActiveSyncBeat()
+{
+  m_activeSyncBeatTimer.stop();
+  int active = -1;
+  if (m_session && !m_session->Sync().points.empty())
+  {
+    const double now = videoSecondsNow();
+    active = m_session->AnchorAt(now);
+    // On to the next when the video gets there.
+    const auto &points = m_session->Sync().points;
+    if (m_videoPlaying && active + 1 < static_cast<int>(points.size()))
+      m_activeSyncBeatTimer.start(static_cast<int>(std::ceil(
+          (points[active + 1].seconds - now) / m_videoRate * 1000.0)));
+  }
+  if (active == m_activeSyncBeat)
+    return;
+  m_activeSyncBeat = active;
+  emit activeSyncBeatChanged();
 }
 
 void ScoreRecordingsModel::stopWatching()

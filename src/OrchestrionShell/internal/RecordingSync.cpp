@@ -33,26 +33,28 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <tuple>
 
 namespace dgk
 {
 namespace
 {
-constexpr int kFormatVersion = 1;
+constexpr int kFormatVersion = 2;
 /** A whole note, in MuseScore's ticks. */
 constexpr int kWholeTicks = 4 * 480;
 
 /**
- * The time signature's beat: a dotted quarter in 6/8, 9/8 and 12/8 (three
- * eighths), else its denominator's note (a half in cut time).
+ * The time signature's beat and its subdivision: a dotted quarter of three
+ * eighths in 6/8, 9/8 and 12/8, else its denominator's note in halves (a
+ * half note of two quarters in cut time).
  */
-int BeatTicks(const mu::engraving::Fraction &timesig)
+std::pair<int, int> BeatTicks(const mu::engraving::Fraction &timesig)
 {
   const int note = kWholeTicks / std::max(1, timesig.denominator());
   const bool compound = timesig.numerator() > 3 &&
                         timesig.numerator() % 3 == 0 &&
                         timesig.denominator() >= 8;
-  return compound ? 3 * note : note;
+  return compound ? std::pair{3 * note, note} : std::pair{note, note / 2};
 }
 
 } // namespace
@@ -70,7 +72,8 @@ std::vector<PlayedBar> PlayedBars(const mu::engraving::Score &score)
       bar.tick = tick;
       bar.writtenTick = measure->tick().ticks();
       bar.length = measure->ticks().ticks();
-      bar.beatTicks = BeatTicks(measure->timesig());
+      std::tie(bar.beatTicks, bar.subdivisionTicks) =
+          BeatTicks(measure->timesig());
       bar.beats = (bar.length + bar.beatTicks - 1) / bar.beatTicks;
       bar.number = measure->measureNumber() + 1; // as the layout prints it
       bar.pickup = bars.empty() && measure->ticks() < measure->timesig();
@@ -87,13 +90,15 @@ QString RecordingSyncPath(const QString &userDataPath, const QString &pieceId,
   return userDataPath + "/sync/" + pieceId + "/" + videoId + ".json";
 }
 
-std::optional<RecordingSync> ReadRecordingSync(const QString &path)
+std::optional<RecordingSync>
+ReadRecordingSync(const QString &path, const std::vector<PlayedBar> &bars)
 {
   QFile file{path};
   if (!file.open(QIODevice::ReadOnly))
     return std::nullopt;
   const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
-  if (root.value("version").toInt() != kFormatVersion)
+  const int version = root.value("version").toInt();
+  if (version != 1 && version != kFormatVersion)
   {
     LOGW() << "Not a sync file this version reads: " << path;
     return std::nullopt;
@@ -103,13 +108,16 @@ std::optional<RecordingSync> ReadRecordingSync(const QString &path)
   for (const QJsonValue &value : root.value("points").toArray())
   {
     const QJsonArray point = value.toArray();
-    if (point.size() != 3)
+    const int bar = point[0].toInt();
+    if (point.size() != 3 || bar < 0 || bar >= static_cast<int>(bars.size()))
     {
-      LOGW() << "A sync point isn't [bar, beat, seconds]: " << path;
+      LOGW() << "A sync point isn't [bar, tick, seconds] in the score: "
+             << path;
       return std::nullopt;
     }
-    sync.points.push_back(
-        {point[0].toInt(), point[1].toInt(), point[2].toDouble()});
+    const int tick = version == 1 ? (point[1].toInt() - 1) * bars[bar].beatTicks
+                                  : point[1].toInt();
+    sync.points.push_back({bar, tick, point[2].toDouble()});
   }
   return sync;
 }
@@ -118,7 +126,7 @@ bool WriteRecordingSync(const QString &path, const RecordingSync &sync)
 {
   QJsonArray points;
   for (const RecordingSync::Point &point : sync.points)
-    points.append(QJsonArray{point.bar, point.beat,
+    points.append(QJsonArray{point.bar, point.tick,
                              std::round(point.seconds * 1000.0) / 1000.0});
   QJsonObject root;
   root["version"] = kFormatVersion;
@@ -144,10 +152,10 @@ MakeRecordingTimeline(const mu::engraving::Score &score,
   for (const RecordingSync::Point &point : sync.points)
   {
     if (point.bar < 0 || point.bar >= static_cast<int>(bars.size()) ||
-        point.beat < 1)
+        point.tick < 0)
       return nullptr;
     const PlayedBar &bar = bars[point.bar];
-    const int offset = (point.beat - 1) * bar.beatTicks;
+    const int offset = point.tick;
     if (offset >= bar.length)
       return nullptr;
     beats.push_back({bar.tick + offset, bar.writtenTick + offset, bar.beatTicks,

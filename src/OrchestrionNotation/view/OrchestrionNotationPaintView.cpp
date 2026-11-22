@@ -1260,6 +1260,14 @@ bool OrchestrionNotationPaintView::eventFilter(QObject *watched, QEvent *event)
 void OrchestrionNotationPaintView::onMousePressed(
     const QPointF &pos, Qt::KeyboardModifiers modifiers, Qt::MouseButton button)
 {
+  // A beat marker is selected, not a click in the score.
+  if (m_hoveredSyncBeat >= 0)
+  {
+    if (button == Qt::LeftButton)
+      emit syncBeatClicked(m_hoveredSyncBeat,
+                           modifiers.testFlag(Qt::ControlModifier));
+    return;
+  }
   if (button == Qt::LeftButton && modifiers == Qt::NoModifier)
   {
     const auto layout = staffSelectorLayout();
@@ -1439,6 +1447,21 @@ void OrchestrionNotationPaintView::onMouseMoved(const QPointF &pos)
     return;
 
   const muse::PointF logicPos = toLogical(pos);
+
+  if (!m_syncBeatTicks.empty())
+  {
+    const int beat = syncBeatAt(QPointF{logicPos.x(), logicPos.y()});
+    QPointF itemPos;
+    if (beat >= 0)
+      if (const auto point = syncBeatPoint(beat))
+      {
+        const muse::PointF at = fromLogical(muse::PointF{point->x(), point->y()});
+        itemPos = QPointF{at.x(), at.y()};
+      }
+    setHoveredSyncBeat(beat, itemPos);
+    if (beat >= 0)
+      return;
+  }
 
   const bool overLoopFlag = loopFlagAt(logicPos).has_value();
   if (overLoopFlag != m_loopFlagCursor)
@@ -2265,6 +2288,222 @@ void OrchestrionNotationPaintView::paintBeatLines(QPainter *painter)
   painter->restore();
 }
 
+namespace
+{
+/** How long a beat marker takes to grow when the video reaches it. */
+constexpr int kSyncBeatGrowMs = 150;
+/** How much bigger the active one is. */
+constexpr double kSyncBeatGrowth = 0.7;
+} // namespace
+
+void OrchestrionNotationPaintView::setSyncBeats(const QVariantList &beats)
+{
+  m_syncBeats = beats;
+  m_syncBeatTicks.clear();
+  m_syncBeatLowLane.clear();
+  m_syncBeatOnBeat.clear();
+  for (const QVariant &beat : beats)
+  {
+    const QVariantMap map = beat.toMap();
+    const int tick = map.value("tick").toInt();
+    m_syncBeatOnBeat.push_back(map.value("onBeat", true).toBool());
+    const bool jumpedBack = !m_syncBeatTicks.empty() && tick < m_syncBeatTicks.back();
+    m_syncBeatLowLane.push_back(m_syncBeatLowLane.empty()
+                                    ? false
+                                    : m_syncBeatLowLane.back() != jumpedBack);
+    m_syncBeatTicks.push_back(tick);
+  }
+  if (m_hoveredSyncBeat >= static_cast<int>(m_syncBeatTicks.size()))
+    setHoveredSyncBeat(-1, {});
+  emit syncBeatsChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::setActiveSyncBeat(int beat)
+{
+  if (beat == m_activeSyncBeat)
+    return;
+  m_previousSyncBeat = m_activeSyncBeat;
+  m_activeSyncBeat = beat;
+  m_syncBeatSince.start();
+  if (!m_syncBeatAnimationConnected)
+  {
+    m_syncBeatAnimationConnected = true;
+    m_syncBeatAnimation.setInterval(16);
+    m_syncBeatAnimation.callOnTimeout(this,
+                                      [this]
+                                      {
+                                        update();
+                                        if (m_syncBeatSince.elapsed() >
+                                            kSyncBeatGrowMs)
+                                          m_syncBeatAnimation.stop();
+                                      });
+  }
+  m_syncBeatAnimation.start();
+  emit syncBeatsChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::setSelectedSyncBeats(
+    const QVariantList &selected)
+{
+  m_selectedSyncBeatList = selected;
+  m_selectedSyncBeats.clear();
+  for (const QVariant &beat : selected)
+    m_selectedSyncBeats.insert(beat.toInt());
+  emit syncBeatsChanged();
+  update();
+}
+
+void OrchestrionNotationPaintView::setHoveredSyncBeat(int beat,
+                                                      const QPointF &itemPos)
+{
+  if (beat == m_hoveredSyncBeat && itemPos == m_hoveredSyncBeatPos)
+    return;
+  m_hoveredSyncBeat = beat;
+  m_hoveredSyncBeatPos = itemPos;
+  emit hoveredSyncBeatChanged();
+  update();
+}
+
+std::optional<QPointF> OrchestrionNotationPaintView::syncBeatPoint(int beat) const
+{
+  const auto x = syncBeatX(m_syncBeatTicks[beat]);
+  const auto notation = this->notation();
+  const BeltGeometry belt = sampleBelt();
+  if (!x || !notation || !belt.valid)
+    return std::nullopt;
+  // Just inside the parchment's edge.
+  const double inset =
+      1.2 * notation->elements()->msScore()->style().spatium();
+  return QPointF{*x, m_syncBeatLowLane[beat] ? belt.paper.bottom() - inset
+                                             : belt.paper.top() + inset};
+}
+
+std::optional<double> OrchestrionNotationPaintView::syncBeatX(int writtenTick) const
+{
+  const auto notation = this->notation();
+  if (!notation)
+    return std::nullopt;
+  const mu::engraving::Score *score = notation->elements()->msScore();
+  const auto tick = mu::engraving::Fraction::fromTicks(writtenTick);
+  const mu::engraving::Measure *measure = score->tick2measureMM(tick);
+  if (!measure)
+    return std::nullopt;
+  const mu::engraving::System *system = measure->system();
+  if (!system || system->staves().empty())
+    return std::nullopt;
+
+  // Between the chords around it, as MuseScore places its loop markers.
+  using mu::engraving::SegmentType;
+  std::optional<double> x;
+  for (const mu::engraving::Segment *s = measure->first(SegmentType::ChordRest);
+       s && !x;)
+  {
+    const mu::engraving::Segment *next = s->next(SegmentType::ChordRest);
+    while (next && !next->visible())
+      next = next->next(SegmentType::ChordRest);
+    mu::engraving::Fraction t2;
+    double x2 = 0.0;
+    if (next)
+    {
+      t2 = next->tick();
+      x2 = next->canvasPos().x();
+    }
+    else
+    {
+      t2 = measure->endTick();
+      const mu::engraving::Segment *barLine =
+          measure->findSegment(SegmentType::EndBarLine, measure->endTick());
+      x2 = barLine ? barLine->canvasPos().x()
+                   : measure->canvasPos().x() + measure->width();
+    }
+    if (tick >= s->tick() && tick < t2)
+    {
+      const double x1 = s->canvasPos().x();
+      x = x1 + (x2 - x1) * (tick - s->tick()).ticks() / (t2 - s->tick()).ticks();
+    }
+    s = next;
+  }
+  return x;
+}
+
+int OrchestrionNotationPaintView::syncBeatAt(const QPointF &logical) const
+{
+  const auto notation = this->notation();
+  if (!notation)
+    return -1;
+  const double reach =
+      1.2 * notation->elements()->msScore()->style().spatium();
+  int found = -1;
+  for (int i = 0; i < static_cast<int>(m_syncBeatTicks.size()); ++i)
+  {
+    const auto point = syncBeatPoint(i);
+    if (!point || std::abs(point->x() - logical.x()) > reach ||
+        std::abs(point->y() - logical.y()) > reach)
+      continue;
+    // Beats of a repeat's passes share their place: the one nearest the
+    // video's.
+    const int anchor = std::max(m_activeSyncBeat, 0);
+    if (found < 0 || std::abs(i - anchor) < std::abs(found - anchor))
+      found = i;
+  }
+  return found;
+}
+
+void OrchestrionNotationPaintView::paintSyncBeats(QPainter *painter)
+{
+  const auto notation = this->notation();
+  if (m_syncBeatTicks.empty() || !notation)
+    return;
+  const double spatium =
+      notation->elements()->msScore()->style().spatium();
+  const double grown =
+      std::min(1.0, m_syncBeatSince.isValid()
+                        ? m_syncBeatSince.elapsed() / double(kSyncBeatGrowMs)
+                        : 1.0);
+  const double ease = 1.0 - (1.0 - grown) * (1.0 - grown);
+
+  const QColor accent =
+      paletteColor(uiConfiguration()->currentTheme(), paletteKeys::highlight);
+  QColor quiet = loopHandleColor();
+  quiet.setAlpha(150);
+
+  painter->save();
+  painter->setRenderHint(QPainter::Antialiasing);
+  painter->setPen(Qt::NoPen);
+  for (int i = 0; i < static_cast<int>(m_syncBeatTicks.size()); ++i)
+  {
+    const auto point = syncBeatPoint(i);
+    if (!point)
+      continue;
+    double growth = 0.0;
+    if (i == m_activeSyncBeat)
+      growth = ease;
+    else if (i == m_previousSyncBeat)
+      growth = 1.0 - ease;
+    if (i == m_hoveredSyncBeat)
+      growth = std::max(growth, 0.5);
+    // Subdivisions smaller than beats.
+    const double size = m_syncBeatOnBeat[i] ? 0.45 : 0.3;
+    const double radius = size * spatium * (1.0 + kSyncBeatGrowth * growth);
+    painter->setBrush(i == m_activeSyncBeat || i == m_hoveredSyncBeat ? accent
+                                                                      : quiet);
+    painter->drawEllipse(*point, radius, radius);
+    if (m_selectedSyncBeats.count(i))
+    {
+      QPen ring{accent};
+      ring.setWidthF(0.15 * spatium);
+      painter->setPen(ring);
+      painter->setBrush(Qt::NoBrush);
+      const double around = radius + 0.3 * spatium;
+      painter->drawEllipse(*point, around, around);
+      painter->setPen(Qt::NoPen);
+    }
+  }
+  painter->restore();
+}
+
 void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
 {
   // Called by the base view once the painter carries the score's world
@@ -2274,6 +2513,7 @@ void OrchestrionNotationPaintView::paintNotationUnderlay(QPainter *painter)
   paintBelt(painter);
   paintLoopRegionUnderlay(painter);
   paintBeatLines(painter);
+  paintSyncBeats(painter);
 
   if (m_boxes.empty() && m_fader.empty())
     return;

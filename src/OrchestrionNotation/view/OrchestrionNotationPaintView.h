@@ -39,6 +39,7 @@
 #include <QElapsedTimer>
 #include <QImage>
 #include <QTimer>
+#include <set>
 #include <QVariantAnimation>
 #include <QVariantList>
 #include <actions/iactionsdispatcher.h>
@@ -69,6 +70,24 @@ class OrchestrionNotationPaintView : public mu::notation::NotationPaintView,
   // copy — left for an early note, right for a late one).
   Q_PROPERTY(int hoveredNoteInfoPlacement READ hoveredNoteInfoPlacement NOTIFY
                  hoveredNoteInfoChanged)
+  /**
+   * The beats tapped to sync a video with the score, shown as markers above
+   * the staves: each a map whose "tick" is where the beat is in the score as
+   * written. Empty shows none.
+   */
+  Q_PROPERTY(QVariantList syncBeats READ syncBeats WRITE setSyncBeats NOTIFY
+                 syncBeatsChanged)
+  /** The one the video is at, highlighted; -1 if none. */
+  Q_PROPERTY(int activeSyncBeat READ activeSyncBeat WRITE setActiveSyncBeat
+                 NOTIFY syncBeatsChanged)
+  /** Those selected, by index: ringed. */
+  Q_PROPERTY(QVariantList selectedSyncBeats READ selectedSyncBeats WRITE
+                 setSelectedSyncBeats NOTIFY syncBeatsChanged)
+  /** The marker under the pointer, -1 if none, and where it is (its top). */
+  Q_PROPERTY(int hoveredSyncBeat READ hoveredSyncBeat NOTIFY
+                 hoveredSyncBeatChanged)
+  Q_PROPERTY(QPointF hoveredSyncBeatPos READ hoveredSyncBeatPos NOTIFY
+                 hoveredSyncBeatChanged)
   // Whether the last right-click hit a chord — enables the "set loop
   // start/end" context-menu items.
   Q_PROPERTY(bool contextMenuHasTarget READ contextMenuHasTarget NOTIFY
@@ -198,6 +217,14 @@ public:
 
   QString hoveredNoteInfo() const;
   QPointF hoveredNoteInfoPos() const;
+  QVariantList syncBeats() const { return m_syncBeats; }
+  void setSyncBeats(const QVariantList &);
+  int activeSyncBeat() const { return m_activeSyncBeat; }
+  void setActiveSyncBeat(int);
+  QVariantList selectedSyncBeats() const { return m_selectedSyncBeatList; }
+  void setSelectedSyncBeats(const QVariantList &);
+  int hoveredSyncBeat() const { return m_hoveredSyncBeat; }
+  QPointF hoveredSyncBeatPos() const { return m_hoveredSyncBeatPos; }
   int hoveredNoteInfoPlacement() const { return m_hoveredNoteInfoPlacement; }
   TempoVizModel *tempoVizModel() { return &m_tempoVizModel; }
   bool tempoVisualizationEnabled() const;
@@ -240,6 +267,10 @@ public:
 signals:
   void mouseActivity();
   void hoveredNoteInfoChanged();
+  void syncBeatsChanged();
+  void hoveredSyncBeatChanged();
+  /** A beat's marker was clicked; `add`, with Ctrl. */
+  void syncBeatClicked(int beat, bool add);
   void contextMenuTargetChanged();
   //! Right-click: ask QML to pop up the loop context menu at \p position
   //! (view-local coordinates).
@@ -725,6 +756,37 @@ private:
   QString m_hoveredNoteInfo;
   QPointF m_hoveredNoteInfoPos;
   int m_hoveredNoteInfoPlacement = 0;
+
+  // The beats tapped to sync a video (see syncBeats): where they are in the
+  // score as written, the one the video is at, the one before it (shrinking
+  // back as the new one grows), since when, and the one under the pointer.
+  QVariantList m_syncBeats;
+  std::vector<int> m_syncBeatTicks;
+  /**
+   * Whether a beat's marker runs along the parchment's bottom edge rather
+   * than its top: the lane changes at each jump back (a repeat), so that a
+   * passage's passes don't hide one another.
+   */
+  std::vector<bool> m_syncBeatLowLane;
+  /** Whether a beat is on the beat, rather than one of its subdivisions. */
+  std::vector<bool> m_syncBeatOnBeat;
+  QVariantList m_selectedSyncBeatList;
+  std::set<int> m_selectedSyncBeats;
+  int m_activeSyncBeat = -1;
+  int m_previousSyncBeat = -1;
+  QElapsedTimer m_syncBeatSince;
+  QTimer m_syncBeatAnimation;
+  bool m_syncBeatAnimationConnected = false;
+  int m_hoveredSyncBeat = -1;
+  QPointF m_hoveredSyncBeatPos;
+  /** Where a beat is across the page, in the score's coordinates. */
+  std::optional<double> syncBeatX(int writtenTick) const;
+  /** Where a beat's marker is, in the score's coordinates: none if nowhere. */
+  std::optional<QPointF> syncBeatPoint(int beat) const;
+  /** The marker at `logical`, -1 if none: the nearest to the active one. */
+  int syncBeatAt(const QPointF &logical) const;
+  void setHoveredSyncBeat(int beat, const QPointF &itemPos);
+  void paintSyncBeats(QPainter *);
 
   // Chord under the last right-click, acted on by the context-menu items.
   std::optional<ILoopBoundariesController::ChordTicks> m_contextMenuTarget;

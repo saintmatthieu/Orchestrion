@@ -23,6 +23,7 @@
 #include "OrchestrionShell/internal/PerformanceEndWatcher.h"
 #include "OrchestrionSequencer/RecordingTimeline.h"
 #include "OrchestrionShell/internal/RecordingSync.h"
+#include "OrchestrionShell/internal/RecordingSyncSession.h"
 #include "actions/actionable.h"
 #include "actions/iactionsdispatcher.h"
 #include "async/asyncable.h"
@@ -32,6 +33,8 @@
 #include "project/iprojectsession.h"
 
 #include <QObject>
+#include <QTimer>
+#include <QVariantList>
 #include <QUrl>
 #include <chrono>
 #include <memory>
@@ -74,14 +77,29 @@ class ScoreRecordingsModel : public QObject,
    */
   Q_PROPERTY(QUrl thumbnailUrl READ thumbnailUrl NOTIFY thumbnailChanged)
   /**
-   * Syncing the video being watched with the score: tapping its beats as it
-   * plays (see startSync).
+   * Syncing the video being watched with the score: anchoring it to the
+   * score by tapping as it plays (see startSync).
    */
   Q_PROPERTY(bool syncing READ syncing NOTIFY syncChanged)
-  /** The beat to tap next, e.g. "bar 12, beat 3". */
+  /** What to tap next, e.g. "bar 12, beat 3". */
   Q_PROPERTY(QString syncNext READ syncNext NOTIFY syncChanged)
-  /** How many beats are tapped. */
+  /** How many anchors there are. */
   Q_PROPERTY(int syncCount READ syncCount NOTIFY syncChanged)
+  /** What a tap is for: 0, beats; 1, their subdivisions. */
+  Q_PROPERTY(int syncPrecision READ syncPrecision WRITE setSyncPrecision
+                 NOTIFY syncChanged)
+  /**
+   * While syncing, the anchors, in the order played: maps whose "tick" is
+   * where the anchor is in the score as written, and "onBeat" whether it is
+   * on a beat rather than between. Empty otherwise.
+   */
+  Q_PROPERTY(QVariantList syncBeats READ syncBeats NOTIFY syncChanged)
+  /** The anchors selected, by index. */
+  Q_PROPERTY(QVariantList selectedSyncBeats READ selectedSyncBeats NOTIFY
+                 syncChanged)
+  /** While syncing, the anchor the video is at; -1 if none. */
+  Q_PROPERTY(int activeSyncBeat READ activeSyncBeat NOTIFY
+                 activeSyncBeatChanged)
 
 public:
   explicit ScoreRecordingsModel(QObject *parent = nullptr);
@@ -103,17 +121,39 @@ public:
   Q_INVOKABLE void reportPlayer(double seconds, double rate, int state);
 
   /**
-   * Starts syncing the video being watched, or the first, with the score: as
-   * it plays, each beat is tapped (tapBeat), from where its sync left off.
-   * Clicking a bar makes it the next to tap: ahead, the video skips to it (a
-   * repeat it doesn't play); behind, the beats from it are tapped again, the
-   * video going back to just before it. Each tap is saved at once.
+   * Starts syncing the video being watched, or the first, with the score
+   * (see RecordingSyncSession): as it plays, each beat or subdivision is
+   * tapped (tapBeat), from where its sync left off. Clicking a bar makes it
+   * the next to tap, the video going back to just before it if it was
+   * anchored there already. Each change is saved at once.
    */
   Q_INVOKABLE void startSync();
   Q_INVOKABLE void tapBeat();
-  Q_INVOKABLE void undoBeat();
-  /** Ends syncing: the score then follows the video by what was tapped. */
+  /** Takes the last change back. */
+  Q_INVOKABLE void undoSync();
+  /** Ends syncing: the score then follows the video by its anchors. */
   Q_INVOKABLE void finishSync();
+  /** An anchor: its name ("bar 12, beat 3") and time in the video. */
+  Q_INVOKABLE QString syncBeatName(int beat) const;
+  Q_INVOKABLE double syncBeatSeconds(int beat) const;
+  /** How early and late it may be: just after and before its neighbours. */
+  Q_INVOKABLE double syncBeatMinimum(int beat) const;
+  Q_INVOKABLE double syncBeatMaximum(int beat) const;
+  /**
+   * Moves an anchor (seconds into the video, kept between its neighbours),
+   * saved; a moment later, the video replays from just before it.
+   */
+  Q_INVOKABLE void setSyncBeatSeconds(int beat, double seconds);
+  /** Selects an anchor; adds it to (or takes it from) the selection if `add`. */
+  Q_INVOKABLE void selectSyncBeat(int beat, bool add);
+  /**
+   * Adds the anchor after the selection (`direction` > 0) or before it; if
+   * none is selected, the one the video is at.
+   */
+  Q_INVOKABLE void extendSyncSelection(int direction);
+  /** False if nothing was selected. */
+  Q_INVOKABLE bool clearSyncSelection();
+  Q_INVOKABLE void deleteSyncSelection();
 
   QStringList performers() const;
   bool offerShown() const;
@@ -123,6 +163,11 @@ public:
   bool syncing() const;
   QString syncNext() const;
   int syncCount() const;
+  int syncPrecision() const;
+  void setSyncPrecision(int);
+  QVariantList syncBeats() const;
+  QVariantList selectedSyncBeats() const;
+  int activeSyncBeat() const { return m_activeSyncBeat; }
 
 signals:
   void recordingsChanged();
@@ -130,6 +175,9 @@ signals:
   void currentChanged();
   void thumbnailChanged();
   void syncChanged();
+  void activeSyncBeatChanged();
+  /** The video is to play from `seconds` (into the video). */
+  void replayRequested(double seconds);
   /**
    * The performer is playing, or the score is being played: the video isn't
    * to play over them.
@@ -147,10 +195,16 @@ private:
   void loadSync();
   /** Where the sync of the video being watched is kept; empty if nowhere. */
   QString syncPath() const;
-  void saveSync();
+  /** The anchors changed: saved, and told. */
+  void syncEdited();
   /** The bar clicked while syncing, as written, is the next to tap. */
   void syncFrom(int writtenTick);
-  void advanceSync();
+  /** A position, as played: "bar 12, beat 3", "bar 12, beat 3 (2/3)". */
+  QString positionName(int position) const;
+  /** The piece's seconds the video is at now, by its clock as last told. */
+  double videoSecondsNow() const;
+  /** Which beat the video is at, and when it reaches the next. */
+  void updateActiveSyncBeat();
 
   std::vector<ScoreRecording> m_recordings;
   std::optional<QString> m_pieceId;
@@ -164,12 +218,16 @@ private:
   std::chrono::steady_clock::time_point m_videoTime;
   double m_videoRate = 1.0;
   bool m_videoPlaying = false;
-  // Syncing: the beats tapped, the bars to tap them in, the next to tap.
-  bool m_syncing = false;
-  RecordingSync m_sync;
-  std::vector<PlayedBar> m_bars;
-  int m_nextBar = 0;
-  int m_nextBeat = 1;
+  /** Syncing: its anchors, what to tap next, ... */
+  std::optional<RecordingSyncSession> m_session;
+  /** The precision chosen, for each sync of the session. */
+  RecordingSyncSession::Precision m_precision =
+      RecordingSyncSession::Precision::beats;
+  int m_activeSyncBeat = -1;
+  QTimer m_activeSyncBeatTimer;
+  /** A beat moved: the video replays, once the moving pauses. */
+  QTimer m_replayTimer;
+  int m_replayBeat = -1;
   int m_current = -1;
   bool m_offerClosed = false;
   bool m_offerShown = false;
