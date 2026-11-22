@@ -35,8 +35,19 @@ public:
   {
     return m_playingChanged;
   }
+  void FollowRecording(std::shared_ptr<const RecordingTimeline>) override {}
+  void SetRecordingClock(double, std::chrono::steady_clock::time_point, double,
+                         bool) override
+  {
+  }
+  muse::async::Channel<double> RecordingSeekRequested() const override
+  {
+    return m_recordingSeekRequested;
+  }
+  bool IsFollowing() const override { return false; }
 
 private:
   muse::async::Notification m_playingChanged;
+  muse::async::Channel<double> m_recordingSeekRequested;
 };
 } // namespace dgk

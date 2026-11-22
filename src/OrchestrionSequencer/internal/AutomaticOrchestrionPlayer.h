@@ -62,6 +62,16 @@ public:
   {
     return m_playingChanged;
   }
+  void
+  FollowRecording(std::shared_ptr<const RecordingTimeline> timeline) override;
+  void SetRecordingClock(double seconds,
+                         std::chrono::steady_clock::time_point when,
+                         double rate, bool playing) override;
+  muse::async::Channel<double> RecordingSeekRequested() const override
+  {
+    return m_recordingSeekRequested;
+  }
+  bool IsFollowing() const override { return m_following; }
 
 private:
   // Main thread
@@ -86,6 +96,17 @@ private:
   void FireReplayEvent();
   /** Has the main thread stop playing, as the stop action does. */
   void DispatchStop();
+  /** Whether to follow the recording, as the main thread last decided. */
+  void UpdateFollowing();
+  void SetFollowActive(bool active);
+  void ScheduleFollowNext();
+  void FireFollowed();
+  /** The recording's seconds now, by its clock. */
+  double RecordingSecondsNow() const;
+  /** When the recording reaches `seconds`, by its clock. */
+  PlayThread::Clock::time_point RecordingTime(double seconds) const;
+  /** The user moved the score while it followed: the recording follows. */
+  void RequestRecordingSeek();
 
   const std::shared_ptr<OrchestrionSequencer> m_sequencer;
   const std::shared_ptr<PlayThread> m_thread;
@@ -93,6 +114,14 @@ private:
   // Main thread's, read on any
   std::atomic<bool> m_playing = false;
   muse::async::Notification m_playingChanged;
+  muse::async::Channel<double> m_recordingSeekRequested;
+  // Following a recording (see FollowRecording): its timeline; whether the
+  // player follows it, which counts as playing; and whether a stop asked
+  // while it played holds until the recording stops, as its clock is still
+  // told playing until it has been paused.
+  std::shared_ptr<const RecordingTimeline> m_followTimeline;
+  bool m_following = false;
+  bool m_followStopped = false;
   /**
    * The replay under way, by its serial number; 0 if none. The play thread
    * starts it, the main thread ends it — after the releases the stop sends,
@@ -128,6 +157,31 @@ private:
   PlayThread::Clock::time_point m_clockStart;
   double m_nextMs = 0.0;
   std::optional<ReplayTake> m_replayTake;
+  // Following a recording: its timeline and clock as last told, whether to
+  // follow it, whether the score is following it, and where: the step fired
+  // last and the step scheduled next.
+  struct RecordingClock
+  {
+    PlayThread::Clock::time_point when;
+    double seconds = 0.0;
+    double rate = 1.0;
+  };
+  std::shared_ptr<const RecordingTimeline> m_timeline;
+  RecordingClock m_clock;
+  bool m_followActive = false;
+  bool m_followRunning = false;
+  int m_followTick = 0;
+  std::optional<NextAutoPlayEvents> m_followNext;
+  /**
+   * Where the recording was asked to go, until its clock says it is there:
+   * the clock told meanwhile still says where it was.
+   */
+  struct RecordingSeek
+  {
+    double seconds = 0.0;
+    PlayThread::Clock::time_point until;
+  };
+  std::optional<RecordingSeek> m_recordingSeek;
   std::size_t m_replayIndex = 0;
   unsigned m_replaySerial = 0;
   PlayThread::Clock::time_point m_replayClockStart;

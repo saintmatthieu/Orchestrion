@@ -43,6 +43,8 @@ struct AutoPlayEvent
 struct NextAutoPlayEvents
 {
   int deltaTicks = 0;
+  /** When they are due, in ticks with repeats from the start of the score. */
+  int tick = 0;
   std::optional<NoteEventType> leftHandEvent;
   std::optional<NoteEventType> rightHandEvent;
   /**
@@ -91,6 +93,7 @@ enum class JumpReason
   End,      // the go-to-end action: past the last event
   Replay,   // the replay rewinds to the take's start
   Realign,  // the staves changed modes: back where the playing ones were
+  Recording, // following a recording: where it is, or goes on after a skip
 };
 
 /**

@@ -398,6 +398,8 @@ muse::async::Channel<AutoPlayEvent> OrchestrionSequencer::HandNoteEvents() const
 
 void OrchestrionSequencer::SendOutput(EventVariant event)
 {
+  if (m_silent && !std::holds_alternative<AllNotesOffEvent>(event))
+    return;
   if (LatencyTrace *const trace = LatencyTrace::instance())
     if (const auto *notes = std::get_if<NoteEvents>(&event))
     {
@@ -1135,6 +1137,23 @@ void OrchestrionSequencer::GoToTick(int tick, JumpReason reason)
        [tick](VoiceSequencer &voice) { return voice.GoToTick(tick); });
 }
 
+void OrchestrionSequencer::GoToTickWithRepeats(int withRepeats,
+                                               int withoutRepeats,
+                                               JumpReason reason)
+{
+  Jump(withoutRepeats, withRepeats, reason, [withRepeats](VoiceSequencer &voice)
+       { return voice.GoToTickWithRepeats(withRepeats); });
+}
+
+void OrchestrionSequencer::SetSilent(bool silent)
+{
+  if (m_silent.exchange(silent) == silent)
+    return;
+  // What sounds stops with the sound.
+  if (silent)
+    QueueOutput(AllNotesOffEvent{});
+}
+
 void OrchestrionSequencer::GoToEnd()
 {
   // Where the automatic player would be, done: the end of the voice that
@@ -1350,6 +1369,7 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
 
   NextAutoPlayEvents result;
   result.deltaTicks = minTick - m_autoPlayTick;
+  result.tick = minTick;
 
   // Collect all events at the minimum tick, noteoffs first.
   for (auto type : {NoteEventType::noteOff, NoteEventType::noteOn})

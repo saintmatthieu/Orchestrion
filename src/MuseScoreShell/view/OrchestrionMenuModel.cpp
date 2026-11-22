@@ -643,6 +643,10 @@ OrchestrionMenuModel::makeAdvancedMenu(bool velocityRecordingEnabled)
 
   const QList<MenuItem *> menu{
       item, noteInfoItem, tempoVizItem, makeSeparator(),
+      makeMenuItem(actionIds::syncVideo,
+                   muse::TranslatableString("appshell/menu/advanced",
+                                            "&Sync the video with the score")),
+      makeSeparator(),
       makeMenuItem(actionIds::revertToFactorySettings,
                    muse::TranslatableString("appshell/menu/advanced",
                                             "&Revert to factory settings…"))};

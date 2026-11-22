@@ -45,6 +45,8 @@ muse::ui::UiActionList makeActions(
                          muse::shortcuts::CTX_ANY),
       muse::ui::UiAction(actionIds::revertToFactorySettings, muse::ui::UiCtxAny,
                          muse::shortcuts::CTX_ANY),
+      muse::ui::UiAction(actionIds::syncVideo, muse::ui::UiCtxAny,
+                         muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-recording",
                          muse::ui::UiCtxAny, muse::shortcuts::CTX_ANY),
       muse::ui::UiAction("orchestrion-advanced-toggle-note-info",

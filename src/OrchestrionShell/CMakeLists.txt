@@ -33,6 +33,8 @@ set(MODULE_SRC
   internal/PlaybackDeviceMenuManager.h
   internal/PerformanceEndWatcher.cpp
   internal/PerformanceEndWatcher.h
+  internal/RecordingSync.cpp
+  internal/RecordingSync.h
   internal/RollsLibrary.cpp
   internal/RollsLibrary.h
   internal/YouTubeLinks.cpp
