@@ -631,6 +631,11 @@ void OrchestrionActionController::revertToFactorySettings() const
   for (const char *const settingsFile :
        {"effects.json", "dynamics.json", "shortcuts.xml"})
     QFile::remove(appData.filePath(settingsFile));
+  // Nor a setting, but Rolls' index as last fetched: fetched afresh, at
+  // once, rather than after its refresh interval.
+  for (const char *const indexFile :
+       {"rolls/index.json", "rolls/index-source.txt"})
+    QFile::remove(appData.filePath(indexFile));
   application()->restart();
 }
 
