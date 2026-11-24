@@ -398,6 +398,16 @@ bool RollsLibrary::hasUpdate(const QString &id) const
          *downloaded != current->version;
 }
 
+std::optional<QString> RollsLibrary::downloadedVersion(const QString &id) const
+{
+  ensureLoaded();
+  const auto downloaded = m_downloaded.constFind(id);
+  if (!isDownloaded(id) || downloaded == m_downloaded.constEnd() ||
+      downloaded->isEmpty())
+    return std::nullopt;
+  return *downloaded;
+}
+
 void RollsLibrary::download(const QString &id)
 {
   const RollsScore *const wanted = score(id);

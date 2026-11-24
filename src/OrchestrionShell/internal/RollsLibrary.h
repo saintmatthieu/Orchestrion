@@ -66,6 +66,7 @@ public:
   std::optional<QString> idOf(const QString &path) const override;
   bool isDownloaded(const QString &id) const override;
   bool hasUpdate(const QString &id) const override;
+  std::optional<QString> downloadedVersion(const QString &id) const override;
 
   void download(const QString &id) override;
   bool isDownloading(const QString &id) const override;
