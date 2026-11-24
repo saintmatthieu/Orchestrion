@@ -73,7 +73,9 @@ public:
   std::optional<double> TapFrom(int bar);
   /**
    * The bar as played whose part of the score as written `writtenTick` is
-   * in: of a repeat's passes, the nearest `near` (a position).
+   * in: of a repeat's passes, the nearest `near` (a position); but if the
+   * next tap is already for the start of one of them (clicked again), the
+   * pass after it, the last's being the first.
    */
   std::optional<int> BarAt(int writtenTick, int near) const;
 

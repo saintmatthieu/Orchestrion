@@ -160,18 +160,23 @@ std::optional<double> RecordingSyncSession::TapFrom(int bar)
 
 std::optional<int> RecordingSyncSession::BarAt(int writtenTick, int near) const
 {
-  std::optional<int> found;
+  // Its passes, in the order played.
+  std::vector<int> passes;
   for (int i = 0; i < static_cast<int>(m_bars.size()); ++i)
-  {
-    const PlayedBar &bar = m_bars[i];
-    if (writtenTick < bar.writtenTick ||
-        writtenTick >= bar.writtenTick + bar.length)
-      continue;
-    if (!found ||
-        std::abs(bar.tick - near) < std::abs(m_bars[*found].tick - near))
-      found = i;
-  }
-  return found;
+    if (writtenTick >= m_bars[i].writtenTick &&
+        writtenTick < m_bars[i].writtenTick + m_bars[i].length)
+      passes.push_back(i);
+  if (passes.empty())
+    return std::nullopt;
+  for (size_t p = 0; p < passes.size(); ++p)
+    if (m_next == m_bars[passes[p]].tick)
+      return passes[(p + 1) % passes.size()];
+  return *std::min_element(passes.begin(), passes.end(),
+                           [&](int a, int b)
+                           {
+                             return std::abs(m_bars[a].tick - near) <
+                                    std::abs(m_bars[b].tick - near);
+                           });
 }
 
 int RecordingSyncSession::AnchorAt(double seconds) const
