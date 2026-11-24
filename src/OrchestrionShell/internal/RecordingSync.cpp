@@ -42,6 +42,11 @@ namespace
 constexpr int kFormatVersion = 2;
 /** A whole note, in MuseScore's ticks. */
 constexpr int kWholeTicks = 4 * 480;
+/**
+ * Passes of SmoothBeats over taps by hand: their noise smoothed out, for
+ * following and for playing as the recording does.
+ */
+constexpr int kSmoothing = 2;
 
 /**
  * The time signature's beat: a dotted quarter in 6/8, 9/8 and 12/8 (three
@@ -175,9 +180,8 @@ MakeRecordingTimeline(const mu::engraving::Score &score,
   played.reserve(bars.size());
   for (const PlayedBar &bar : bars)
     played.push_back({bar.tick, bar.writtenTick, bar.length});
-  // Tapped by hand: each tap's error smoothed out.
   auto timeline = std::make_shared<const RecordingTimeline>(
-      SmoothBeats(std::move(beats)), std::move(played));
+      SmoothBeats(std::move(beats), kSmoothing), std::move(played));
   return timeline->Empty() ? nullptr : timeline;
 }
 } // namespace dgk
