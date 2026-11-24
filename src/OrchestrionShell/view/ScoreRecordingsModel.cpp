@@ -326,12 +326,10 @@ void ScoreRecordingsModel::undoSync()
 
 void ScoreRecordingsModel::syncFrom(int writtenTick)
 {
-  // Of a repeat's passes, the one nearest where the video is.
-  int near = 0;
-  if (m_activeSyncBeat >= 0)
-    near = m_session->Position(m_activeSyncBeat);
-  else if (const auto next = m_session->Next())
-    near = *next;
+  // Of a repeat's passes, the one nearest where the video is: at the anchor
+  // it is at, or before them all, at the score's start.
+  const int near =
+      m_activeSyncBeat >= 0 ? m_session->Position(m_activeSyncBeat) : 0;
   const auto bar = m_session->BarAt(writtenTick, near);
   if (!bar)
     return;

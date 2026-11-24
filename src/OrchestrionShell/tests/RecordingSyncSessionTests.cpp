@@ -176,6 +176,19 @@ TEST(RecordingSyncSessionTests, FindsTheBarClickedInTheNearestPass)
   EXPECT_FALSE(session.BarAt(10 * bar, 0).has_value());
 }
 
+TEST(RecordingSyncSessionTests, ClickingABarAgainTakesItsOtherPass)
+{
+  RecordingSyncSession session{Bars(), {}};
+  // Bar 2 as written is played as bars 2 and 4: the nearer first, then the
+  // other, then back.
+  session.TapFrom(*session.BarAt(2 * bar, 0));
+  EXPECT_EQ(session.Next(), 2 * bar);
+  session.TapFrom(*session.BarAt(2 * bar, 0));
+  EXPECT_EQ(session.Next(), 4 * bar);
+  session.TapFrom(*session.BarAt(2 * bar, 0));
+  EXPECT_EQ(session.Next(), 2 * bar);
+}
+
 TEST(RecordingSyncSessionTests, PlacesPositions)
 {
   const RecordingSyncSession session{Bars(), {}};
