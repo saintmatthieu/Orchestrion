@@ -90,10 +90,29 @@ TEST(RecordingTimelineTests, TellsThePaceAround)
   // A quarter a second, then (after the skip) half a second.
   EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(quarter / 2), 1.0 / quarter);
   EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(-quarter), 1.0 / quarter);
-  // In the part skipped, and at the last beat: the nearest pace.
+  // Where it isn't played (the part skipped, past the last beat), the bars
+  // unknown: the usual pace, not the last.
   EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(6 * quarter), 1.0 / quarter);
-  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(13 * quarter), 0.5 / quarter);
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(13 * quarter), 1.0 / quarter);
   EXPECT_FALSE(RecordingTimeline({{0, 0, quarter, 1.0}}).SecondsPerTick(0));
+}
+
+TEST(RecordingTimelineTests, TakesTheOtherPassOfWhatIsSkipped)
+{
+  // Bars A B A B of four beats, as WithSkip plays them: the first A, then
+  // the second B; the first B and the second A are skipped.
+  const int bar = 4 * quarter;
+  const RecordingTimeline timeline{
+      WithSkip().Beats(),
+      {{0, 0, bar}, {bar, bar, bar}, {2 * bar, 0, bar}, {3 * bar, bar, bar}}};
+  // The second A, as the first is played; the first B's first beat, as the
+  // second's is.
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(2 * bar + quarter), 1.0 / quarter);
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(bar), 0.5 / quarter);
+  // The rest of the first B: its other pass is played no further; and past
+  // the end. The usual pace.
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(bar + 2 * quarter), 1.0 / quarter);
+  EXPECT_DOUBLE_EQ(*timeline.SecondsPerTick(5 * bar), 1.0 / quarter);
 }
 
 TEST(RecordingTimelineTests, SmoothsTheNoiseOfTaps)
