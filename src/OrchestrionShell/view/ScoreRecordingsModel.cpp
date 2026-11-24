@@ -60,6 +60,19 @@ void ScoreRecordingsModel::load()
                                                 update();
                                               });
   rollsLibrary()->scoresChanged().onNotify(this, [this] { update(); });
+  rollsLibrary()->syncFetched().onReceive(this,
+                                          [this](const QString &pieceId)
+                                          {
+                                            // Not under the anchors being
+                                            // tapped: they are read once done.
+                                            if (pieceId != m_pieceId ||
+                                                m_session)
+                                              return;
+                                            if (m_current >= 0)
+                                              readTimeline();
+                                            else
+                                              updateTempoCurve();
+                                          });
   m_end.reachedEnd().onNotify(this,
                               [this]
                               {
@@ -143,6 +156,11 @@ void ScoreRecordingsModel::update()
   // needs the index.
   if (id)
     rollsLibrary()->refresh();
+  if (id)
+    for (const ScoreRecording &recording : m_recordings)
+      if (const auto video = youTubeVideo(recording.url);
+          video && !recording.syncUrl.isEmpty())
+        rollsLibrary()->fetchSync(*id, video->id, recording.syncUrl);
 }
 
 void ScoreRecordingsModel::watch(int index)
@@ -163,7 +181,6 @@ void ScoreRecordingsModel::watch(int index)
 
 void ScoreRecordingsModel::loadSync()
 {
-  m_timeline.reset();
   m_startSeconds = 0.0;
   // Until the player tells: at the start, not playing.
   m_videoClock = {};
@@ -173,19 +190,43 @@ void ScoreRecordingsModel::loadSync()
     m_startSeconds = video->start.toDouble();
   m_videoClock.Tell(m_startSeconds, std::chrono::steady_clock::now(), 1.0,
                     false);
+  readTimeline();
+}
+
+std::optional<RecordingSync>
+ScoreRecordingsModel::readSync(const ScoreRecording &recording,
+                               const std::vector<PlayedBar> &bars) const
+{
+  const auto video = youTubeVideo(recording.url);
+  if (!video || !m_pieceId)
+    return std::nullopt;
+  if (auto own = ReadRecordingSync(
+          RecordingSyncPath(
+              globalConfiguration()->userAppDataPath().toQString(), *m_pieceId,
+              video->id),
+          bars))
+    return own;
+  // Only while the index has it: one it no longer lists is no good.
+  if (recording.syncUrl.isEmpty())
+    return std::nullopt;
+  return ReadRecordingSync(rollsLibrary()->syncPath(*m_pieceId, video->id),
+                           bars);
+}
+
+void ScoreRecordingsModel::readTimeline()
+{
+  m_timeline.reset();
   const auto project = projectSession()->project();
-  if (video && m_pieceId && project)
+  if (m_current >= 0 && project)
   {
-    const QString path =
-        RecordingSyncPath(globalConfiguration()->userAppDataPath().toQString(),
-                          *m_pieceId, video->id);
     const mu::engraving::Score &score =
         *project->masterNotation()->masterScore();
-    if (const auto sync = ReadRecordingSync(path, PlayedBars(score)))
+    if (const auto sync = readSync(m_recordings[m_current], PlayedBars(score)))
     {
       m_timeline = MakeRecordingTimeline(score, *sync);
       if (!m_timeline)
-        LOGW() << "The sync doesn't fit the score: " << path;
+        LOGW() << "The sync doesn't fit the score: "
+               << m_recordings[m_current].url.toString();
     }
   }
   orchestrion()->player()->FollowRecording(m_timeline);
@@ -203,14 +244,9 @@ void ScoreRecordingsModel::updateTempoCurve()
         *project->masterNotation()->masterScore();
     const std::vector<PlayedBar> bars = PlayedBars(score);
     for (const ScoreRecording &recording : m_recordings)
-      if (const auto video = youTubeVideo(recording.url))
-        if (const auto sync = ReadRecordingSync(
-                RecordingSyncPath(
-                    globalConfiguration()->userAppDataPath().toQString(),
-                    *m_pieceId, video->id),
-                bars))
-          if ((curve = MakeRecordingTimeline(score, *sync)))
-            break;
+      if (const auto sync = readSync(recording, bars))
+        if ((curve = MakeRecordingTimeline(score, *sync)))
+          break;
   }
   m_tempoCurve = curve;
   orchestrion()->player()->SetTempoCurve(m_tempoCurve);
@@ -256,7 +292,9 @@ void ScoreRecordingsModel::startSync()
       PlayedBars(*project->masterNotation()->masterScore());
   if (bars.empty())
     return;
-  RecordingSync sync = ReadRecordingSync(path, bars).value_or(RecordingSync{});
+  // On from Rolls' sync, if there is one and none tapped here: saved here.
+  RecordingSync sync =
+      readSync(m_recordings[m_current], bars).value_or(RecordingSync{});
   // The version tapped on: the one downloaded, whatever the index has since.
   if (sync.scoreVersion.isEmpty())
     sync.scoreVersion =

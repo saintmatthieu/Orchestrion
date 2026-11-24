@@ -190,8 +190,16 @@ private:
   void setOfferShown(bool);
   /** Subscribes to the player, which is made again with the sequencer. */
   void subscribePlayer();
-  /** The sync of the video being watched, if it has one, for the player. */
+  /** The video being watched, from its start: its sync, for the player. */
   void loadSync();
+  /** The sync of the video being watched, if it has one, for the player. */
+  void readTimeline();
+  /**
+   * A recording's sync: as tapped here, else as fetched from Rolls; none if
+   * it has neither, or one that doesn't fit `bars`.
+   */
+  std::optional<RecordingSync>
+  readSync(const ScoreRecording &, const std::vector<PlayedBar> &bars) const;
   /**
    * The timing the score is played with, for the player: that of the video
    * being watched, if it has a sync, else of the first that has one.

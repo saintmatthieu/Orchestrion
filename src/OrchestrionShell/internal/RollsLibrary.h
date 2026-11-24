@@ -36,8 +36,9 @@ namespace dgk
 {
 /**
  * IRollsLibrary over HTTPS, with its files in `<user app data>/rolls/`:
- * `index.json` (the last index fetched, as it was), `scores/<id>.mxl` and
- * `downloaded.json`, which says what version of each score was downloaded.
+ * `index.json` (the last index fetched, as it was), `scores/<id>.mxl`,
+ * `downloaded.json`, which says what version of each score was downloaded,
+ * and `sync/<piece id>/<video id>.json`.
  *
  * The index's address can be changed with the ORCHESTRION_ROLLS_URL
  * environment variable (which --rolls-url sets), for testing against a local
@@ -71,6 +72,12 @@ public:
   void download(const QString &id) override;
   bool isDownloading(const QString &id) const override;
   muse::async::Channel<QString, bool> downloadFinished() const override;
+
+  QString syncPath(const QString &pieceId,
+                   const QString &videoId) const override;
+  void fetchSync(const QString &pieceId, const QString &videoId,
+                 const QUrl &url) override;
+  muse::async::Channel<QString> syncFetched() const override;
 
 private:
   QString directory() const;
@@ -113,9 +120,12 @@ private:
   /** When the index was last asked for, whether that worked or not. */
   QDateTime m_lastAttempt;
   QSet<QString> m_downloading;
+  /** The syncs fetched, or being, this session: their paths. */
+  QSet<QString> m_syncsFetched;
 
   muse::async::Notification m_scoresChanged;
   muse::async::Channel<bool> m_indexFetched;
   muse::async::Channel<QString, bool> m_downloadFinished;
+  muse::async::Channel<QString> m_syncFetched;
 };
 } // namespace dgk
