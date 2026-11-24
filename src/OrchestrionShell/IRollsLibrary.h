@@ -87,6 +87,11 @@ struct ScoreRecording
 {
   QString performer;
   QUrl url;
+  /**
+   * When it plays each beat of the score (a sync, as Orchestrion's sync mode
+   * saves it), on the index's site; empty if it has none.
+   */
+  QUrl syncUrl;
 };
 
 /**
@@ -151,5 +156,20 @@ public:
   virtual bool isDownloading(const QString &id) const = 0;
   /** A download ended: the score's id and whether it succeeded. */
   virtual muse::async::Channel<QString, bool> downloadFinished() const = 0;
+
+  /**
+   * Where the sync of a piece's video is kept once fetched: it stays there,
+   * for offline use, until fetched again.
+   */
+  virtual QString syncPath(const QString &pieceId,
+                           const QString &videoId) const = 0;
+  /**
+   * Fetches the sync of a piece's video into syncPath(), unless it was this
+   * session. A failure keeps what was there.
+   */
+  virtual void fetchSync(const QString &pieceId, const QString &videoId,
+                         const QUrl &url) = 0;
+  /** A sync was fetched, changed: the piece's id. */
+  virtual muse::async::Channel<QString> syncFetched() const = 0;
 };
 } // namespace dgk

@@ -247,7 +247,16 @@ bool RollsLibrary::parseIndex(const QByteArray &json,
       if (performer.isEmpty() || !url.isValid() || url.scheme() != "https" ||
           url.host().isEmpty())
         continue;
-      recordings[piece.key()].push_back({performer, url});
+      // Fetched by the app: only from the index's site.
+      QUrl syncUrl;
+      if (const QString sync = entry.value("sync").toString(); !sync.isEmpty())
+        if (const QUrl resolved = indexUrl.resolved(QUrl{sync});
+            resolved.scheme() == indexUrl.scheme() &&
+            resolved.host() == indexUrl.host() &&
+            resolved.port() == indexUrl.port() &&
+            resolved.path().endsWith(".json"))
+          syncUrl = resolved;
+      recordings[piece.key()].push_back({performer, url, syncUrl});
     }
   m_recordings = std::move(recordings);
   return true;
@@ -451,5 +460,50 @@ bool RollsLibrary::isDownloading(const QString &id) const
 muse::async::Channel<QString, bool> RollsLibrary::downloadFinished() const
 {
   return m_downloadFinished;
+}
+
+QString RollsLibrary::syncPath(const QString &pieceId,
+                               const QString &videoId) const
+{
+  return directory() + "/sync/" + pieceId + '/' + videoId + ".json";
+}
+
+void RollsLibrary::fetchSync(const QString &pieceId, const QString &videoId,
+                             const QUrl &url)
+{
+  // Both name the file: nothing that would put it elsewhere.
+  static const QRegularExpression video{"^[A-Za-z0-9_-]{11}$"};
+  const QString path = syncPath(pieceId, videoId);
+  if (!url.isValid() || !isRollsId(pieceId) ||
+      !video.match(videoId).hasMatch() || m_syncsFetched.contains(path))
+    return;
+  m_syncsFetched.insert(path);
+  QNetworkReply *const reply = network().get(makeRequest(url));
+  QObject::connect(reply, &QNetworkReply::finished,
+                   [this, reply, pieceId, path]
+                   {
+                     reply->deleteLater();
+                     if (reply->error() != QNetworkReply::NoError)
+                     {
+                       // Offline, most likely: the one fetched before, if any,
+                       // stays.
+                       LOGI() << "Could not fetch the sync " << path << ": "
+                              << reply->errorString().toStdString();
+                       return;
+                     }
+                     const QByteArray data = reply->readAll();
+                     QByteArray before;
+                     if (QFile file{path}; file.open(QIODevice::ReadOnly))
+                       before = file.readAll();
+                     if (data.isEmpty() || data == before)
+                       return;
+                     if (writeFile(path, data))
+                       m_syncFetched.send(pieceId);
+                   });
+}
+
+muse::async::Channel<QString> RollsLibrary::syncFetched() const
+{
+  return m_syncFetched;
 }
 } // namespace dgk
