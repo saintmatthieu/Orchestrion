@@ -55,26 +55,6 @@ std::vector<RecordingBeat> SmoothBeats(std::vector<RecordingBeat> beats,
   return beats;
 }
 
-RecordingTimeline::RecordingTimeline(std::vector<RecordingBeat> beats)
-    : m_beats{std::move(beats)}
-{
-  for (size_t i = 1; i < m_beats.size(); ++i)
-    if (m_beats[i].seconds <= m_beats[i - 1].seconds ||
-        m_beats[i].tick <= m_beats[i - 1].tick)
-    {
-      m_beats.clear();
-      return;
-    }
-}
-
-int RecordingTimeline::ReachedTicks(size_t i) const
-{
-  if (i + 1 < m_beats.size() && !m_beats[i + 1].afterSkip)
-    return m_beats[i + 1].tick - m_beats[i].tick;
-  // Before a skip, or at the end: the beat itself.
-  return m_beats[i].beatTicks;
-}
-
 namespace
 {
 /** The pace from beat `i` to the next, if they are played one after the other.
@@ -85,6 +65,20 @@ std::optional<double> Pace(const std::vector<RecordingBeat> &beats, size_t i)
     return std::nullopt;
   return (beats[i + 1].seconds - beats[i].seconds) /
          (beats[i + 1].tick - beats[i].tick);
+}
+
+/** The median of the paces between beats played one after the other. */
+std::optional<double> MedianPace(const std::vector<RecordingBeat> &beats)
+{
+  std::vector<double> paces;
+  for (size_t i = 0; i < beats.size(); ++i)
+    if (const auto pace = Pace(beats, i))
+      paces.push_back(*pace);
+  if (paces.empty())
+    return std::nullopt;
+  const auto middle = paces.begin() + paces.size() / 2;
+  std::nth_element(paces.begin(), middle, paces.end());
+  return *middle;
 }
 
 /** How long the music played from beat `i` lasts until the next beat. */
@@ -99,6 +93,28 @@ double SegmentSeconds(const std::vector<RecordingBeat> &beats, size_t i)
   return kDefaultBeatSeconds;
 }
 } // namespace
+
+RecordingTimeline::RecordingTimeline(std::vector<RecordingBeat> beats,
+                                     std::vector<RecordingBar> bars)
+    : m_beats{std::move(beats)}, m_bars{std::move(bars)}
+{
+  for (size_t i = 1; i < m_beats.size(); ++i)
+    if (m_beats[i].seconds <= m_beats[i - 1].seconds ||
+        m_beats[i].tick <= m_beats[i - 1].tick)
+    {
+      m_beats.clear();
+      return;
+    }
+  m_usualPace = MedianPace(m_beats);
+}
+
+int RecordingTimeline::ReachedTicks(size_t i) const
+{
+  if (i + 1 < m_beats.size() && !m_beats[i + 1].afterSkip)
+    return m_beats[i + 1].tick - m_beats[i].tick;
+  // Before a skip, or at the end: the beat itself.
+  return m_beats[i].beatTicks;
+}
 
 std::optional<RecordingTimeline::Position>
 RecordingTimeline::PositionAt(double seconds) const
@@ -146,21 +162,43 @@ std::optional<double> RecordingTimeline::SecondsAt(int tick) const
          SegmentSeconds(m_beats, i) * (tick - beat.tick) / reached;
 }
 
-std::optional<double> RecordingTimeline::SecondsPerTick(int tick) const
+std::optional<double> RecordingTimeline::PlayedPace(int tick) const
 {
   const auto after = std::upper_bound(m_beats.begin(), m_beats.end(), tick,
                                       [](int t, const RecordingBeat &beat)
                                       { return t < beat.tick; });
-  const auto at = static_cast<size_t>(
-      std::max<std::ptrdiff_t>(0, after - m_beats.begin() - 1));
-  // Outwards from there, before first, the first two beats played one
-  // after the other.
-  for (size_t distance = 0; distance < m_beats.size(); ++distance)
-    for (const auto i : {at - distance, at + distance})
-      if (i < m_beats.size())
-        if (const auto pace = Pace(m_beats, i))
-          return pace;
-  return std::nullopt;
+  if (after == m_beats.begin() || after == m_beats.end())
+    return std::nullopt;
+  return Pace(m_beats, static_cast<size_t>(after - m_beats.begin() - 1));
+}
+
+std::optional<double> RecordingTimeline::SecondsPerTick(int tick) const
+{
+  if (const auto pace = PlayedPace(tick))
+    return pace;
+  // The same place in the score as written, in the passes played: their
+  // pace, on average.
+  const auto bar =
+      std::find_if(m_bars.begin(), m_bars.end(), [tick](const RecordingBar &b)
+                   { return tick >= b.tick && tick < b.tick + b.length; });
+  if (bar != m_bars.end())
+  {
+    const int written = bar->writtenTick + tick - bar->tick;
+    double sum = 0.0;
+    int passes = 0;
+    for (const RecordingBar &other : m_bars)
+      if (&other != &*bar && written >= other.writtenTick &&
+          written < other.writtenTick + other.length)
+        if (const auto pace =
+                PlayedPace(other.tick + written - other.writtenTick))
+        {
+          sum += *pace;
+          ++passes;
+        }
+    if (passes > 0)
+      return sum / passes;
+  }
+  return m_usualPace;
 }
 
 const RecordingBeat *RecordingTimeline::NextPlayed(int tick) const

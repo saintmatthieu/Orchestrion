@@ -41,6 +41,14 @@ struct RecordingBeat
   bool afterSkip = false;
 };
 
+/** A bar of the score as played: where it is, with repeats and as written. */
+struct RecordingBar
+{
+  int tick = 0;
+  int writtenTick = 0;
+  int length = 0;
+};
+
 /**
  * The beats with the noise of their timing (beats tapped by hand, say)
  * smoothed out: each moved a third of the way to where its neighbours,
@@ -63,9 +71,11 @@ public:
 
   /**
    * `beats` in the order the recording plays them: their seconds and ticks
-   * rising. Empty if they aren't.
+   * rising. Empty if they aren't. `bars`, the score's as played, tell
+   * SecondsPerTick the other passes of a repeat.
    */
-  explicit RecordingTimeline(std::vector<RecordingBeat> beats);
+  explicit RecordingTimeline(std::vector<RecordingBeat> beats,
+                             std::vector<RecordingBar> bars = {});
 
   bool Empty() const { return m_beats.empty(); }
   const std::vector<RecordingBeat> &Beats() const { return m_beats; }
@@ -86,16 +96,22 @@ public:
   const RecordingBeat *NextPlayed(int tick) const;
 
   /**
-   * How fast the recording plays the score around `tick`, in seconds per
-   * tick: between the beats around it, else the nearest two played one
-   * after the other. None if no two are.
+   * How fast the recording plays the score at `tick`, in seconds per tick:
+   * between the beats around it; where it doesn't play it (a repeat it
+   * skips, before its start, past its end), as it plays another pass of the
+   * same bar, else at its usual pace (the median), not slowed by its
+   * ritardandi. None if no two beats are played one after the other.
    */
   std::optional<double> SecondsPerTick(int tick) const;
 
 private:
   /** How far the music played from beat `i` reaches before the next beat. */
   int ReachedTicks(size_t i) const;
+  /** The pace between the beats played around `tick`, if it is played. */
+  std::optional<double> PlayedPace(int tick) const;
 
   std::vector<RecordingBeat> m_beats;
+  std::vector<RecordingBar> m_bars;
+  std::optional<double> m_usualPace;
 };
 } // namespace dgk

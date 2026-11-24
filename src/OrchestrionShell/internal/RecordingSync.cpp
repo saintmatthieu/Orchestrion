@@ -171,9 +171,13 @@ MakeRecordingTimeline(const mu::engraving::Score &score,
                      previousBar && point.bar > *previousBar + 1});
     previousBar = point.bar;
   }
+  std::vector<RecordingBar> played;
+  played.reserve(bars.size());
+  for (const PlayedBar &bar : bars)
+    played.push_back({bar.tick, bar.writtenTick, bar.length});
   // Tapped by hand: each tap's error smoothed out.
-  auto timeline =
-      std::make_shared<const RecordingTimeline>(SmoothBeats(std::move(beats)));
+  auto timeline = std::make_shared<const RecordingTimeline>(
+      SmoothBeats(std::move(beats)), std::move(played));
   return timeline->Empty() ? nullptr : timeline;
 }
 } // namespace dgk
