@@ -140,6 +140,8 @@ public:
   virtual bool isDownloaded(const QString &id) const = 0;
   /** Whether the index has a newer version than the one downloaded. */
   virtual bool hasUpdate(const QString &id) const = 0;
+  /** The version downloaded, if the score is and it is known. */
+  virtual std::optional<QString> downloadedVersion(const QString &id) const = 0;
 
   /**
    * Downloads the score's current version, replacing the one there is, if

@@ -257,10 +257,10 @@ void ScoreRecordingsModel::startSync()
   if (bars.empty())
     return;
   RecordingSync sync = ReadRecordingSync(path, bars).value_or(RecordingSync{});
+  // The version tapped on: the one downloaded, whatever the index has since.
   if (sync.scoreVersion.isEmpty())
-    if (const RollsScore *score = rollsLibrary()->score(*m_pieceId);
-        score && !rollsLibrary()->hasUpdate(*m_pieceId))
-      sync.scoreVersion = score->version;
+    sync.scoreVersion =
+        rollsLibrary()->downloadedVersion(*m_pieceId).value_or(QString{});
   m_session.emplace(std::move(bars), std::move(sync));
   m_leastTapDelayMs.reset();
   // What is tapped is followed once done, not while tapping.
