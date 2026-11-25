@@ -503,6 +503,8 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
   std::array<std::vector<ScoreEvent>, 2> staffEvents{
       GetScoreEvents({&rightHand}), GetScoreEvents({&leftHand})};
   const double nominalTicksPerMs = NominalTicksPerMs({&rightHand, &leftHand});
+  // What a performance (a recording, transcribed) is aligned to.
+  std::vector<ScoreEvent> scoreEvents = GetScoreEvents({&rightHand, &leftHand});
 
   // Copy the staffs before MakeHand moves them.
   Staff rightHandCopy = rightHand;
@@ -520,7 +522,7 @@ NotationProducts OrchestrionSequencerFactory::CreateSequencer(
       std::move(pedalSequence), std::move(staffEvents),
       std::array<std::vector<ScoreNote>, 2>{GetScoreNotes({&rightHandCopy}),
                                             GetScoreNotes({&leftHandCopy})},
-      nominalTicksPerMs));
+      std::move(scoreEvents), nominalTicksPerMs));
 
   return {sequencer, modifiableItems, std::move(rightHandCopy),
           std::move(leftHandCopy)};

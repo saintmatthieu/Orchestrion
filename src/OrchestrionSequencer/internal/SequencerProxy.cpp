@@ -265,4 +265,24 @@ IOrchestrionSequencer::KeyRole SequencerProxy::RoleOfKey(int pitch) const
       OrchestrionSequencer::Modes{staffModes()->mode(0), staffModes()->mode(1)},
       pitch);
 }
+
+std::shared_ptr<const RecordingTimeline>
+SequencerProxy::PlayPerformance(std::vector<PerformedNote> notes)
+{
+  // On the main thread: the score's events don't change.
+  PerformancePlayback playback;
+  if (!notes.empty())
+  {
+    std::sort(notes.begin(), notes.end(),
+              [](const PerformedNote &a, const PerformedNote &b)
+              { return a.onsetMs < b.onsetMs; });
+    const std::vector<ScoreEvent> &events = m_sequencer->ScoreEvents();
+    playback = MakePerformancePlayback(
+        events, notes,
+        AlignPerformance(events, notes, m_sequencer->NominalTicksPerMs()));
+  }
+  Post([velocities = playback.velocities](OrchestrionSequencer &sequencer)
+       { sequencer.SetPerformedVelocities(velocities); });
+  return playback.timeline;
+}
 } // namespace dgk

@@ -26,13 +26,14 @@
 #include "PositionEstimation/PositionTracker.h"
 #include "internal/FollowerThread.h"
 #include "internal/OrnamentSchedule.h"
+#include "internal/PerformancePlayback.h"
 #include "internal/PlayThread.h"
 #include "internal/ScoreEvents.h"
 #include "internal/VoiceSequencer.h"
 
 #include <array>
-#include <atomic>
 #include <async/asyncable.h>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <deque>
@@ -78,14 +79,22 @@ public:
   /**
    * `staffEvents` are what the Notes mode follows the performer along, staff
    * by staff — right hand first — (see GetScoreEvents), at first at
-   * `nominalTicksPerMs`.
+   * `nominalTicksPerMs`; `scoreEvents`, both staves', what a performance is
+   * aligned to.
    */
   OrchestrionSequencer(PlayThread &, InstrumentIndex, HandVoices rightHand,
                        HandVoices leftHand, PedalSequence,
                        std::array<std::vector<ScoreEvent>, 2> staffEvents,
                        std::array<std::vector<ScoreNote>, 2> staffNotes,
+                       std::vector<ScoreEvent> scoreEvents,
                        double nominalTicksPerMs);
   ~OrchestrionSequencer();
+
+  /** Both staves' events; any thread: they don't change. */
+  const std::vector<ScoreEvent> &ScoreEvents() const { return m_scoreEvents; }
+  double NominalTicksPerMs() const { return m_nominalTicksPerMs; }
+  /** How loud the notes of a performance played were; null for none. */
+  void SetPerformedVelocities(std::shared_ptr<const PerformedVelocities>);
 
   /**
    * A key the performer played. It goes to the staff it is for, going by the
@@ -616,6 +625,13 @@ private:
 
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
   const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;
+  const std::vector<ScoreEvent> m_scoreEvents;
+  std::shared_ptr<const PerformedVelocities> m_performedVelocities;
+  /**
+   * Each hand's loudest note performed at its last strike that had one
+   * ([0]=right, [1]=left): for a strike none of whose notes was.
+   */
+  std::array<std::optional<float>, 2> m_performedLoudest;
   /** Each staff's notes, for the automatic player ([0]=right, [1]=left). */
   const std::array<std::vector<ScoreNote>, 2> m_staffNotes;
   struct AutoPlayNote

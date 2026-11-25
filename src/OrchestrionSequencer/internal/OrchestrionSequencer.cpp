@@ -223,7 +223,8 @@ OrchestrionSequencer::OrchestrionSequencer(
     PlayThread &playThread, InstrumentIndex instrument, HandVoices rightHand,
     HandVoices leftHand, PedalSequence pedalSequence,
     std::array<std::vector<ScoreEvent>, 2> staffEvents,
-    std::array<std::vector<ScoreNote>, 2> staffNotes, double nominalTicksPerMs)
+    std::array<std::vector<ScoreNote>, 2> staffNotes,
+    std::vector<ScoreEvent> scoreEvents, double nominalTicksPerMs)
     : m_instrument{std::move(instrument)},
       m_rightHand{std::move(rightHand), std::nullopt},
       m_leftHand{std::move(leftHand), std::nullopt},
@@ -245,6 +246,7 @@ OrchestrionSequencer::OrchestrionSequencer(
                         : mu::notation::LoopBoundaries{}},
       m_staffEvents{std::move(staffEvents)},
       m_staffNotes{std::move(staffNotes)},
+      m_scoreEvents{std::move(scoreEvents)},
       m_staffRanges{PitchRange(m_staffEvents[0]), PitchRange(m_staffEvents[1])},
       m_nominalTicksPerMs{nominalTicksPerMs},
       m_follower{playThread, [this](const FollowerThread::Followed &followed)
@@ -338,6 +340,26 @@ void OrchestrionSequencer::SendTransitions(
   if (transitions.empty())
     return;
 
+  // A performance played: each note as loud as performed, relative to the
+  // loudest of the hand's notes struck here, which the gesture's velocity
+  // stands for. Those not performed (missed by the transcription), as the
+  // quietest.
+  const PerformedVelocities *const performed = m_performedVelocities.get();
+  std::optional<float> loudest, quietest;
+  if (performed)
+    for (const auto &[track, transition] : transitions)
+      if (const auto present = GetPresentChord(transition))
+        for (const int pitch : present->GetPitches())
+          if (const auto v =
+                  performed->At(present->GetBeginTick().withRepeats, pitch))
+          {
+            loudest = std::max(loudest.value_or(*v), *v);
+            quietest = std::min(quietest.value_or(*v), *v);
+          }
+  std::optional<float> &handLoudest = m_performedLoudest[isLeftHand ? 1 : 0];
+  if (loudest)
+    handLoudest = loudest;
+
   // The arpeggiated chords' notes, of every voice struck, are rolled
   // together: an arpeggio may span voices and staves.
   NoteEvents rolled;
@@ -357,6 +379,8 @@ void OrchestrionSequencer::SendTransitions(
         if (present->GetVelocity() > 0.f)
           // A pre-recorded velocity takes precedence over everything else.
           velocity = present->GetVelocity();
+        else if (performed && handLoudest)
+          velocity = handLoudest;
         else
         {
           // Otherwise derive the base loudness from the score's dynamic
@@ -392,10 +416,27 @@ void OrchestrionSequencer::SendTransitions(
     std::optional<RollDirection> arpeggio;
     if (present && !ornamented)
       arpeggio = present->GetRoll();
+    // Not a velocity recorded on the chord: that is the performer's own.
+    const bool asPerformed =
+        performed && handLoudest && present &&
+        (controllerVelocity.has_value() || present->GetVelocity() <= 0.f);
     NoteEvents voiceOutput =
         ProceedOnTrack(track, past, std::move(strike), velocity.value_or(0.f));
     if (voiceOutput.empty())
       continue;
+    if (asPerformed)
+    {
+      const int tick = present->GetBeginTick().withRepeats;
+      const float reference = loudest.value_or(*handLoudest);
+      const float unknown = quietest.value_or(reference);
+      for (NoteEvent &event : voiceOutput)
+        if (event.type == NoteEventType::noteOn)
+          event.velocity = std::clamp(
+              event.velocity *
+                  performed->At(tick, event.pitch).value_or(unknown) /
+                  reference,
+              0.f, 1.f);
+    }
     if (arpeggio)
     {
       roll = arpeggio;
@@ -409,8 +450,10 @@ void OrchestrionSequencer::SendTransitions(
       continue;
     }
     // An ornament's first note goes out unspread: the next follows closely
-    // and must find it sounding.
-    PostNoteEvents(std::move(voiceOutput), /*strum=*/!ornamented);
+    // and must find it sounding. Nor is a performance's humanized: it is
+    // human.
+    PostNoteEvents(std::move(voiceOutput),
+                   /*strum=*/!ornamented && !asPerformed);
   }
 
   if (!rolled.empty())
@@ -424,6 +467,13 @@ void OrchestrionSequencer::SendTransitions(
   }
 
   PublishTransitions(transitions);
+}
+
+void OrchestrionSequencer::SetPerformedVelocities(
+    std::shared_ptr<const PerformedVelocities> velocities)
+{
+  m_performedVelocities = std::move(velocities);
+  m_performedLoudest = {};
 }
 
 void OrchestrionSequencer::PublishTransitions(

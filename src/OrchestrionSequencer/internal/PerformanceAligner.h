@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "Performance.h"
 #include "PerformanceFollower.h"
 
 #include <cstddef>
@@ -26,15 +27,6 @@
 
 namespace dgk
 {
-/** A note of a recorded performance, as transcribed. */
-struct PerformedNote
-{
-  double onsetMs = 0.0;
-  double offsetMs = 0.0;
-  int pitch = 0;
-  int velocity = 0;
-};
-
 /** Where in a performance each event of the score was played. */
 struct PerformanceAlignment
 {

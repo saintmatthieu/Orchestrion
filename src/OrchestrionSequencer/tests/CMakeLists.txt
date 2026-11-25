@@ -10,6 +10,8 @@ set(MODULE_TEST_SRC
   ${CMAKE_CURRENT_LIST_DIR}/../internal/RecordingTimeline.cpp
   ${CMAKE_CURRENT_LIST_DIR}/PerformanceAlignerTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceAligner.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/PerformancePlaybackTests.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformancePlayback.cpp
   ${CMAKE_CURRENT_LIST_DIR}/PerformanceFollowerTests.cpp
   ${CMAKE_CURRENT_LIST_DIR}/../internal/PerformanceFollower.cpp
   ${CMAKE_CURRENT_LIST_DIR}/ScoreEventsTests.cpp

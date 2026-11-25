@@ -37,6 +37,8 @@ set(MODULE_SRC
   internal/RecordingSync.h
   internal/RecordingSyncSession.cpp
   internal/RecordingSyncSession.h
+  internal/Transcription.cpp
+  internal/Transcription.h
   internal/VideoClock.cpp
   internal/VideoClock.h
   internal/RollsLibrary.cpp

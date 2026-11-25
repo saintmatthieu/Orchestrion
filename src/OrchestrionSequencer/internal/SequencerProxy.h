@@ -83,6 +83,8 @@ public:
   void GoToPrevNoteonTick() override;
   void GoToNextNoteonTick() override;
   KeyRole RoleOfKey(int pitch) const override;
+  std::shared_ptr<const RecordingTimeline>
+  PlayPerformance(std::vector<PerformedNote> notes) override;
 
 private:
   /** Runs `task` on the sequencer, on the play thread. */

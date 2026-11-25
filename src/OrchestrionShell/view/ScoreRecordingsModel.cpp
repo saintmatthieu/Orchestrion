@@ -20,6 +20,7 @@
 
 #include "MuseScoreShell/OrchestrionActionIds.h"
 #include "OrchestrionShell/internal/RecordingSync.h"
+#include "OrchestrionShell/internal/Transcription.h"
 #include "OrchestrionShell/internal/YouTubeLinks.h"
 
 #include <engraving/dom/masterscore.h>
@@ -95,7 +96,8 @@ void ScoreRecordingsModel::load()
       {
         subscribePlayer();
         orchestrion()->player()->FollowRecording(m_timeline);
-        orchestrion()->player()->SetTempoCurve(m_tempoCurve);
+        // Aligned to the score as the new sequencer has it.
+        playPerformance();
       });
   subscribePlayer();
   update();
@@ -151,7 +153,13 @@ void ScoreRecordingsModel::update()
     setOfferShown(false);
   if (m_current >= static_cast<int>(m_recordings.size()))
     stopWatching();
-  updateTempoCurve();
+  m_performance =
+      id ? ReadTranscription(
+               TranscriptionPath(
+                   globalConfiguration()->userAppDataPath().toQString(), *id))
+               .value_or(std::vector<PerformedNote>{})
+         : std::vector<PerformedNote>{};
+  playPerformance();
   // Only for a piece that may have some: nobody playing their own score
   // needs the index.
   if (id)
@@ -234,9 +242,20 @@ void ScoreRecordingsModel::readTimeline()
   updateTempoCurve();
 }
 
+void ScoreRecordingsModel::playPerformance()
+{
+  const IOrchestrionSequencerPtr sequencer = orchestrion()->sequencer();
+  m_performanceCurve =
+      sequencer ? sequencer->PlayPerformance(m_performance) : nullptr;
+  if (!m_performance.empty() && !m_performanceCurve)
+    LOGW() << "The performance doesn't fit the score";
+  updateTempoCurve();
+}
+
 void ScoreRecordingsModel::updateTempoCurve()
 {
-  std::shared_ptr<const RecordingTimeline> curve = m_timeline;
+  std::shared_ptr<const RecordingTimeline> curve =
+      m_performanceCurve ? m_performanceCurve : m_timeline;
   const auto project = projectSession()->project();
   if (!curve && m_pieceId && project)
   {

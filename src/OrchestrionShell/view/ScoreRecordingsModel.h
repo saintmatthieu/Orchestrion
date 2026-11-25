@@ -201,10 +201,13 @@ private:
   std::optional<RecordingSync>
   readSync(const ScoreRecording &, const std::vector<PlayedBar> &bars) const;
   /**
-   * The timing the score is played with, for the player: that of the video
-   * being watched, if it has a sync, else of the first that has one.
+   * The timing the score is played with, for the player: the performance's,
+   * if one is played, else that of the video being watched, if it has a
+   * sync, else of the first that has one.
    */
   void updateTempoCurve();
+  /** The piece's performance (its transcription), for the sequencer. */
+  void playPerformance();
   /** Where the sync of the video being watched is kept; empty if nowhere. */
   QString syncPath() const;
   /** The anchors changed: saved, and told. */
@@ -226,6 +229,9 @@ private:
   double m_startSeconds = 0.0;
   std::shared_ptr<const RecordingTimeline> m_timeline;
   std::shared_ptr<const RecordingTimeline> m_tempoCurve;
+  /** The piece's performance, if it has one, as transcribed. */
+  std::vector<PerformedNote> m_performance;
+  std::shared_ptr<const RecordingTimeline> m_performanceCurve;
   /** Whether the player followed the video, as last told. */
   bool m_following = false;
   /** Where the video is, from what its player tells. */

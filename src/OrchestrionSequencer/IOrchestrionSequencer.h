@@ -20,6 +20,8 @@
 
 #include "GestureControllers/IGestureInput.h"
 #include "OrchestrionTypes.h"
+#include "Performance.h"
+#include "RecordingTimeline.h"
 #include <async/channel.h>
 #include <async/notification.h>
 #include <chrono>
@@ -85,14 +87,14 @@ struct PerformedTempo
 
 enum class JumpReason
 {
-  Rewind,   // the rewind action, or a fresh sequencer starting at the top
-  Step,     // the previous/next-note actions
-  Click,    // the user clicked an element on the page
-  LoopWrap, // the loop's end was reached: back to its start
-  ScoreEnd, // the last event was played: back to the start
-  End,      // the go-to-end action: past the last event
-  Replay,   // the replay rewinds to the take's start
-  Realign,  // the staves changed modes: back where the playing ones were
+  Rewind,    // the rewind action, or a fresh sequencer starting at the top
+  Step,      // the previous/next-note actions
+  Click,     // the user clicked an element on the page
+  LoopWrap,  // the loop's end was reached: back to its start
+  ScoreEnd,  // the last event was played: back to the start
+  End,       // the go-to-end action: past the last event
+  Replay,    // the replay rewinds to the take's start
+  Realign,   // the staves changed modes: back where the playing ones were
   Recording, // following a recording: where it is, or goes on after a skip
 };
 
@@ -184,6 +186,17 @@ public:
     notes,
   };
   virtual KeyRole RoleOfKey(int pitch) const = 0;
+
+  /**
+   * Plays the score as `notes` (a recording, transcribed) were performed:
+   * each note as loud as it was, the loudest of a hand's strike as loud as
+   * the gesture (the automatic player's, as performed). None: as the score
+   * says. Returns when the performance played each part of the score, for
+   * the automatic player (IOrchestrionPlayer::SetTempoCurve); null if it
+   * plays none of it.
+   */
+  virtual std::shared_ptr<const RecordingTimeline>
+  PlayPerformance(std::vector<PerformedNote> notes) = 0;
 };
 
 using IOrchestrionSequencerPtr = std::shared_ptr<IOrchestrionSequencer>;

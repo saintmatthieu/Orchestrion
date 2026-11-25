@@ -40,6 +40,9 @@ set(MODULE_SRC
     internal/RecordingTimeline.cpp
     internal/PerformanceAligner.cpp
     internal/PerformanceAligner.h
+    internal/PerformancePlayback.cpp
+    internal/PerformancePlayback.h
+    Performance.h
     internal/PerformanceFollower.cpp
     internal/PerformanceFollower.h
     internal/PlayThread.cpp
