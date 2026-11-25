@@ -91,6 +91,9 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
                                              ThreadMembers<EventType> &m,
                                              std::function<void(EventType)> cb)
 {
+  m.handle = cb;
+  if (!offlineRendering.audioPath.empty())
+    return {};
   return std::thread{
       [&, cb = cb]
       {
@@ -123,6 +126,53 @@ std::thread OrchestrionSequencer::MakeThread(OrchestrionSequencer &self,
           lock.lock();
         }
       }};
+}
+
+template <typename EventType>
+void OrchestrionSequencer::Wake(ThreadMembers<EventType> &m)
+{
+  if (offlineRendering.audioPath.empty())
+  {
+    m.cv.notify_one();
+    return;
+  }
+  std::scoped_lock lock{m.mutex};
+  ArmOffline(m);
+}
+
+template <typename EventType>
+void OrchestrionSequencer::ArmOffline(ThreadMembers<EventType> &m)
+{
+  if (m.queue.empty())
+    return;
+  // Untimed: now.
+  const auto due =
+      m.queue.front().time.value_or(std::chrono::steady_clock::time_point{});
+  if (m.armed && *m.armed <= due)
+    return;
+  m.armed = due;
+  m_outputThread->PostAt(due, [this, &m, due] { HandleDueOffline(m, due); });
+}
+
+template <typename EventType>
+void OrchestrionSequencer::HandleDueOffline(
+    ThreadMembers<EventType> &m, std::chrono::steady_clock::time_point armedAt)
+{
+  std::unique_lock lock{m.mutex};
+  if (m.armed == armedAt)
+    m.armed.reset();
+  const auto now = std::chrono::steady_clock::now();
+  while (!m.queue.empty() &&
+         (!m.queue.front().time || *m.queue.front().time <= now))
+  {
+    auto entry = std::move(m.queue.front());
+    m.queue.pop_front();
+    lock.unlock();
+    m.handle(std::move(entry.event));
+    lock.lock();
+  }
+  // What was queued meanwhile (an ornament's next step).
+  ArmOffline(m);
 }
 
 namespace
@@ -550,8 +600,10 @@ OrchestrionSequencer::~OrchestrionSequencer()
   m_finished = true;
   m_pedalThreadMembers.cv.notify_one();
   m_ornamentThreadMembers.cv.notify_one();
-  m_pedalThread.join();
-  m_ornamentThread.join();
+  if (m_pedalThread.joinable())
+    m_pedalThread.join();
+  if (m_ornamentThread.joinable())
+    m_ornamentThread.join();
   // Last: the others send through it. What it had yet to send is dropped.
   m_outputThread.reset();
 }
@@ -1515,7 +1567,7 @@ void OrchestrionSequencer::PostPedalEvent(PedalEvent event, bool byFoot)
           std::move(event)});
     }
   }
-  m.cv.notify_one();
+  Wake(m);
   m_pedalDown = event.on;
 }
 
@@ -1582,7 +1634,7 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum,
       m.queue.emplace_back(
           QueueEntry<EventVariant>{std::nullopt, std::move(releases)});
       lock.unlock();
-      m.cv.notify_one();
+      Wake(m);
     }
   }
   for (const auto &event : events)
@@ -1836,7 +1888,7 @@ OrchestrionSequencer::ProceedOnTrack(TrackIndex track, const IChord *past,
       AppendNoteons(events, noteons, track.track(), noteonVelocity);
   }
   if (queued)
-    m.cv.notify_one();
+    Wake(m);
   return events;
 }
 
@@ -1919,7 +1971,7 @@ void OrchestrionSequencer::CancelOrnaments()
     m.queue.clear();
   }
   // The thread may be waiting on an entry just removed.
-  m.cv.notify_one();
+  Wake(m);
   if (!noteoffs.empty())
     PostNoteEvents(std::move(noteoffs));
 }

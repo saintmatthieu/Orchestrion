@@ -283,12 +283,33 @@ private:
     std::deque<QueueEntry<EventType>> queue;
     std::mutex mutex;
     std::condition_variable cv;
+    /** What is done with each entry once due. */
+    std::function<void(EventType)> handle;
+    /** Rendering offline: when the queue is next looked at, if it is. */
+    std::optional<std::chrono::steady_clock::time_point> armed;
   };
 
+  /**
+   * The thread that handles the entries of `members` as they fall due; none
+   * rendering offline, when time is virtual on the main thread only: the
+   * output thread (the main thread then) handles them (see Wake).
+   */
   template <typename EventType>
   static std::thread MakeThread(OrchestrionSequencer &self,
                                 ThreadMembers<EventType> &members,
                                 std::function<void(EventType)> cb);
+  /** Entries were queued in `members`: to be handled once due. */
+  template <typename EventType> void Wake(ThreadMembers<EventType> &members);
+  /**
+   * Rendering offline, under the lock of `members`: looks at its queue again
+   * when its first entry falls due.
+   */
+  template <typename EventType>
+  void ArmOffline(ThreadMembers<EventType> &members);
+  /** Rendering offline: handles the entries of `members` that are due. */
+  template <typename EventType>
+  void HandleDueOffline(ThreadMembers<EventType> &members,
+                        std::chrono::steady_clock::time_point armedAt);
 
   /**
    * The gesture of `key` on the hand: a press, or the release of the key the
