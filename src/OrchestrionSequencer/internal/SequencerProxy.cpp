@@ -281,8 +281,8 @@ SequencerProxy::PlayPerformance(std::vector<PerformedNote> notes)
         events, notes,
         AlignPerformance(events, notes, m_sequencer->NominalTicksPerMs()));
   }
-  Post([velocities = playback.velocities](OrchestrionSequencer &sequencer)
-       { sequencer.SetPerformedVelocities(velocities); });
+  Post([performed = playback.performed](OrchestrionSequencer &sequencer)
+       { sequencer.SetPerformed(performed); });
   return playback.timeline;
 }
 } // namespace dgk

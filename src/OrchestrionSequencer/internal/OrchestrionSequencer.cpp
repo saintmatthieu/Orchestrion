@@ -34,6 +34,7 @@
 #include <notation/inotationplayback.h>
 #include <numeric>
 #include <optional>
+#include <set>
 
 #ifdef OS_IS_WIN
 #include <windows.h>
@@ -344,18 +345,25 @@ void OrchestrionSequencer::SendTransitions(
   // loudest of the hand's notes struck here, which the gesture's velocity
   // stands for. Those not performed (missed by the transcription), as the
   // quietest.
-  const PerformedVelocities *const performed = m_performedVelocities.get();
+  const PerformedScore *const performed = m_performed.get();
+  // And each struck when performed, after the strike (the event's earliest
+  // note), or, a performer's own strike, after the hand's earliest note.
   std::optional<float> loudest, quietest;
+  std::optional<double> handStrikeMs;
   if (performed)
     for (const auto &[track, transition] : transitions)
       if (const auto present = GetPresentChord(transition))
         for (const int pitch : present->GetPitches())
-          if (const auto v =
-                  performed->At(present->GetBeginTick().withRepeats, pitch))
+        {
+          const int tick = present->GetBeginTick().withRepeats;
+          if (const auto v = performed->Velocity(tick, pitch))
           {
             loudest = std::max(loudest.value_or(*v), *v);
             quietest = std::min(quietest.value_or(*v), *v);
           }
+          if (const auto onset = performed->Onset(tick, pitch))
+            handStrikeMs = std::min(handStrikeMs.value_or(*onset), *onset);
+        }
   std::optional<float> &handLoudest = m_performedLoudest[isLeftHand ? 1 : 0];
   if (loudest)
     handLoudest = loudest;
@@ -409,6 +417,12 @@ void OrchestrionSequencer::SendTransitions(
       }
 
       strike = ScheduleChord(*present);
+      if (performed && handLoudest && strike &&
+          (strike->steps.size() > 1 || !strike->closing.empty()))
+        if (auto asPlayed = PerformedOrnament(
+                *present, *strike, *performed, loudest.value_or(*handLoudest),
+                PerformanceStrikeMs(*present, *performed, handStrikeMs)))
+          strike = std::move(asPlayed);
     }
 
     const bool ornamented =
@@ -424,18 +438,31 @@ void OrchestrionSequencer::SendTransitions(
         ProceedOnTrack(track, past, std::move(strike), velocity.value_or(0.f));
     if (voiceOutput.empty())
       continue;
+    std::map<int, std::chrono::microseconds> delays;
     if (asPerformed)
     {
       const int tick = present->GetBeginTick().withRepeats;
       const float reference = loudest.value_or(*handLoudest);
       const float unknown = quietest.value_or(reference);
+      const auto strikeMs =
+          PerformanceStrikeMs(*present, *performed, handStrikeMs);
+      const double msScale = PerformanceMsScale(*present, *performed);
       for (NoteEvent &event : voiceOutput)
         if (event.type == NoteEventType::noteOn)
+        {
           event.velocity = std::clamp(
               event.velocity *
-                  performed->At(tick, event.pitch).value_or(unknown) /
+                  performed->Velocity(tick, event.pitch).value_or(unknown) /
                   reference,
               0.f, 1.f);
+          // Not later than a second, whatever the alignment says.
+          if (const auto onset = performed->Onset(tick, event.pitch);
+              onset && strikeMs && *onset > *strikeMs)
+            delays[event.pitch] = std::chrono::microseconds{std::llround(
+                std::min((*onset - *strikeMs) * msScale * 1000.0, 1e6))};
+        }
+      // A roll is as performed.
+      arpeggio.reset();
     }
     if (arpeggio)
     {
@@ -453,7 +480,7 @@ void OrchestrionSequencer::SendTransitions(
     // and must find it sounding. Nor is a performance's humanized: it is
     // human.
     PostNoteEvents(std::move(voiceOutput),
-                   /*strum=*/!ornamented && !asPerformed);
+                   /*strum=*/!ornamented && !asPerformed, std::nullopt, delays);
   }
 
   if (!rolled.empty())
@@ -469,11 +496,56 @@ void OrchestrionSequencer::SendTransitions(
   PublishTransitions(transitions);
 }
 
-void OrchestrionSequencer::SetPerformedVelocities(
-    std::shared_ptr<const PerformedVelocities> velocities)
+void OrchestrionSequencer::SetPerformed(
+    std::shared_ptr<const PerformedScore> performed)
 {
-  m_performedVelocities = std::move(velocities);
+  m_performed = std::move(performed);
   m_performedLoudest = {};
+}
+
+void OrchestrionSequencer::SetPerformanceRate(std::optional<double> rate)
+{
+  m_performanceRate = rate;
+}
+
+std::optional<double> OrchestrionSequencer::PerformanceStrikeMs(
+    const IChord &chord, const PerformedScore &performed,
+    std::optional<double> handStrikeMs) const
+{
+  if (m_performanceRate)
+    return performed.StrikeMs(chord.GetBeginTick().withRepeats);
+  return handStrikeMs;
+}
+
+double
+OrchestrionSequencer::PerformanceMsScale(const IChord &chord,
+                                         const PerformedScore &performed) const
+{
+  if (m_performanceRate && *m_performanceRate > 0.0)
+    return 1.0 / *m_performanceRate;
+  if (const auto then =
+          performed.TicksPerMsAt(chord.GetBeginTick().withRepeats))
+    return *then / TicksPerMs(chord);
+  return 1.0;
+}
+
+std::optional<OrnamentSchedule> OrchestrionSequencer::PerformedOrnament(
+    const IChord &chord, const OrnamentSchedule &scheduled,
+    const PerformedScore &performed, float reference,
+    std::optional<double> strikeMs) const
+{
+  std::set<int> pitches;
+  for (const auto *steps : {&scheduled.steps, &scheduled.closing})
+    for (const TimedOrnamentStep &step : *steps)
+      pitches.insert(step.pitches.begin(), step.pitches.end());
+  const int begin = chord.GetBeginTick().withRepeats;
+  const std::vector<PerformedNote> notes =
+      performed.NotesBetween(begin, chord.GetEndTick().withRepeats, pitches);
+  if (notes.empty())
+    return std::nullopt;
+  return dgk::PerformedOrnament(notes, strikeMs.value_or(notes.front().onsetMs),
+                                PerformanceMsScale(chord, performed),
+                                reference);
 }
 
 void OrchestrionSequencer::PublishTransitions(
@@ -691,6 +763,44 @@ GetReleaseTick(const OrchestrionSequencer::HandVoices &hand)
   return result;
 }
 } // namespace
+
+std::optional<Tick> OrchestrionSequencer::ReleaseTick(const Hand &hand) const
+{
+  const std::optional<Tick> scored = GetReleaseTick(hand.voices);
+  // With the hand's key up (let go of for another voice), a release would
+  // be ignored: the score's waits for the next strike.
+  if (!m_performed || !scored || !hand.pressedKey)
+    return scored;
+  // A release lets go of the voices whose chords end first (GetCursorTick):
+  // those, when the performer let go of the last of their notes (an
+  // ornament's included), if all were performed, and not after the score
+  // would.
+  std::optional<int> end;
+  for (const auto &voice : hand.voices)
+    if (const IChord *chord = voice->GetChordToRelease())
+      end = std::min(end.value_or(chord->GetEndTick().withRepeats),
+                     chord->GetEndTick().withRepeats);
+  std::optional<Tick> performed;
+  for (const auto &voice : hand.voices)
+  {
+    const IChord *chord = voice->GetChordToRelease();
+    if (!chord || chord->GetEndTick().withRepeats != end)
+      continue;
+    const Tick begin = chord->GetBeginTick();
+    std::set<int> pitches;
+    for (const int pitch : chord->GetPitches())
+      pitches.insert(pitch);
+    // Never before a 64th, as IChord::GetReleaseTick.
+    const auto released = m_performed->ReleaseTick(
+        begin.withRepeats, *end, begin.withRepeats + 30, pitches);
+    if (!released)
+      return scored;
+    Tick release = begin;
+    release += *released - begin.withRepeats;
+    performed = performed ? std::max(*performed, release) : release;
+  }
+  return performed ? std::min(*scored, *performed) : scored;
+}
 
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
                                         std::optional<float> velocity)
@@ -1449,7 +1559,7 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
       const auto tick = eventType == NoteEventType::noteOn
                             ? GetCursorTick(hand.voices, eventType)
                             // A staccato chord is let go of early.
-                            : GetReleaseTick(hand.voices);
+                            : ReleaseTick(hand);
       if (!tick)
         continue;
       const int due = eventType == NoteEventType::noteOn
@@ -1497,8 +1607,15 @@ int OrchestrionSequencer::AnticipationTicks(const Hand &hand,
     const IChord *chord = voice->GetFutureChord();
     if (!chord || chord->GetBeginTick().withRepeats != strike.withRepeats)
       continue;
+    const OrnamentSchedule schedule = ScheduleChord(*chord);
+    // As performed, grace notes before the chord are struck when the
+    // performer struck the first: its event's time.
+    if (m_performed &&
+        PerformedOrnament(*chord, schedule, *m_performed, 1.f,
+                          m_performed->StrikeMs(strike.withRepeats)))
+      continue;
     // Back from the schedule's time to ticks at the tempo it was timed with.
-    const double ms = ScheduleChord(*chord).anticipation.count() / 1000.0;
+    const double ms = schedule.anticipation.count() / 1000.0;
     ticks =
         std::max(ticks, static_cast<int>(std::lround(ms * TicksPerMs(*chord))));
   }
@@ -1621,8 +1738,9 @@ void OrchestrionSequencer::PostPedalEvent(PedalEvent event, bool byFoot)
   m_pedalDown = event.on;
 }
 
-void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum,
-                                          std::optional<double> rollMs)
+void OrchestrionSequencer::PostNoteEvents(
+    NoteEvents events, bool strum, std::optional<double> rollMs,
+    const std::map<int, std::chrono::microseconds> &noteonDelays)
 {
   using namespace std::chrono;
 
@@ -1694,6 +1812,29 @@ void OrchestrionSequencer::PostNoteEvents(NoteEvents events, bool strum,
       m_strikeSerial.erase({event.track.value, event.pitch});
   if (events.empty())
     return;
+
+  if (!noteonDelays.empty())
+  {
+    std::vector<QueueEntry<EventVariant>> entries;
+    NoteEvents now;
+    const auto start = steady_clock::now();
+    for (NoteEvent &event : events)
+    {
+      const auto delay = event.type == NoteEventType::noteOn
+                             ? noteonDelays.find(event.pitch)
+                             : noteonDelays.end();
+      if (delay == noteonDelays.end())
+        now.push_back(std::move(event));
+      else
+        entries.push_back(
+            QueueEntry<EventVariant>{start + delay->second, NoteEvents{event}});
+    }
+    if (!now.empty())
+      entries.insert(entries.begin(),
+                     QueueEntry<EventVariant>{std::nullopt, std::move(now)});
+    QueueOutput(std::move(entries));
+    return;
+  }
 
   if (rollMs && events.size() > 1)
   {
@@ -1976,9 +2117,13 @@ void OrchestrionSequencer::OnOrnamentStepDue(OrnamentStepDue due)
     entry.move.reset();
     silence(entry.sounding);
     if (move.strike)
-      sound(Begin(due.track, entry, std::move(*move.strike), move.velocity,
-                  due.time),
-            move.velocity);
+    {
+      const std::vector<int> pitches = Begin(
+          due.track, entry, std::move(*move.strike), move.velocity, due.time);
+      sound(pitches,
+            std::clamp(move.velocity * entry.schedule.steps.front().gain, 0.f,
+                       1.f));
+    }
     else
       m_tracks.erase(it);
   }
@@ -1992,7 +2137,7 @@ void OrchestrionSequencer::OnOrnamentStepDue(OrnamentStepDue due)
     }
     const TimedOrnamentStep &step = schedule.steps[entry.next++];
     silence(entry.sounding);
-    sound(step.pitches, entry.velocity);
+    sound(step.pitches, std::clamp(entry.velocity * step.gain, 0.f, 1.f));
     entry.sounding = step.pitches;
     if (step.duration.count() > 0)
     {

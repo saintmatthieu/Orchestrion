@@ -146,6 +146,12 @@ private:
   // Play thread's
   /** Its subscription to the sequencer, made and let go of there. */
   std::unique_ptr<muse::async::Asyncable> m_playThreadSubscriptions;
+  /**
+   * Events fired one after the other without time passing; past this many,
+   * the score isn't moving on.
+   */
+  static constexpr int kMaxFiredInARow = 1000;
+  int m_firedInARow = 0;
   bool m_running = false;
   // Used to cancel previously scheduled calls to FireAndContinue when the
   // position changes e.g. by the user pressing left/right during playback.

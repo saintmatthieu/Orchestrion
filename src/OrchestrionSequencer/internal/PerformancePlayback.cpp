@@ -19,15 +19,14 @@
 #include "PerformancePlayback.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace dgk
 {
 namespace
 {
-std::int64_t Key(int tick, int pitch)
-{
-  return (static_cast<std::int64_t>(tick) << 8) | (pitch & 0xff);
-}
+/** Notes struck this close together are one step of an ornament. */
+constexpr double kTogetherMs = 20.0;
 
 /**
  * The score's stretches played straight through, by their events: where
@@ -54,46 +53,122 @@ std::vector<RecordingBar> Stretches(const std::vector<ScoreEvent> &events)
 }
 } // namespace
 
-std::optional<float> PerformedVelocities::At(int tick, int pitch) const
+struct PerformanceBuilder
 {
-  const auto it = m_velocities.find(Key(tick, pitch));
-  if (it == m_velocities.end())
+  static PerformancePlayback Make(const std::vector<ScoreEvent> &events,
+                                  const std::vector<PerformedNote> &notes,
+                                  const PerformanceAlignment &alignment);
+};
+
+std::optional<float> PerformedScore::Velocity(int tick, int pitch) const
+{
+  const auto event = m_events.find(tick);
+  if (event == m_events.end())
     return std::nullopt;
-  return it->second;
+  for (const PerformedNote &note : event->second.struck)
+    if (note.pitch == pitch)
+      return std::clamp(note.velocity / 127.f, 0.f, 1.f);
+  return std::nullopt;
 }
 
-void PerformedVelocities::Set(int tick, int pitch, float velocity)
+std::vector<PerformedNote>
+PerformedScore::NotesBetween(int begin, int end,
+                             const std::set<int> &pitches) const
 {
-  m_velocities[Key(tick, pitch)] = velocity;
+  std::vector<PerformedNote> notes;
+  for (auto event = m_events.lower_bound(begin);
+       event != m_events.end() && event->first < end; ++event)
+  {
+    for (const PerformedNote &note : event->second.struck)
+      if (pitches.count(note.pitch))
+        notes.push_back(note);
+    for (const PerformedNote &note : event->second.trill)
+      if (pitches.count(note.pitch))
+        notes.push_back(note);
+  }
+  std::sort(notes.begin(), notes.end(),
+            [](const PerformedNote &a, const PerformedNote &b)
+            { return a.onsetMs < b.onsetMs; });
+  return notes;
+}
+
+std::optional<double> PerformedScore::Onset(int tick, int pitch) const
+{
+  const auto event = m_events.find(tick);
+  if (event == m_events.end())
+    return std::nullopt;
+  for (const PerformedNote &note : event->second.struck)
+    if (note.pitch == pitch)
+      return note.onsetMs;
+  return std::nullopt;
+}
+
+std::optional<double> PerformedScore::StrikeMs(int tick) const
+{
+  const auto event = m_events.find(tick);
+  return event == m_events.end() ? std::nullopt : event->second.ms;
+}
+
+std::optional<int>
+PerformedScore::ReleaseTick(int begin, int end, int minTick,
+                            const std::set<int> &pitches) const
+{
+  const std::vector<PerformedNote> notes = NotesBetween(begin, end, pitches);
+  if (notes.empty() || !m_timeline)
+    return std::nullopt;
+  double offMs = notes.front().offsetMs;
+  for (const PerformedNote &note : notes)
+    offMs = std::max(offMs, note.offsetMs);
+  const auto position = m_timeline->PositionAt(offMs / 1000.0);
+  if (!position)
+    return std::nullopt;
+  return std::clamp(position->tick, std::min(minTick, end), end);
+}
+
+std::optional<double> PerformedScore::TicksPerMsAt(int tick) const
+{
+  const auto secondsPerTick =
+      m_timeline ? m_timeline->SecondsPerTick(tick) : std::nullopt;
+  if (!secondsPerTick || *secondsPerTick <= 0.0)
+    return std::nullopt;
+  return 1.0 / (*secondsPerTick * 1000.0);
 }
 
 PerformancePlayback
-MakePerformancePlayback(const std::vector<ScoreEvent> &events,
-                        const std::vector<PerformedNote> &notes,
-                        const PerformanceAlignment &alignment)
+PerformanceBuilder::Make(const std::vector<ScoreEvent> &events,
+                         const std::vector<PerformedNote> &notes,
+                         const PerformanceAlignment &alignment)
 {
   PerformancePlayback playback;
   if (alignment.events.size() != events.size())
     return playback;
 
-  auto velocities = std::make_shared<PerformedVelocities>();
+  auto performed = std::make_shared<PerformedScore>();
   std::vector<RecordingBeat> beats;
   std::optional<size_t> last; // the last event timed
   for (size_t i = 0; i < events.size(); ++i)
   {
     const ScoreEvent &event = events[i];
-    const PerformanceAlignment::Event &performed = alignment.events[i];
-    for (size_t p = 0; p < performed.notes.size() && p < event.pitches.size();
-         ++p)
-      if (performed.notes[p] < notes.size())
-        velocities->Set(
-            event.tick, event.pitches[p],
-            std::clamp(notes[performed.notes[p]].velocity / 127.f, 0.f, 1.f));
+    const PerformanceAlignment::Event &aligned = alignment.events[i];
+    PerformedScore::Event struck;
+    for (const size_t n : aligned.notes)
+      if (n < notes.size())
+        struck.struck.push_back(notes[n]);
+    for (const size_t n : aligned.trillNotes)
+      if (n < notes.size())
+        struck.trill.push_back(notes[n]);
+    // Struck with its earliest note.
+    struck.ms = aligned.ms;
+    for (const PerformedNote &note : struck.struck)
+      struck.ms = std::min(struck.ms.value_or(note.onsetMs), note.onsetMs);
+    const std::optional<double> strikeMs = struck.ms;
+    if (!struck.struck.empty() || !struck.trill.empty())
+      performed->m_events[event.tick] = std::move(struck);
 
     // Times in order only: one at or before the last is the alignment's
     // doubt, and the timeline wants them rising.
-    if (!performed.ms ||
-        (!beats.empty() && *performed.ms / 1000.0 <= beats.back().seconds))
+    if (!strikeMs ||
+        (!beats.empty() && *strikeMs / 1000.0 <= beats.back().seconds))
       continue;
     const int next = i + 1 < events.size() ? events[i + 1].tick : event.tick;
     const int beatTicks =
@@ -110,12 +185,10 @@ MakePerformancePlayback(const std::vector<ScoreEvent> &events,
       afterSkip = written > 0 && event.tick - before.tick > written;
     }
     beats.push_back({event.tick, event.writtenTick, beatTicks,
-                     *performed.ms / 1000.0, afterSkip});
+                     *strikeMs / 1000.0, afterSkip});
     last = i;
   }
 
-  if (!velocities->Empty())
-    playback.velocities = std::move(velocities);
   if (!beats.empty())
   {
     auto timeline = std::make_shared<const RecordingTimeline>(
@@ -123,6 +196,66 @@ MakePerformancePlayback(const std::vector<ScoreEvent> &events,
     if (!timeline->Empty())
       playback.timeline = std::move(timeline);
   }
+  if (!performed->m_events.empty())
+  {
+    performed->m_timeline = playback.timeline;
+    playback.performed = std::move(performed);
+  }
   return playback;
+}
+
+PerformancePlayback
+MakePerformancePlayback(const std::vector<ScoreEvent> &events,
+                        const std::vector<PerformedNote> &notes,
+                        const PerformanceAlignment &alignment)
+{
+  return PerformanceBuilder::Make(events, notes, alignment);
+}
+
+std::optional<OrnamentSchedule>
+PerformedOrnament(const std::vector<PerformedNote> &notes, double strikeMs,
+                  double msScale, float reference)
+{
+  if (reference <= 0.f || msScale <= 0.0)
+    return std::nullopt;
+  struct Step
+  {
+    double onsetMs = 0.0;
+    std::vector<int> pitches;
+    int velocity = 0;
+  };
+  std::vector<Step> steps;
+  for (const PerformedNote &note : notes)
+  {
+    if (steps.empty() || note.onsetMs - steps.back().onsetMs > kTogetherMs)
+      steps.push_back({note.onsetMs, {}, 0});
+    Step &step = steps.back();
+    if (std::find(step.pitches.begin(), step.pitches.end(), note.pitch) ==
+        step.pitches.end())
+      step.pitches.push_back(note.pitch);
+    step.velocity = std::max(step.velocity, note.velocity);
+  }
+  // The step under way at the strike, or the first if it comes later.
+  size_t first = 0;
+  while (first + 1 < steps.size() && steps[first + 1].onsetMs <= strikeMs)
+    ++first;
+  if (steps.size() - first < 2)
+    return std::nullopt;
+
+  OrnamentSchedule schedule;
+  for (size_t i = first; i < steps.size(); ++i)
+  {
+    TimedOrnamentStep step;
+    step.pitches = steps[i].pitches;
+    std::sort(step.pitches.begin(), step.pitches.end());
+    // From the strike, the first; then from its own start.
+    const double start = i == first ? strikeMs : steps[i].onsetMs;
+    if (i + 1 < steps.size())
+      step.duration = std::chrono::microseconds{
+          std::llround((steps[i + 1].onsetMs - start) * msScale * 1000.0)};
+    step.gain = steps[i].velocity / 127.f / reference;
+    schedule.steps.push_back(std::move(step));
+  }
+  return schedule;
 }
 } // namespace dgk

@@ -82,6 +82,8 @@ public:
    * Empty when GetNextMatchingTick(noteOff) is.
    */
   std::optional<dgk::Tick> GetNextReleaseTick() const;
+  /** The chord GetNextReleaseTick lets go of; null if none. */
+  const IChord *GetChordToRelease() const;
 
   std::optional<dgk::Tick> GetNextNoteonTick() const;
   std::optional<dgk::Tick> GetPreviousNoteonTick() const;

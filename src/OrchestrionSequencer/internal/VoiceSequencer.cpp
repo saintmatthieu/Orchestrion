@@ -360,6 +360,13 @@ std::optional<dgk::Tick> VoiceSequencer::GetNextMatchingTickForNoteoff() const
     return m_gestures[m_index]->AsChord()->GetEndTick();
 }
 
+const IChord *VoiceSequencer::GetChordToRelease() const
+{
+  if (!GetNextMatchingTickForNoteoff())
+    return nullptr;
+  return m_gestures[m_index]->AsChord();
+}
+
 std::optional<dgk::Tick> VoiceSequencer::GetNextReleaseTick() const
 {
   if (!GetNextMatchingTickForNoteoff())

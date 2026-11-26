@@ -22,6 +22,7 @@
 #include <QMetaObject>
 #include <algorithm>
 #include <cmath>
+#include <log.h>
 
 namespace dgk
 {
@@ -306,6 +307,17 @@ void AutomaticOrchestrionPlayer::ScheduleNext()
     DispatchStop();
     return;
   }
+  // Events due at once are fired in a row, each calling this again: a
+  // sequencer that never moves on would overflow the stack.
+  m_firedInARow = next->deltaTicks > 0 ? 0 : m_firedInARow + 1;
+  if (m_firedInARow > kMaxFiredInARow)
+  {
+    LOGE() << "The score doesn't move on at tick " << next->tick
+           << ": playing stops";
+    m_firedInARow = 0;
+    DispatchStop();
+    return;
+  }
 
   if (next->deltaTicks > 0)
   {
@@ -354,6 +366,9 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
     play();
   };
   m_firingInputEvents = true;
+  // Playing a performance, as fast as it goes: its ornaments too.
+  if (m_running && m_tempoCurve)
+    m_sequencer->SetPerformanceRate(m_tempoMultiplier);
   if (events.leftHandEvent)
     traced(*events.leftHandEvent, -1,
            [&] {
@@ -370,6 +385,7 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
   for (const auto &[type, pitch] : events.notes)
     traced(type, pitch,
            [&] { m_sequencer->OnInputEvent(type, pitch, std::nullopt); });
+  m_sequencer->SetPerformanceRate(std::nullopt);
   m_firingInputEvents = false;
   ScheduleNext();
 }

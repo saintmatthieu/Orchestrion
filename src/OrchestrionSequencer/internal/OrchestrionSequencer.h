@@ -93,8 +93,14 @@ public:
   /** Both staves' events; any thread: they don't change. */
   const std::vector<ScoreEvent> &ScoreEvents() const { return m_scoreEvents; }
   double NominalTicksPerMs() const { return m_nominalTicksPerMs; }
-  /** How loud the notes of a performance played were; null for none. */
-  void SetPerformedVelocities(std::shared_ptr<const PerformedVelocities>);
+  /** How a performance played the score; null for none. */
+  void SetPerformed(std::shared_ptr<const PerformedScore>);
+  /**
+   * How fast the automatic player plays the performance, for the strikes
+   * it makes: its ornaments as fast; none for other strikes (a
+   * performer's), whose ornaments go by the performer's tempo.
+   */
+  void SetPerformanceRate(std::optional<double>);
 
   /**
    * A key the performer played. It goes to the staff it is for, going by the
@@ -271,6 +277,35 @@ private:
     std::chrono::steady_clock::time_point time;
   };
 
+  /**
+   * The chord's ornament (`scheduled`) as performed, struck at `strikeMs`
+   * of the performance, its steps as loud relative to `reference`; none if
+   * it wasn't. Grace notes before the chord included: struck with the
+   * first, not ahead of the chord.
+   */
+  std::optional<OrnamentSchedule>
+  PerformedOrnament(const IChord &, const OrnamentSchedule &scheduled,
+                    const PerformedScore &, float reference,
+                    std::optional<double> strikeMs) const;
+  /**
+   * When the machine lets go of the hand's chord: the earliest of its
+   * voices', each as performed if a performance is played, else as its
+   * articulation says (IChord::GetReleaseTick).
+   */
+  std::optional<Tick> ReleaseTick(const Hand &) const;
+  /**
+   * When in the performance the chord is struck: the automatic player
+   * strikes the event's earliest note; a performer, the hand's
+   * (`handStrikeMs`).
+   */
+  std::optional<double>
+  PerformanceStrikeMs(const IChord &, const PerformedScore &,
+                      std::optional<double> handStrikeMs) const;
+  /**
+   * The time now for a ms of the performance at the chord: as the automatic
+   * player plays it, or the performer, against the performance's tempo.
+   */
+  double PerformanceMsScale(const IChord &, const PerformedScore &) const;
   void SendTransitions(std::map<TrackIndex, ChordTransition>,
                        std::optional<float> velocity = std::nullopt,
                        bool isLeftHand = false);
@@ -431,8 +466,14 @@ private:
    * `strum`: spreads the note-ons a little, at random. `rollMs`: strikes
    * them in the order given, this far apart instead (an arpeggio).
    */
-  void PostNoteEvents(NoteEvents events, bool strum = true,
-                      std::optional<double> rollMs = std::nullopt);
+  /**
+   * `noteonDelays`, by pitch: strikes them this long after the others,
+   * instead (a performance's).
+   */
+  void PostNoteEvents(
+      NoteEvents events, bool strum = true,
+      std::optional<double> rollMs = std::nullopt,
+      const std::map<int, std::chrono::microseconds> &noteonDelays = {});
 
   /**
    * Feeds the performance's tempo estimate (m_tempo) the onset of the chords
@@ -626,7 +667,8 @@ private:
   /** What the Notes mode follows, staff by staff ([0]=right, [1]=left). */
   const std::array<std::vector<ScoreEvent>, 2> m_staffEvents;
   const std::vector<ScoreEvent> m_scoreEvents;
-  std::shared_ptr<const PerformedVelocities> m_performedVelocities;
+  std::shared_ptr<const PerformedScore> m_performed;
+  std::optional<double> m_performanceRate;
   /**
    * Each hand's loudest note performed at its last strike that had one
    * ([0]=right, [1]=left): for a strike none of whose notes was.

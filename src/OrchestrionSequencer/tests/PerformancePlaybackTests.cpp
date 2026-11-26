@@ -80,13 +80,34 @@ TEST(PerformancePlaybackTests, GivesEachNoteItsVelocity)
       performance.events, performance.notes,
       AlignPerformance(performance.events, performance.notes,
                        nominalTicksPerMs));
-  ASSERT_TRUE(playback.velocities);
-  EXPECT_FLOAT_EQ(*playback.velocities->At(quarter, CMajor(1)), 44 / 127.f);
-  EXPECT_FLOAT_EQ(*playback.velocities->At(16 * quarter, CMajor(8)),
-                  72 / 127.f);
+  ASSERT_TRUE(playback.performed);
+  const PerformedScore &performed = *playback.performed;
+  EXPECT_FLOAT_EQ(*performed.Velocity(quarter, CMajor(1)), 44 / 127.f);
+  EXPECT_FLOAT_EQ(*performed.Velocity(16 * quarter, CMajor(8)), 72 / 127.f);
   // Not performed: the second pass, a pitch not there.
-  EXPECT_FALSE(playback.velocities->At(9 * quarter, CMajor(1)).has_value());
-  EXPECT_FALSE(playback.velocities->At(quarter, CMajor(2)).has_value());
+  EXPECT_FALSE(performed.Velocity(9 * quarter, CMajor(1)).has_value());
+  EXPECT_FALSE(performed.Velocity(quarter, CMajor(2)).has_value());
+  // Half a second a quarter.
+  EXPECT_DOUBLE_EQ(*performed.TicksPerMsAt(quarter), quarter / 500.0);
+}
+
+TEST(PerformancePlaybackTests, StrikesAnEventWithItsEarliestNote)
+{
+  // A bass and a melody note together, the melody played 200 ms after the
+  // bass; then the same again a second later.
+  const std::vector<ScoreEvent> events{{0, {48, 72}, 0},
+                                       {2 * quarter, {48, 74}, 2 * quarter}};
+  const std::vector<PerformedNote> notes{{1000.0, 1900.0, 48, 50},
+                                         {1200.0, 1900.0, 72, 70},
+                                         {2000.0, 2900.0, 48, 50},
+                                         {2200.0, 2900.0, 74, 70}};
+  const auto playback = MakePerformancePlayback(
+      events, notes, AlignPerformance(events, notes, nominalTicksPerMs));
+  ASSERT_TRUE(playback.performed);
+  EXPECT_DOUBLE_EQ(*playback.performed->StrikeMs(0), 1000.0);
+  EXPECT_DOUBLE_EQ(*playback.performed->Onset(0, 72), 1200.0);
+  ASSERT_TRUE(playback.timeline);
+  EXPECT_DOUBLE_EQ(*playback.timeline->SecondsAt(2 * quarter), 2.0);
 }
 
 TEST(PerformancePlaybackTests, NothingForAnAlignmentOfOtherEvents)
@@ -95,7 +116,95 @@ TEST(PerformancePlaybackTests, NothingForAnAlignmentOfOtherEvents)
   const auto playback = MakePerformancePlayback(
       performance.events, performance.notes, PerformanceAlignment{});
   EXPECT_FALSE(playback.timeline);
-  EXPECT_FALSE(playback.velocities);
+  EXPECT_FALSE(playback.performed);
+}
+
+/**
+ * A half-note E with a trill (F), then a quarter G; the performer trills
+ * E F E F E F E, loudly first, over 600 ms, then holds E until the G.
+ */
+struct Trill
+{
+  std::vector<ScoreEvent> events;
+  std::vector<PerformedNote> notes;
+
+  Trill()
+  {
+    ScoreEvent trill{0, {CMajor(2)}, 0};
+    trill.trillPitches = {CMajor(2), CMajor(3)};
+    trill.trillEnd = 2 * quarter;
+    events.push_back(trill);
+    events.push_back({2 * quarter, {CMajor(4)}, 2 * quarter});
+    for (int i = 0; i < 7; ++i)
+      notes.push_back({1000.0 + 100.0 * i, 1000.0 + 100.0 * i + 90.0,
+                       CMajor(i % 2 ? 3 : 2), i == 0 ? 80 : 60});
+    notes.push_back({2000.0, 2400.0, CMajor(4), 70});
+  }
+};
+
+TEST(PerformancePlaybackTests, GivesAnOrnamentItsPerformedNotes)
+{
+  const Trill trill;
+  const auto playback = MakePerformancePlayback(
+      trill.events, trill.notes,
+      AlignPerformance(trill.events, trill.notes, nominalTicksPerMs));
+  ASSERT_TRUE(playback.performed);
+  const auto notes =
+      playback.performed->NotesBetween(0, 2 * quarter, {CMajor(2), CMajor(3)});
+  ASSERT_EQ(notes.size(), 7u);
+  for (size_t i = 0; i < notes.size(); ++i)
+    EXPECT_DOUBLE_EQ(notes[i].onsetMs, 1000.0 + 100.0 * i) << i;
+  // Let go of as the last trill note was (1690 ms, of the 1000 between the
+  // two events), not before a 64th, not past the end.
+  EXPECT_NEAR(*playback.performed->ReleaseTick(0, 2 * quarter, 30,
+                                               {CMajor(2), CMajor(3)}),
+              0.69 * 2 * quarter, 1);
+  EXPECT_EQ(
+      *playback.performed->ReleaseTick(0, quarter, 30, {CMajor(2), CMajor(3)}),
+      quarter);
+  // Only those of the pitches asked for.
+  EXPECT_TRUE(
+      playback.performed->NotesBetween(0, 2 * quarter, {CMajor(4)}).empty());
+}
+
+TEST(PerformancePlaybackTests, PlaysAnOrnamentAsPerformed)
+{
+  const Trill trill;
+  // At half speed, the strike as loud as the trill's first note, and with
+  // it.
+  const auto schedule = PerformedOrnament(
+      {trill.notes.begin(), trill.notes.begin() + 7}, 1000.0, 2.0, 80 / 127.f);
+  ASSERT_TRUE(schedule);
+  ASSERT_EQ(schedule->steps.size(), 7u);
+  for (size_t i = 0; i < 6; ++i)
+  {
+    EXPECT_EQ(schedule->steps[i].pitches,
+              std::vector<int>{CMajor(i % 2 ? 3 : 2)})
+        << i;
+    EXPECT_EQ(schedule->steps[i].duration, std::chrono::milliseconds{200}) << i;
+  }
+  // The last held, until the next strike.
+  EXPECT_EQ(schedule->steps.back().duration.count(), 0);
+  EXPECT_FLOAT_EQ(schedule->steps[0].gain, 1.f);
+  EXPECT_FLOAT_EQ(schedule->steps[1].gain, 60.f / 80.f);
+  EXPECT_EQ(schedule->cycleBegin, schedule->cycleEnd);
+  // Struck after it began, as when the event's time is later: the notes
+  // keep their times from the strike, what came before cut short.
+  const auto late = PerformedOrnament(
+      {trill.notes.begin(), trill.notes.begin() + 7}, 1250.0, 1.0, 80 / 127.f);
+  ASSERT_TRUE(late);
+  ASSERT_EQ(late->steps.size(), 5u);
+  EXPECT_EQ(late->steps[0].pitches, std::vector<int>{CMajor(2)});
+  EXPECT_EQ(late->steps[0].duration, std::chrono::milliseconds{50});
+  EXPECT_EQ(late->steps[1].duration, std::chrono::milliseconds{100});
+  // Notes struck together are one step; one step is no ornament.
+  const auto together = PerformedOrnament(
+      {{0.0, 100.0, 60, 50}, {10.0, 100.0, 64, 70}, {200.0, 300.0, 62, 60}},
+      0.0, 1.0, 70 / 127.f);
+  ASSERT_TRUE(together);
+  ASSERT_EQ(together->steps.size(), 2u);
+  EXPECT_EQ(together->steps[0].pitches, (std::vector<int>{60, 64}));
+  EXPECT_FALSE(PerformedOrnament({{0.0, 100.0, 60, 50}}, 0.0, 1.0, 0.5f));
 }
 } // namespace
 } // namespace dgk

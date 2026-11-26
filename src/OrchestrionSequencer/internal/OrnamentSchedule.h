@@ -34,6 +34,8 @@ struct TimedOrnamentStep
   std::vector<int> pitches;
   /** Zero: held until the gesture that leaves the chord. */
   std::chrono::microseconds duration{0};
+  /** How loud, relative to the strike. */
+  float gain = 1.f;
 };
 
 /**
