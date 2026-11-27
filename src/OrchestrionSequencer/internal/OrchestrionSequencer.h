@@ -101,6 +101,12 @@ public:
    * performer's), whose ornaments go by the performer's tempo.
    */
   void SetPerformanceRate(std::optional<double>);
+  /**
+   * The automatic player changes the sustain pedal as the performance did
+   * (NextAutoPlayEvents::pedal): the score's pedalling stands aside until
+   * it stops (AllNotesOff); a foot pedalling wins.
+   */
+  void OnPerformedPedal(bool down);
 
   /**
    * A key the performer played. It goes to the staff it is for, going by the
@@ -669,6 +675,10 @@ private:
   const std::vector<ScoreEvent> m_scoreEvents;
   std::shared_ptr<const PerformedScore> m_performed;
   std::optional<double> m_performanceRate;
+  /** The next of the performance's pedal changes to play; none: to find. */
+  std::optional<size_t> m_nextPedalChange;
+  /** Whether the automatic player pedals as the performance did. */
+  bool m_pedalByPerformance = false;
   /**
    * Each hand's loudest note performed at its last strike that had one
    * ([0]=right, [1]=left): for a strike none of whose notes was.

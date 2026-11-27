@@ -50,34 +50,67 @@ public:
                                           const std::set<int> &pitches) const;
   /**
    * When to let go of a chord struck at `begin` (ticks with repeats), to
-   * end before `end`, of `pitches`: as the last of its notes performed
-   * (NotesBetween) was, in ticks with repeats; never before `minTick`, nor
-   * after `end`. None if none of them was performed.
+   * end before `end`, of `pitches`: when the last of the performer's notes
+   * of those pitches begun within it ended (its own, NotesBetween, and any
+   * other struck while it lasts: a note struck again), in ticks with
+   * repeats; never before `minTick`, nor after `end`. None if none of its
+   * notes was performed.
    */
   std::optional<int> ReleaseTick(int begin, int end, int minTick,
                                  const std::set<int> &pitches) const;
   /** How fast the score was performed around `tick`, in ticks per ms. */
   std::optional<double> TicksPerMsAt(int tick) const;
+
+  struct PedalAt
+  {
+    /** With repeats. */
+    int tick = 0;
+    bool down = false;
+  };
+  /** The sustain pedal's changes, where in the score they were made. */
+  const std::vector<PedalAt> &Pedal() const { return m_pedal; }
+  /**
+   * Whether the performer left out the event at `tick` (with repeats): none
+   * of its notes performed, in a passage they played (not a repeat they
+   * skipped, nor before their first note or after their last).
+   */
+  bool LeftOut(int tick) const;
+  /**
+   * The pitch the performer played for the score's note of `pitch` struck
+   * at `tick` (a semitone off: their edition's, or what the transcription
+   * heard); `pitch` if none other.
+   */
+  int PlayedPitch(int tick, int pitch) const;
   /** When the note of `pitch` struck at `tick` was, in ms. */
   std::optional<double> Onset(int tick, int pitch) const;
   /**
-   * When the event at `tick` was struck: its earliest note performed (a
-   * hand may come after the other, a chord be rolled).
+   * When the event at `tick` is struck, playing the performance: when the
+   * timeline has it (its earliest note performed — a hand may come after
+   * the other, a chord be rolled — unless that came before the event
+   * before it), else its earliest note.
    */
   std::optional<double> StrikeMs(int tick) const;
 
 private:
+  /** The note played for the score's note of `pitch` at `tick`, if any. */
+  const PerformedNote *Struck(int tick, int pitch) const;
+
   friend struct PerformanceBuilder;
   struct Event
   {
-    /** The notes matched to the event's pitches. */
+    /** The notes matched to the event's pitches, as played. */
     std::vector<PerformedNote> struck;
+    /** The score's pitch each of them plays. */
+    std::vector<int> scorePitches;
     /** Those of a trill beginning there, but its first. */
     std::vector<PerformedNote> trill;
     std::optional<double> ms;
   };
   std::map<int, Event> m_events;
+  /** All the notes performed, by onset. */
+  std::vector<PerformedNote> m_notes;
   std::shared_ptr<const RecordingTimeline> m_timeline;
+  std::vector<PedalAt> m_pedal;
 };
 
 /** What the score is played with to play it as a performance was. */
@@ -93,11 +126,15 @@ struct PerformancePlayback
   std::shared_ptr<const PerformedScore> performed;
 };
 
-/** From a performance and its alignment to `events` (see AlignPerformance). */
+/**
+ * From a performance and its alignment to `events` (see AlignPerformance),
+ * and its pedal.
+ */
 PerformancePlayback
 MakePerformancePlayback(const std::vector<ScoreEvent> &events,
                         const std::vector<PerformedNote> &notes,
-                        const PerformanceAlignment &alignment);
+                        const PerformanceAlignment &alignment,
+                        const std::vector<PedalChange> &pedal = {});
 
 /**
  * An ornament as performed (see PerformedScore::NotesBetween), struck at

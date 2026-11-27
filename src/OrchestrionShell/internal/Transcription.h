@@ -31,12 +31,13 @@ namespace dgk
  * score as (IOrchestrionSequencer::PlayPerformance).
  *
  * The file is JSON: {"version": 1, "performer": "<name>", "notes": [{"time":
- * <s>, "duration": <s>, "midi": <pitch>, "velocity": <0 to 127>}, ...]},
- * times from where the piece starts in the recording.
+ * <s>, "duration": <s>, "midi": <pitch>, "velocity": <0 to 127>}, ...],
+ * "sustain": [{"time": <s>, "value": <0 to 1>}, ...]}, the sustain pedal
+ * down from 0.5 and optional, times from where the piece starts in the
+ * recording.
  */
 QString TranscriptionPath(const QString &userDataPath, const QString &pieceId);
 
 /** None if there is no such file, or not one this version reads. */
-std::optional<std::vector<PerformedNote>>
-ReadTranscription(const QString &path);
+std::optional<Performance> ReadTranscription(const QString &path);
 } // namespace dgk

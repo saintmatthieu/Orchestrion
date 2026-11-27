@@ -54,6 +54,8 @@ struct NextAutoPlayEvents
    * OrchestrionSequencer::OnInputEvent): followed, as the performer is.
    */
   std::vector<std::pair<NoteEventType, int /*pitch*/>> notes;
+  /** The sustain pedal, as a performance played has it. */
+  std::optional<bool> pedal;
 };
 
 //! One raw input event of a recorded take, for replaying the performance:
@@ -188,15 +190,16 @@ public:
   virtual KeyRole RoleOfKey(int pitch) const = 0;
 
   /**
-   * Plays the score as `notes` (a recording, transcribed) were performed:
-   * each note as loud as it was, the loudest of a hand's strike as loud as
-   * the gesture (the automatic player's, as performed). None: as the score
-   * says. Returns when the performance played each part of the score, for
-   * the automatic player (IOrchestrionPlayer::SetTempoCurve); null if it
-   * plays none of it.
+   * Plays the score as `performance` (a recording, transcribed) was: each
+   * note as loud as it was, the loudest of a hand's strike as loud as the
+   * gesture (the automatic player's, as performed); and, the automatic
+   * player playing, its pedal rather than the score's. None (no notes): as
+   * the score says. Returns when the performance played each part of the
+   * score, for the automatic player (IOrchestrionPlayer::SetTempoCurve);
+   * null if it plays none of it.
    */
   virtual std::shared_ptr<const RecordingTimeline>
-  PlayPerformance(std::vector<PerformedNote> notes) = 0;
+  PlayPerformance(Performance performance) = 0;
 };
 
 using IOrchestrionSequencerPtr = std::shared_ptr<IOrchestrionSequencer>;

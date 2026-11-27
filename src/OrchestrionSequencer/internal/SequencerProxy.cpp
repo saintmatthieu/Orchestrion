@@ -267,8 +267,9 @@ IOrchestrionSequencer::KeyRole SequencerProxy::RoleOfKey(int pitch) const
 }
 
 std::shared_ptr<const RecordingTimeline>
-SequencerProxy::PlayPerformance(std::vector<PerformedNote> notes)
+SequencerProxy::PlayPerformance(Performance performance)
 {
+  std::vector<PerformedNote> &notes = performance.notes;
   // On the main thread: the score's events don't change.
   PerformancePlayback playback;
   if (!notes.empty())
@@ -279,7 +280,8 @@ SequencerProxy::PlayPerformance(std::vector<PerformedNote> notes)
     const std::vector<ScoreEvent> &events = m_sequencer->ScoreEvents();
     playback = MakePerformancePlayback(
         events, notes,
-        AlignPerformance(events, notes, m_sequencer->NominalTicksPerMs()));
+        AlignPerformance(events, notes, m_sequencer->NominalTicksPerMs()),
+        performance.pedal);
   }
   Post([performed = playback.performed](OrchestrionSequencer &sequencer)
        { sequencer.SetPerformed(performed); });

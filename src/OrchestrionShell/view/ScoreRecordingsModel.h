@@ -230,7 +230,7 @@ private:
   std::shared_ptr<const RecordingTimeline> m_timeline;
   std::shared_ptr<const RecordingTimeline> m_tempoCurve;
   /** The piece's performance, if it has one, as transcribed. */
-  std::vector<PerformedNote> m_performance;
+  Performance m_performance;
   std::shared_ptr<const RecordingTimeline> m_performanceCurve;
   /** Whether the player followed the video, as last told. */
   bool m_following = false;

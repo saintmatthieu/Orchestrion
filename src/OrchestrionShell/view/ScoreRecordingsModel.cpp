@@ -157,8 +157,8 @@ void ScoreRecordingsModel::update()
       id ? ReadTranscription(
                TranscriptionPath(
                    globalConfiguration()->userAppDataPath().toQString(), *id))
-               .value_or(std::vector<PerformedNote>{})
-         : std::vector<PerformedNote>{};
+               .value_or(Performance{})
+         : Performance{};
   playPerformance();
   // Only for a piece that may have some: nobody playing their own score
   // needs the index.
@@ -247,7 +247,7 @@ void ScoreRecordingsModel::playPerformance()
   const IOrchestrionSequencerPtr sequencer = orchestrion()->sequencer();
   m_performanceCurve =
       sequencer ? sequencer->PlayPerformance(m_performance) : nullptr;
-  if (!m_performance.empty() && !m_performanceCurve)
+  if (!m_performance.notes.empty() && !m_performanceCurve)
     LOGW() << "The performance doesn't fit the score";
   updateTempoCurve();
 }

@@ -91,6 +91,116 @@ TEST(PerformancePlaybackTests, GivesEachNoteItsVelocity)
   EXPECT_DOUBLE_EQ(*performed.TicksPerMsAt(quarter), quarter / 500.0);
 }
 
+TEST(PerformancePlaybackTests, LetsGoOfAChordStruckAgainWhenTheLastEnds)
+{
+  // A half-note C, then E: the performer strikes the C again, briefly
+  // first, then held, the second time matched to no event.
+  const std::vector<ScoreEvent> events{{0, {60}, 0},
+                                       {2 * quarter, {64}, 2 * quarter}};
+  const std::vector<PerformedNote> notes{{1000.0, 1200.0, 60, 60},
+                                         {1300.0, 1950.0, 60, 60},
+                                         {2000.0, 2500.0, 64, 60}};
+  const auto playback = MakePerformancePlayback(
+      events, notes, AlignPerformance(events, notes, nominalTicksPerMs));
+  ASSERT_TRUE(playback.performed);
+  // At 1950 ms of the 1000 between the events.
+  EXPECT_NEAR(*playback.performed->ReleaseTick(0, 2 * quarter, 30, {60}),
+              0.95 * 2 * quarter, 1);
+}
+
+TEST(PerformancePlaybackTests, RecoversNotesPlayedOutOfOrder)
+{
+  // A melody note, a bass note, a melody note; the bass played ahead of
+  // the first melody note, left aside by the alignment; another of its
+  // pitch long after.
+  const std::vector<ScoreEvent> events{
+      {0, {72}, 0}, {quarter, {48}, quarter}, {2 * quarter, {74}, 2 * quarter}};
+  const std::vector<PerformedNote> notes{{900.0, 1800.0, 48, 64},
+                                         {1000.0, 1400.0, 72, 70},
+                                         {2000.0, 2400.0, 74, 70},
+                                         {6000.0, 6400.0, 48, 64}};
+  PerformanceAlignment alignment;
+  alignment.events.resize(3);
+  alignment.events[0] = {1000.0, {1}, {}};
+  alignment.events[1] = {std::nullopt, {PerformanceAlignment::none}, {}};
+  alignment.events[2] = {2000.0, {2}, {}};
+  alignment.added = {0, 3};
+  const auto playback = MakePerformancePlayback(events, notes, alignment);
+  ASSERT_TRUE(playback.performed);
+  EXPECT_FALSE(playback.performed->LeftOut(quarter));
+  EXPECT_DOUBLE_EQ(*playback.performed->Onset(quarter, 48), 900.0);
+  EXPECT_FLOAT_EQ(*playback.performed->Velocity(quarter, 48), 64 / 127.f);
+}
+
+TEST(PerformancePlaybackTests, RecoversANotePlayedASemitoneOff)
+{
+  // The middle note, alone, played a semitone higher.
+  const std::vector<ScoreEvent> events{
+      {0, {72}, 0}, {quarter, {71}, quarter}, {2 * quarter, {74}, 2 * quarter}};
+  const std::vector<PerformedNote> notes{{1000.0, 1400.0, 72, 70},
+                                         {1500.0, 1900.0, 72, 60},
+                                         {2000.0, 2400.0, 74, 70}};
+  PerformanceAlignment alignment;
+  alignment.events.resize(3);
+  alignment.events[0] = {1000.0, {0}, {}};
+  alignment.events[1] = {std::nullopt, {PerformanceAlignment::none}, {}};
+  alignment.events[2] = {2000.0, {2}, {}};
+  alignment.added = {1};
+  const auto playback = MakePerformancePlayback(events, notes, alignment);
+  ASSERT_TRUE(playback.performed);
+  EXPECT_FALSE(playback.performed->LeftOut(quarter));
+  // For the score's note, played as performed.
+  EXPECT_DOUBLE_EQ(*playback.performed->Onset(quarter, 71), 1500.0);
+  EXPECT_FLOAT_EQ(*playback.performed->Velocity(quarter, 71), 60 / 127.f);
+  EXPECT_EQ(playback.performed->PlayedPitch(quarter, 71), 72);
+  EXPECT_EQ(playback.performed->PlayedPitch(0, 72), 72);
+}
+
+TEST(PerformancePlaybackTests, TellsWhatThePerformerLeftOut)
+{
+  // The third note of the first pass not played.
+  SkippedRepeat performance;
+  performance.notes.erase(performance.notes.begin() + 2);
+  const auto playback = MakePerformancePlayback(
+      performance.events, performance.notes,
+      AlignPerformance(performance.events, performance.notes,
+                       nominalTicksPerMs));
+  ASSERT_TRUE(playback.performed);
+  EXPECT_TRUE(playback.performed->LeftOut(2 * quarter));
+  EXPECT_FALSE(playback.performed->LeftOut(quarter));
+  // Not the repeat skipped, nor past the end.
+  EXPECT_FALSE(playback.performed->LeftOut(10 * quarter));
+  EXPECT_FALSE(playback.performed->LeftOut(20 * quarter));
+}
+
+TEST(PerformancePlaybackTests, PlacesThePedalInTheScore)
+{
+  const SkippedRepeat performance;
+  // Down before the first note, up and down again a quarter later (500 ms
+  // a quarter), an up and a down so close together that only the down
+  // stands.
+  const auto playback = MakePerformancePlayback(
+      performance.events, performance.notes,
+      AlignPerformance(performance.events, performance.notes,
+                       nominalTicksPerMs),
+      {{900.0, true},
+       {1500.0, false},
+       {1550.0, true},
+       {2500.0, false},
+       {2500.2, true}});
+  ASSERT_TRUE(playback.performed);
+  const auto &pedal = playback.performed->Pedal();
+  ASSERT_EQ(pedal.size(), 4u);
+  EXPECT_EQ(pedal[0].tick, 0);
+  EXPECT_TRUE(pedal[0].down);
+  EXPECT_EQ(pedal[1].tick, quarter);
+  EXPECT_FALSE(pedal[1].down);
+  EXPECT_EQ(pedal[2].tick, quarter + quarter / 10);
+  EXPECT_TRUE(pedal[2].down);
+  EXPECT_EQ(pedal[3].tick, 3 * quarter);
+  EXPECT_TRUE(pedal[3].down);
+}
+
 TEST(PerformancePlaybackTests, StrikesAnEventWithItsEarliestNote)
 {
   // A bass and a melody note together, the melody played 200 ms after the
@@ -108,6 +218,28 @@ TEST(PerformancePlaybackTests, StrikesAnEventWithItsEarliestNote)
   EXPECT_DOUBLE_EQ(*playback.performed->Onset(0, 72), 1200.0);
   ASSERT_TRUE(playback.timeline);
   EXPECT_DOUBLE_EQ(*playback.timeline->SecondsAt(2 * quarter), 2.0);
+}
+
+TEST(PerformancePlaybackTests, StrikesAnEventPlayedAheadInOrder)
+{
+  // Three events, the second's bass played ahead of the first: it can't be
+  // struck before the first, so it is struck between its neighbours.
+  const std::vector<ScoreEvent> events{{0, {72}, 0},
+                                       {quarter, {60, 74}, quarter},
+                                       {2 * quarter, {76}, 2 * quarter}};
+  const std::vector<PerformedNote> notes{{950.0, 1900.0, 60, 50},
+                                         {1000.0, 1400.0, 72, 70},
+                                         {1600.0, 1900.0, 74, 70},
+                                         {2000.0, 2400.0, 76, 70}};
+  PerformanceAlignment alignment;
+  alignment.events.resize(3);
+  alignment.events[0] = {1000.0, {1}, {}};
+  alignment.events[1] = {950.0, {0, 2}, {}};
+  alignment.events[2] = {2000.0, {3}, {}};
+  const auto playback = MakePerformancePlayback(events, notes, alignment);
+  ASSERT_TRUE(playback.performed);
+  EXPECT_DOUBLE_EQ(*playback.performed->StrikeMs(quarter), 1500.0);
+  EXPECT_DOUBLE_EQ(*playback.performed->StrikeMs(0), 1000.0);
 }
 
 TEST(PerformancePlaybackTests, NothingForAnAlignmentOfOtherEvents)

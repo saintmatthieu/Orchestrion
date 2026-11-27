@@ -417,8 +417,11 @@ void OrchestrionSequencer::SendTransitions(
       }
 
       strike = ScheduleChord(*present);
-      if (performed && handLoudest && strike &&
-          (strike->steps.size() > 1 || !strike->closing.empty()))
+      // Left out by the performer: struck, but silently.
+      if (performed && performed->LeftOut(present->GetBeginTick().withRepeats))
+        strike = PlainChord({});
+      else if (performed && handLoudest && strike &&
+               (strike->steps.size() > 1 || !strike->closing.empty()))
         if (auto asPlayed = PerformedOrnament(
                 *present, *strike, *performed, loudest.value_or(*handLoudest),
                 PerformanceStrikeMs(*present, *performed, handStrikeMs)))
@@ -464,6 +467,26 @@ void OrchestrionSequencer::SendTransitions(
       // A roll is as performed.
       arpeggio.reset();
     }
+    // The notes at the pitches the performer played them (a semitone off:
+    // their edition's), struck and let go of alike.
+    if (performed)
+    {
+      std::map<int, std::chrono::microseconds> playedDelays;
+      for (NoteEvent &event : voiceOutput)
+      {
+        const IChord *chord =
+            event.type == NoteEventType::noteOn ? present : past;
+        if (!chord)
+          continue;
+        const int pitch = performed->PlayedPitch(
+            chord->GetBeginTick().withRepeats, event.pitch);
+        if (const auto delay = delays.find(event.pitch);
+            event.type == NoteEventType::noteOn && delay != delays.end())
+          playedDelays[pitch] = delay->second;
+        event.pitch = pitch;
+      }
+      delays = std::move(playedDelays);
+    }
     if (arpeggio)
     {
       roll = arpeggio;
@@ -501,6 +524,17 @@ void OrchestrionSequencer::SetPerformed(
 {
   m_performed = std::move(performed);
   m_performedLoudest = {};
+  m_nextPedalChange.reset();
+}
+
+void OrchestrionSequencer::OnPerformedPedal(bool down)
+{
+  if (m_footPedalling)
+    return;
+  m_pedalByPerformance = true;
+  if (down != m_pedalDown)
+    // When it was changed, as a foot's: no waiting for the dampers.
+    PostPedalEvent(PedalEvent{m_instrument, down}, /*byFoot=*/true);
 }
 
 void OrchestrionSequencer::SetPerformanceRate(std::optional<double> rate)
@@ -773,19 +807,26 @@ std::optional<Tick> OrchestrionSequencer::ReleaseTick(const Hand &hand) const
     return scored;
   // A release lets go of the voices whose chords end first (GetCursorTick):
   // those, when the performer let go of the last of their notes (an
-  // ornament's included), if all were performed, and not after the score
-  // would.
+  // ornament's included), if all were performed; the others' releases as
+  // the score has them.
   std::optional<int> end;
   for (const auto &voice : hand.voices)
     if (const IChord *chord = voice->GetChordToRelease())
       end = std::min(end.value_or(chord->GetEndTick().withRepeats),
                      chord->GetEndTick().withRepeats);
   std::optional<Tick> performed;
+  std::optional<Tick> others;
   for (const auto &voice : hand.voices)
   {
     const IChord *chord = voice->GetChordToRelease();
-    if (!chord || chord->GetEndTick().withRepeats != end)
+    if (!chord)
       continue;
+    if (chord->GetEndTick().withRepeats != end)
+    {
+      if (const auto tick = voice->GetNextReleaseTick())
+        others = others ? std::min(*others, *tick) : *tick;
+      continue;
+    }
     const Tick begin = chord->GetBeginTick();
     std::set<int> pitches;
     for (const int pitch : chord->GetPitches())
@@ -799,7 +840,9 @@ std::optional<Tick> OrchestrionSequencer::ReleaseTick(const Hand &hand) const
     release += *released - begin.withRepeats;
     performed = performed ? std::max(*performed, release) : release;
   }
-  return performed ? std::min(*scored, *performed) : scored;
+  if (!performed)
+    return scored;
+  return others ? std::min(*others, *performed) : performed;
 }
 
 void OrchestrionSequencer::OnInputEvent(NoteEventType type, int pitch,
@@ -947,6 +990,10 @@ void OrchestrionSequencer::AllNotesOff()
       OnGesture(NoteEventType::noteOff, left, *key, std::nullopt,
                 /*byPerformer=*/false);
   ReleasePlayedPitches();
+  // The automatic player has stopped: the score's pedalling again, and the
+  // performance's from where it plays next.
+  m_pedalByPerformance = false;
+  m_nextPedalChange.reset();
   // Note-offs alone don't silence a piano while the sustain pedal is down.
   if (m_pedalDown)
     CutPedal();
@@ -1294,7 +1341,8 @@ const IChord *GetHeldChord(const OrchestrionSequencer::HandVoices &voices)
 
 void OrchestrionSequencer::UpdatePedal()
 {
-  if (m_footPedalling)
+  // A foot pedals, or the automatic player as a performance did.
+  if (m_footPedalling || m_pedalByPerformance)
     return;
   // The spans, as [first, last) indices, within which every hand that is down
   // stands — a hand standing within a span when the chord it holds overlaps
@@ -1408,6 +1456,8 @@ void OrchestrionSequencer::Jump(
   }
   CutPedal();
   m_autoPlayTick = tickWithRepeats;
+  // The performance's pedal, from there.
+  m_nextPedalChange.reset();
   // A click, a rewind, ...: the performer is to be followed from there.
   ResetFollower();
 }
@@ -1573,11 +1623,37 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
   if (candidates.empty() && !notesLeft)
     return std::nullopt;
 
+  // A performance's pedal, changed where it was in the score: from where
+  // playing is, first as it was there. Not while a foot pedals.
+  std::optional<PerformedScore::PedalAt> pedal;
+  bool pedalFromChanges = false;
+  if (m_performed && !m_performed->Pedal().empty() && !m_footPedalling)
+  {
+    const auto &changes = m_performed->Pedal();
+    if (!m_nextPedalChange)
+    {
+      const auto next =
+          std::upper_bound(changes.begin(), changes.end(), m_autoPlayTick,
+                           [](int tick, const PerformedScore::PedalAt &change)
+                           { return tick < change.tick; });
+      m_nextPedalChange = static_cast<size_t>(next - changes.begin());
+      pedal = PerformedScore::PedalAt{
+          m_autoPlayTick, next != changes.begin() && std::prev(next)->down};
+    }
+    else if (*m_nextPedalChange < changes.size())
+    {
+      pedal = changes[*m_nextPedalChange];
+      pedalFromChanges = true;
+    }
+  }
+
   int minTick = std::numeric_limits<int>::max();
   for (const auto &c : candidates)
     minTick = std::min(minTick, c.tick);
   if (notesLeft)
     minTick = std::min(minTick, m_autoPlayNotes[m_nextAutoPlayNote].tick);
+  if (pedal)
+    minTick = std::min(minTick, pedal->tick);
 
   NextAutoPlayEvents result;
   result.deltaTicks = minTick - m_autoPlayTick;
@@ -1593,6 +1669,12 @@ std::optional<NextAutoPlayEvents> OrchestrionSequencer::WhatToPlayNext()
        ++m_nextAutoPlayNote)
     result.notes.emplace_back(m_autoPlayNotes[m_nextAutoPlayNote].type,
                               m_autoPlayNotes[m_nextAutoPlayNote].pitch);
+  if (pedal && pedal->tick == minTick)
+  {
+    result.pedal = pedal->down;
+    if (pedalFromChanges)
+      ++*m_nextPedalChange;
+  }
 
   m_autoPlayTick = minTick;
   return result;

@@ -385,6 +385,8 @@ void AutomaticOrchestrionPlayer::FireAndContinue(
   for (const auto &[type, pitch] : events.notes)
     traced(type, pitch,
            [&] { m_sequencer->OnInputEvent(type, pitch, std::nullopt); });
+  if (events.pedal)
+    m_sequencer->OnPerformedPedal(*events.pedal);
   m_sequencer->SetPerformanceRate(std::nullopt);
   m_firingInputEvents = false;
   ScheduleNext();

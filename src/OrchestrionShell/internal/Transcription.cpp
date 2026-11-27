@@ -24,6 +24,8 @@
 #include <QJsonObject>
 #include <log.h>
 
+#include <algorithm>
+
 namespace dgk
 {
 namespace
@@ -36,7 +38,7 @@ QString TranscriptionPath(const QString &userDataPath, const QString &pieceId)
   return userDataPath + "/performances/" + pieceId + ".json";
 }
 
-std::optional<std::vector<PerformedNote>> ReadTranscription(const QString &path)
+std::optional<Performance> ReadTranscription(const QString &path)
 {
   QFile file{path};
   if (!file.open(QIODevice::ReadOnly))
@@ -47,7 +49,8 @@ std::optional<std::vector<PerformedNote>> ReadTranscription(const QString &path)
     LOGW() << "Not a transcription this version reads: " << path;
     return std::nullopt;
   }
-  std::vector<PerformedNote> notes;
+  Performance performance;
+  std::vector<PerformedNote> &notes = performance.notes;
   for (const QJsonValue &value : root.value("notes").toArray())
   {
     const QJsonObject note = value.toObject();
@@ -64,6 +67,21 @@ std::optional<std::vector<PerformedNote>> ReadTranscription(const QString &path)
     notes.push_back(
         {seconds * 1000.0, (seconds + duration) * 1000.0, pitch, velocity});
   }
-  return notes;
+  for (const QJsonValue &value : root.value("sustain").toArray())
+  {
+    const QJsonObject change = value.toObject();
+    const double seconds = change.value("time").toDouble(-1.0);
+    if (seconds < 0.0)
+    {
+      LOGW() << "A pedal change of a transcription isn't one: " << path;
+      return std::nullopt;
+    }
+    performance.pedal.push_back(
+        {seconds * 1000.0, change.value("value").toDouble() >= 0.5});
+  }
+  std::stable_sort(performance.pedal.begin(), performance.pedal.end(),
+                   [](const PedalChange &a, const PedalChange &b)
+                   { return a.ms < b.ms; });
+  return performance;
 }
 } // namespace dgk

@@ -18,6 +18,8 @@
  */
 #pragma once
 
+#include <vector>
+
 namespace dgk
 {
 /** A note of a recorded performance, as transcribed. */
@@ -27,5 +29,20 @@ struct PerformedNote
   double offsetMs = 0.0;
   int pitch = 0;
   int velocity = 0;
+};
+
+/** A change of the sustain pedal in a recorded performance. */
+struct PedalChange
+{
+  double ms = 0.0;
+  bool down = false;
+};
+
+/** A recorded performance, transcribed. */
+struct Performance
+{
+  std::vector<PerformedNote> notes;
+  /** In time order. */
+  std::vector<PedalChange> pedal;
 };
 } // namespace dgk

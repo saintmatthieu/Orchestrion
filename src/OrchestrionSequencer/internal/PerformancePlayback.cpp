@@ -53,22 +53,132 @@ std::vector<RecordingBar> Stretches(const std::vector<ScoreEvent> &events)
 }
 } // namespace
 
+/**
+ * The alignment with the score's notes left unplayed given the performed
+ * notes it left aside of their very pitch (or, for an event of which
+ * nothing was played, a semitone off), the nearest: within
+ * `kChordMs` of their event, if it has a time; else between its
+ * neighbours' (by `kRecoverMs` either side), where it falls between them.
+ * Notes the performer played out of the score's order
+ * (a bass ahead of the melody it comes after, an ornament's note ahead of
+ * its chord's other hand), which the alignment, going through the notes in
+ * time order, can't go back for.
+ */
+PerformanceAlignment WithNotesRecovered(const std::vector<ScoreEvent> &events,
+                                        const std::vector<PerformedNote> &notes,
+                                        PerformanceAlignment alignment)
+{
+  constexpr double kRecoverMs = 200.0;
+  /** As far as a hand may come after the other. */
+  constexpr double kChordMs = 250.0;
+  std::vector<size_t> &added = alignment.added;
+  for (size_t e = 0; e < events.size(); ++e)
+  {
+    auto &aligned = alignment.events[e];
+    if (std::find(aligned.notes.begin(), aligned.notes.end(),
+                  PerformanceAlignment::none) == aligned.notes.end())
+      continue;
+    // The timed events around it.
+    std::optional<size_t> before, after;
+    for (size_t b = e; b-- > 0;)
+      if (alignment.events[b].ms)
+      {
+        before = b;
+        break;
+      }
+    for (size_t a = e + 1; a < events.size(); ++a)
+      if (alignment.events[a].ms)
+      {
+        after = a;
+        break;
+      }
+    double expectedMs = 0.0, lowMs = 0.0, highMs = 0.0;
+    if (aligned.ms)
+    {
+      expectedMs = *aligned.ms;
+      lowMs = expectedMs - kChordMs;
+      highMs = expectedMs + kChordMs;
+    }
+    else
+    {
+      if (!before || !after)
+        continue;
+      const double fromMs = *alignment.events[*before].ms;
+      const double toMs = *alignment.events[*after].ms;
+      const double fraction =
+          static_cast<double>(events[e].tick - events[*before].tick) /
+          std::max(1, events[*after].tick - events[*before].tick);
+      expectedMs = fromMs + fraction * (toMs - fromMs);
+      lowMs = fromMs - kRecoverMs;
+      highMs = toMs + kRecoverMs;
+    }
+    for (size_t p = 0; p < aligned.notes.size() && p < events[e].pitches.size();
+         ++p)
+    {
+      if (aligned.notes[p] != PerformanceAlignment::none)
+        continue;
+      // Of its very pitch; else, in an event of which nothing was played, a
+      // semitone off: the same note in the performer's edition, or heard
+      // wrong by the transcription.
+      const auto find = [&](int semitones)
+      {
+        auto nearest = added.end();
+        for (auto it = added.begin(); it != added.end(); ++it)
+        {
+          const PerformedNote &note = notes[*it];
+          if (std::abs(note.pitch - events[e].pitches[p]) != semitones ||
+              note.onsetMs < lowMs || note.onsetMs > highMs)
+            continue;
+          if (nearest == added.end() ||
+              std::abs(note.onsetMs - expectedMs) <
+                  std::abs(notes[*nearest].onsetMs - expectedMs))
+            nearest = it;
+        }
+        return nearest;
+      };
+      auto nearest = find(0);
+      if (nearest == added.end() && !aligned.ms)
+        nearest = find(1);
+      if (nearest == added.end())
+        continue;
+      aligned.notes[p] = *nearest;
+      added.erase(nearest);
+    }
+  }
+  return alignment;
+}
+
 struct PerformanceBuilder
 {
   static PerformancePlayback Make(const std::vector<ScoreEvent> &events,
                                   const std::vector<PerformedNote> &notes,
-                                  const PerformanceAlignment &alignment);
+                                  const PerformanceAlignment &alignment,
+                                  const std::vector<PedalChange> &pedal);
 };
 
-std::optional<float> PerformedScore::Velocity(int tick, int pitch) const
+const PerformedNote *PerformedScore::Struck(int tick, int pitch) const
 {
   const auto event = m_events.find(tick);
   if (event == m_events.end())
-    return std::nullopt;
-  for (const PerformedNote &note : event->second.struck)
-    if (note.pitch == pitch)
-      return std::clamp(note.velocity / 127.f, 0.f, 1.f);
+    return nullptr;
+  const Event &struck = event->second;
+  for (size_t i = 0; i < struck.struck.size(); ++i)
+    if (struck.scorePitches[i] == pitch)
+      return &struck.struck[i];
+  return nullptr;
+}
+
+std::optional<float> PerformedScore::Velocity(int tick, int pitch) const
+{
+  if (const PerformedNote *note = Struck(tick, pitch))
+    return std::clamp(note->velocity / 127.f, 0.f, 1.f);
   return std::nullopt;
+}
+
+int PerformedScore::PlayedPitch(int tick, int pitch) const
+{
+  const PerformedNote *note = Struck(tick, pitch);
+  return note ? note->pitch : pitch;
 }
 
 std::vector<PerformedNote>
@@ -79,10 +189,11 @@ PerformedScore::NotesBetween(int begin, int end,
   for (auto event = m_events.lower_bound(begin);
        event != m_events.end() && event->first < end; ++event)
   {
-    for (const PerformedNote &note : event->second.struck)
-      if (pitches.count(note.pitch))
-        notes.push_back(note);
-    for (const PerformedNote &note : event->second.trill)
+    const Event &struck = event->second;
+    for (size_t i = 0; i < struck.struck.size(); ++i)
+      if (pitches.count(struck.scorePitches[i]))
+        notes.push_back(struck.struck[i]);
+    for (const PerformedNote &note : struck.trill)
       if (pitches.count(note.pitch))
         notes.push_back(note);
   }
@@ -92,19 +203,24 @@ PerformedScore::NotesBetween(int begin, int end,
   return notes;
 }
 
+bool PerformedScore::LeftOut(int tick) const
+{
+  return !m_events.count(tick) && m_timeline &&
+         m_timeline->SecondsAt(tick).has_value();
+}
+
 std::optional<double> PerformedScore::Onset(int tick, int pitch) const
 {
-  const auto event = m_events.find(tick);
-  if (event == m_events.end())
-    return std::nullopt;
-  for (const PerformedNote &note : event->second.struck)
-    if (note.pitch == pitch)
-      return note.onsetMs;
+  if (const PerformedNote *note = Struck(tick, pitch))
+    return note->onsetMs;
   return std::nullopt;
 }
 
 std::optional<double> PerformedScore::StrikeMs(int tick) const
 {
+  if (m_timeline)
+    if (const auto seconds = m_timeline->SecondsAt(tick))
+      return *seconds * 1000.0;
   const auto event = m_events.find(tick);
   return event == m_events.end() ? std::nullopt : event->second.ms;
 }
@@ -119,6 +235,19 @@ PerformedScore::ReleaseTick(int begin, int end, int minTick,
   double offMs = notes.front().offsetMs;
   for (const PerformedNote &note : notes)
     offMs = std::max(offMs, note.offsetMs);
+  // The same pitches struck again while the chord lasts, which the
+  // alignment may have given to no event: the chord sounds on through them.
+  if (const auto endSeconds = m_timeline->SecondsAt(end))
+  {
+    const double fromMs = notes.front().onsetMs;
+    const double toMs = *endSeconds * 1000.0;
+    for (auto note = std::lower_bound(m_notes.begin(), m_notes.end(), fromMs,
+                                      [](const PerformedNote &n, double ms)
+                                      { return n.onsetMs < ms; });
+         note != m_notes.end() && note->onsetMs < toMs; ++note)
+      if (pitches.count(note->pitch))
+        offMs = std::max(offMs, note->offsetMs);
+  }
   const auto position = m_timeline->PositionAt(offMs / 1000.0);
   if (!position)
     return std::nullopt;
@@ -137,13 +266,20 @@ std::optional<double> PerformedScore::TicksPerMsAt(int tick) const
 PerformancePlayback
 PerformanceBuilder::Make(const std::vector<ScoreEvent> &events,
                          const std::vector<PerformedNote> &notes,
-                         const PerformanceAlignment &alignment)
+                         const PerformanceAlignment &given,
+                         const std::vector<PedalChange> &pedal)
 {
   PerformancePlayback playback;
-  if (alignment.events.size() != events.size())
+  if (given.events.size() != events.size())
     return playback;
+  const PerformanceAlignment alignment =
+      WithNotesRecovered(events, notes, given);
 
   auto performed = std::make_shared<PerformedScore>();
+  performed->m_notes = notes;
+  std::sort(performed->m_notes.begin(), performed->m_notes.end(),
+            [](const PerformedNote &a, const PerformedNote &b)
+            { return a.onsetMs < b.onsetMs; });
   std::vector<RecordingBeat> beats;
   std::optional<size_t> last; // the last event timed
   for (size_t i = 0; i < events.size(); ++i)
@@ -151,9 +287,15 @@ PerformanceBuilder::Make(const std::vector<ScoreEvent> &events,
     const ScoreEvent &event = events[i];
     const PerformanceAlignment::Event &aligned = alignment.events[i];
     PerformedScore::Event struck;
-    for (const size_t n : aligned.notes)
-      if (n < notes.size())
-        struck.struck.push_back(notes[n]);
+    // Each as played, and the score's note it plays (a note a semitone
+    // off, recovered, another pitch).
+    for (size_t p = 0; p < aligned.notes.size() && p < event.pitches.size();
+         ++p)
+      if (aligned.notes[p] < notes.size())
+      {
+        struck.struck.push_back(notes[aligned.notes[p]]);
+        struck.scorePitches.push_back(event.pitches[p]);
+      }
     for (const size_t n : aligned.trillNotes)
       if (n < notes.size())
         struck.trill.push_back(notes[n]);
@@ -196,6 +338,21 @@ PerformanceBuilder::Make(const std::vector<ScoreEvent> &events,
     if (!timeline->Empty())
       playback.timeline = std::move(timeline);
   }
+  // The pedal where it was changed in the score: before the first event,
+  // at it; a change no later in the score than the one before, with it
+  // (the last of them stands).
+  if (playback.timeline)
+    for (const PedalChange &change : pedal)
+    {
+      const auto position = playback.timeline->PositionAt(change.ms / 1000.0);
+      const int tick =
+          position ? position->tick : playback.timeline->Beats().front().tick;
+      auto &changes = performed->m_pedal;
+      if (!changes.empty() && changes.back().tick >= tick)
+        changes.back().down = change.down;
+      else
+        changes.push_back({tick, change.down});
+    }
   if (!performed->m_events.empty())
   {
     performed->m_timeline = playback.timeline;
@@ -207,9 +364,10 @@ PerformanceBuilder::Make(const std::vector<ScoreEvent> &events,
 PerformancePlayback
 MakePerformancePlayback(const std::vector<ScoreEvent> &events,
                         const std::vector<PerformedNote> &notes,
-                        const PerformanceAlignment &alignment)
+                        const PerformanceAlignment &alignment,
+                        const std::vector<PedalChange> &pedal)
 {
-  return PerformanceBuilder::Make(events, notes, alignment);
+  return PerformanceBuilder::Make(events, notes, alignment, pedal);
 }
 
 std::optional<OrnamentSchedule>
