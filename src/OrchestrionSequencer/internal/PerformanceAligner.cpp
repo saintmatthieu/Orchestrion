@@ -71,6 +71,12 @@ constexpr double kMinTempoRatio = 0.25;
 constexpr double kMaxTempoRatio = 4.0;
 /** Paths this much costlier than the best are dropped. */
 constexpr double kBeam = 60.0;
+/**
+ * The paths kept at each event, the cheapest: an event reached at another
+ * time (another of the performer's notes its first) may turn out the better
+ * by the timing of the notes after it.
+ */
+constexpr size_t kPathsPerEvent = 4;
 
 enum class Step
 {
@@ -186,22 +192,40 @@ PerformanceAlignment AlignPerformance(const std::vector<ScoreEvent> &events,
   const double nominalMsPerTick = 1.0 / nominalTicksPerMs;
   std::vector<Link> links;
   links.reserve(notes.size() * 8);
-  std::map<int, Path> paths;
-  paths[-1] = {0.0, -1, notes.front().onsetMs, nominalMsPerTick};
+  std::vector<Path> paths;
+  paths.push_back({0.0, -1, notes.front().onsetMs, nominalMsPerTick});
 
   for (size_t j = 0; j < notes.size(); ++j)
   {
     const PerformedNote &note = notes[j];
-    std::map<int, Path> next;
+    std::map<int, std::vector<Path>> next;
     const auto offer = [&](const Path &path)
     {
-      const auto it = next.find(path.event);
-      if (it == next.end() || path.cost < it->second.cost)
-        next[path.event] = path;
+      std::vector<Path> &kept = next[path.event];
+      // In the same state (begun with the same note, the same of its pitches
+      // played), the cheaper.
+      for (Path &other : kept)
+        if (other.startMs == path.startMs && other.played == path.played)
+        {
+          if (path.cost < other.cost)
+            other = path;
+          return;
+        }
+      if (kept.size() < kPathsPerEvent)
+      {
+        kept.push_back(path);
+        return;
+      }
+      const auto costliest = std::max_element(kept.begin(), kept.end(),
+                                              [](const Path &a, const Path &b)
+                                              { return a.cost < b.cost; });
+      if (path.cost < costliest->cost)
+        *costliest = path;
     };
 
-    for (const auto &[from, path] : paths)
+    for (const Path &path : paths)
     {
+      const int from = path.event;
       const ScoreEvent *current = from >= 0 ? &events[from] : nullptr;
       if (current)
       {
@@ -289,23 +313,26 @@ PerformanceAlignment AlignPerformance(const std::vector<ScoreEvent> &events,
     }
 
     double cheapest = std::numeric_limits<double>::infinity();
-    for (const auto &[event, path] : next)
-      cheapest = std::min(cheapest, path.cost);
+    for (const auto &[event, kept] : next)
+      for (const Path &path : kept)
+        cheapest = std::min(cheapest, path.cost);
     paths.clear();
-    for (auto &[event, path] : next)
-      if (path.cost <= cheapest + kBeam)
-      {
-        links.push_back(path.pending);
-        path.link = static_cast<int>(links.size()) - 1;
-        paths.emplace(event, path);
-      }
+    for (auto &[event, kept] : next)
+      for (Path &path : kept)
+        if (path.cost <= cheapest + kBeam)
+        {
+          links.push_back(path.pending);
+          path.link = static_cast<int>(links.size()) - 1;
+          paths.push_back(path);
+        }
   }
 
   // The cheapest path, the score left unplayed after it counted.
   const Path *best = nullptr;
   double finalCost = std::numeric_limits<double>::infinity();
-  for (const auto &[event, path] : paths)
+  for (const Path &path : paths)
   {
+    const int event = path.event;
     const double cost =
         path.cost + kMissingPitch * CountUnplayed(events[event], path.played) +
         missingCost[events.size()] - missingCost[event + 1];
